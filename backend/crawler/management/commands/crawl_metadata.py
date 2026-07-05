@@ -9,7 +9,7 @@ from django.core.management.base import BaseCommand
 from bps_client.client import BpsClient
 from bps_client.exceptions import BpsApiError
 from catalog.models import Domain, PeriodData, Subject, SubjectCategory, Variable, VerticalVariable
-from crawler.utils import extract_rows
+from crawler.utils import extract_pagination, extract_rows
 
 NATIONAL_DOMAIN_ID = "0000"
 
@@ -95,12 +95,14 @@ class Command(BaseCommand):
             self._crawl_periods(client, domain, variable)
 
     def _crawl_vervar(self, client, domain, variable):
+        # Confirmed live: vervar rows use `kode_ver_id`/`vervar` (not
+        # `val`/`label` — that shape is for var/turvar/th, not vervar).
         rows = self._fetch(client, "vervar", domain=domain.domain_id, var=variable.variable_id)
         for row in rows:
             VerticalVariable.objects.update_or_create(
-                vervar_id=str(row.get("val")),
+                vervar_id=str(row.get("kode_ver_id")),
                 variable=variable,
-                defaults={"name": row.get("label", "")},
+                defaults={"name": row.get("vervar", "")},
             )
 
     def _crawl_periods(self, client, domain, variable):
@@ -118,12 +120,28 @@ class Command(BaseCommand):
             )
 
     def _fetch(self, client, model, **params):
-        try:
-            resp = client.get(model, **params)
-        except BpsApiError as exc:
-            self.stderr.write(f"Failed to fetch {model} ({params}): {exc}")
-            return []
-        if resp.is_error:
-            self.stderr.write(f"BPS error fetching {model} ({params}): {resp.error_detail}")
-            return []
-        return extract_rows(resp.body)
+        """Fetches every page of a BPS list response. Confirmed live: BPS
+        defaults to per_page=10 and silently caps at page 1 unless the
+        caller loops `page` — without this, a variable's `th`/`vervar`
+        list is truncated rather than complete (a real bug this fixed:
+        one variable's period list was missing its 5 oldest years)."""
+        all_rows = []
+        page = 1
+        while True:
+            try:
+                resp = client.get(model, page=page, **params)
+            except BpsApiError as exc:
+                self.stderr.write(f"Failed to fetch {model} ({params}) page {page}: {exc}")
+                break
+            if resp.is_error:
+                self.stderr.write(
+                    f"BPS error fetching {model} ({params}) page {page}: {resp.error_detail}"
+                )
+                break
+            rows = extract_rows(resp.body)
+            all_rows.extend(rows)
+            current_page, total_pages = extract_pagination(resp.body)
+            if not rows or current_page >= total_pages:
+                break
+            page += 1
+        return all_rows
