@@ -1,0 +1,8 @@
+{
+  "status": "OK",
+  "data-availability": "available",
+  "var": [
+    {"val": 1, "label": "Contoh Variabel", "unit": "Persen", "def": "", "subj": "1", "vervar": "vervar 1", "turvar": "turvar 1"}
+  ],
+  "datacontent": {}
+}
