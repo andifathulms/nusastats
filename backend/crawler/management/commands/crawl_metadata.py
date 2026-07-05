@@ -17,8 +17,28 @@ NATIONAL_DOMAIN_ID = "0000"
 class Command(BaseCommand):
     help = "Crawl subject categories, subjects, variables, vervar and periods for the national domain."
 
+    def add_arguments(self, parser):
+        parser.add_argument(
+            "--subcat",
+            help="Only crawl this subject_category_id (e.g. for a small scoped validation run).",
+        )
+        parser.add_argument(
+            "--max-subjects",
+            type=int,
+            default=None,
+            help="Cap the number of subjects crawled per subject category.",
+        )
+        parser.add_argument(
+            "--max-variables",
+            type=int,
+            default=None,
+            help="Cap the number of variables crawled per subject.",
+        )
+
     def handle(self, *args, **options):
         client = BpsClient()
+        self.max_subjects = options["max_subjects"]
+        self.max_variables = options["max_variables"]
         try:
             national = Domain.objects.get(domain_id=NATIONAL_DOMAIN_ID)
         except Domain.DoesNotExist:
@@ -27,7 +47,12 @@ class Command(BaseCommand):
 
         # Confirmed live: the subject-category model is `subcat` (not
         # `subjectcategory`), with fields `subcat_id`/`title` (not `subcat`).
-        for cat_row in self._fetch(client, "subcat", domain=national.domain_id):
+        cat_rows = self._fetch(client, "subcat", domain=national.domain_id)
+        if options["subcat"]:
+            cat_rows = [r for r in cat_rows if str(r.get("subcat_id")) == str(options["subcat"])]
+            self.stdout.write(f"Scoped run: subcat={options['subcat']} only ({len(cat_rows)} matched)")
+
+        for cat_row in cat_rows:
             category, _ = SubjectCategory.objects.update_or_create(
                 subject_category_id=str(cat_row.get("subcat_id")),
                 domain=national,
@@ -37,6 +62,8 @@ class Command(BaseCommand):
 
     def _crawl_subjects(self, client, domain, category):
         rows = self._fetch(client, "subject", domain=domain.domain_id, subcat=category.subject_category_id)
+        if self.max_subjects is not None:
+            rows = rows[: self.max_subjects]
         for row in rows:
             # Confirmed live: subject rows use `sub_id`/`title`, not
             # `subj_id`/`subj`.
@@ -50,6 +77,8 @@ class Command(BaseCommand):
 
     def _crawl_variables(self, client, domain, subject):
         rows = self._fetch(client, "var", domain=domain.domain_id, subject=subject.subject_id)
+        if self.max_variables is not None:
+            rows = rows[: self.max_variables]
         for row in rows:
             variable, _ = Variable.objects.update_or_create(
                 variable_id=str(row.get("var_id")),
