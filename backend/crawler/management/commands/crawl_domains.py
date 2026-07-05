@@ -49,8 +49,11 @@ class Command(BaseCommand):
             self._crawl_regencies(client, province)
 
     def _crawl_regencies(self, client, province):
+        # Confirmed live: `kabbyprov` takes the 2-digit province code, not
+        # the full 4-digit province domain_id (e.g. "11", not "1100").
+        prov_code = province.domain_id[:2]
         try:
-            resp = client.get("domain", type="kabbyprov", prov=province.domain_id)
+            resp = client.get("domain", type="kabbyprov", prov=prov_code)
         except BpsApiError as exc:
             self.stderr.write(f"Failed to fetch regencies for {province.domain_id}: {exc}")
             return

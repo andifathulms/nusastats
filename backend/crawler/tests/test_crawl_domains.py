@@ -12,10 +12,12 @@ def fake_get(model, **params):
         return BpsResponse(
             url="fake",
             http_status=200,
-            body={"status": "OK", "data": [{"domain_id": "31", "domain_name": "DKI JAKARTA"}]},
+            body={"status": "OK", "data": [{"domain_id": "3100", "domain_name": "DKI JAKARTA"}]},
             response_hash="x",
         )
     if model == "domain" and params.get("type") == "kabbyprov":
+        # Confirmed live: `kabbyprov` takes the 2-digit province code.
+        assert params.get("prov") == "31", params
         return BpsResponse(
             url="fake",
             http_status=200,
@@ -34,7 +36,7 @@ def test_crawl_domains_creates_national_province_and_regency():
         call_command("crawl_domains")
 
     assert Domain.objects.filter(domain_id="0000", admin_level=AdminLevel.NATIONAL).exists()
-    province = Domain.objects.get(domain_id="31")
+    province = Domain.objects.get(domain_id="3100")
     assert province.admin_level == AdminLevel.PROVINCE
     regency = Domain.objects.get(domain_id="3171")
     assert regency.admin_level == AdminLevel.REGENCY
@@ -47,5 +49,5 @@ def test_crawl_domains_is_idempotent():
         call_command("crawl_domains")
         call_command("crawl_domains")
 
-    assert Domain.objects.filter(domain_id="31").count() == 1
+    assert Domain.objects.filter(domain_id="3100").count() == 1
     assert Domain.objects.filter(domain_id="3171").count() == 1
