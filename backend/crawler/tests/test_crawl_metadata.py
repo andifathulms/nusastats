@@ -12,16 +12,19 @@ def ok(data):
 
 
 def fake_get(model, **params):
-    if model == "subjectcategory":
-        return ok([{"subcat_id": "1", "subcat": "Ekonomi"}])
+    # Field/model names below match what was confirmed against the live
+    # BPS WebAPI (subcat/sub_id/th_id, not the originally-guessed
+    # subjectcategory/subj_id/val).
+    if model == "subcat":
+        return ok([{"subcat_id": "1", "title": "Ekonomi"}])
     if model == "subject":
-        return ok([{"subj_id": "10", "subj": "Inflasi"}])
+        return ok([{"sub_id": "10", "title": "Inflasi"}])
     if model == "var":
         return ok([{"var_id": "100", "title": "Inflasi Bulanan", "unit": "Persen", "def": ""}])
     if model == "vervar":
         return ok([{"val": "1000", "label": "Indonesia"}])
     if model == "th":
-        return ok([{"val": "1", "th": "2023"}])
+        return ok([{"th_id": "1", "th": "2023"}])
     raise AssertionError(f"unexpected call: {model} {params}")
 
 

@@ -25,21 +25,25 @@ class Command(BaseCommand):
             self.stderr.write("National domain (0000) not found — run crawl_domains first.")
             return
 
-        for cat_row in self._fetch(client, "subjectcategory", domain=national.domain_id):
+        # Confirmed live: the subject-category model is `subcat` (not
+        # `subjectcategory`), with fields `subcat_id`/`title` (not `subcat`).
+        for cat_row in self._fetch(client, "subcat", domain=national.domain_id):
             category, _ = SubjectCategory.objects.update_or_create(
                 subject_category_id=str(cat_row.get("subcat_id")),
                 domain=national,
-                defaults={"name": cat_row.get("subcat", "")},
+                defaults={"name": cat_row.get("title", "")},
             )
             self._crawl_subjects(client, national, category)
 
     def _crawl_subjects(self, client, domain, category):
         rows = self._fetch(client, "subject", domain=domain.domain_id, subcat=category.subject_category_id)
         for row in rows:
+            # Confirmed live: subject rows use `sub_id`/`title`, not
+            # `subj_id`/`subj`.
             subject, _ = Subject.objects.update_or_create(
-                subject_id=str(row.get("subj_id")),
+                subject_id=str(row.get("sub_id")),
                 domain=domain,
-                defaults={"subject_category": category, "name": row.get("subj", "")},
+                defaults={"subject_category": category, "name": row.get("title", "")},
             )
             self._crawl_variables(client, domain, subject)
         self.stdout.write(f"{category.name}: {len(rows)} subjects")
@@ -71,12 +75,15 @@ class Command(BaseCommand):
             )
 
     def _crawl_periods(self, client, domain, variable):
+        # Confirmed live: `th` rows use `th_id`/`th` (not `val`/`th` — the
+        # id field is `th_id`, distinct from the vervar/var/turvar shape
+        # which uses `val`/`label`).
         rows = self._fetch(client, "th", domain=domain.domain_id, var=variable.variable_id)
         for row in rows:
             label = row.get("th", "")
             year = int(label) if str(label).isdigit() else None
             PeriodData.objects.update_or_create(
-                period_id=str(row.get("val")),
+                period_id=str(row.get("th_id")),
                 variable=variable,
                 defaults={"label": label, "year": year},
             )
