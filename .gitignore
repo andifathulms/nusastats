@@ -45,3 +45,7 @@ htmlcov/
 
 # Raw response bodies cache (if stored to disk per Phase 1 storage decision)
 /backend/response_bodies/
+
+# Generated coverage reports (Phase 5 output) — real crawl output only,
+# never commit a placeholder/scaffold-run report as if it were real.
+/backend/reports/
