@@ -99,6 +99,7 @@ class Variable(models.Model):
 
     class Meta:
         unique_together = ("variable_id", "domain", "data_model")
+        ordering = ["id"]
 
     def __str__(self):
         return self.name
@@ -232,6 +233,9 @@ class SimdasiTable(models.Model):
     title = models.CharField(max_length=500)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["id"]
 
     def __str__(self):
         return self.title
