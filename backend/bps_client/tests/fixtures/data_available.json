@@ -1,11 +1,19 @@
 {
   "status": "OK",
   "data-availability": "available",
+  "last_update": "2025-03-27 10:59:06",
+  "subject": [{"val": 522, "label": "Kesehatan"}],
   "var": [
-    {"val": 1, "label": "Contoh Variabel", "unit": "Persen", "def": "", "subj": "1", "vervar": "vervar 1", "turvar": "turvar 1"}
+    {"val": 1, "label": "Contoh Variabel", "unit": "Persen", "subj": "Gender", "def": "", "decimal": 2, "note": ""}
   ],
-  "datacontent": {
-    "119000201": 5.12,
-    "119000202": 5.34
-  }
+  "turvar": [
+    {"val": 211, "label": "Laki-laki"},
+    {"val": 212, "label": "Perempuan"}
+  ],
+  "labelvervar": "Provinsi/Kabupaten/Kota/Indonesia",
+  "vervar": [{"val": 0, "label": "INDONESIA"}],
+  "tahun": [{"val": 124, "label": "2024"}],
+  "turtahun": [{"val": 0, "label": "Tahun"}],
+  "datacontent": {"012111240": 5.12, "012121240": 5.34},
+  "related": []
 }

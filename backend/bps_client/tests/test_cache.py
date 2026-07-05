@@ -26,7 +26,7 @@ def test_second_identical_call_is_served_from_cache(monkeypatch):
 
     responses.add(
         responses.GET,
-        "https://webapi.bps.go.id/v1/api/list/",
+        "https://webapi.bps.go.id/v1/api/domain/type/prov/key/k/",
         json={"status": "OK", "data": []},
         status=200,
     )
