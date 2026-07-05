@@ -15,6 +15,7 @@ import time
 import requests
 from django.conf import settings
 
+from . import cache
 from .exceptions import BpsRequestFailed, TooManyConsecutiveFailures
 
 
@@ -76,17 +77,31 @@ class BpsClient:
         if remaining > 0:
             time.sleep(remaining)
 
-    def get(self, model, **params):
+    def get(self, model, use_cache=True, **params):
         """Issue one BPS WebAPI call for the given `model` (e.g. "data",
         "domain", "subjectcategory", "var", "vervar", "th"), returning a
         BpsResponse. Retries transient failures with exponential backoff;
         raises TooManyConsecutiveFailures if the hard stop is reached.
+
+        When `use_cache` is true (default), a successful past response for
+        the same (base_url, model, params) is replayed from Redis instead
+        of re-hitting BPS, within BPS_RESPONSE_CACHE_TTL_SECONDS — a dev/
+        debug dedupe only (see bps_client.cache), never a substitute for
+        the CoverageCheckLog audit trail.
         """
         if self._consecutive_failures >= self.max_consecutive_failures:
             raise TooManyConsecutiveFailures(
                 f"Hard stop: {self._consecutive_failures} consecutive failures reached "
                 f"(limit {self.max_consecutive_failures})."
             )
+
+        cache_params = dict(params)
+
+        if use_cache:
+            cached = cache.get_cached(self.base_url, model, cache_params)
+            if cached is not None:
+                self._consecutive_failures = 0
+                return BpsResponse(**cached)
 
         query = {"model": model, "lang": params.pop("lang", "ind"), "key": self.api_key}
         query.update(params)
@@ -161,13 +176,28 @@ class BpsClient:
                 )
 
             self._consecutive_failures = 0
-            return BpsResponse(
+            result = BpsResponse(
                 url=safe_url,
                 http_status=resp.status_code,
                 body=parsed,
                 response_hash=response_hash,
                 is_error=False,
             )
+            if use_cache:
+                cache.set_cached(
+                    self.base_url,
+                    model,
+                    cache_params,
+                    {
+                        "url": result.url,
+                        "http_status": result.http_status,
+                        "body": result.body,
+                        "response_hash": result.response_hash,
+                        "is_error": result.is_error,
+                        "error_detail": result.error_detail,
+                    },
+                )
+            return result
 
         self._consecutive_failures += 1
         raise BpsRequestFailed(
