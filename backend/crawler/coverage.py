@@ -1,14 +1,22 @@
-"""Shared logic for turning one BPS `data`-model response into a
+"""Shared logic for turning BPS `data`-model response(s) into a
 CoverageRecord update. Split out from the management command so it can be
 reused by crawl_coverage.py and unit-tested directly against fixture-shaped
 response bodies without invoking the full command/DB-sampling machinery.
 """
 
 import hashlib
+import re
 
 from django.utils import timezone
 
 from catalog.models import CoverageCheckLog, CoverageRecord, CoverageStatus, CoverageStatusChange
+
+# Confirmed live: BPS caps how many `th` (year) values one `data` call may
+# request, but the cap varies by request (3 for domain=0000 in one test,
+# 2 for a province/regency domain in the same test) — not a fixed
+# constant tied only to admin_level. Rather than hardcode a guess, the
+# real limit is parsed from BPS's own error message and used to retry.
+MAX_TH_ERROR_RE = re.compile(r"maximum allowed number of years for the 'th' parameter is (\d+)")
 
 
 def parse_years_confirmed(body, domain_id, variable_id):
@@ -85,15 +93,11 @@ def determine_status(resp, domain_id, variable_id):
     return CoverageStatus.CONFIRMED, years
 
 
-def upsert_coverage_record(variable, domain, resp):
-    """Record one real HTTP response as a CoverageRecord update, appending
-    to CoverageStatusChange if the status changed. Idempotent: calling
-    this twice with the same (variable, domain, model_type) updates the
-    existing row rather than duplicating it (CLAUDE.md rule 3).
+def _apply_coverage_result(variable, domain, status, years, check_log):
+    """Idempotent upsert of a single CoverageRecord (CLAUDE.md rule 3):
+    re-checking updates the existing row rather than duplicating it, and
+    appends a CoverageStatusChange only when the status actually flips.
     """
-    check_log = record_check_log(resp)
-    status, years = determine_status(resp, domain.domain_id, variable.variable_id)
-
     record, created = CoverageRecord.objects.get_or_create(
         variable=variable,
         domain=domain,
@@ -125,3 +129,77 @@ def upsert_coverage_record(variable, domain, resp):
             )
 
     return record
+
+
+def upsert_coverage_record(variable, domain, resp):
+    """Record one real HTTP response as a CoverageRecord update. See
+    upsert_coverage_record_multi for the case where covering all known
+    periods takes more than one call.
+    """
+    check_log = record_check_log(resp)
+    status, years = determine_status(resp, domain.domain_id, variable.variable_id)
+    return _apply_coverage_result(variable, domain, status, years, check_log)
+
+
+def fetch_th_chunked_responses(client, domain, variable, period_ids, use_cache=True):
+    """Fetches `data` responses covering every period in `period_ids`,
+    splitting into multiple calls if BPS rejects the batch as too large.
+    Starts by requesting all periods in one call (cheapest); on BPS's
+    "maximum allowed number of years... is N" error, shrinks to N and
+    retries the same leftover periods rather than guessing a limit
+    upfront. Returns the list of BpsResponse objects actually received
+    (each still gets its own CoverageCheckLog for full traceability).
+    """
+    responses = []
+    remaining = list(period_ids)
+    chunk_size = len(remaining) or 1
+    while remaining:
+        chunk = remaining[:chunk_size]
+        resp = client.get(
+            "data", domain=domain.domain_id, var=variable.variable_id, th=";".join(chunk), use_cache=use_cache
+        )
+        if resp.is_error and resp.error_detail:
+            match = MAX_TH_ERROR_RE.search(resp.error_detail)
+            if match and int(match.group(1)) < chunk_size:
+                chunk_size = int(match.group(1))
+                continue
+        responses.append(resp)
+        remaining = remaining[len(chunk):]
+    return responses
+
+
+def upsert_coverage_record_multi(variable, domain, responses):
+    """Like upsert_coverage_record, but merges evidence from several
+    responses covering different period chunks of the same
+    (variable, domain) pair (see fetch_th_chunked_responses). A period is
+    confirmed if any chunk's response confirms it; the record is only
+    ERROR if every chunk errored. Every response still gets its own
+    CoverageCheckLog row — full per-call traceability is preserved even
+    though the record's last_check_log points at the most informative one.
+    """
+    check_logs = [record_check_log(resp) for resp in responses]
+
+    years = []
+    best_log = check_logs[-1] if check_logs else None
+    any_success = False
+    any_confirmed = False
+    for resp, log in zip(responses, check_logs):
+        if resp.is_error:
+            continue
+        any_success = True
+        status, resp_years = determine_status(resp, domain.domain_id, variable.variable_id)
+        if status == CoverageStatus.CONFIRMED:
+            any_confirmed = True
+            best_log = log
+            for year in resp_years:
+                if year not in years:
+                    years.append(year)
+
+    if any_confirmed:
+        status = CoverageStatus.CONFIRMED
+    elif any_success:
+        status = CoverageStatus.NOT_CONFIRMED
+    else:
+        status = CoverageStatus.ERROR
+
+    return _apply_coverage_result(variable, domain, status, years, best_log)

@@ -15,7 +15,7 @@ from django.core.management.base import BaseCommand
 from bps_client.client import BpsClient
 from bps_client.exceptions import BpsApiError, TooManyConsecutiveFailures
 from catalog.models import Variable
-from crawler.coverage import upsert_coverage_record
+from crawler.coverage import fetch_th_chunked_responses, upsert_coverage_record_multi
 from crawler.sampling import flatten_sample_domains, get_sample_domains
 
 
@@ -51,9 +51,10 @@ class Command(BaseCommand):
         for variable in variables:
             # `th` is a mandatory param on real `data` calls (confirmed
             # live — omitting it is an application error, not optional).
-            # Check every period crawl_metadata found for this variable in
-            # one call, using BPS's documented `;`-separated multi-value
-            # syntax, rather than one call per year.
+            # Check every period crawl_metadata found for this variable,
+            # using BPS's documented `;`-separated multi-value syntax —
+            # chunked across calls if BPS rejects the batch as too large
+            # (the max varies by request, see crawler.coverage).
             period_ids = list(variable.periods.values_list("period_id", flat=True))
             if not period_ids:
                 self.stderr.write(
@@ -61,11 +62,10 @@ class Command(BaseCommand):
                     "(run crawl_metadata first)."
                 )
                 continue
-            th_param = ";".join(period_ids)
 
             for domain in domains:
                 try:
-                    resp = client.get("data", domain=domain.domain_id, var=variable.variable_id, th=th_param)
+                    responses = fetch_th_chunked_responses(client, domain, variable, period_ids)
                 except TooManyConsecutiveFailures as exc:
                     self.stderr.write(f"Hard stop: {exc}")
                     self.stdout.write(f"Checked {checked} (variable, domain) pairs before stopping.")
@@ -76,10 +76,11 @@ class Command(BaseCommand):
                     )
                     continue
 
-                record = upsert_coverage_record(variable, domain, resp)
+                record = upsert_coverage_record_multi(variable, domain, responses)
                 checked += 1
                 self.stdout.write(
                     f"  var={variable.variable_id} domain={domain.domain_id} -> {record.status}"
+                    f" ({len(responses)} call(s))"
                 )
 
         self.stdout.write(f"Done. Checked {checked} (variable, domain) pairs.")

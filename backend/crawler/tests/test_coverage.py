@@ -11,7 +11,7 @@ from catalog.models import (
     SubjectCategory,
     Variable,
 )
-from crawler.coverage import upsert_coverage_record
+from crawler.coverage import fetch_th_chunked_responses, upsert_coverage_record, upsert_coverage_record_multi
 
 
 @pytest.fixture
@@ -132,3 +132,89 @@ def test_recheck_updates_existing_record_and_logs_status_change(variable):
         previous_status=CoverageStatus.NOT_CONFIRMED,
         new_status=CoverageStatus.CONFIRMED,
     ).exists()
+
+
+class FakeChunkClient:
+    """Simulates BPS's real behavior of rejecting an oversized `th` batch
+    with a "maximum allowed... is N" error, confirmed live (N=3 for a
+    national-domain request in one observed case, N=2 for a province)."""
+
+    def __init__(self, max_th, domain_id="0000", var_id="100"):
+        self.max_th = max_th
+        self.domain_id = domain_id
+        self.var_id = var_id
+        self.calls = []
+
+    def get(self, model, **params):
+        self.calls.append(params)
+        th_values = params["th"].split(";")
+        if len(th_values) > self.max_th:
+            return BpsResponse(
+                url="fake",
+                http_status=200,
+                body=None,
+                response_hash="x",
+                is_error=True,
+                error_detail=(
+                    f"BPS application status: Error - The maximum allowed number of years "
+                    f"for the 'th' parameter is {self.max_th}. You provided {len(th_values)}."
+                ),
+            )
+        return BpsResponse(
+            url="fake",
+            http_status=200,
+            body={
+                "data-availability": "available",
+                "turvar": [{"val": 0, "label": "Total"}],
+                "turtahun": [{"val": 0, "label": "Tahun"}],
+                "tahun": [{"val": v, "label": f"20{v.zfill(2)}"} for v in th_values],
+                "datacontent": {f"{self.domain_id.lstrip('0') or '0'}{self.var_id}0{v}0": 1.0 for v in th_values},
+            },
+            response_hash="x",
+        )
+
+
+@pytest.mark.django_db
+def test_fetch_th_chunked_shrinks_on_max_th_error(variable):
+    domain = variable.domain
+    client = FakeChunkClient(max_th=2)
+
+    responses = fetch_th_chunked_responses(client, domain, variable, ["1", "2", "3", "4", "5"])
+
+    # First call (5 years) rejected and retried at chunk_size=2, discovered
+    # from the error message rather than hardcoded.
+    assert len(client.calls[0]["th"].split(";")) == 5
+    assert not any(r.is_error for r in responses)
+    assert sum(len(r.body["tahun"]) for r in responses) == 5
+
+
+@pytest.mark.django_db
+def test_upsert_coverage_record_multi_merges_years_across_chunks(variable):
+    domain = variable.domain
+    client = FakeChunkClient(max_th=2)
+    responses = fetch_th_chunked_responses(client, domain, variable, ["1", "2", "3"])
+
+    record = upsert_coverage_record_multi(variable, domain, responses)
+
+    assert record.status == CoverageStatus.CONFIRMED
+    assert len(record.years_confirmed) == 3
+
+
+@pytest.mark.django_db
+def test_upsert_coverage_record_multi_confirmed_survives_a_partial_chunk_error(variable):
+    domain = variable.domain
+    ok_resp = make_resp(
+        {
+            "data-availability": "available",
+            "turvar": [{"val": 0, "label": "Total"}],
+            "turtahun": [{"val": 0, "label": "Tahun"}],
+            "tahun": [{"val": "1", "label": "2023"}],
+            "datacontent": {"0100010": 5.2},
+        }
+    )
+    error_resp = make_resp(None, is_error=True, error_detail="HTTP 500")
+
+    record = upsert_coverage_record_multi(variable, domain, [ok_resp, error_resp])
+
+    assert record.status == CoverageStatus.CONFIRMED
+    assert record.years_confirmed == ["2023"]

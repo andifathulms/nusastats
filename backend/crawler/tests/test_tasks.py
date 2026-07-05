@@ -5,7 +5,16 @@ from django.core.management import call_command
 from django_celery_beat.models import PeriodicTask
 
 from bps_client.client import BpsResponse
-from catalog.models import AdminLevel, CoverageRecord, CoverageStatus, Domain, Subject, SubjectCategory, Variable
+from catalog.models import (
+    AdminLevel,
+    CoverageRecord,
+    CoverageStatus,
+    Domain,
+    PeriodData,
+    Subject,
+    SubjectCategory,
+    Variable,
+)
 from crawler.tasks import recrawl_confirmed_coverage
 
 
@@ -23,6 +32,7 @@ def test_recrawl_only_touches_confirmed_records():
     category = SubjectCategory.objects.create(subject_category_id="1", domain=domain, name="Ekonomi")
     subject = Subject.objects.create(subject_id="10", subject_category=category, domain=domain, name="Inflasi")
     variable = Variable.objects.create(variable_id="100", subject=subject, domain=domain, name="Inflasi")
+    PeriodData.objects.create(period_id="1", variable=variable, label="2023", year=2023)
 
     confirmed = CoverageRecord.objects.create(
         variable=variable, domain=domain, model_type=variable.data_model,
