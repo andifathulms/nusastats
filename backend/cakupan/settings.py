@@ -126,3 +126,15 @@ COVERAGE_SAMPLE_PROVINCE_COUNT = int(os.environ.get("COVERAGE_SAMPLE_PROVINCE_CO
 COVERAGE_SAMPLE_KABUPATEN_PER_PROVINCE = int(
     os.environ.get("COVERAGE_SAMPLE_KABUPATEN_PER_PROVINCE", 3)
 )
+
+# --- SIMDASI (PRD §5.4 — a separate system, queried per MFD region code
+# rather than per national variable). Calling convention here mirrors the
+# Dynamic Data client for architectural consistency; the exact model/param
+# names must be validated against real SIMDASI docs before the Phase 5
+# live crawl, since SIMDASI lives on its own host with its own API shape.
+SIMDASI_API_BASE_URL = os.environ.get("SIMDASI_API_BASE_URL", "https://simdasi.bps.go.id/v1/api")
+# Explicit, documented sample of 7-digit MFD region codes to check per
+# table (CLAUDE.md rule 4 — never a silent/implicit sample).
+SIMDASI_SAMPLE_MFD_CODES = [
+    c.strip() for c in os.environ.get("SIMDASI_SAMPLE_MFD_CODES", "").split(",") if c.strip()
+]
