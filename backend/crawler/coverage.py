@@ -1,7 +1,20 @@
-"""Shared logic for turning BPS `data`-model response(s) into a
-CoverageRecord update. Split out from the management command so it can be
-reused by crawl_coverage.py and unit-tested directly against fixture-shaped
-response bodies without invoking the full command/DB-sampling machinery.
+"""Shared logic for turning BPS `data`-model response(s) into CoverageRecord
+updates. Split out from the management command so it can be reused by
+crawl_coverage.py and unit-tested directly against fixture-shaped response
+bodies without invoking the full command/DB-sampling machinery.
+
+Architecture note (confirmed live, not assumed): a `data` call scoped to
+domain=0000 (national) returns the FULL regional breakdown for a variable
+— every province and kabupaten/kota's datacontent in one response, keyed
+by each region's own vervar id. Querying `domain=<province/kab code>`
+directly was confirmed live to return an empty or literally-null body for
+at least one real indicator, even though the same data is present and
+decodable from the domain=0000 response. Each BPS regional domain appears
+to be its own semi-independent instance with its own local variable
+catalog, rather than a scoped view of the national one. So every `data`
+call this module makes targets domain=0000, and confirmation for
+national/province/kabupaten levels is a decode step against that single
+response set — never a separate domain=<code> API call.
 """
 
 import hashlib
@@ -9,39 +22,60 @@ import re
 
 from django.utils import timezone
 
-from catalog.models import CoverageCheckLog, CoverageRecord, CoverageStatus, CoverageStatusChange
+from catalog.models import AdminLevel, CoverageCheckLog, CoverageRecord, CoverageStatus, CoverageStatusChange
 
 # Confirmed live: BPS caps how many `th` (year) values one `data` call may
-# request, but the cap varies by request (3 for domain=0000 in one test,
-# 2 for a province/regency domain in the same test) — not a fixed
-# constant tied only to admin_level. Rather than hardcode a guess, the
-# real limit is parsed from BPS's own error message and used to retry.
+# request, but the cap varies by request (3 in one observed case) — not a
+# fixed constant. Rather than hardcode a guess, the real limit is parsed
+# from BPS's own error message and used to retry.
 MAX_TH_ERROR_RE = re.compile(r"maximum allowed number of years for the 'th' parameter is (\d+)")
 
+NATIONAL_DOMAIN_ID = "0000"
 
-def parse_years_confirmed(body, domain_id, variable_id):
-    """Which periods actually had a non-null datacontent value, decoded
-    from the real BPS `data`-model response shape.
+
+def resolve_vervar_val(domain, body):
+    """Which vervar `val` in this response corresponds to `domain`.
+
+    For a province/kabupaten domain, its own domain_id is the vervar val
+    (confirmed live: Aceh's domain_id "1100" matches vervar val 1100 in
+    the domain=0000 response). For the national domain there is no such
+    direct match — some variables have a distinct all-Indonesia aggregate
+    row, most don't (e.g. a "by kabupaten/kota and gender" variable has
+    no single national figure at all). Rather than guess a code, this
+    looks for a vervar row explicitly labeled "INDONESIA"; if none
+    exists, returns None — a real absence, not a bug (CLAUDE.md rule 1).
+    """
+    if domain.admin_level == AdminLevel.NATIONAL:
+        for row in body.get("vervar", []) or []:
+            label = re.sub(r"<[^>]+>", "", str(row.get("label", ""))).strip().upper()
+            if label == "INDONESIA":
+                return str(row.get("val"))
+        return None
+    try:
+        return str(int(domain.domain_id))
+    except (TypeError, ValueError):
+        return str(domain.domain_id)
+
+
+def parse_years_confirmed(body, vervar_val, variable_id):
+    """Which periods actually had a non-null datacontent value for the
+    given `vervar_val`, decoded from the real BPS `data`-model response
+    shape.
 
     `datacontent` keys are the concatenation of
     `{vervar}{var}{turvar}{th}{turth}` with no separators or fixed-width
-    padding (e.g. requesting domain=0000/var=455/th=124 for a variable
-    with turvar 212 yields key "17014552121240" — vervar=1701, var=455,
-    turvar=212, th=124, turth=0). This was decoded from two live sample
-    responses, not guessed. Since field widths aren't fixed, this matches
-    by trying every (turvar, turth) combination actually listed in the
-    response against each requested `th`, rather than slicing positions.
+    padding (e.g. vervar=1701, var=455, turvar=212, th=124, turth=0 ->
+    "17014552121240"). This was decoded from live sample responses, not
+    guessed. Since field widths aren't fixed, this matches by trying
+    every (turvar, turth) combination actually listed in the response
+    against each requested `th`, rather than slicing positions.
     """
-    if not isinstance(body, dict):
+    if not isinstance(body, dict) or vervar_val is None:
         return []
     datacontent = body.get("datacontent") or {}
     if not datacontent:
         return []
 
-    try:
-        vervar_val = str(int(domain_id))
-    except (TypeError, ValueError):
-        vervar_val = str(domain_id)
     var_val = str(variable_id)
     turvar_vals = [str(row.get("val")) for row in (body.get("turvar") or [])] or [""]
     turth_vals = [str(row.get("val")) for row in (body.get("turtahun") or [])] or ["0"]
@@ -75,22 +109,6 @@ def record_check_log(resp):
         is_error=resp.is_error,
         error_detail=resp.error_detail,
     )
-
-
-def determine_status(resp, domain_id, variable_id):
-    if resp.is_error:
-        return CoverageStatus.ERROR, []
-    body = resp.body or {}
-    if body.get("data-availability") != "available":
-        return CoverageStatus.NOT_CONFIRMED, []
-    years = parse_years_confirmed(body, domain_id, variable_id)
-    if not years:
-        # `data-availability: available` with empty/null datacontent is
-        # exactly the metadata-claims-but-content-is-empty case CLAUDE.md
-        # and PRD §5.3 call out — never treat availability alone as
-        # confirmation.
-        return CoverageStatus.NOT_CONFIRMED, []
-    return CoverageStatus.CONFIRMED, years
 
 
 def _apply_coverage_result(variable, domain, status, years, check_log):
@@ -131,24 +149,14 @@ def _apply_coverage_result(variable, domain, status, years, check_log):
     return record
 
 
-def upsert_coverage_record(variable, domain, resp):
-    """Record one real HTTP response as a CoverageRecord update. See
-    upsert_coverage_record_multi for the case where covering all known
-    periods takes more than one call.
-    """
-    check_log = record_check_log(resp)
-    status, years = determine_status(resp, domain.domain_id, variable.variable_id)
-    return _apply_coverage_result(variable, domain, status, years, check_log)
-
-
-def fetch_th_chunked_responses(client, domain, variable, period_ids, use_cache=True):
-    """Fetches `data` responses covering every period in `period_ids`,
-    splitting into multiple calls if BPS rejects the batch as too large.
-    Starts by requesting all periods in one call (cheapest); on BPS's
-    "maximum allowed number of years... is N" error, shrinks to N and
-    retries the same leftover periods rather than guessing a limit
-    upfront. Returns the list of BpsResponse objects actually received
-    (each still gets its own CoverageCheckLog for full traceability).
+def fetch_th_chunked_responses(client, variable, period_ids, use_cache=True):
+    """Fetches `data` responses (always domain=0000 — see module
+    docstring) covering every period in `period_ids`, splitting into
+    multiple calls if BPS rejects the batch as too large. Starts by
+    requesting all periods in one call (cheapest); on BPS's "maximum
+    allowed number of years... is N" error, shrinks to N and retries the
+    same leftover periods rather than guessing a limit upfront. Returns
+    the list of BpsResponse objects actually received.
     """
     responses = []
     remaining = list(period_ids)
@@ -156,7 +164,11 @@ def fetch_th_chunked_responses(client, domain, variable, period_ids, use_cache=T
     while remaining:
         chunk = remaining[:chunk_size]
         resp = client.get(
-            "data", domain=domain.domain_id, var=variable.variable_id, th=";".join(chunk), use_cache=use_cache
+            "data",
+            domain=NATIONAL_DOMAIN_ID,
+            var=variable.variable_id,
+            th=";".join(chunk),
+            use_cache=use_cache,
         )
         if resp.is_error and resp.error_detail:
             match = MAX_TH_ERROR_RE.search(resp.error_detail)
@@ -168,27 +180,30 @@ def fetch_th_chunked_responses(client, domain, variable, period_ids, use_cache=T
     return responses
 
 
-def upsert_coverage_record_multi(variable, domain, responses):
-    """Like upsert_coverage_record, but merges evidence from several
-    responses covering different period chunks of the same
-    (variable, domain) pair (see fetch_th_chunked_responses). A period is
-    confirmed if any chunk's response confirms it; the record is only
-    ERROR if every chunk errored. Every response still gets its own
-    CoverageCheckLog row — full per-call traceability is preserved even
-    though the record's last_check_log points at the most informative one.
+def upsert_domain_coverage(variable, domain, response_log_pairs):
+    """Decodes CONFIRMED/NOT_CONFIRMED/ERROR + years_confirmed for one
+    `domain` (national, a province, or a kabupaten/kota) from a shared
+    set of (BpsResponse, CoverageCheckLog) pairs already fetched for this
+    variable at domain=0000 — no additional HTTP call needed per domain.
+    A period is confirmed if any chunk's response confirms it for this
+    domain's vervar entry; the record is only ERROR if every chunk
+    errored.
     """
-    check_logs = [record_check_log(resp) for resp in responses]
-
     years = []
-    best_log = check_logs[-1] if check_logs else None
+    best_log = response_log_pairs[-1][1] if response_log_pairs else None
     any_success = False
     any_confirmed = False
-    for resp, log in zip(responses, check_logs):
+
+    for resp, log in response_log_pairs:
         if resp.is_error:
             continue
         any_success = True
-        status, resp_years = determine_status(resp, domain.domain_id, variable.variable_id)
-        if status == CoverageStatus.CONFIRMED:
+        body = resp.body or {}
+        if body.get("data-availability") != "available":
+            continue
+        vervar_val = resolve_vervar_val(domain, body)
+        resp_years = parse_years_confirmed(body, vervar_val, variable.variable_id)
+        if resp_years:
             any_confirmed = True
             best_log = log
             for year in resp_years:
@@ -198,6 +213,10 @@ def upsert_coverage_record_multi(variable, domain, responses):
     if any_confirmed:
         status = CoverageStatus.CONFIRMED
     elif any_success:
+        # Either data-availability was never "available", or this
+        # domain's vervar entry (or, for national, any "INDONESIA"
+        # aggregate row) had no non-null value — a real, evidence-backed
+        # absence per CLAUDE.md rule 1, not an assumption.
         status = CoverageStatus.NOT_CONFIRMED
     else:
         status = CoverageStatus.ERROR

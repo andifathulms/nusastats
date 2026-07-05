@@ -11,20 +11,34 @@ from catalog.models import (
     SubjectCategory,
     Variable,
 )
-from crawler.coverage import fetch_th_chunked_responses, upsert_coverage_record, upsert_coverage_record_multi
+from crawler.coverage import (
+    fetch_th_chunked_responses,
+    record_check_log,
+    resolve_vervar_val,
+    upsert_domain_coverage,
+)
+
+
+def make_key(vervar, var, turvar, th, turth=0):
+    return f"{vervar}{var}{turvar}{th}{turth}"
 
 
 @pytest.fixture
 def variable(db):
-    domain = Domain.objects.create(domain_id="0000", domain_name="Indonesia", admin_level=AdminLevel.NATIONAL)
-    category = SubjectCategory.objects.create(subject_category_id="1", domain=domain, name="Ekonomi")
-    subject = Subject.objects.create(subject_id="10", subject_category=category, domain=domain, name="Inflasi")
-    return Variable.objects.create(variable_id="100", subject=subject, domain=domain, name="Inflasi Bulanan")
+    national = Domain.objects.create(domain_id="0000", domain_name="Indonesia", admin_level=AdminLevel.NATIONAL)
+    category = SubjectCategory.objects.create(subject_category_id="1", domain=national, name="Ekonomi")
+    subject = Subject.objects.create(subject_id="10", subject_category=category, domain=national, name="Inflasi")
+    return Variable.objects.create(variable_id="100", subject=subject, domain=national, name="Inflasi Bulanan")
+
+
+@pytest.fixture
+def province(db):
+    return Domain.objects.create(domain_id="1100", domain_name="Aceh", admin_level=AdminLevel.PROVINCE)
 
 
 def make_resp(body, http_status=200, is_error=False, error_detail=""):
     return BpsResponse(
-        url="https://webapi.bps.go.id/v1/api/list/?model=data",
+        url="https://webapi.bps.go.id/v1/api/list/model/data/domain/0000/...",
         http_status=http_status,
         body=body,
         response_hash="deadbeef",
@@ -33,33 +47,83 @@ def make_resp(body, http_status=200, is_error=False, error_detail=""):
     )
 
 
+def upsert_single(variable, domain, resp):
+    """Test helper: wraps one response as the (resp, log) pair list
+    upsert_domain_coverage expects."""
+    log = record_check_log(resp)
+    return upsert_domain_coverage(variable, domain, [(resp, log)])
+
+
 @pytest.mark.django_db
-def test_confirmed_only_when_datacontent_has_real_values(variable):
-    """Key "0100010" is the real decoded shape (vervar=0 for domain 0000,
-    var=100, turvar=0, th=1, turth=0), per the format confirmed against a
-    live BPS response."""
-    domain = variable.domain
+def test_confirmed_for_a_province_domain_matches_its_own_vervar_val(variable, province):
+    """Confirmed live: a province/kabupaten's own domain_id is the vervar
+    val to match in the domain=0000 response (e.g. Aceh's domain_id
+    "1100" == vervar val 1100) — querying domain=<province code> directly
+    was confirmed to return empty/null instead."""
     resp = make_resp(
         {
             "data-availability": "available",
             "turvar": [{"val": 0, "label": "Total"}],
             "turtahun": [{"val": 0, "label": "Tahun"}],
             "tahun": [{"val": "1", "label": "2023"}],
-            "datacontent": {"0100010": 5.2},
+            "datacontent": {make_key(1100, 100, 0, 1): 5.2},
         }
     )
 
-    record = upsert_coverage_record(variable, domain, resp)
+    record = upsert_single(variable, province, resp)
 
     assert record.status == CoverageStatus.CONFIRMED
     assert record.years_confirmed == ["2023"]
 
 
 @pytest.mark.django_db
-def test_available_with_empty_datacontent_is_not_confirmed(variable):
+def test_national_confirmed_only_when_indonesia_aggregate_row_exists(variable):
+    """Some variables have a distinct all-Indonesia row in `vervar`
+    (confirmed by label, not a guessed code); others (e.g. a "by
+    kabupaten/kota" breakdown) simply don't, and national must then be
+    not_confirmed — a real absence, not a bug."""
+    national = variable.domain
+    resp = make_resp(
+        {
+            "data-availability": "available",
+            "vervar": [{"val": 9999, "label": "<b>INDONESIA</b>"}, {"val": 1100, "label": "ACEH"}],
+            "turvar": [{"val": 0, "label": "Total"}],
+            "turtahun": [{"val": 0, "label": "Tahun"}],
+            "tahun": [{"val": "1", "label": "2023"}],
+            "datacontent": {make_key(9999, 100, 0, 1): 100.0, make_key(1100, 100, 0, 1): 5.2},
+        }
+    )
+
+    record = upsert_single(variable, national, resp)
+
+    assert record.status == CoverageStatus.CONFIRMED
+    assert record.years_confirmed == ["2023"]
+
+
+@pytest.mark.django_db
+def test_national_not_confirmed_when_no_indonesia_row_present(variable):
+    national = variable.domain
+    resp = make_resp(
+        {
+            "data-availability": "available",
+            "vervar": [{"val": 1100, "label": "ACEH"}],  # no INDONESIA row at all
+            "turvar": [{"val": 0, "label": "Total"}],
+            "turtahun": [{"val": 0, "label": "Tahun"}],
+            "tahun": [{"val": "1", "label": "2023"}],
+            "datacontent": {make_key(1100, 100, 0, 1): 5.2},
+        }
+    )
+
+    assert resolve_vervar_val(national, resp.body) is None
+    record = upsert_single(variable, national, resp)
+
+    assert record.status == CoverageStatus.NOT_CONFIRMED
+
+
+@pytest.mark.django_db
+def test_available_with_empty_datacontent_is_not_confirmed(variable, province):
     """PRD §5.3: metadata can claim availability while content is empty —
     that must not be marked confirmed."""
-    domain = variable.domain
     resp = make_resp(
         {
             "data-availability": "available",
@@ -70,45 +134,42 @@ def test_available_with_empty_datacontent_is_not_confirmed(variable):
         }
     )
 
-    record = upsert_coverage_record(variable, domain, resp)
+    record = upsert_single(variable, province, resp)
 
     assert record.status == CoverageStatus.NOT_CONFIRMED
 
 
 @pytest.mark.django_db
-def test_available_with_null_value_for_requested_key_is_not_confirmed(variable):
+def test_available_with_null_value_for_requested_key_is_not_confirmed(variable, province):
     """A datacontent value present but null (BPS uses this for a real,
     checked-but-empty cell) must not be confirmed either — only an actual
     non-null value counts."""
-    domain = variable.domain
     resp = make_resp(
         {
             "data-availability": "available",
             "turvar": [{"val": 0, "label": "Total"}],
             "turtahun": [{"val": 0, "label": "Tahun"}],
             "tahun": [{"val": "1", "label": "2023"}],
-            "datacontent": {"0100010": None},
+            "datacontent": {make_key(1100, 100, 0, 1): None},
         }
     )
 
-    record = upsert_coverage_record(variable, domain, resp)
+    record = upsert_single(variable, province, resp)
 
     assert record.status == CoverageStatus.NOT_CONFIRMED
 
 
 @pytest.mark.django_db
-def test_error_response_marks_error_status_not_swallowed(variable):
-    domain = variable.domain
+def test_error_response_marks_error_status_not_swallowed(variable, province):
     resp = make_resp(None, http_status=200, is_error=True, error_detail="BPS application status: 404 UserNotFound")
 
-    record = upsert_coverage_record(variable, domain, resp)
+    record = upsert_single(variable, province, resp)
 
     assert record.status == CoverageStatus.ERROR
 
 
 @pytest.mark.django_db
-def test_recheck_updates_existing_record_and_logs_status_change(variable):
-    domain = variable.domain
+def test_recheck_updates_existing_record_and_logs_status_change(variable, province):
     not_available = make_resp({"data-availability": "not-available"})
     now_available = make_resp(
         {
@@ -116,16 +177,16 @@ def test_recheck_updates_existing_record_and_logs_status_change(variable):
             "turvar": [{"val": 0, "label": "Total"}],
             "turtahun": [{"val": 0, "label": "Tahun"}],
             "tahun": [{"val": "2", "label": "2024"}],
-            "datacontent": {"0100020": 3.1},
+            "datacontent": {make_key(1100, 100, 0, 2): 3.1},
         }
     )
 
-    upsert_coverage_record(variable, domain, not_available)
-    assert CoverageRecord.objects.filter(variable=variable, domain=domain).count() == 1
+    upsert_single(variable, province, not_available)
+    assert CoverageRecord.objects.filter(variable=variable, domain=province).count() == 1
 
-    record = upsert_coverage_record(variable, domain, now_available)
+    record = upsert_single(variable, province, now_available)
 
-    assert CoverageRecord.objects.filter(variable=variable, domain=domain).count() == 1
+    assert CoverageRecord.objects.filter(variable=variable, domain=province).count() == 1
     assert record.status == CoverageStatus.CONFIRMED
     assert CoverageStatusChange.objects.filter(
         coverage_record=record,
@@ -136,12 +197,10 @@ def test_recheck_updates_existing_record_and_logs_status_change(variable):
 
 class FakeChunkClient:
     """Simulates BPS's real behavior of rejecting an oversized `th` batch
-    with a "maximum allowed... is N" error, confirmed live (N=3 for a
-    national-domain request in one observed case, N=2 for a province)."""
+    with a "maximum allowed... is N" error, confirmed live."""
 
-    def __init__(self, max_th, domain_id="0000", var_id="100"):
+    def __init__(self, max_th, var_id="100"):
         self.max_th = max_th
-        self.domain_id = domain_id
         self.var_id = var_id
         self.calls = []
 
@@ -168,7 +227,7 @@ class FakeChunkClient:
                 "turvar": [{"val": 0, "label": "Total"}],
                 "turtahun": [{"val": 0, "label": "Tahun"}],
                 "tahun": [{"val": v, "label": f"20{v.zfill(2)}"} for v in th_values],
-                "datacontent": {f"{self.domain_id.lstrip('0') or '0'}{self.var_id}0{v}0": 1.0 for v in th_values},
+                "datacontent": {make_key(1100, self.var_id, 0, v): 1.0 for v in th_values},
             },
             response_hash="x",
         )
@@ -176,45 +235,45 @@ class FakeChunkClient:
 
 @pytest.mark.django_db
 def test_fetch_th_chunked_shrinks_on_max_th_error(variable):
-    domain = variable.domain
     client = FakeChunkClient(max_th=2)
 
-    responses = fetch_th_chunked_responses(client, domain, variable, ["1", "2", "3", "4", "5"])
+    responses = fetch_th_chunked_responses(client, variable, ["1", "2", "3", "4", "5"])
 
     # First call (5 years) rejected and retried at chunk_size=2, discovered
     # from the error message rather than hardcoded.
     assert len(client.calls[0]["th"].split(";")) == 5
+    assert client.calls[0]["domain"] == "0000"
     assert not any(r.is_error for r in responses)
     assert sum(len(r.body["tahun"]) for r in responses) == 5
 
 
 @pytest.mark.django_db
-def test_upsert_coverage_record_multi_merges_years_across_chunks(variable):
-    domain = variable.domain
+def test_upsert_domain_coverage_merges_years_across_chunks(variable, province):
     client = FakeChunkClient(max_th=2)
-    responses = fetch_th_chunked_responses(client, domain, variable, ["1", "2", "3"])
+    responses = fetch_th_chunked_responses(client, variable, ["1", "2", "3"])
+    response_log_pairs = [(r, record_check_log(r)) for r in responses]
 
-    record = upsert_coverage_record_multi(variable, domain, responses)
+    record = upsert_domain_coverage(variable, province, response_log_pairs)
 
     assert record.status == CoverageStatus.CONFIRMED
     assert len(record.years_confirmed) == 3
 
 
 @pytest.mark.django_db
-def test_upsert_coverage_record_multi_confirmed_survives_a_partial_chunk_error(variable):
-    domain = variable.domain
+def test_upsert_domain_coverage_confirmed_survives_a_partial_chunk_error(variable, province):
     ok_resp = make_resp(
         {
             "data-availability": "available",
             "turvar": [{"val": 0, "label": "Total"}],
             "turtahun": [{"val": 0, "label": "Tahun"}],
             "tahun": [{"val": "1", "label": "2023"}],
-            "datacontent": {"0100010": 5.2},
+            "datacontent": {make_key(1100, 100, 0, 1): 5.2},
         }
     )
     error_resp = make_resp(None, is_error=True, error_detail="HTTP 500")
+    pairs = [(ok_resp, record_check_log(ok_resp)), (error_resp, record_check_log(error_resp))]
 
-    record = upsert_coverage_record_multi(variable, domain, [ok_resp, error_resp])
+    record = upsert_domain_coverage(variable, province, pairs)
 
     assert record.status == CoverageStatus.CONFIRMED
     assert record.years_confirmed == ["2023"]
