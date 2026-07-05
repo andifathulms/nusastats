@@ -12,16 +12,29 @@ from catalog.models import (
     AdminLevel,
     CoverageRecord,
     CoverageStatus,
+    Domain,
     SimdasiCoverageRecord,
     SubjectCategory,
     Variable,
 )
-from crawler.sampling import flatten_sample_domains, get_sample_domains
 
 
 def build_report():
-    sample = get_sample_domains()
-    sampled_domains = flatten_sample_domains(sample)
+    # Derived from the domains that actually have a CoverageRecord, not a
+    # fresh call to get_sample_domains() — the current config (province
+    # count, kab-per-province) may differ from whatever was active when
+    # the crawl that produced this data actually ran, and the report must
+    # describe what was really checked, not a hypothetical resample
+    # (CLAUDE.md rule 4: sampling must be documented, never silent or
+    # inferred after the fact).
+    checked_domains = Domain.objects.filter(coverage_records__isnull=False).distinct().order_by("domain_id")
+    checked_provinces = checked_domains.filter(admin_level=AdminLevel.PROVINCE)
+    checked_regencies = checked_domains.filter(admin_level=AdminLevel.REGENCY)
+    kab_per_province = {}
+    for province in checked_provinces:
+        count = checked_regencies.filter(parent_province=province).count()
+        if count:
+            kab_per_province[province.domain_id] = count
 
     totals_per_level = {}
     for level in AdminLevel.values:
@@ -78,11 +91,9 @@ def build_report():
 
     return {
         "sampling_methodology": {
-            "province_count": len(sample["provinces"]),
-            "kabupaten_per_province": {
-                prov_id: len(kabs) for prov_id, kabs in sample["kabupaten_by_province"].items()
-            },
-            "sampled_domain_ids": [d.domain_id for d in sampled_domains],
+            "province_count": checked_provinces.count(),
+            "kabupaten_per_province": kab_per_province,
+            "sampled_domain_ids": [d.domain_id for d in checked_domains],
         },
         "totals_per_admin_level": totals_per_level,
         "per_subject_category": per_subject,
