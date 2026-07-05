@@ -26,6 +26,7 @@ INSTALLED_APPS = [
     "bps_client",
     "crawler",
     "api",
+    "stats",
 ]
 
 MIDDLEWARE = [
