@@ -77,6 +77,19 @@ class BpsClient:
         if remaining > 0:
             time.sleep(remaining)
 
+    def _build_url(self, model, params):
+        """BPS WebAPI is path-style, not query-string:
+        `{base}/list/model/{model}/{k1}/{v1}/.../key/{key}/`. Domain
+        crawling is a distinct resource (`{base}/domain/type/{type}/
+        [prov/{id}/]key/{key}/`), confirmed against the live API — it is
+        not a `list/model/domain/...` call.
+        """
+        segments = ["domain"] if model == "domain" else ["list", "model", model]
+        for k, v in params.items():
+            segments += [str(k), str(v)]
+        segments += ["key", self.api_key]
+        return f"{self.base_url}/" + "/".join(segments) + "/"
+
     def get(self, model, use_cache=True, **params):
         """Issue one BPS WebAPI call for the given `model` (e.g. "data",
         "domain", "subjectcategory", "var", "vervar", "th"), returning a
@@ -103,10 +116,8 @@ class BpsClient:
                 self._consecutive_failures = 0
                 return BpsResponse(**cached)
 
-        query = {"model": model, "lang": params.pop("lang", "ind"), "key": self.api_key}
-        query.update(params)
-        url = f"{self.base_url}/list/"
-        safe_url = redact_key(f"{url}?{requests.compat.urlencode(query)}", self.api_key)
+        url = self._build_url(model, params)
+        safe_url = redact_key(url, self.api_key)
 
         attempt = 0
         backoff = self.rate_limit_interval
@@ -115,7 +126,7 @@ class BpsClient:
         while attempt <= self.max_retries:
             self._throttle()
             try:
-                resp = self.session.get(url, params=query, timeout=30)
+                resp = self.session.get(url, timeout=30)
             except requests.RequestException as exc:
                 last_exc = exc
                 attempt += 1
@@ -166,13 +177,17 @@ class BpsClient:
             bps_status = parsed.get("status") if isinstance(parsed, dict) else None
             if bps_status not in (None, "OK"):
                 self._consecutive_failures += 1
+                message = parsed.get("message") if isinstance(parsed, dict) else None
+                detail = f"BPS application status: {bps_status}"
+                if message:
+                    detail += f" - {message}"
                 return BpsResponse(
                     url=safe_url,
                     http_status=resp.status_code,
                     body=parsed,
                     response_hash=response_hash,
                     is_error=True,
-                    error_detail=f"BPS application status: {bps_status}",
+                    error_detail=detail,
                 )
 
             self._consecutive_failures = 0
