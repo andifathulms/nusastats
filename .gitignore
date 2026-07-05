@@ -1,0 +1,47 @@
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+.venv/
+env/
+ENV/
+*.egg-info/
+build/
+dist/
+
+# Django
+*.log
+local_settings.py
+db.sqlite3
+db.sqlite3-3
+media/
+staticfiles/
+
+# Env / secrets
+.env
+.env.*
+!.env.example
+
+# Docker
+*.pid
+
+# Node / Next.js
+node_modules/
+.next/
+out/
+npm-debug.log*
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store
+
+# Test / coverage
+.coverage
+.pytest_cache/
+htmlcov/
+
+# Raw response bodies cache (if stored to disk per Phase 1 storage decision)
+/backend/response_bodies/
