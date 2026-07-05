@@ -1,4 +1,5 @@
 import os
+import sys
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -58,16 +59,21 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "cakupan.wsgi.application"
 
-DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.postgresql",
-        "NAME": os.environ.get("POSTGRES_DB", "cakupan"),
-        "USER": os.environ.get("POSTGRES_USER", "cakupan"),
-        "PASSWORD": os.environ.get("POSTGRES_PASSWORD", "cakupan"),
-        "HOST": os.environ.get("POSTGRES_HOST", "db"),
-        "PORT": os.environ.get("POSTGRES_PORT", "5432"),
+if "pytest" in sys.modules:
+    # Test runs use sqlite so `pytest` works without a live Postgres
+    # container; docker-compose / production always use the block below.
+    DATABASES = {"default": {"ENGINE": "django.db.backends.sqlite3", "NAME": ":memory:"}}
+else:
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.postgresql",
+            "NAME": os.environ.get("POSTGRES_DB", "cakupan"),
+            "USER": os.environ.get("POSTGRES_USER", "cakupan"),
+            "PASSWORD": os.environ.get("POSTGRES_PASSWORD", "cakupan"),
+            "HOST": os.environ.get("POSTGRES_HOST", "db"),
+            "PORT": os.environ.get("POSTGRES_PORT", "5432"),
+        }
     }
-}
 
 AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
