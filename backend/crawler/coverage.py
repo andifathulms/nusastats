@@ -11,29 +11,48 @@ from django.utils import timezone
 from catalog.models import CoverageCheckLog, CoverageRecord, CoverageStatus, CoverageStatusChange
 
 
-def parse_years_confirmed(body):
-    """Best-effort extraction of which periods had a non-null datacontent
-    value.
+def parse_years_confirmed(body, domain_id, variable_id):
+    """Which periods actually had a non-null datacontent value, decoded
+    from the real BPS `data`-model response shape.
 
-    BPS encodes `datacontent` keys as concatenated vervar+var+turvar+period
-    identifiers rather than tagging each key with its year directly. This
-    pairs the `tahun` metadata list (present in dynamic-data responses)
-    with the fact that *some* datacontent value is non-null, on the
-    assumption there is at least one confirmed value per listed year. This
-    is a simplification flagged for tightening once Phase 5's live crawl
-    lets us inspect real response shapes end-to-end.
+    `datacontent` keys are the concatenation of
+    `{vervar}{var}{turvar}{th}{turth}` with no separators or fixed-width
+    padding (e.g. requesting domain=0000/var=455/th=124 for a variable
+    with turvar 212 yields key "17014552121240" — vervar=1701, var=455,
+    turvar=212, th=124, turth=0). This was decoded from two live sample
+    responses, not guessed. Since field widths aren't fixed, this matches
+    by trying every (turvar, turth) combination actually listed in the
+    response against each requested `th`, rather than slicing positions.
     """
     if not isinstance(body, dict):
         return []
     datacontent = body.get("datacontent") or {}
-    has_any_value = any(v not in (None, "", "-") for v in datacontent.values())
-    if not has_any_value:
+    if not datacontent:
         return []
+
+    try:
+        vervar_val = str(int(domain_id))
+    except (TypeError, ValueError):
+        vervar_val = str(domain_id)
+    var_val = str(variable_id)
+    turvar_vals = [str(row.get("val")) for row in (body.get("turvar") or [])] or [""]
+    turth_vals = [str(row.get("val")) for row in (body.get("turtahun") or [])] or ["0"]
+
     years = []
-    for row in body.get("tahun", []) or []:
-        label = row.get("label") or row.get("th")
-        if label:
-            years.append(label)
+    for th_row in body.get("tahun", []) or []:
+        th_val = str(th_row.get("val"))
+        label = th_row.get("label")
+        if not label:
+            continue
+        for turvar_val in turvar_vals:
+            for turth_val in turth_vals:
+                key = f"{vervar_val}{var_val}{turvar_val}{th_val}{turth_val}"
+                if datacontent.get(key) not in (None, "", "-"):
+                    years.append(label)
+                    break
+            else:
+                continue
+            break
     return years
 
 
@@ -50,13 +69,13 @@ def record_check_log(resp):
     )
 
 
-def determine_status(resp):
+def determine_status(resp, domain_id, variable_id):
     if resp.is_error:
         return CoverageStatus.ERROR, []
     body = resp.body or {}
     if body.get("data-availability") != "available":
         return CoverageStatus.NOT_CONFIRMED, []
-    years = parse_years_confirmed(body)
+    years = parse_years_confirmed(body, domain_id, variable_id)
     if not years:
         # `data-availability: available` with empty/null datacontent is
         # exactly the metadata-claims-but-content-is-empty case CLAUDE.md
@@ -73,7 +92,7 @@ def upsert_coverage_record(variable, domain, resp):
     existing row rather than duplicating it (CLAUDE.md rule 3).
     """
     check_log = record_check_log(resp)
-    status, years = determine_status(resp)
+    status, years = determine_status(resp, domain.domain_id, variable.variable_id)
 
     record, created = CoverageRecord.objects.get_or_create(
         variable=variable,

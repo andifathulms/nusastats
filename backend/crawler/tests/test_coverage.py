@@ -35,12 +35,17 @@ def make_resp(body, http_status=200, is_error=False, error_detail=""):
 
 @pytest.mark.django_db
 def test_confirmed_only_when_datacontent_has_real_values(variable):
+    """Key "0100010" is the real decoded shape (vervar=0 for domain 0000,
+    var=100, turvar=0, th=1, turth=0), per the format confirmed against a
+    live BPS response."""
     domain = variable.domain
     resp = make_resp(
         {
             "data-availability": "available",
+            "turvar": [{"val": 0, "label": "Total"}],
+            "turtahun": [{"val": 0, "label": "Tahun"}],
             "tahun": [{"val": "1", "label": "2023"}],
-            "datacontent": {"1000100201": 5.2},
+            "datacontent": {"0100010": 5.2},
         }
     )
 
@@ -55,7 +60,36 @@ def test_available_with_empty_datacontent_is_not_confirmed(variable):
     """PRD §5.3: metadata can claim availability while content is empty —
     that must not be marked confirmed."""
     domain = variable.domain
-    resp = make_resp({"data-availability": "available", "tahun": [{"val": "1", "label": "2023"}], "datacontent": {}})
+    resp = make_resp(
+        {
+            "data-availability": "available",
+            "turvar": [{"val": 0, "label": "Total"}],
+            "turtahun": [{"val": 0, "label": "Tahun"}],
+            "tahun": [{"val": "1", "label": "2023"}],
+            "datacontent": {},
+        }
+    )
+
+    record = upsert_coverage_record(variable, domain, resp)
+
+    assert record.status == CoverageStatus.NOT_CONFIRMED
+
+
+@pytest.mark.django_db
+def test_available_with_null_value_for_requested_key_is_not_confirmed(variable):
+    """A datacontent value present but null (BPS uses this for a real,
+    checked-but-empty cell) must not be confirmed either — only an actual
+    non-null value counts."""
+    domain = variable.domain
+    resp = make_resp(
+        {
+            "data-availability": "available",
+            "turvar": [{"val": 0, "label": "Total"}],
+            "turtahun": [{"val": 0, "label": "Tahun"}],
+            "tahun": [{"val": "1", "label": "2023"}],
+            "datacontent": {"0100010": None},
+        }
+    )
 
     record = upsert_coverage_record(variable, domain, resp)
 
@@ -79,8 +113,10 @@ def test_recheck_updates_existing_record_and_logs_status_change(variable):
     now_available = make_resp(
         {
             "data-availability": "available",
-            "tahun": [{"val": "1", "label": "2024"}],
-            "datacontent": {"1000100301": 3.1},
+            "turvar": [{"val": 0, "label": "Total"}],
+            "turtahun": [{"val": 0, "label": "Tahun"}],
+            "tahun": [{"val": "2", "label": "2024"}],
+            "datacontent": {"0100020": 3.1},
         }
     )
 

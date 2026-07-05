@@ -41,7 +41,7 @@ class Command(BaseCommand):
             )
         )
 
-        variables = list(Variable.objects.select_related("subject", "domain"))
+        variables = list(Variable.objects.select_related("subject", "domain").prefetch_related("periods"))
         if not variables:
             self.stderr.write("No variables found — run crawl_metadata first.")
             return
@@ -49,11 +49,23 @@ class Command(BaseCommand):
         client = BpsClient()
         checked = 0
         for variable in variables:
+            # `th` is a mandatory param on real `data` calls (confirmed
+            # live — omitting it is an application error, not optional).
+            # Check every period crawl_metadata found for this variable in
+            # one call, using BPS's documented `;`-separated multi-value
+            # syntax, rather than one call per year.
+            period_ids = list(variable.periods.values_list("period_id", flat=True))
+            if not period_ids:
+                self.stderr.write(
+                    f"Skipping var={variable.variable_id}: no known periods "
+                    "(run crawl_metadata first)."
+                )
+                continue
+            th_param = ";".join(period_ids)
+
             for domain in domains:
                 try:
-                    resp = client.get(
-                        "data", domain=domain.domain_id, var=variable.variable_id
-                    )
+                    resp = client.get("data", domain=domain.domain_id, var=variable.variable_id, th=th_param)
                 except TooManyConsecutiveFailures as exc:
                     self.stderr.write(f"Hard stop: {exc}")
                     self.stdout.write(f"Checked {checked} (variable, domain) pairs before stopping.")
