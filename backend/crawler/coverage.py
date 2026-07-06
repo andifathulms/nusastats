@@ -22,7 +22,10 @@ import re
 
 from django.utils import timezone
 
-from catalog.models import AdminLevel, CoverageCheckLog, CoverageRecord, CoverageStatus, CoverageStatusChange
+from bps_client.client import BpsClient
+from bps_client.exceptions import BpsApiError, TooManyConsecutiveFailures
+from catalog.models import AdminLevel, CoverageCheckLog, CoverageRecord, CoverageStatus, CoverageStatusChange, Variable
+from crawler.sampling import flatten_sample_domains, get_sample_domains
 
 # Confirmed live: BPS caps how many `th` (year) values one `data` call may
 # request, but the cap varies by request (3 in one observed case) — not a
@@ -222,3 +225,65 @@ def upsert_domain_coverage(variable, domain, response_log_pairs):
         status = CoverageStatus.ERROR
 
     return _apply_coverage_result(variable, domain, status, years, best_log)
+
+
+def run_coverage_crawl(client=None, log=None):
+    """Confirms coverage for every known Variable at the sampled domains
+    (national + a documented sample of provinces/kabupaten — see
+    crawler.sampling). Shared by the crawl_coverage management command
+    and crawler.tasks.run_incremental_crawl_task (the admin on-demand
+    button). Hard-stops (does not swallow) on TooManyConsecutiveFailures
+    per CLAUDE.md rule 5.
+    """
+    client = client or BpsClient()
+    log = log or (lambda msg: None)
+
+    sample = get_sample_domains()
+    if not sample["national"]:
+        log("No national domain found — run crawl_domains first.")
+        return {"checked": 0, "variables": 0, "hard_stopped": False}
+
+    domains = flatten_sample_domains(sample)
+    log(
+        "Sampled domains ({} total): national={}, provinces={}, kabupaten={}".format(
+            len(domains),
+            sample["national"].domain_id,
+            [p.domain_id for p in sample["provinces"]],
+            {
+                prov_id: [k.domain_id for k in kabs]
+                for prov_id, kabs in sample["kabupaten_by_province"].items()
+            },
+        )
+    )
+
+    variables = list(Variable.objects.select_related("subject", "domain").prefetch_related("periods"))
+    if not variables:
+        log("No variables found — run crawl_metadata first.")
+        return {"checked": 0, "variables": 0, "hard_stopped": False}
+
+    checked = 0
+    hard_stopped = False
+    for variable in variables:
+        period_ids = list(variable.periods.values_list("period_id", flat=True))
+        if not period_ids:
+            log(f"Skipping var={variable.variable_id}: no known periods (run crawl_metadata first).")
+            continue
+
+        try:
+            responses = fetch_th_chunked_responses(client, variable, period_ids)
+        except TooManyConsecutiveFailures as exc:
+            log(f"Hard stop: {exc}")
+            hard_stopped = True
+            break
+        except BpsApiError as exc:
+            log(f"Request failed for var={variable.variable_id}: {exc}")
+            continue
+
+        response_log_pairs = [(resp, record_check_log(resp)) for resp in responses]
+
+        for domain in domains:
+            record = upsert_domain_coverage(variable, domain, response_log_pairs)
+            checked += 1
+            log(f"  var={variable.variable_id} domain={domain.domain_id} -> {record.status}")
+
+    return {"checked": checked, "variables": len(variables), "hard_stopped": hard_stopped}
