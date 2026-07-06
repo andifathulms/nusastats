@@ -32,13 +32,17 @@ class DataPoint(models.Model):
     # part of the uniqueness key: without it, e.g. a poverty-line
     # variable's Kota/Desa/Kota+Desa values collide on the same
     # (domain=national, turvar) key and silently overwrite each other.
+    # TextField, not CharField: confirmed live some BPS classification
+    # labels (e.g. SITC 3-digit commodity descriptions) exceed 255 chars
+    # (up to ~280 seen), so an arbitrary cap risks a hard DB error on an
+    # otherwise-valid variable rather than a graceful truncation.
     vervar_id = models.CharField(max_length=16, default="0")
-    vervar_label = models.CharField(max_length=255, blank=True)
+    vervar_label = models.TextField(blank=True)
 
     # BPS's secondary breakdown dimension (e.g. gender: laki-laki vs
     # perempuan). turvar_id "0" conventionally means "no breakdown/total".
     turvar_id = models.CharField(max_length=16, default="0")
-    turvar_label = models.CharField(max_length=255, blank=True)
+    turvar_label = models.TextField(blank=True)
 
     value = models.FloatField()
 
