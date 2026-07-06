@@ -1,17 +1,10 @@
-"""Phase 3 (CLAUDE.md): Subject Category -> Subject -> Variable -> Vertical
-Variable / Period crawl for the national domain. Records only what BPS
-*claims* exists (label-level metadata) — this phase does not confirm
-coverage; that's crawl_coverage (Phase 4).
+"""Phase 3 (CLAUDE.md) CLI entrypoint — see crawler/metadata.py for the
+actual crawl logic, shared with crawler.tasks.run_incremental_crawl_task.
 """
 
 from django.core.management.base import BaseCommand
 
-from bps_client.client import BpsClient
-from bps_client.exceptions import BpsApiError
-from catalog.models import Domain, PeriodData, Subject, SubjectCategory, Variable, VerticalVariable
-from crawler.utils import extract_pagination, extract_rows
-
-NATIONAL_DOMAIN_ID = "0000"
+from crawler.metadata import run_metadata_crawl
 
 
 class Command(BaseCommand):
@@ -36,112 +29,13 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **options):
-        client = BpsClient()
-        self.max_subjects = options["max_subjects"]
-        self.max_variables = options["max_variables"]
-        try:
-            national = Domain.objects.get(domain_id=NATIONAL_DOMAIN_ID)
-        except Domain.DoesNotExist:
-            self.stderr.write("National domain (0000) not found — run crawl_domains first.")
-            return
-
-        # Confirmed live: the subject-category model is `subcat` (not
-        # `subjectcategory`), with fields `subcat_id`/`title` (not `subcat`).
-        cat_rows = self._fetch(client, "subcat", domain=national.domain_id)
-        if options["subcat"]:
-            cat_rows = [r for r in cat_rows if str(r.get("subcat_id")) == str(options["subcat"])]
-            self.stdout.write(f"Scoped run: subcat={options['subcat']} only ({len(cat_rows)} matched)")
-
-        for cat_row in cat_rows:
-            category, _ = SubjectCategory.objects.update_or_create(
-                subject_category_id=str(cat_row.get("subcat_id")),
-                domain=national,
-                defaults={"name": cat_row.get("title", "")},
-            )
-            self._crawl_subjects(client, national, category)
-
-    def _crawl_subjects(self, client, domain, category):
-        rows = self._fetch(client, "subject", domain=domain.domain_id, subcat=category.subject_category_id)
-        if self.max_subjects is not None:
-            rows = rows[: self.max_subjects]
-        for row in rows:
-            # Confirmed live: subject rows use `sub_id`/`title`, not
-            # `subj_id`/`subj`.
-            subject, _ = Subject.objects.update_or_create(
-                subject_id=str(row.get("sub_id")),
-                domain=domain,
-                defaults={"subject_category": category, "name": row.get("title", "")},
-            )
-            self._crawl_variables(client, domain, subject)
-        self.stdout.write(f"{category.name}: {len(rows)} subjects")
-
-    def _crawl_variables(self, client, domain, subject):
-        rows = self._fetch(client, "var", domain=domain.domain_id, subject=subject.subject_id)
-        if self.max_variables is not None:
-            rows = rows[: self.max_variables]
-        for row in rows:
-            variable, _ = Variable.objects.update_or_create(
-                variable_id=str(row.get("var_id")),
-                domain=domain,
-                data_model="dynamic",
-                defaults={
-                    "subject": subject,
-                    "name": row.get("title", row.get("var", "")),
-                    "unit": row.get("unit", ""),
-                    "note": row.get("def", ""),
-                },
-            )
-            self._crawl_vervar(client, domain, variable)
-            self._crawl_periods(client, domain, variable)
-
-    def _crawl_vervar(self, client, domain, variable):
-        # Confirmed live: vervar rows use `kode_ver_id`/`vervar` (not
-        # `val`/`label` — that shape is for var/turvar/th, not vervar).
-        rows = self._fetch(client, "vervar", domain=domain.domain_id, var=variable.variable_id)
-        for row in rows:
-            VerticalVariable.objects.update_or_create(
-                vervar_id=str(row.get("kode_ver_id")),
-                variable=variable,
-                defaults={"name": row.get("vervar", "")},
-            )
-
-    def _crawl_periods(self, client, domain, variable):
-        # Confirmed live: `th` rows use `th_id`/`th` (not `val`/`th` — the
-        # id field is `th_id`, distinct from the vervar/var/turvar shape
-        # which uses `val`/`label`).
-        rows = self._fetch(client, "th", domain=domain.domain_id, var=variable.variable_id)
-        for row in rows:
-            label = row.get("th", "")
-            year = int(label) if str(label).isdigit() else None
-            PeriodData.objects.update_or_create(
-                period_id=str(row.get("th_id")),
-                variable=variable,
-                defaults={"label": label, "year": year},
-            )
-
-    def _fetch(self, client, model, **params):
-        """Fetches every page of a BPS list response. Confirmed live: BPS
-        defaults to per_page=10 and silently caps at page 1 unless the
-        caller loops `page` — without this, a variable's `th`/`vervar`
-        list is truncated rather than complete (a real bug this fixed:
-        one variable's period list was missing its 5 oldest years)."""
-        all_rows = []
-        page = 1
-        while True:
-            try:
-                resp = client.get(model, page=page, **params)
-            except BpsApiError as exc:
-                self.stderr.write(f"Failed to fetch {model} ({params}) page {page}: {exc}")
-                break
-            if resp.is_error:
-                self.stderr.write(
-                    f"BPS error fetching {model} ({params}) page {page}: {resp.error_detail}"
-                )
-                break
-            rows = extract_rows(resp.body)
-            all_rows.extend(rows)
-            current_page, total_pages = extract_pagination(resp.body)
-            if not rows or current_page >= total_pages:
-                break
-            page += 1
-        return all_rows
+        result = run_metadata_crawl(
+            subcat=options["subcat"],
+            max_subjects=options["max_subjects"],
+            max_variables=options["max_variables"],
+            log=self.stdout.write,
+        )
+        self.stdout.write(
+            f"Done. {result['categories']} categories, {result['subjects']} subjects, "
+            f"{result['variables']} variables."
+        )
