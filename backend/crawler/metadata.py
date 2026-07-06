@@ -1,10 +1,28 @@
-"""Phase 3 (CLAUDE.md): Subject Category -> Subject -> Variable -> Vertical
-Variable / Period crawl for the national domain. Records only what BPS
-*claims* exists (label-level metadata) — this phase does not confirm
-coverage; that's crawl_coverage (Phase 4). Extracted into a plain
-function so it can be called both from the management command and from
+"""Phase 3 (CLAUDE.md): Subject Category -> Subject -> Variable -> Period
+crawl for the national domain. Records only what BPS *claims* exists
+(label-level metadata) — this phase does not confirm coverage; that's
+crawl_coverage (Phase 4). Extracted into a plain function so it can be
+called both from the management command and from
 crawler.tasks.run_incremental_crawl_task (the admin on-demand button).
+
+Two optimizations, both confirmed against live timing (a 2-variable
+discovery run took 526s, almost entirely vervar pagination):
+
+1. Vervar (region-breakdown metadata) crawl defaults to OFF. It costs
+   ~45s/variable (a real variable had 580 vervar rows across 58 pages at
+   our rate limit) but isn't on the critical path for coverage
+   confirmation or data ingestion — both decode region info straight from
+   the `data` call's own embedded `vervar` array, not from this table.
+   Pass crawl_vervar=True to still fetch it when you want the
+   VerticalVariable "claims" table populated.
+2. `max_subjects` is a resume cursor, not a per-category cap: each run
+   picks the next `max_subjects` NOT-yet-crawled subjects (tracked via
+   Subject.metadata_crawled_at) across every category considered, so
+   repeated runs make forward progress through the catalog instead of
+   re-fetching the same first N subjects every time.
 """
+
+from django.utils import timezone
 
 from bps_client.client import BpsClient
 from bps_client.exceptions import BpsApiError
@@ -39,12 +57,18 @@ def _fetch(client, model, log, **params):
     return all_rows
 
 
-def run_metadata_crawl(subcat=None, max_subjects=None, max_variables=None, client=None, log=None):
-    """Crawls subject categories -> subjects -> variables -> vervar/periods
-    for the national domain. `subcat`/`max_subjects`/`max_variables` bound
-    the run's size (e.g. for an admin-triggered incremental crawl instead
-    of the entire BPS catalog in one go). Returns counts of what was
-    created/updated.
+def run_metadata_crawl(
+    subcat=None, max_subjects=None, max_variables=None, crawl_vervar=False, client=None, log=None
+):
+    """Crawls subject categories -> subjects -> variables -> periods (and
+    optionally vervar) for the national domain.
+
+    `subcat` restricts to one category (else all). `max_subjects` bounds
+    how many not-yet-crawled subjects this run processes (resume cursor —
+    see module docstring); `max_variables` caps variables fetched per
+    subject processed this run (a subject capped this way is still marked
+    crawled, i.e. this is a per-run safety net, not a resumable cursor at
+    the variable level). Returns counts of what was discovered/processed.
     """
     client = client or BpsClient()
     log = log or (lambda msg: None)
@@ -53,7 +77,7 @@ def run_metadata_crawl(subcat=None, max_subjects=None, max_variables=None, clien
         national = Domain.objects.get(domain_id=NATIONAL_DOMAIN_ID)
     except Domain.DoesNotExist:
         log("National domain (0000) not found — run crawl_domains first.")
-        return {"categories": 0, "subjects": 0, "variables": 0}
+        return {"categories": 0, "subjects_discovered": 0, "subjects_crawled": 0, "variables": 0}
 
     cat_rows = _fetch(client, "subcat", log, domain=national.domain_id)
     if subcat:
@@ -61,8 +85,7 @@ def run_metadata_crawl(subcat=None, max_subjects=None, max_variables=None, clien
         log(f"Scoped run: subcat={subcat} only ({len(cat_rows)} matched)")
 
     categories_seen = 0
-    subjects_seen = 0
-    variables_seen = 0
+    discovered_subjects = []
 
     for cat_row in cat_rows:
         category, _ = SubjectCategory.objects.update_or_create(
@@ -72,23 +95,37 @@ def run_metadata_crawl(subcat=None, max_subjects=None, max_variables=None, clien
         )
         categories_seen += 1
 
+        # Cheap regardless of scale (a subject list is a handful of
+        # pages at most) — always fetched in full, unlike variables.
         rows = _fetch(client, "subject", log, domain=national.domain_id, subcat=category.subject_category_id)
-        if max_subjects is not None:
-            rows = rows[:max_subjects]
         for row in rows:
             subject, _ = Subject.objects.update_or_create(
                 subject_id=str(row.get("sub_id")),
                 domain=national,
                 defaults={"subject_category": category, "name": row.get("title", "")},
             )
-            subjects_seen += 1
-            variables_seen += _crawl_variables(client, national, subject, max_variables, log)
+            discovered_subjects.append(subject)
         log(f"{category.name}: {len(rows)} subjects")
 
-    return {"categories": categories_seen, "subjects": subjects_seen, "variables": variables_seen}
+    pending_subjects = [s for s in discovered_subjects if s.metadata_crawled_at is None]
+    if max_subjects is not None:
+        pending_subjects = pending_subjects[:max_subjects]
+
+    variables_seen = 0
+    for subject in pending_subjects:
+        variables_seen += _crawl_variables(client, national, subject, max_variables, crawl_vervar, log)
+        subject.metadata_crawled_at = timezone.now()
+        subject.save(update_fields=["metadata_crawled_at"])
+
+    return {
+        "categories": categories_seen,
+        "subjects_discovered": len(discovered_subjects),
+        "subjects_crawled": len(pending_subjects),
+        "variables": variables_seen,
+    }
 
 
-def _crawl_variables(client, domain, subject, max_variables, log):
+def _crawl_variables(client, domain, subject, max_variables, crawl_vervar, log):
     rows = _fetch(client, "var", log, domain=domain.domain_id, subject=subject.subject_id)
     if max_variables is not None:
         rows = rows[:max_variables]
@@ -104,7 +141,8 @@ def _crawl_variables(client, domain, subject, max_variables, log):
                 "note": row.get("def", ""),
             },
         )
-        _crawl_vervar(client, domain, variable, log)
+        if crawl_vervar:
+            _crawl_vervar(client, domain, variable, log)
         _crawl_periods(client, domain, variable, log)
     return len(rows)
 
