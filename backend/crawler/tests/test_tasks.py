@@ -24,6 +24,19 @@ def test_setup_periodic_tasks_is_idempotent():
     call_command("setup_periodic_tasks")
 
     assert PeriodicTask.objects.filter(name="recrawl-confirmed-coverage-weekly").count() == 1
+    assert PeriodicTask.objects.filter(name="ingest-confirmed-data-weekly").count() == 1
+
+
+@pytest.mark.django_db
+def test_setup_periodic_tasks_schedules_ingestion_after_recrawl():
+    call_command("setup_periodic_tasks")
+
+    recrawl = PeriodicTask.objects.get(name="recrawl-confirmed-coverage-weekly")
+    ingest = PeriodicTask.objects.get(name="ingest-confirmed-data-weekly")
+
+    assert ingest.task == "stats.tasks.ingest_confirmed_data_task"
+    assert int(ingest.crontab.hour) == int(recrawl.crontab.hour) + 1
+    assert ingest.crontab.day_of_week == recrawl.crontab.day_of_week
 
 
 @pytest.mark.django_db
