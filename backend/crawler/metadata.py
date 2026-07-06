@@ -58,7 +58,7 @@ def _fetch(client, model, log, **params):
 
 
 def run_metadata_crawl(
-    subcat=None, max_subjects=None, max_variables=None, crawl_vervar=False, client=None, log=None
+    subcat=None, max_subjects=None, max_variables=None, crawl_vervar=False, force=False, client=None, log=None
 ):
     """Crawls subject categories -> subjects -> variables -> periods (and
     optionally vervar) for the national domain.
@@ -68,7 +68,16 @@ def run_metadata_crawl(
     see module docstring); `max_variables` caps variables fetched per
     subject processed this run (a subject capped this way is still marked
     crawled, i.e. this is a per-run safety net, not a resumable cursor at
-    the variable level). Returns counts of what was discovered/processed.
+    the variable level).
+
+    A subject once marked crawled is never revisited by default, even if
+    `max_variables` was capped low — so raising the cap later has no
+    effect on its own. `force=True` re-processes already-crawled subjects
+    too (still respecting `max_subjects`/`max_variables` for this run),
+    which is how you go back and pull more variables out of a subject
+    that was capped on a previous, smaller run.
+
+    Returns counts of what was discovered/processed.
     """
     client = client or BpsClient()
     log = log or (lambda msg: None)
@@ -107,7 +116,10 @@ def run_metadata_crawl(
             discovered_subjects.append(subject)
         log(f"{category.name}: {len(rows)} subjects")
 
-    pending_subjects = [s for s in discovered_subjects if s.metadata_crawled_at is None]
+    if force:
+        pending_subjects = discovered_subjects
+    else:
+        pending_subjects = [s for s in discovered_subjects if s.metadata_crawled_at is None]
     if max_subjects is not None:
         pending_subjects = pending_subjects[:max_subjects]
 

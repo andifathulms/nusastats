@@ -33,6 +33,12 @@ class Command(BaseCommand):
             help="Also crawl vervar (region-breakdown claims) metadata — slow (~45s/variable); "
             "not needed for coverage confirmation or data ingestion.",
         )
+        parser.add_argument(
+            "--force",
+            action="store_true",
+            help="Re-process already-crawled subjects too, e.g. to pull more variables out of "
+            "one that was capped by --max-variables on a previous run.",
+        )
 
     def handle(self, *args, **options):
         result = run_metadata_crawl(
@@ -40,6 +46,7 @@ class Command(BaseCommand):
             max_subjects=options["max_subjects"],
             max_variables=options["max_variables"],
             crawl_vervar=options["with_vervar"],
+            force=options["force"],
             log=self.stdout.write,
         )
         self.stdout.write(

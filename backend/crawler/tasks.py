@@ -53,7 +53,7 @@ def recrawl_confirmed_coverage():
 
 @shared_task
 def run_incremental_crawl_task(
-    crawl_run_id, subcat=None, max_subjects=None, max_variables=None, crawl_vervar=False
+    crawl_run_id, subcat=None, max_subjects=None, max_variables=None, crawl_vervar=False, force=False
 ):
     """Admin on-demand equivalent of the weekly schedule, run in one pass:
     discover more metadata -> confirm coverage -> ingest real data points.
@@ -78,6 +78,7 @@ def run_incremental_crawl_task(
             max_subjects=max_subjects,
             max_variables=max_variables,
             crawl_vervar=crawl_vervar,
+            force=force,
             log=log,
         )
         coverage_result = run_coverage_crawl(log=log)
