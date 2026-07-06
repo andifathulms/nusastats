@@ -16,20 +16,14 @@ exactly what "store it for each regency and province" needs, from the
 same calls Cakupan's coverage crawl already made.
 """
 
-import re
-
 from django.utils import timezone
 
 from bps_client.client import BpsClient
 from bps_client.exceptions import BpsApiError, TooManyConsecutiveFailures
 from catalog.models import AdminLevel, CoverageRecord, CoverageStatus, Domain, Variable
-from crawler.coverage import fetch_th_chunked_responses, record_check_log
+from crawler.coverage import _as_int, _clean_label, fetch_th_chunked_responses, known_domain_ints, record_check_log
 
 from .models import DataPoint
-
-
-def _clean_label(label):
-    return re.sub(r"<[^>]+>", "", str(label or "")).strip()
 
 
 def ingest_from_responses(variable, response_log_pairs):
@@ -48,6 +42,7 @@ def ingest_from_responses(variable, response_log_pairs):
             domains_by_vervar_val[str(int(domain.domain_id))] = domain
         except (TypeError, ValueError):
             continue
+    geographic_ints = known_domain_ints()
 
     periods_by_th_id = {p.period_id: p for p in variable.periods.all()}
 
@@ -69,15 +64,27 @@ def ingest_from_responses(variable, response_log_pairs):
         turth_rows = body.get("turtahun") or [{"val": 0, "label": ""}]
         tahun_rows = body.get("tahun") or []
 
+        # Confirmed live: not every variable's vervar dimension is
+        # geographic — some use it for a commodity-group or urban/rural
+        # classification instead (see crawler.coverage.resolve_vervar_vals
+        # for the full story). When it isn't, the whole dataset is
+        # implicitly national: every vervar row belongs to national_domain
+        # rather than being matched against a region code or an
+        # "INDONESIA" label.
+        is_geographic = any(_as_int(row.get("val")) in geographic_ints for row in vervar_rows)
+
         indonesia_vervar_val = None
-        for row in vervar_rows:
-            if _clean_label(row.get("label")).upper() == "INDONESIA":
-                indonesia_vervar_val = str(row.get("val"))
-                break
+        if is_geographic:
+            for row in vervar_rows:
+                if _clean_label(row.get("label")).upper() == "INDONESIA":
+                    indonesia_vervar_val = str(row.get("val"))
+                    break
 
         for vervar_row in vervar_rows:
             vervar_val = str(vervar_row.get("val"))
-            if vervar_val == indonesia_vervar_val:
+            if not is_geographic:
+                domain = national_domain
+            elif vervar_val == indonesia_vervar_val:
                 domain = national_domain
             else:
                 domain = domains_by_vervar_val.get(vervar_val)

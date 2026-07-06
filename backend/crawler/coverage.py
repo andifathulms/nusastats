@@ -24,7 +24,15 @@ from django.utils import timezone
 
 from bps_client.client import BpsClient
 from bps_client.exceptions import BpsApiError, TooManyConsecutiveFailures
-from catalog.models import AdminLevel, CoverageCheckLog, CoverageRecord, CoverageStatus, CoverageStatusChange, Variable
+from catalog.models import (
+    AdminLevel,
+    CoverageCheckLog,
+    CoverageRecord,
+    CoverageStatus,
+    CoverageStatusChange,
+    Domain,
+    Variable,
+)
 from crawler.sampling import flatten_sample_domains, get_sample_domains
 
 # Confirmed live: BPS caps how many `th` (year) values one `data` call may
@@ -36,44 +44,85 @@ MAX_TH_ERROR_RE = re.compile(r"maximum allowed number of years for the 'th' para
 NATIONAL_DOMAIN_ID = "0000"
 
 
-def resolve_vervar_val(domain, body):
-    """Which vervar `val` in this response corresponds to `domain`.
+def _clean_label(label):
+    return re.sub(r"<[^>]+>", "", str(label or "")).strip()
 
-    For a province/kabupaten domain, its own domain_id is the vervar val
-    (confirmed live: Aceh's domain_id "1100" matches vervar val 1100 in
-    the domain=0000 response). For the national domain there is no such
-    direct match — some variables have a distinct all-Indonesia aggregate
-    row, most don't (e.g. a "by kabupaten/kota and gender" variable has
-    no single national figure at all). Rather than guess a code, this
-    looks for a vervar row explicitly labeled "INDONESIA"; if none
-    exists, returns None — a real absence, not a bug (CLAUDE.md rule 1).
-    """
-    if domain.admin_level == AdminLevel.NATIONAL:
-        for row in body.get("vervar", []) or []:
-            label = re.sub(r"<[^>]+>", "", str(row.get("label", ""))).strip().upper()
-            if label == "INDONESIA":
-                return str(row.get("val"))
-        return None
+
+def _as_int(val):
     try:
-        return str(int(domain.domain_id))
+        return int(val)
     except (TypeError, ValueError):
-        return str(domain.domain_id)
+        return None
 
 
-def parse_years_confirmed(body, vervar_val, variable_id):
-    """Which periods actually had a non-null datacontent value for the
-    given `vervar_val`, decoded from the real BPS `data`-model response
-    shape.
+def known_domain_ints():
+    """All real Domain.domain_id values, as ints, for detecting whether a
+    variable's `vervar` dimension is geographic at all (see
+    resolve_vervar_vals)."""
+    ints = set()
+    for domain_id in Domain.objects.values_list("domain_id", flat=True):
+        try:
+            ints.add(int(domain_id))
+        except (TypeError, ValueError):
+            continue
+    return ints
+
+
+def resolve_vervar_vals(domain, body, geographic_ints=None):
+    """Which vervar `val`s in this response correspond to `domain`.
+
+    Confirmed live: not every BPS variable's `vervar` dimension is
+    geographic. Some use it for an entirely different classification —
+    e.g. a "by commodity group" or "by urban/rural (Kota/Desa)" indicator
+    — signaled by `labelvervar` not being a region label, and by none of
+    the vervar `val`s matching any real Domain.domain_id. For those, the
+    whole dataset is implicitly national (there's no geography to slice
+    by), so every vervar row counts toward the national domain and none
+    count toward any province/regency domain.
+
+    For a genuinely geographic variable: a province/kabupaten domain's own
+    domain_id is the vervar val (confirmed live: Aceh's domain_id "1100"
+    matches vervar val 1100). For national, only a vervar row explicitly
+    labeled "INDONESIA" counts — many geographic variables have no such
+    row at all (e.g. a "by kabupaten/kota and gender" variable has no
+    single national figure), which is a real absence, not a bug
+    (CLAUDE.md rule 1).
+    """
+    vervar_rows = body.get("vervar", []) or []
+    if geographic_ints is None:
+        geographic_ints = known_domain_ints()
+
+    is_geographic = any(_as_int(row.get("val")) in geographic_ints for row in vervar_rows)
+
+    if not is_geographic:
+        if domain.admin_level == AdminLevel.NATIONAL:
+            return [str(row.get("val")) for row in vervar_rows]
+        return []
+
+    if domain.admin_level == AdminLevel.NATIONAL:
+        return [str(row.get("val")) for row in vervar_rows if _clean_label(row.get("label")).upper() == "INDONESIA"]
+
+    try:
+        target = str(int(domain.domain_id))
+    except (TypeError, ValueError):
+        target = str(domain.domain_id)
+    return [target] if any(str(row.get("val")) == target for row in vervar_rows) else []
+
+
+def parse_years_confirmed(body, vervar_vals, variable_id):
+    """Which periods actually had a non-null datacontent value for any of
+    the given `vervar_vals`, decoded from the real BPS `data`-model
+    response shape.
 
     `datacontent` keys are the concatenation of
     `{vervar}{var}{turvar}{th}{turth}` with no separators or fixed-width
     padding (e.g. vervar=1701, var=455, turvar=212, th=124, turth=0 ->
     "17014552121240"). This was decoded from live sample responses, not
     guessed. Since field widths aren't fixed, this matches by trying
-    every (turvar, turth) combination actually listed in the response
-    against each requested `th`, rather than slicing positions.
+    every (vervar, turvar, turth) combination actually listed in the
+    response against each requested `th`, rather than slicing positions.
     """
-    if not isinstance(body, dict) or vervar_val is None:
+    if not isinstance(body, dict) or not vervar_vals:
         return []
     datacontent = body.get("datacontent") or {}
     if not datacontent:
@@ -89,15 +138,20 @@ def parse_years_confirmed(body, vervar_val, variable_id):
         label = th_row.get("label")
         if not label:
             continue
-        for turvar_val in turvar_vals:
-            for turth_val in turth_vals:
-                key = f"{vervar_val}{var_val}{turvar_val}{th_val}{turth_val}"
-                if datacontent.get(key) not in (None, "", "-"):
-                    years.append(label)
+        found = False
+        for vervar_val in vervar_vals:
+            for turvar_val in turvar_vals:
+                for turth_val in turth_vals:
+                    key = f"{vervar_val}{var_val}{turvar_val}{th_val}{turth_val}"
+                    if datacontent.get(key) not in (None, "", "-"):
+                        found = True
+                        break
+                if found:
                     break
-            else:
-                continue
-            break
+            if found:
+                break
+        if found:
+            years.append(label)
     return years
 
 
@@ -183,14 +237,15 @@ def fetch_th_chunked_responses(client, variable, period_ids, use_cache=True):
     return responses
 
 
-def upsert_domain_coverage(variable, domain, response_log_pairs):
+def upsert_domain_coverage(variable, domain, response_log_pairs, geographic_ints=None):
     """Decodes CONFIRMED/NOT_CONFIRMED/ERROR + years_confirmed for one
     `domain` (national, a province, or a kabupaten/kota) from a shared
     set of (BpsResponse, CoverageCheckLog) pairs already fetched for this
     variable at domain=0000 — no additional HTTP call needed per domain.
     A period is confirmed if any chunk's response confirms it for this
     domain's vervar entry; the record is only ERROR if every chunk
-    errored.
+    errored. `geographic_ints` (see known_domain_ints) can be precomputed
+    once per crawl run and passed in to avoid re-querying Domain per call.
     """
     years = []
     best_log = response_log_pairs[-1][1] if response_log_pairs else None
@@ -204,8 +259,8 @@ def upsert_domain_coverage(variable, domain, response_log_pairs):
         body = resp.body or {}
         if body.get("data-availability") != "available":
             continue
-        vervar_val = resolve_vervar_val(domain, body)
-        resp_years = parse_years_confirmed(body, vervar_val, variable.variable_id)
+        vervar_vals = resolve_vervar_vals(domain, body, geographic_ints)
+        resp_years = parse_years_confirmed(body, vervar_vals, variable.variable_id)
         if resp_years:
             any_confirmed = True
             best_log = log
@@ -261,6 +316,7 @@ def run_coverage_crawl(client=None, log=None):
         log("No variables found — run crawl_metadata first.")
         return {"checked": 0, "variables": 0, "hard_stopped": False}
 
+    geographic_ints = known_domain_ints()
     checked = 0
     hard_stopped = False
     for variable in variables:
@@ -282,7 +338,7 @@ def run_coverage_crawl(client=None, log=None):
         response_log_pairs = [(resp, record_check_log(resp)) for resp in responses]
 
         for domain in domains:
-            record = upsert_domain_coverage(variable, domain, response_log_pairs)
+            record = upsert_domain_coverage(variable, domain, response_log_pairs, geographic_ints)
             checked += 1
             log(f"  var={variable.variable_id} domain={domain.domain_id} -> {record.status}")
 
