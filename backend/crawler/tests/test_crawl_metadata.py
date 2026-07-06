@@ -152,3 +152,51 @@ def test_crawl_metadata_follows_pagination_for_th(national_domain):
 
     variable = Variable.objects.get(variable_id="100")
     assert set(variable.periods.values_list("year", flat=True)) == {2023, 2024}
+
+
+@pytest.mark.django_db
+def test_crawl_metadata_force_reprocesses_already_crawled_subject(national_domain):
+    """Raising max_variables alone has no effect on an already-crawled
+    subject (the resume cursor skips it) — --force is required to go
+    back and pull the additional variables out of it."""
+
+    def two_variables(model, **params):
+        if model == "var":
+            return ok(
+                [
+                    {"var_id": "100", "title": "Var 100", "unit": "", "def": ""},
+                    {"var_id": "200", "title": "Var 200", "unit": "", "def": ""},
+                ]
+            )
+        return fake_get(model, **params)
+
+    with patch(
+        "bps_client.client.BpsClient.get",
+        autospec=True,
+        side_effect=lambda self, model, **p: two_variables(model, **p),
+    ):
+        call_command("crawl_metadata", "--max-variables", "1")
+
+    assert Variable.objects.filter(variable_id="100").exists()
+    assert not Variable.objects.filter(variable_id="200").exists()
+
+    # Without --force, raising max_variables changes nothing: the subject
+    # is already marked crawled.
+    with patch(
+        "bps_client.client.BpsClient.get",
+        autospec=True,
+        side_effect=lambda self, model, **p: two_variables(model, **p),
+    ):
+        call_command("crawl_metadata", "--max-variables", "2")
+
+    assert not Variable.objects.filter(variable_id="200").exists()
+
+    # --force re-processes it and picks up the second variable.
+    with patch(
+        "bps_client.client.BpsClient.get",
+        autospec=True,
+        side_effect=lambda self, model, **p: two_variables(model, **p),
+    ):
+        call_command("crawl_metadata", "--max-variables", "2", "--force")
+
+    assert Variable.objects.filter(variable_id="200").exists()

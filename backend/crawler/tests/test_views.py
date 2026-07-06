@@ -39,13 +39,21 @@ def test_post_creates_crawl_run_and_enqueues_task(staff_client):
     with patch("crawler.views.run_incremental_crawl_task.delay") as mock_delay:
         resp = staff_client.post(
             reverse("crawl_dashboard"),
-            {"subcat": "1", "max_subjects": "2", "max_variables": "5", "with_vervar": "on"},
+            {"subcat": "1", "max_subjects": "2", "max_variables": "5", "with_vervar": "on", "force": "on"},
         )
 
     assert resp.status_code == 302
     run = CrawlRun.objects.get()
-    assert run.params == {"subcat": "1", "max_subjects": 2, "max_variables": 5, "crawl_vervar": True}
-    mock_delay.assert_called_once_with(run.id, subcat="1", max_subjects=2, max_variables=5, crawl_vervar=True)
+    assert run.params == {
+        "subcat": "1",
+        "max_subjects": 2,
+        "max_variables": 5,
+        "crawl_vervar": True,
+        "force": True,
+    }
+    mock_delay.assert_called_once_with(
+        run.id, subcat="1", max_subjects=2, max_variables=5, crawl_vervar=True, force=True
+    )
 
 
 @pytest.mark.django_db
@@ -54,7 +62,13 @@ def test_post_with_blank_fields_means_no_scoping(staff_client):
         staff_client.post(reverse("crawl_dashboard"), {"subcat": "", "max_subjects": "", "max_variables": ""})
 
     run = CrawlRun.objects.get()
-    assert run.params == {"subcat": None, "max_subjects": None, "max_variables": None, "crawl_vervar": False}
+    assert run.params == {
+        "subcat": None,
+        "max_subjects": None,
+        "max_variables": None,
+        "crawl_vervar": False,
+        "force": False,
+    }
     mock_delay.assert_called_once_with(
-        run.id, subcat=None, max_subjects=None, max_variables=None, crawl_vervar=False
+        run.id, subcat=None, max_subjects=None, max_variables=None, crawl_vervar=False, force=False
     )
