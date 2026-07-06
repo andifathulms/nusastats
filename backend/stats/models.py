@@ -23,6 +23,18 @@ class DataPoint(models.Model):
     admin_level = models.CharField(max_length=16)
     year = models.PositiveIntegerField(null=True, blank=True)
 
+    # BPS's vervar dimension. For a geographic variable this is the
+    # region (redundant with `domain`, kept for traceability); for a
+    # non-geographic variable (confirmed live: some use vervar for a
+    # commodity-group or urban/rural classification instead — see
+    # crawler.coverage.resolve_vervar_vals) this is the actual
+    # classification value (e.g. "Kota"/"Desa"/"Kota+Desa") and MUST be
+    # part of the uniqueness key: without it, e.g. a poverty-line
+    # variable's Kota/Desa/Kota+Desa values collide on the same
+    # (domain=national, turvar) key and silently overwrite each other.
+    vervar_id = models.CharField(max_length=16, default="0")
+    vervar_label = models.CharField(max_length=255, blank=True)
+
     # BPS's secondary breakdown dimension (e.g. gender: laki-laki vs
     # perempuan). turvar_id "0" conventionally means "no breakdown/total".
     turvar_id = models.CharField(max_length=16, default="0")
@@ -37,13 +49,14 @@ class DataPoint(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        unique_together = ("variable", "domain", "period", "turvar_id")
+        unique_together = ("variable", "domain", "period", "vervar_id", "turvar_id")
         indexes = [
             models.Index(fields=["domain", "period"]),
             models.Index(fields=["variable", "period"]),
             models.Index(fields=["admin_level", "year"]),
         ]
-        ordering = ["variable_id", "domain_id", "period_id", "turvar_id"]
+        ordering = ["variable_id", "domain_id", "period_id", "vervar_id", "turvar_id"]
 
     def __str__(self):
-        return f"{self.variable_id}@{self.domain_id}/{self.period_id} ({self.turvar_label or 'total'}) = {self.value}"
+        label = self.vervar_label or self.turvar_label or "total"
+        return f"{self.variable_id}@{self.domain_id}/{self.period_id} ({label}) = {self.value}"

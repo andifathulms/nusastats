@@ -27,11 +27,20 @@ from .models import DataPoint
 
 
 def ingest_from_responses(variable, response_log_pairs):
-    """Decodes every (domain, period, turvar) data point present across
-    `response_log_pairs` for `variable` and upserts them as DataPoint
-    rows. Idempotent: re-ingesting the same responses updates existing
-    rows (keyed on variable/domain/period/turvar_id) rather than
-    duplicating them. Returns the number of data points written.
+    """Decodes every (domain, period, vervar, turvar) data point present
+    across `response_log_pairs` for `variable` and upserts them as
+    DataPoint rows. Idempotent: re-ingesting the same responses updates
+    existing rows (keyed on variable/domain/period/vervar_id/turvar_id)
+    rather than duplicating them. Returns the number of data points
+    written.
+
+    vervar_id/vervar_label are always stored, not just when non-geographic
+    (see DataPoint model docstring): for a geographic variable this is
+    redundant with `domain`, but for a non-geographic one (commodity
+    group, urban/rural — confirmed live) it's the only thing that
+    distinguishes e.g. a poverty line's Kota/Desa/Kota+Desa values, which
+    would otherwise collide on the same (domain=national, turvar) key and
+    silently overwrite each other.
     """
     domains_by_vervar_val = {}
     national_domain = None
@@ -110,12 +119,14 @@ def ingest_from_responses(variable, response_log_pairs):
                         if value in (None, "", "-"):
                             continue
 
-                        to_upsert[(domain.id, period.id, turvar_val)] = DataPoint(
+                        to_upsert[(domain.id, period.id, vervar_val, turvar_val)] = DataPoint(
                             variable=variable,
                             domain=domain,
                             period=period,
                             admin_level=domain.admin_level,
                             year=period.year,
+                            vervar_id=vervar_val,
+                            vervar_label=_clean_label(vervar_row.get("label")),
                             turvar_id=turvar_val,
                             turvar_label=turvar_label,
                             value=value,
@@ -128,8 +139,16 @@ def ingest_from_responses(variable, response_log_pairs):
         DataPoint.objects.bulk_create(
             points,
             update_conflicts=True,
-            unique_fields=["variable", "domain", "period", "turvar_id"],
-            update_fields=["value", "turvar_label", "admin_level", "year", "source_check_log", "fetched_at"],
+            unique_fields=["variable", "domain", "period", "vervar_id", "turvar_id"],
+            update_fields=[
+                "value",
+                "vervar_label",
+                "turvar_label",
+                "admin_level",
+                "year",
+                "source_check_log",
+                "fetched_at",
+            ],
         )
     return len(points)
 

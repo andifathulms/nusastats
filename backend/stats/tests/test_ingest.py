@@ -193,3 +193,37 @@ def test_ingest_non_geographic_vervar_maps_every_row_to_national(variable):
     points = DataPoint.objects.filter(variable=variable, domain=national)
     assert points.count() == 2
     assert set(points.values_list("turvar_label", flat=True)) == {"Perkotaan", "Perdesaan"}
+
+
+@pytest.mark.django_db
+def test_ingest_same_turvar_across_multiple_vervar_rows_does_not_collide(variable):
+    """Reproduces the exact real bug (a poverty-line variable's
+    Kota/Desa/Kota+Desa values, all with the same turvar 'Tidak ada')
+    silently overwriting each other on the same (domain=national, turvar)
+    key before vervar_id was part of the uniqueness constraint."""
+    national = variable.domain
+    resp = make_resp(
+        {
+            "data-availability": "available",
+            "vervar": [
+                {"val": 1, "label": "Kota"},
+                {"val": 2, "label": "Desa"},
+                {"val": 3, "label": "Kota+Desa"},
+            ],
+            "turvar": [{"val": "0", "label": "Tidak ada"}],
+            "turtahun": [{"val": 0, "label": "Tahun"}],
+            "tahun": [{"val": "1", "label": "2023"}],
+            "datacontent": {
+                make_key(1, 100, 0, 1): 100.0,
+                make_key(2, 100, 0, 1): 200.0,
+                make_key(3, 100, 0, 1): 300.0,
+            },
+        }
+    )
+    pairs = [(resp, record_check_log(resp))]
+
+    count = ingest_from_responses(variable, pairs)
+
+    assert count == 3
+    points = {p.vervar_label: p.value for p in DataPoint.objects.filter(variable=variable, domain=national)}
+    assert points == {"Kota": 100.0, "Desa": 200.0, "Kota+Desa": 300.0}
