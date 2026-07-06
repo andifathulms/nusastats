@@ -74,6 +74,11 @@ class Subject(models.Model):
     )
     domain = models.ForeignKey(Domain, on_delete=models.CASCADE, related_name="subjects")
     name = models.CharField(max_length=255)
+    # Resume cursor for incremental metadata discovery (crawler.metadata):
+    # set once this subject's variable list has been fetched, so a later
+    # run picks the next not-yet-crawled subject instead of re-fetching
+    # the same ones every time.
+    metadata_crawled_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
