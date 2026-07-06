@@ -20,7 +20,10 @@ import re
 
 from django.utils import timezone
 
-from catalog.models import AdminLevel, Domain
+from bps_client.client import BpsClient
+from bps_client.exceptions import BpsApiError, TooManyConsecutiveFailures
+from catalog.models import AdminLevel, CoverageRecord, CoverageStatus, Domain, Variable
+from crawler.coverage import fetch_th_chunked_responses, record_check_log
 
 from .models import DataPoint
 
@@ -122,3 +125,47 @@ def ingest_from_responses(variable, response_log_pairs):
             update_fields=["value", "turvar_label", "admin_level", "year", "source_check_log", "fetched_at"],
         )
     return len(points)
+
+
+def ingest_all_confirmed(client=None, use_cache=True, on_variable_done=None):
+    """Fetches and ingests real data points for every Variable Cakupan
+    has confirmed as available. Shared by ingest_confirmed_data (the
+    management command, for on-demand/first runs) and
+    stats.tasks.ingest_confirmed_data_task (the Phase 6 periodic re-run),
+    so both stay behind the same logic. `on_variable_done(variable,
+    count)` is called after each variable, e.g. for command-line progress
+    output; hard-stops (does not swallow) on TooManyConsecutiveFailures
+    per CLAUDE.md rule 5.
+    """
+    client = client or BpsClient()
+
+    variable_ids = (
+        CoverageRecord.objects.filter(status=CoverageStatus.CONFIRMED)
+        .values_list("variable_id", flat=True)
+        .distinct()
+    )
+    variables = Variable.objects.filter(id__in=variable_ids).prefetch_related("periods")
+
+    total_points = 0
+    variables_processed = 0
+    hard_stopped = False
+    for variable in variables:
+        period_ids = list(variable.periods.values_list("period_id", flat=True))
+        if not period_ids:
+            continue
+        try:
+            responses = fetch_th_chunked_responses(client, variable, period_ids, use_cache=use_cache)
+        except TooManyConsecutiveFailures:
+            hard_stopped = True
+            break
+        except BpsApiError:
+            continue
+
+        response_log_pairs = [(resp, record_check_log(resp)) for resp in responses]
+        count = ingest_from_responses(variable, response_log_pairs)
+        total_points += count
+        variables_processed += 1
+        if on_variable_done:
+            on_variable_done(variable, count)
+
+    return {"data_points": total_points, "variables": variables_processed, "hard_stopped": hard_stopped}
