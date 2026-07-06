@@ -26,6 +26,8 @@ staticfiles/
 
 # Docker
 *.pid
+# Local-machine port overrides (host-specific, never shared)
+docker-compose.local.yml
 
 # Node / Next.js
 node_modules/
