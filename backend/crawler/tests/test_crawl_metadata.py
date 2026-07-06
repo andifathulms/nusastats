@@ -34,7 +34,9 @@ def national_domain(db):
 
 
 @pytest.mark.django_db
-def test_crawl_metadata_populates_full_chain(national_domain):
+def test_crawl_metadata_skips_vervar_by_default(national_domain):
+    """Vervar is deferred by default — confirmed live to cost ~45s/variable
+    while not being needed for coverage confirmation or ingestion."""
     with patch(
         "bps_client.client.BpsClient.get",
         autospec=True,
@@ -42,11 +44,22 @@ def test_crawl_metadata_populates_full_chain(national_domain):
     ):
         call_command("crawl_metadata")
 
-    category = SubjectCategory.objects.get(subject_category_id="1")
-    subject = Subject.objects.get(subject_id="10", subject_category=category)
-    variable = Variable.objects.get(variable_id="100", subject=subject)
-    assert VerticalVariable.objects.filter(variable=variable, vervar_id="1000").exists()
+    variable = Variable.objects.get(variable_id="100")
+    assert not VerticalVariable.objects.filter(variable=variable).exists()
     assert PeriodData.objects.filter(variable=variable, year=2023).exists()
+
+
+@pytest.mark.django_db
+def test_crawl_metadata_with_vervar_flag_populates_it(national_domain):
+    with patch(
+        "bps_client.client.BpsClient.get",
+        autospec=True,
+        side_effect=lambda self, model, **p: fake_get(model, **p),
+    ):
+        call_command("crawl_metadata", "--with-vervar")
+
+    variable = Variable.objects.get(variable_id="100")
+    assert VerticalVariable.objects.filter(variable=variable, vervar_id="1000").exists()
 
 
 @pytest.mark.django_db
@@ -60,6 +73,43 @@ def test_crawl_metadata_is_idempotent(national_domain):
         call_command("crawl_metadata")
 
     assert Variable.objects.filter(variable_id="100").count() == 1
+
+
+@pytest.mark.django_db
+def test_crawl_metadata_resume_cursor_progresses_across_runs(national_domain):
+    """max_subjects is a resume cursor: each run should pick the next
+    not-yet-crawled subjects, not re-fetch the same ones repeatedly."""
+
+    def two_subjects(model, **params):
+        if model == "subject":
+            return ok([{"sub_id": "10", "title": "Inflasi"}, {"sub_id": "20", "title": "Kemiskinan"}])
+        if model == "var":
+            var_id = "100" if params.get("subject") == "10" else "200"
+            return ok([{"var_id": var_id, "title": f"Var {var_id}", "unit": "", "def": ""}])
+        return fake_get(model, **params)
+
+    with patch(
+        "bps_client.client.BpsClient.get",
+        autospec=True,
+        side_effect=lambda self, model, **p: two_subjects(model, **p),
+    ):
+        call_command("crawl_metadata", "--max-subjects", "1")
+
+    assert Subject.objects.get(subject_id="10").metadata_crawled_at is not None
+    assert Subject.objects.get(subject_id="20").metadata_crawled_at is None
+    assert Variable.objects.filter(variable_id="100").exists()
+    assert not Variable.objects.filter(variable_id="200").exists()
+
+    with patch(
+        "bps_client.client.BpsClient.get",
+        autospec=True,
+        side_effect=lambda self, model, **p: two_subjects(model, **p),
+    ):
+        call_command("crawl_metadata", "--max-subjects", "1")
+
+    # Second run picks subject 20 (not yet crawled), not subject 10 again.
+    assert Subject.objects.get(subject_id="20").metadata_crawled_at is not None
+    assert Variable.objects.filter(variable_id="200").exists()
 
 
 @pytest.mark.django_db
