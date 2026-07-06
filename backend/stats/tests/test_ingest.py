@@ -164,3 +164,32 @@ def test_ingest_updates_value_on_recheck(variable, province):
 
     assert DataPoint.objects.filter(variable=variable, domain=province).count() == 1
     assert DataPoint.objects.get(variable=variable, domain=province).value == 5.9
+
+
+@pytest.mark.django_db
+def test_ingest_non_geographic_vervar_maps_every_row_to_national(variable):
+    """Confirmed live: some variables use vervar for a non-geographic
+    classification (commodity group, urban/rural) — the whole dataset is
+    then implicitly national, not skipped for lack of a domain match."""
+    national = variable.domain
+    resp = make_resp(
+        {
+            "data-availability": "available",
+            "vervar": [{"val": 100, "label": "<b>MAKANAN</b>"}, {"val": 101, "label": "Padi-padian"}],
+            "turvar": [{"val": 189, "label": "Perkotaan"}, {"val": 190, "label": "Perdesaan"}],
+            "turtahun": [{"val": 0, "label": "Tahun"}],
+            "tahun": [{"val": "1", "label": "2023"}],
+            "datacontent": {
+                make_key(100, 100, 189, 1): 44.39,
+                make_key(101, 100, 190, 1): 46.51,
+            },
+        }
+    )
+    pairs = [(resp, record_check_log(resp))]
+
+    count = ingest_from_responses(variable, pairs)
+
+    assert count == 2
+    points = DataPoint.objects.filter(variable=variable, domain=national)
+    assert points.count() == 2
+    assert set(points.values_list("turvar_label", flat=True)) == {"Perkotaan", "Perdesaan"}

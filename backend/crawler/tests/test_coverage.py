@@ -14,7 +14,7 @@ from catalog.models import (
 from crawler.coverage import (
     fetch_th_chunked_responses,
     record_check_log,
-    resolve_vervar_val,
+    resolve_vervar_vals,
     upsert_domain_coverage,
 )
 
@@ -63,6 +63,7 @@ def test_confirmed_for_a_province_domain_matches_its_own_vervar_val(variable, pr
     resp = make_resp(
         {
             "data-availability": "available",
+            "vervar": [{"val": 1100, "label": "ACEH"}],
             "turvar": [{"val": 0, "label": "Total"}],
             "turtahun": [{"val": 0, "label": "Tahun"}],
             "tahun": [{"val": "1", "label": "2023"}],
@@ -101,7 +102,7 @@ def test_national_confirmed_only_when_indonesia_aggregate_row_exists(variable):
 
 
 @pytest.mark.django_db
-def test_national_not_confirmed_when_no_indonesia_row_present(variable):
+def test_national_not_confirmed_when_no_indonesia_row_present(variable, province):
     national = variable.domain
     resp = make_resp(
         {
@@ -114,8 +115,54 @@ def test_national_not_confirmed_when_no_indonesia_row_present(variable):
         }
     )
 
-    assert resolve_vervar_val(national, resp.body) is None
+    assert resolve_vervar_vals(national, resp.body) == []
     record = upsert_single(variable, national, resp)
+
+    assert record.status == CoverageStatus.NOT_CONFIRMED
+
+
+@pytest.mark.django_db
+def test_non_geographic_vervar_treats_entire_dataset_as_national(variable):
+    """Confirmed live for 3 real BPS variables: vervar isn't always
+    geographic — some use it for a commodity-group or urban/rural
+    classification instead (labelvervar wasn't a region label, and none
+    of the vervar vals matched a real domain_id). When that's the case,
+    the whole dataset is implicitly national, not "not confirmed"."""
+    national = variable.domain
+    resp = make_resp(
+        {
+            "data-availability": "available",
+            "labelvervar": "Kelompok Barang Makanan dan Bukan Makanan (Susenas)",
+            "vervar": [{"val": 100, "label": "<b>MAKANAN</b>"}, {"val": 101, "label": "Padi-padian"}],
+            "turvar": [{"val": 189, "label": "Perkotaan"}, {"val": 190, "label": "Perdesaan"}],
+            "turtahun": [{"val": 0, "label": "Tahun"}],
+            "tahun": [{"val": "1", "label": "2023"}],
+            "datacontent": {make_key(101, 100, 189, 1): 44.39},
+        }
+    )
+
+    record = upsert_single(variable, national, resp)
+
+    assert record.status == CoverageStatus.CONFIRMED
+    assert record.years_confirmed == ["2023"]
+
+
+@pytest.mark.django_db
+def test_non_geographic_vervar_never_confirms_a_province_domain(variable, province):
+    """Same non-geographic response as above — a province domain must
+    stay not_confirmed since there's genuinely no regional breakdown."""
+    resp = make_resp(
+        {
+            "data-availability": "available",
+            "vervar": [{"val": 100, "label": "<b>MAKANAN</b>"}, {"val": 101, "label": "Padi-padian"}],
+            "turvar": [{"val": 189, "label": "Perkotaan"}, {"val": 190, "label": "Perdesaan"}],
+            "turtahun": [{"val": 0, "label": "Tahun"}],
+            "tahun": [{"val": "1", "label": "2023"}],
+            "datacontent": {make_key(101, 100, 189, 1): 44.39},
+        }
+    )
+
+    record = upsert_single(variable, province, resp)
 
     assert record.status == CoverageStatus.NOT_CONFIRMED
 
@@ -174,6 +221,7 @@ def test_recheck_updates_existing_record_and_logs_status_change(variable, provin
     now_available = make_resp(
         {
             "data-availability": "available",
+            "vervar": [{"val": 1100, "label": "ACEH"}],
             "turvar": [{"val": 0, "label": "Total"}],
             "turtahun": [{"val": 0, "label": "Tahun"}],
             "tahun": [{"val": "2", "label": "2024"}],
@@ -224,6 +272,7 @@ class FakeChunkClient:
             http_status=200,
             body={
                 "data-availability": "available",
+                "vervar": [{"val": 1100, "label": "ACEH"}],
                 "turvar": [{"val": 0, "label": "Total"}],
                 "turtahun": [{"val": 0, "label": "Tahun"}],
                 "tahun": [{"val": v, "label": f"20{v.zfill(2)}"} for v in th_values],
@@ -264,6 +313,7 @@ def test_upsert_domain_coverage_confirmed_survives_a_partial_chunk_error(variabl
     ok_resp = make_resp(
         {
             "data-availability": "available",
+            "vervar": [{"val": 1100, "label": "ACEH"}],
             "turvar": [{"val": 0, "label": "Total"}],
             "turtahun": [{"val": 0, "label": "Tahun"}],
             "tahun": [{"val": "1", "label": "2023"}],
