@@ -1,0 +1,59 @@
+{% extends "admin/base_site.html" %}
+
+{% block content %}
+<h1>Cakupan: on-demand crawl</h1>
+<p>
+  Triggers metadata discovery &rarr; coverage confirmation &rarr; data ingestion in one pass,
+  in the background. Each call is rate-limited against BPS, so a batch can take a few minutes —
+  refresh this page to see progress. Keep <code>max_variables</code> small (e.g. 3&ndash;5) per run;
+  each variable can mean dozens of paginated BPS calls.
+</p>
+
+<form method="post" style="margin-bottom: 2em;">
+  {% csrf_token %}
+  <p>
+    <label for="subcat">Subject category ID (blank = all categories):</label><br>
+    <input type="text" id="subcat" name="subcat" size="10">
+  </p>
+  <p>
+    <label for="max_subjects">Max subjects per category (blank = no cap):</label><br>
+    <input type="number" id="max_subjects" name="max_subjects" value="1" min="1">
+  </p>
+  <p>
+    <label for="max_variables">Max variables per subject (blank = no cap):</label><br>
+    <input type="number" id="max_variables" name="max_variables" value="3" min="1">
+  </p>
+  <input type="submit" value="Run crawl now" class="default">
+</form>
+
+<h2>Recent runs</h2>
+<table style="width:100%; border-collapse: collapse;">
+  <thead>
+    <tr>
+      <th style="text-align:left; border-bottom:1px solid #ccc;">Started</th>
+      <th style="text-align:left; border-bottom:1px solid #ccc;">Status</th>
+      <th style="text-align:left; border-bottom:1px solid #ccc;">Params</th>
+      <th style="text-align:left; border-bottom:1px solid #ccc;">Result</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for run in recent_runs %}
+    <tr>
+      <td>{{ run.started_at }}</td>
+      <td>{{ run.status }}</td>
+      <td>{{ run.params }}</td>
+      <td>
+        {% if run.result %}
+          {% if run.result.metadata %}categories={{ run.result.metadata.categories }} subjects={{ run.result.metadata.subjects }} variables={{ run.result.metadata.variables }}<br>{% endif %}
+          {% if run.result.coverage %}checked={{ run.result.coverage.checked }}<br>{% endif %}
+          {% if run.result.ingest %}data_points={{ run.result.ingest.data_points }}{% endif %}
+        {% endif %}
+        {% if run.error_detail %}<span style="color:red;">{{ run.error_detail }}</span>{% endif %}
+      </td>
+    </tr>
+    {% empty %}
+    <tr><td colspan="4">No runs yet.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}
