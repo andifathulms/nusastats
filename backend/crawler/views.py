@@ -19,11 +19,13 @@ def crawl_dashboard(request):
         subcat = request.POST.get("subcat", "").strip() or None
         max_subjects = request.POST.get("max_subjects", "").strip()
         max_variables = request.POST.get("max_variables", "").strip()
+        crawl_vervar = request.POST.get("with_vervar") == "on"
 
         params = {
             "subcat": subcat,
             "max_subjects": int(max_subjects) if max_subjects else None,
             "max_variables": int(max_variables) if max_variables else None,
+            "crawl_vervar": crawl_vervar,
         }
         run = CrawlRun.objects.create(params=params)
         run_incremental_crawl_task.delay(run.id, **params)

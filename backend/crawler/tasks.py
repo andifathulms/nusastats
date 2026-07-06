@@ -52,7 +52,9 @@ def recrawl_confirmed_coverage():
 
 
 @shared_task
-def run_incremental_crawl_task(crawl_run_id, subcat=None, max_subjects=None, max_variables=None):
+def run_incremental_crawl_task(
+    crawl_run_id, subcat=None, max_subjects=None, max_variables=None, crawl_vervar=False
+):
     """Admin on-demand equivalent of the weekly schedule, run in one pass:
     discover more metadata -> confirm coverage -> ingest real data points.
     Backs the staff-only "populate my DB now" button (crawler/views.py) —
@@ -72,7 +74,11 @@ def run_incremental_crawl_task(crawl_run_id, subcat=None, max_subjects=None, max
 
     try:
         metadata_result = run_metadata_crawl(
-            subcat=subcat, max_subjects=max_subjects, max_variables=max_variables, log=log
+            subcat=subcat,
+            max_subjects=max_subjects,
+            max_variables=max_variables,
+            crawl_vervar=crawl_vervar,
+            log=log,
         )
         coverage_result = run_coverage_crawl(log=log)
         ingest_result = ingest_all_confirmed(on_variable_done=lambda v, c: log(f"  var={v.variable_id}: {c} points"))
