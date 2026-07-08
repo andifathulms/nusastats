@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { api, formatNumber, type RegionVariables } from "@/lib/api";
+import { api, formatNumber, type RegionProfile, type RegionVariables } from "@/lib/api";
 import { Badge, Panel, SectionTitle, StatTile } from "@/components/ui";
 
 const LEVEL_LABEL: Record<string, string> = {
@@ -16,6 +16,8 @@ export default function RegionDetailPage({ params }: { params: { domainId: strin
   const [data, setData] = useState<RegionVariables | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
+  const [view, setView] = useState<"indicators" | "profile">("indicators");
+  const [profile, setProfile] = useState<RegionProfile | null>(null);
 
   useEffect(() => {
     api
@@ -23,6 +25,11 @@ export default function RegionDetailPage({ params }: { params: { domainId: strin
       .then(setData)
       .catch((e) => setError(String(e)));
   }, [domainId]);
+
+  // Load the profile lazily the first time that tab is opened.
+  useEffect(() => {
+    if (view === "profile" && !profile) api.regionProfile(domainId).then(setProfile);
+  }, [view, profile, domainId]);
 
   const filtered = useMemo(() => {
     if (!data) return [];
@@ -61,6 +68,25 @@ export default function RegionDetailPage({ params }: { params: { domainId: strin
         />
       </div>
 
+      {region.admin_level !== "national" && (
+        <div className="inline-flex rounded-lg border border-ink-border p-1">
+          {(["indicators", "profile"] as const).map((v) => (
+            <button
+              key={v}
+              onClick={() => setView(v)}
+              className={`rounded-md px-4 py-1.5 text-sm capitalize ${
+                view === v ? "bg-ink-accent text-white" : "text-ink-muted hover:text-ink-text"
+              }`}
+            >
+              {v === "profile" ? "Profile (how it ranks)" : "Indicators"}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {view === "profile" && region.admin_level !== "national" ? (
+        <ProfileView profile={profile} regionLevel={region.admin_level} domainId={domainId} />
+      ) : (
       <div>
         <SectionTitle hint="click one to chart it for this region">Available indicators</SectionTitle>
         <input
@@ -116,6 +142,68 @@ export default function RegionDetailPage({ params }: { params: { domainId: strin
           </div>
         </Panel>
       </div>
+      )}
+    </div>
+  );
+}
+
+function ProfileView({
+  profile,
+  regionLevel,
+  domainId,
+}: {
+  profile: RegionProfile | null;
+  regionLevel: string;
+  domainId: string;
+}) {
+  if (!profile) return <div className="text-ink-muted">Computing percentile ranks…</div>;
+  const peerLabel = regionLevel === "province" ? "provinces" : "kabupaten/kota";
+  return (
+    <div>
+      <SectionTitle hint={`percentile vs other ${peerLabel}, latest year each · strongest first`}>
+        How {profile.region.domain_name} ranks
+      </SectionTitle>
+      <Panel className="p-0 overflow-hidden">
+        <div className="max-h-[36rem] divide-y divide-ink-border/40 overflow-auto scroll-thin">
+          {profile.results.map((r) => {
+            const pct = r.percentile ?? 0;
+            const color = pct >= 66 ? "#4dd0a7" : pct >= 33 ? "#f2b34e" : "#e5686f";
+            return (
+              <div key={r.variable_id} className="flex items-center gap-3 px-4 py-2.5">
+                <div className="w-1/2 min-w-0">
+                  <Link
+                    href={`/variables/${r.variable_id}?region=${domainId}`}
+                    className="block truncate text-sm text-ink-text hover:text-ink-accent"
+                    title={r.name}
+                  >
+                    {r.name}
+                  </Link>
+                  <div className="text-xs text-ink-muted">
+                    {r.subject_category} · {r.year} · {formatNumber(r.value)} {r.unit}
+                  </div>
+                </div>
+                <div className="flex flex-1 items-center gap-3">
+                  <div className="h-2 flex-1 overflow-hidden rounded-full bg-ink-panel2">
+                    <div className="h-full rounded-full" style={{ width: `${pct}%`, background: color }} />
+                  </div>
+                  <div className="w-28 shrink-0 text-right text-xs tabular-nums text-ink-muted">
+                    {r.rank ? (
+                      <>
+                        <span className="text-ink-text">{pct}th pct</span> · #{r.rank}/{r.of}
+                      </>
+                    ) : (
+                      "–"
+                    )}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+          {profile.results.length === 0 && (
+            <div className="px-4 py-8 text-center text-ink-muted">No rankable indicators for this region.</div>
+          )}
+        </div>
+      </Panel>
     </div>
   );
 }

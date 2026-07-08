@@ -83,6 +83,22 @@ export type Ranking = {
   results: { domain_id: string; domain_name: string; value: number; rank: number }[];
 };
 
+export type RegionProfile = {
+  region: Region;
+  count: number;
+  results: {
+    variable_id: string;
+    name: string;
+    unit: string;
+    subject_category: string;
+    year: number;
+    value: number;
+    rank: number | null;
+    of: number;
+    percentile: number | null;
+  }[];
+};
+
 export type Trend = {
   variable_id: string;
   name: string;
@@ -165,6 +181,10 @@ export const api = {
   regionVariables: (domainId: string, params: Record<string, string> = {}) => {
     const q = new URLSearchParams(params).toString();
     return get<RegionVariables>(`/stats/regions/${domainId}/variables/${q ? `?${q}` : ""}`);
+  },
+  regionProfile: (domainId: string, params: Record<string, string> = {}) => {
+    const q = new URLSearchParams(params).toString();
+    return get<RegionProfile>(`/stats/regions/${domainId}/profile/${q ? `?${q}` : ""}`);
   },
   ranking: (variableId: string, params: Record<string, string> = {}) => {
     const q = new URLSearchParams(params).toString();
