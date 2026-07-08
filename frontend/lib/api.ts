@@ -26,6 +26,24 @@ export type VariableRow = {
   data_point_count: number;
   year_min: number | null;
   year_max: number | null;
+  admin_levels?: string[];
+};
+
+export type RegionVariables = {
+  region: Region;
+  total_variables: number;
+  total_data_points: number;
+  year_min: number | null;
+  year_max: number | null;
+  results: {
+    variable_id: string;
+    name: string;
+    unit: string;
+    subject_category: string;
+    data_point_count: number;
+    year_min: number | null;
+    year_max: number | null;
+  }[];
 };
 
 export type Paginated<T> = { count: number; next: string | null; previous: string | null; results: T[] };
@@ -59,6 +77,7 @@ export type Region = {
   domain_name: string;
   admin_level: string;
   parent_province_id: string | null;
+  parent_province_name?: string | null;
 };
 
 async function get<T>(path: string): Promise<T> {
@@ -86,6 +105,10 @@ export const api = {
   regions: (params: Record<string, string> = {}) => {
     const q = new URLSearchParams(params).toString();
     return get<Region[]>(`/stats/regions/${q ? `?${q}` : ""}`);
+  },
+  regionVariables: (domainId: string, params: Record<string, string> = {}) => {
+    const q = new URLSearchParams(params).toString();
+    return get<RegionVariables>(`/stats/regions/${domainId}/variables/${q ? `?${q}` : ""}`);
   },
 };
 

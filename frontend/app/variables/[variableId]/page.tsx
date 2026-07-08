@@ -18,6 +18,14 @@ const LEVEL_LABEL: Record<string, string> = {
   regency: "Kabupaten/Kota",
 };
 
+// BPS domain codes encode the admin level: 0000 national, NN00 province,
+// anything else a kabupaten/kota. Lets a ?region= deep-link pick the level.
+function levelFromDomainId(id: string): string {
+  if (id === "0000") return "national";
+  if (/^\d{2}00$/.test(id)) return "province";
+  return "regency";
+}
+
 export default function VariableDetailPage({ params }: { params: { variableId: string } }) {
   const { variableId } = params;
   const [dims, setDims] = useState<Dimensions | null>(null);
@@ -37,8 +45,11 @@ export default function VariableDetailPage({ params }: { params: { variableId: s
     [dims]
   );
 
-  // 1) Load dimensions and set sensible defaults.
+  // 1) Load dimensions and set sensible defaults. Honors a ?region= deep
+  //    link (from the region pages) by pre-focusing that region's level.
   useEffect(() => {
+    const preRegion =
+      typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("region") : null;
     api
       .dimensions(variableId)
       .then((d) => {
@@ -47,7 +58,13 @@ export default function VariableDetailPage({ params }: { params: { variableId: s
         setTurvarId(total ? total.turvar_id : d.turvars[0]?.turvar_id ?? "");
         const geo = d.admin_levels.some((l) => l === "province" || l === "regency");
         if (geo) {
-          setAdminLevel(d.admin_levels.includes("province") ? "province" : d.admin_levels[0]);
+          const preLevel = preRegion ? levelFromDomainId(preRegion) : null;
+          if (preRegion && preLevel && d.admin_levels.includes(preLevel)) {
+            setAdminLevel(preLevel);
+            setSelected([preRegion]);
+          } else {
+            setAdminLevel(d.admin_levels.includes("province") ? "province" : d.admin_levels[0]);
+          }
         } else {
           // Non-geographic: compare the first few vervar classifications.
           setSelected(d.vervars.slice(0, 6).map((v) => v.vervar_id));
@@ -56,12 +73,15 @@ export default function VariableDetailPage({ params }: { params: { variableId: s
       .catch((e) => setError(String(e)));
   }, [variableId]);
 
-  // 2) Geographic: load the region list for the chosen admin level.
+  // 2) Geographic: load the region list for the chosen admin level. Keep any
+  //    already-selected regions that belong to this level (so a deep-linked
+  //    region survives); otherwise default to the first few.
   useEffect(() => {
     if (!isGeographic || !adminLevel) return;
     api.regions({ admin_level: adminLevel }).then((rs) => {
       setRegions(rs);
-      setSelected(rs.slice(0, 5).map((r) => r.domain_id));
+      const ids = new Set(rs.map((r) => r.domain_id));
+      setSelected((cur) => (cur.some((id) => ids.has(id)) ? cur : rs.slice(0, 5).map((r) => r.domain_id)));
     });
   }, [isGeographic, adminLevel]);
 

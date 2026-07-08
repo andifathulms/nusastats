@@ -1,17 +1,30 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { api, formatNumber, type Paginated, type VariableRow } from "@/lib/api";
+import { api, formatNumber, type Paginated, type Summary, type VariableRow } from "@/lib/api";
 import { Badge, Panel, VariableLink } from "@/components/ui";
+
+const LEVELS = [
+  { v: "", label: "All levels" },
+  { v: "national", label: "National" },
+  { v: "province", label: "Province" },
+  { v: "regency", label: "Kabupaten/Kota" },
+];
 
 export default function VariablesPage() {
   const [keyword, setKeyword] = useState("");
   const [debounced, setDebounced] = useState("");
+  const [category, setCategory] = useState("");
+  const [adminLevel, setAdminLevel] = useState("");
   const [page, setPage] = useState(1);
   const [data, setData] = useState<Paginated<VariableRow> | null>(null);
+  const [categories, setCategories] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
 
-  // Debounce the search box so we don't fire a request per keystroke.
+  useEffect(() => {
+    api.summary().then((s: Summary) => setCategories(s.by_category.map((c) => c.category)));
+  }, []);
+
   useEffect(() => {
     const t = setTimeout(() => {
       setDebounced(keyword);
@@ -20,35 +33,59 @@ export default function VariablesPage() {
     return () => clearTimeout(t);
   }, [keyword]);
 
+  // Reset to page 1 when a filter changes.
+  useEffect(() => setPage(1), [category, adminLevel]);
+
   useEffect(() => {
     setLoading(true);
     const params: Record<string, string> = { page: String(page) };
     if (debounced) params.keyword = debounced;
+    if (category) params.category = category;
+    if (adminLevel) params.admin_level = adminLevel;
     api
       .variables(params)
       .then(setData)
       .finally(() => setLoading(false));
-  }, [debounced, page]);
+  }, [debounced, category, adminLevel, page]);
 
   const pageSize = 50;
   const totalPages = data ? Math.max(1, Math.ceil(data.count / pageSize)) : 1;
+  const selectClass =
+    "rounded-lg border border-ink-border bg-ink-panel px-3 py-2.5 text-sm text-ink-text focus:border-ink-accent focus:outline-none";
 
   return (
     <div className="space-y-5">
       <div>
         <h1 className="text-2xl font-semibold text-ink-text">Variables</h1>
         <p className="mt-1 text-sm text-ink-muted">
-          {data ? `${formatNumber(data.count)} indicators with real data` : "Loading…"} — click one to chart its
-          time series.
+          {data ? `${formatNumber(data.count)} indicators` : "Loading…"}
+          {(category || adminLevel) && " matching your filters"} — click one to chart its time series.
         </p>
       </div>
 
-      <input
-        value={keyword}
-        onChange={(e) => setKeyword(e.target.value)}
-        placeholder="Search indicators (e.g. harapan hidup, kemiskinan, inflasi)…"
-        className="w-full rounded-lg border border-ink-border bg-ink-panel px-4 py-2.5 text-sm text-ink-text placeholder:text-ink-muted focus:border-ink-accent focus:outline-none"
-      />
+      <div className="flex flex-col gap-3 sm:flex-row">
+        <input
+          value={keyword}
+          onChange={(e) => setKeyword(e.target.value)}
+          placeholder="Search (e.g. harapan hidup, kemiskinan, inflasi)…"
+          className="flex-1 rounded-lg border border-ink-border bg-ink-panel px-4 py-2.5 text-sm text-ink-text placeholder:text-ink-muted focus:border-ink-accent focus:outline-none"
+        />
+        <select value={category} onChange={(e) => setCategory(e.target.value)} className={selectClass}>
+          <option value="">All categories</option>
+          {categories.map((c) => (
+            <option key={c} value={c}>
+              {c}
+            </option>
+          ))}
+        </select>
+        <select value={adminLevel} onChange={(e) => setAdminLevel(e.target.value)} className={selectClass}>
+          {LEVELS.map((l) => (
+            <option key={l.v} value={l.v}>
+              {l.label}
+            </option>
+          ))}
+        </select>
+      </div>
 
       <Panel className="p-0 overflow-hidden">
         <div className="overflow-x-auto scroll-thin">
@@ -57,6 +94,7 @@ export default function VariablesPage() {
               <tr className="border-b border-ink-border text-left text-xs uppercase tracking-wide text-ink-muted">
                 <th className="px-4 py-3 font-medium">Indicator</th>
                 <th className="px-4 py-3 font-medium">Category</th>
+                <th className="px-4 py-3 font-medium">Levels</th>
                 <th className="px-4 py-3 font-medium text-right">Years</th>
                 <th className="px-4 py-3 font-medium text-right">Data points</th>
               </tr>
@@ -71,6 +109,15 @@ export default function VariablesPage() {
                   <td className="px-4 py-3">
                     <Badge>{v.subject_category}</Badge>
                   </td>
+                  <td className="px-4 py-3">
+                    <div className="flex gap-1">
+                      {(v.admin_levels ?? []).map((l) => (
+                        <span key={l} className="text-xs text-ink-muted" title={l}>
+                          {l[0].toUpperCase()}
+                        </span>
+                      ))}
+                    </div>
+                  </td>
                   <td className="px-4 py-3 text-right tabular-nums text-ink-muted">
                     {v.year_min && v.year_max ? `${v.year_min}–${v.year_max}` : "–"}
                   </td>
@@ -81,8 +128,8 @@ export default function VariablesPage() {
               ))}
               {data && data.results.length === 0 && (
                 <tr>
-                  <td colSpan={4} className="px-4 py-8 text-center text-ink-muted">
-                    No indicators match “{debounced}”.
+                  <td colSpan={5} className="px-4 py-8 text-center text-ink-muted">
+                    No indicators match your filters.
                   </td>
                 </tr>
               )}
