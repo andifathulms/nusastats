@@ -34,6 +34,10 @@ services:
     ports:
       - "8000:8000"
     env_file: backend/.env
+    environment:
+      # Allow the browser-side frontend (served from the mapped host port,
+      # e.g. localhost:3010) to call this API directly under CORS.
+      CORS_ALLOWED_ORIGINS: "http://localhost:3000,http://localhost:3010"
     depends_on:
       db:
         condition: service_healthy
@@ -55,6 +59,18 @@ services:
     volumes:
       - ./backend:/app
     env_file: backend/.env
+    depends_on:
+      - web
+
+  frontend:
+    build: ./frontend
+    command: npm run dev
+    volumes:
+      - ./frontend:/app
+      # Keep the image's node_modules — don't let the bind mount hide it.
+      - /app/node_modules
+    ports:
+      - "3000:3000"
     depends_on:
       - web
 
