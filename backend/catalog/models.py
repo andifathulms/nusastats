@@ -99,6 +99,19 @@ class Variable(models.Model):
     name = models.CharField(max_length=500)
     unit = models.CharField(max_length=255, blank=True)
     note = models.TextField(blank=True)
+    # Denormalized data-availability figures, refreshed after each ingest
+    # (stats.aggregates.refresh_variable_stats). They let the browse/filter
+    # API answer "how much data, which years, which admin levels" from a
+    # ~1,700-row table instead of aggregating the 2.7M-row DataPoint table
+    # on every request (browse dropped from ~1-2s to a few ms).
+    stat_data_points = models.PositiveIntegerField(default=0)
+    stat_year_min = models.PositiveIntegerField(null=True, blank=True)
+    stat_year_max = models.PositiveIntegerField(null=True, blank=True)
+    # Comma-joined admin levels present (e.g. "national,province,regency").
+    # A CharField (not JSON) so the `contains` filter works identically on
+    # SQLite (tests) and Postgres; the level names are distinct enough that
+    # none is a substring of another, so a plain contains is unambiguous.
+    stat_admin_levels = models.CharField(max_length=64, blank=True, default="")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

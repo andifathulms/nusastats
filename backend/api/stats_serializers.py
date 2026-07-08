@@ -12,21 +12,27 @@ from stats.models import DataPoint
 
 class RegionSerializer(serializers.ModelSerializer):
     parent_province_id = serializers.CharField(source="parent_province.domain_id", default=None)
+    parent_province_name = serializers.CharField(source="parent_province.domain_name", default=None)
 
     class Meta:
         model = Domain
-        fields = ["domain_id", "domain_name", "admin_level", "parent_province_id"]
+        fields = ["domain_id", "domain_name", "admin_level", "parent_province_id", "parent_province_name"]
 
 
 class VariableWithDataSerializer(serializers.ModelSerializer):
-    """A Variable annotated (in the view) with data-availability figures,
-    so a browser UI can show 'how much is here' without a second call."""
+    """A Variable with its denormalized data-availability figures (see
+    Variable.stat_* fields), so a browser UI can show 'how much is here'
+    without aggregating the DataPoint table per request."""
 
     subject_name = serializers.CharField(source="subject.name", read_only=True)
     subject_category = serializers.CharField(source="subject.subject_category.name", read_only=True)
-    data_point_count = serializers.IntegerField(read_only=True)
-    year_min = serializers.IntegerField(read_only=True)
-    year_max = serializers.IntegerField(read_only=True)
+    data_point_count = serializers.IntegerField(source="stat_data_points", read_only=True)
+    year_min = serializers.IntegerField(source="stat_year_min", read_only=True)
+    year_max = serializers.IntegerField(source="stat_year_max", read_only=True)
+    admin_levels = serializers.SerializerMethodField()
+
+    def get_admin_levels(self, obj) -> list:
+        return obj.stat_admin_levels.split(",") if obj.stat_admin_levels else []
 
     class Meta:
         model = Variable
@@ -40,6 +46,7 @@ class VariableWithDataSerializer(serializers.ModelSerializer):
             "data_point_count",
             "year_min",
             "year_max",
+            "admin_levels",
         ]
 
 

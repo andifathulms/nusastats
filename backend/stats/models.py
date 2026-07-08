@@ -58,6 +58,10 @@ class DataPoint(models.Model):
             models.Index(fields=["domain", "period"]),
             models.Index(fields=["variable", "period"]),
             models.Index(fields=["admin_level", "year"]),
+            # Speeds up "which variables have data at admin level X" (the
+            # variables-page admin_level filter) — a DISTINCT variable scan
+            # that otherwise reads ~1.9M regency rows (~2s -> ~0.1s).
+            models.Index(fields=["admin_level", "variable"]),
         ]
         ordering = ["variable_id", "domain_id", "period_id", "vervar_id", "turvar_id"]
 

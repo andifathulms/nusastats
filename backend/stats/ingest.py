@@ -194,4 +194,10 @@ def ingest_all_confirmed(client=None, use_cache=True, on_variable_done=None):
         if on_variable_done:
             on_variable_done(variable, count)
 
+    # Keep the denormalized browse/filter figures in sync with what was
+    # just ingested (see stats.aggregates).
+    from .aggregates import refresh_variable_stats
+
+    refresh_variable_stats()
+
     return {"data_points": total_points, "variables": variables_processed, "hard_stopped": hard_stopped}

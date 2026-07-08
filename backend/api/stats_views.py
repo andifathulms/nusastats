@@ -112,17 +112,12 @@ class VariableDataViewSet(viewsets.ReadOnlyModelViewSet):
     lookup_field = "variable_id"
 
     def get_queryset(self):
-        # Only variables that actually have ingested data points — the
-        # whole point of this endpoint is browsable real data.
+        # Only variables that actually have ingested data points. Reads the
+        # denormalized stat_* fields (refreshed after each ingest) rather
+        # than aggregating the 2.7M-row DataPoint table per request.
         return (
-            Variable.objects.filter(data_points__isnull=False)
-            .distinct()
+            Variable.objects.filter(stat_data_points__gt=0)
             .select_related("subject", "subject__subject_category")
-            .annotate(
-                data_point_count=Count("data_points"),
-                year_min=Min("data_points__year"),
-                year_max=Max("data_points__year"),
-            )
             .order_by("subject__subject_category__name", "name")
         )
 
@@ -204,7 +199,9 @@ class VariableDataViewSet(viewsets.ReadOnlyModelViewSet):
 
 
 class RegionViewSet(viewsets.ReadOnlyModelViewSet):
-    """`/api/stats/regions/` — domains for region pickers/comparisons."""
+    """`/api/stats/regions/` — domains for region pickers/comparisons, plus
+    `/api/stats/regions/{domain_id}/variables/` for the region-centric view
+    (what data a given province/kabupaten actually has)."""
 
     serializer_class = RegionSerializer
     filterset_class = RegionFilter
@@ -213,3 +210,57 @@ class RegionViewSet(viewsets.ReadOnlyModelViewSet):
 
     def get_queryset(self):
         return Domain.objects.select_related("parent_province").order_by("domain_id")
+
+    @action(detail=True, methods=["get"])
+    def variables(self, request, domain_id=None):
+        """`/api/stats/regions/{domain_id}/variables/` — every indicator
+        that has data for this region, with per-region counts and year
+        range, plus the region's headline totals. One grouped pass over
+        just this region's data points (not the whole 2.7M table).
+        """
+        region = self.get_object()
+
+        agg = {
+            row["variable_id"]: row
+            for row in DataPoint.objects.filter(domain=region)
+            .order_by()
+            .values("variable_id")
+            .annotate(count=Count("id"), ymin=Min("year"), ymax=Max("year"))
+        }
+
+        variables = (
+            Variable.objects.filter(id__in=list(agg))
+            .select_related("subject", "subject__subject_category")
+            .order_by("subject__subject_category__name", "name")
+        )
+        keyword = request.query_params.get("keyword")
+        if keyword:
+            variables = variables.filter(name__icontains=keyword)
+        category = request.query_params.get("category")
+        if category:
+            variables = variables.filter(subject__subject_category__name__icontains=category)
+
+        results = [
+            {
+                "variable_id": v.variable_id,
+                "name": v.name,
+                "unit": v.unit,
+                "subject_category": v.subject.subject_category.name,
+                "data_point_count": agg[v.id]["count"],
+                "year_min": agg[v.id]["ymin"],
+                "year_max": agg[v.id]["ymax"],
+            }
+            for v in variables
+        ]
+
+        all_years = [y for row in agg.values() for y in (row["ymin"], row["ymax"]) if y is not None]
+        return Response(
+            {
+                "region": RegionSerializer(region).data,
+                "total_variables": len(agg),
+                "total_data_points": sum(row["count"] for row in agg.values()),
+                "year_min": min(all_years) if all_years else None,
+                "year_max": max(all_years) if all_years else None,
+                "results": results,
+            }
+        )

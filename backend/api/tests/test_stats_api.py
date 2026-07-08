@@ -11,6 +11,7 @@ from catalog.models import (
     SubjectCategory,
     Variable,
 )
+from stats.aggregates import refresh_variable_stats
 from stats.models import DataPoint
 
 
@@ -44,6 +45,8 @@ def dataset(db):
                 vervar_id=domain.domain_id, vervar_label=domain.domain_name,
                 turvar_id="211", turvar_label="Laki-laki", value=70.0 + period.year, **common,
             )
+    # Populate the denormalized Variable.stat_* fields the browse API reads.
+    refresh_variable_stats()
     return var
 
 
@@ -116,3 +119,37 @@ def test_regions_list_filterable_by_admin_level(api_client, dataset):
     assert resp.status_code == 200
     codes = [r["domain_id"] for r in resp.data]
     assert codes == ["1100"]
+
+
+@pytest.mark.django_db
+def test_variables_filterable_by_admin_level(api_client, dataset):
+    # dataset has data at province + regency, not national.
+    at_regency = api_client.get("/api/stats/variables/", {"admin_level": "regency"})
+    assert [v["variable_id"] for v in at_regency.data["results"]] == ["455"]
+
+    at_national = api_client.get("/api/stats/variables/", {"admin_level": "national"})
+    assert at_national.data["results"] == []
+
+
+@pytest.mark.django_db
+def test_region_variables_lists_what_that_region_has(api_client, dataset):
+    resp = api_client.get("/api/stats/regions/1100/variables/")
+
+    assert resp.status_code == 200
+    assert resp.data["region"]["domain_id"] == "1100"
+    assert resp.data["total_variables"] == 1
+    assert resp.data["total_data_points"] == 2  # Aceh: 2 years, 1 turvar
+    assert resp.data["year_min"] == 2022
+    assert resp.data["year_max"] == 2023
+    row = resp.data["results"][0]
+    assert row["variable_id"] == "455"
+    assert row["data_point_count"] == 2
+
+
+@pytest.mark.django_db
+def test_region_variables_regency_scoped_to_that_regency(api_client, dataset):
+    resp = api_client.get("/api/stats/regions/1101/variables/")
+
+    assert resp.data["region"]["parent_province_id"] == "1100"
+    assert resp.data["region"]["parent_province_name"] == "Aceh"
+    assert resp.data["total_data_points"] == 2  # Simeulue's own 2 points only
