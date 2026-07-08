@@ -13,6 +13,7 @@ from rest_framework.views import APIView
 from catalog.models import AdminLevel, CoverageRecord, CoverageStatus, Domain, SubjectCategory, Variable
 from stats.models import DataPoint
 
+from .analytics import distribution, growth_rows, rank_rows
 from .stats_filters import RegionFilter, StatsVariableFilter
 from .stats_serializers import DataPointSerializer, RegionSerializer, VariableWithDataSerializer
 
@@ -194,6 +195,108 @@ class VariableDataViewSet(viewsets.ReadOnlyModelViewSet):
                 "unit": variable.unit,
                 "count": len(points),
                 "results": DataPointSerializer(points, many=True).data,
+            }
+        )
+
+    def _default_turvar(self, points):
+        """One turvar per region avoids double-counting when the caller
+        didn't specify a breakdown. Pick the lowest turvar_id present."""
+        return points.order_by("turvar_id").values_list("turvar_id", flat=True).first()
+
+    @action(detail=True, methods=["get"])
+    def ranking(self, request, variable_id=None):
+        """`/api/stats/variables/{id}/ranking/` — rank every region at an
+        admin level by this indicator's value for one year. Params:
+        admin_level (default province), year (default latest available),
+        turvar_id (default first present), order (desc|asc), limit.
+        Returns the ranked regions plus distribution stats for the spread.
+        """
+        variable = self.get_object()
+        admin_level = request.query_params.get("admin_level", AdminLevel.PROVINCE)
+        order = request.query_params.get("order", "desc")
+
+        points = DataPoint.objects.filter(variable=variable, admin_level=admin_level)
+        if not points.exists():
+            return Response(
+                {"variable_id": variable.variable_id, "name": variable.name, "unit": variable.unit,
+                 "admin_level": admin_level, "year": None, "stats": distribution([]), "results": []}
+            )
+
+        year = request.query_params.get("year")
+        year = int(year) if year else points.aggregate(m=Max("year"))["m"]
+        points = points.filter(year=year)
+
+        turvar_id = request.query_params.get("turvar_id") or self._default_turvar(points)
+        if turvar_id is not None:
+            points = points.filter(turvar_id=turvar_id)
+
+        rows = [
+            {"domain_id": p["domain__domain_id"], "domain_name": p["domain__domain_name"], "value": p["value"]}
+            for p in points.values("domain__domain_id", "domain__domain_name", "value")
+        ]
+        stats = distribution([r["value"] for r in rows])
+        ranked = rank_rows(rows, order=order)
+        limit = request.query_params.get("limit")
+        if limit:
+            ranked = ranked[: int(limit)]
+
+        return Response(
+            {
+                "variable_id": variable.variable_id,
+                "name": variable.name,
+                "unit": variable.unit,
+                "admin_level": admin_level,
+                "year": year,
+                "turvar_id": turvar_id,
+                "stats": stats,
+                "results": ranked,
+            }
+        )
+
+    @action(detail=True, methods=["get"])
+    def growth(self, request, variable_id=None):
+        """`/api/stats/variables/{id}/growth/` — per-region change between
+        two years, sorted fastest-rising to fastest-declining. Params:
+        admin_level (default province), year_from/year_to (default the
+        earliest/latest available), turvar_id, order.
+        """
+        variable = self.get_object()
+        admin_level = request.query_params.get("admin_level", AdminLevel.PROVINCE)
+        order = request.query_params.get("order", "desc")
+
+        base = DataPoint.objects.filter(variable=variable, admin_level=admin_level)
+        if not base.exists():
+            return Response(
+                {"variable_id": variable.variable_id, "name": variable.name, "unit": variable.unit,
+                 "admin_level": admin_level, "year_from": None, "year_to": None, "results": []}
+            )
+
+        yr = base.aggregate(lo=Min("year"), hi=Max("year"))
+        year_from = int(request.query_params.get("year_from") or yr["lo"])
+        year_to = int(request.query_params.get("year_to") or yr["hi"])
+
+        turvar_id = request.query_params.get("turvar_id") or self._default_turvar(base.filter(year=year_to))
+
+        def by_domain(year):
+            qs = base.filter(year=year)
+            if turvar_id is not None:
+                qs = qs.filter(turvar_id=turvar_id)
+            return {
+                p["domain__domain_id"]: (p["domain__domain_name"], p["value"])
+                for p in qs.values("domain__domain_id", "domain__domain_name", "value")
+            }
+
+        results = growth_rows(by_domain(year_from), by_domain(year_to), order=order)
+        return Response(
+            {
+                "variable_id": variable.variable_id,
+                "name": variable.name,
+                "unit": variable.unit,
+                "admin_level": admin_level,
+                "year_from": year_from,
+                "year_to": year_to,
+                "turvar_id": turvar_id,
+                "results": results,
             }
         )
 
