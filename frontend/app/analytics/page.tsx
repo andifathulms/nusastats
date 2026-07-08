@@ -4,10 +4,12 @@ import { useState } from "react";
 import { RankGrowthSection } from "@/components/RankGrowthSection";
 import { CorrelationSection } from "@/components/CorrelationSection";
 import { TrendSection } from "@/components/TrendSection";
+import { MapSection } from "@/components/MapSection";
 
-type Mode = "ranking" | "growth" | "trend" | "correlation";
+type Mode = "ranking" | "growth" | "trend" | "correlation" | "map";
 
 const MODES: { v: Mode; label: string; hint: string }[] = [
+  { v: "map", label: "Map", hint: "choropleth by province" },
   { v: "ranking", label: "Ranking", hint: "rank regions by an indicator" },
   { v: "growth", label: "Growth", hint: "year-over-year change per region" },
   { v: "trend", label: "National trend", hint: "national trajectory over time" },
@@ -15,7 +17,7 @@ const MODES: { v: Mode; label: string; hint: string }[] = [
 ];
 
 export default function AnalyticsPage() {
-  const [mode, setMode] = useState<Mode>("ranking");
+  const [mode, setMode] = useState<Mode>("map");
 
   return (
     <div className="space-y-6">
@@ -41,6 +43,7 @@ export default function AnalyticsPage() {
         ))}
       </div>
 
+      {mode === "map" && <MapSection />}
       {mode === "correlation" && <CorrelationSection />}
       {mode === "trend" && <TrendSection />}
       {(mode === "ranking" || mode === "growth") && <RankGrowthSection mode={mode} />}
