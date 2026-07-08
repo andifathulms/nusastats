@@ -5,6 +5,21 @@ Kept free of Django/DRF so they can be unit-tested directly on plain data.
 from statistics import mean, median
 
 
+def pearson(xs, ys):
+    """Pearson correlation coefficient for paired samples, or None if it's
+    undefined (fewer than 2 points, or a variable with zero variance)."""
+    n = len(xs)
+    if n < 2:
+        return None
+    mx, my = mean(xs), mean(ys)
+    cov = sum((x - mx) * (y - my) for x, y in zip(xs, ys))
+    vx = sum((x - mx) ** 2 for x in xs)
+    vy = sum((y - my) ** 2 for y in ys)
+    if vx == 0 or vy == 0:
+        return None
+    return round(cov / (vx**0.5 * vy**0.5), 4)
+
+
 def distribution(values):
     """Summary spread stats for a list of numeric values."""
     values = [v for v in values if v is not None]

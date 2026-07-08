@@ -13,9 +13,24 @@ from rest_framework.views import APIView
 from catalog.models import AdminLevel, CoverageRecord, CoverageStatus, Domain, SubjectCategory, Variable
 from stats.models import DataPoint
 
-from .analytics import distribution, growth_rows, rank_rows
+from .analytics import distribution, growth_rows, pearson, rank_rows
 from .stats_filters import RegionFilter, StatsVariableFilter
 from .stats_serializers import DataPointSerializer, RegionSerializer, VariableWithDataSerializer
+
+
+def region_values(variable, admin_level, year, turvar_id=None):
+    """{domain_id: (domain_name, value)} for one variable at an admin level
+    and year. Defaults to the lowest turvar present so each region yields a
+    single value rather than one per breakdown."""
+    qs = DataPoint.objects.filter(variable=variable, admin_level=admin_level, year=year)
+    if turvar_id is None:
+        turvar_id = qs.order_by("turvar_id").values_list("turvar_id", flat=True).first()
+    if turvar_id is not None:
+        qs = qs.filter(turvar_id=turvar_id)
+    return {
+        p["domain__domain_id"]: (p["domain__domain_name"], p["value"])
+        for p in qs.values("domain__domain_id", "domain__domain_name", "value")
+    }
 
 
 class SummaryView(APIView):
@@ -367,3 +382,64 @@ class RegionViewSet(viewsets.ReadOnlyModelViewSet):
                 "results": results,
             }
         )
+
+
+class CorrelateView(APIView):
+    """`/api/stats/correlate/?x=<var>&y=<var>` — relate two indicators
+    across regions: one point per region (x value, y value) for a year,
+    plus the Pearson correlation. Params: admin_level (default province),
+    year (default the latest year both indicators share), x_turvar_id,
+    y_turvar_id.
+    """
+
+    def get(self, request):
+        x_id = request.query_params.get("x")
+        y_id = request.query_params.get("y")
+        if not x_id or not y_id:
+            return Response({"detail": "x and y variable_id params are required."}, status=400)
+
+        xvar = Variable.objects.filter(variable_id=x_id, stat_data_points__gt=0).first()
+        yvar = Variable.objects.filter(variable_id=y_id, stat_data_points__gt=0).first()
+        if not xvar or not yvar:
+            return Response({"detail": "Unknown x or y indicator."}, status=404)
+
+        admin_level = request.query_params.get("admin_level", AdminLevel.PROVINCE)
+
+        def years_of(v):
+            return set(
+                DataPoint.objects.filter(variable=v, admin_level=admin_level)
+                .exclude(year__isnull=True)
+                .values_list("year", flat=True)
+            )
+
+        year_param = request.query_params.get("year")
+        if year_param:
+            year = int(year_param)
+        else:
+            common = years_of(xvar) & years_of(yvar)
+            year = max(common) if common else None
+
+        empty = {
+            "x": {"variable_id": xvar.variable_id, "name": xvar.name, "unit": xvar.unit},
+            "y": {"variable_id": yvar.variable_id, "name": yvar.name, "unit": yvar.unit},
+            "admin_level": admin_level,
+            "year": year,
+            "n": 0,
+            "r": None,
+            "results": [],
+        }
+        if year is None:
+            return Response(empty)
+
+        x_by = region_values(xvar, admin_level, year, request.query_params.get("x_turvar_id"))
+        y_by = region_values(yvar, admin_level, year, request.query_params.get("y_turvar_id"))
+
+        results = [
+            {"domain_id": d, "domain_name": x_by[d][0], "x": x_by[d][1], "y": y_by[d][1]}
+            for d in x_by
+            if d in y_by
+        ]
+        results.sort(key=lambda p: p["x"])
+        r = pearson([p["x"] for p in results], [p["y"] for p in results])
+
+        return Response({**empty, "n": len(results), "r": r, "results": results})

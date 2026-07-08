@@ -1,7 +1,7 @@
 import pytest
 from rest_framework.test import APIClient
 
-from api.analytics import distribution, growth_rows, rank_rows
+from api.analytics import distribution, growth_rows, pearson, rank_rows
 from catalog.models import AdminLevel, Domain, PeriodData, Subject, SubjectCategory, Variable
 from stats.aggregates import refresh_variable_stats
 from stats.models import DataPoint
@@ -26,6 +26,13 @@ def test_rank_rows_desc_and_asc():
     assert desc[0]["rank"] == 1
     asc = rank_rows([dict(r) for r in rows], "asc")
     assert [r["domain_id"] for r in asc] == ["a", "b"]
+
+
+def test_pearson_perfect_and_none():
+    assert pearson([1, 2, 3], [2, 4, 6]) == 1.0
+    assert pearson([1, 2, 3], [6, 4, 2]) == -1.0
+    assert pearson([1], [1]) is None  # too few
+    assert pearson([1, 1, 1], [1, 2, 3]) is None  # zero variance
 
 
 def test_growth_rows_computes_change_and_pct():
@@ -102,3 +109,37 @@ def test_growth_ranks_fastest_riser_first(api_client, dataset):
     # Aceh +2.94%, Sumut +1.39% -> Aceh first
     assert results[0]["domain_name"] == "Aceh"
     assert results[0]["value_from"] == 68.0 and results[0]["value_to"] == 70.0
+
+
+@pytest.mark.django_db
+def test_correlate_two_indicators_across_provinces(api_client, dataset):
+    # Add a second variable perfectly correlated with the first in 2024:
+    # Aceh y=140 (2*70), Sumut y=146 (2*73).
+    national = Domain.objects.get(domain_id="0000")
+    aceh = Domain.objects.get(domain_id="1100")
+    sumut = Domain.objects.get(domain_id="1200")
+    subject = dataset.subject
+    yvar = Variable.objects.create(variable_id="900", subject=subject, domain=national, name="Other", unit="idx")
+    p2024 = PeriodData.objects.create(period_id="124b", variable=yvar, label="2024", year=2024)
+    common = dict(variable=yvar, source_check_log=None, fetched_at="2026-01-01T00:00:00Z", turvar_id="0", turvar_label="")
+    for domain, value in [(aceh, 140.0), (sumut, 146.0)]:
+        DataPoint.objects.create(
+            domain=domain, period=p2024, admin_level="province", year=2024,
+            vervar_id=domain.domain_id, vervar_label=domain.domain_name, value=value, **common,
+        )
+    refresh_variable_stats()
+
+    resp = api_client.get("/api/stats/correlate/", {"x": "455", "y": "900", "year": "2024"})
+
+    assert resp.status_code == 200
+    assert resp.data["year"] == 2024
+    assert resp.data["n"] == 2
+    assert resp.data["r"] == 1.0  # perfectly correlated
+    pts = {p["domain_name"]: (p["x"], p["y"]) for p in resp.data["results"]}
+    assert pts["Aceh"] == (70.0, 140.0)
+
+
+@pytest.mark.django_db
+def test_correlate_requires_both_params(api_client, dataset):
+    resp = api_client.get("/api/stats/correlate/", {"x": "455"})
+    assert resp.status_code == 400

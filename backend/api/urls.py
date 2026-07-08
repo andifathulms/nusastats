@@ -1,7 +1,7 @@
 from django.urls import include, path
 from rest_framework.routers import DefaultRouter
 
-from .stats_views import RegionViewSet, SummaryView, VariableDataViewSet
+from .stats_views import CorrelateView, RegionViewSet, SummaryView, VariableDataViewSet
 from .views import CoverageExportView, SimdasiTableViewSet, VariableViewSet
 
 coverage_router = DefaultRouter()
@@ -16,5 +16,6 @@ urlpatterns = [
     path("coverage/export/", CoverageExportView.as_view(), name="coverage-export"),
     path("coverage/", include(coverage_router.urls)),
     path("stats/summary/", SummaryView.as_view(), name="stats-summary"),
+    path("stats/correlate/", CorrelateView.as_view(), name="stats-correlate"),
     path("stats/", include(stats_router.urls)),
 ]
