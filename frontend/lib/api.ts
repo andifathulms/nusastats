@@ -83,6 +83,16 @@ export type Ranking = {
   results: { domain_id: string; domain_name: string; value: number; rank: number }[];
 };
 
+export type Correlation = {
+  x: { variable_id: string; name: string; unit: string };
+  y: { variable_id: string; name: string; unit: string };
+  admin_level: string;
+  year: number | null;
+  n: number;
+  r: number | null;
+  results: { domain_id: string; domain_name: string; x: number; y: number }[];
+};
+
 export type Growth = {
   variable_id: string;
   name: string;
@@ -147,6 +157,10 @@ export const api = {
   growth: (variableId: string, params: Record<string, string> = {}) => {
     const q = new URLSearchParams(params).toString();
     return get<Growth>(`/stats/variables/${variableId}/growth/${q ? `?${q}` : ""}`);
+  },
+  correlate: (params: Record<string, string>) => {
+    const q = new URLSearchParams(params).toString();
+    return get<Correlation>(`/stats/correlate/?${q}`);
   },
 };
 
