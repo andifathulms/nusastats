@@ -1,0 +1,82 @@
+"use client";
+
+import { useEffect, useRef, useState } from "react";
+import { api, formatNumber, type VariableRow } from "@/lib/api";
+
+export type PickedVariable = { variable_id: string; name: string; unit: string };
+
+export function IndicatorPicker({
+  value,
+  onPick,
+}: {
+  value: PickedVariable | null;
+  onPick: (v: PickedVariable) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [q, setQ] = useState("");
+  const [rows, setRows] = useState<VariableRow[]>([]);
+  const boxRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const t = setTimeout(() => {
+      api.variables(q ? { keyword: q } : {}).then((d) => setRows(d.results));
+    }, 250);
+    return () => clearTimeout(t);
+  }, [q, open]);
+
+  useEffect(() => {
+    const onDoc = (e: MouseEvent) => {
+      if (boxRef.current && !boxRef.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", onDoc);
+    return () => document.removeEventListener("mousedown", onDoc);
+  }, []);
+
+  return (
+    <div ref={boxRef} className="relative">
+      <button
+        onClick={() => setOpen((o) => !o)}
+        className="w-full rounded-lg border border-ink-border bg-ink-panel px-4 py-2.5 text-left text-sm text-ink-text hover:border-ink-accent/60"
+      >
+        {value ? (
+          <span>
+            {value.name} {value.unit && <span className="text-ink-muted">({value.unit})</span>}
+          </span>
+        ) : (
+          <span className="text-ink-muted">Choose an indicator…</span>
+        )}
+      </button>
+      {open && (
+        <div className="absolute z-20 mt-1 w-full rounded-lg border border-ink-border bg-ink-panel shadow-xl">
+          <input
+            autoFocus
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="Search indicators…"
+            className="w-full rounded-t-lg border-b border-ink-border bg-ink-panel2 px-3 py-2 text-sm text-ink-text placeholder:text-ink-muted focus:outline-none"
+          />
+          <div className="max-h-72 overflow-y-auto scroll-thin">
+            {rows.map((r) => (
+              <button
+                key={r.id}
+                onClick={() => {
+                  onPick({ variable_id: r.variable_id, name: r.name, unit: r.unit });
+                  setOpen(false);
+                  setQ("");
+                }}
+                className="block w-full px-3 py-2 text-left text-sm text-ink-text hover:bg-ink-panel2"
+              >
+                <div className="truncate">{r.name}</div>
+                <div className="text-xs text-ink-muted">
+                  {r.subject_category} · {formatNumber(r.data_point_count)} points
+                </div>
+              </button>
+            ))}
+            {rows.length === 0 && <div className="px-3 py-4 text-sm text-ink-muted">No matches.</div>}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

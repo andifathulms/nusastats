@@ -26,6 +26,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <Link href="/regions" className="hover:text-ink-text transition-colors">
                 Regions
               </Link>
+              <Link href="/analytics" className="hover:text-ink-text transition-colors">
+                Analytics
+              </Link>
             </nav>
             <div className="ml-auto text-xs text-ink-muted">
               Data: BPS WebAPI · national + 34 provinces + 514 kabupaten/kota

@@ -72,6 +72,36 @@ export type DataPoint = {
 
 export type Series = { variable_id: string; name: string; unit: string; count: number; results: DataPoint[] };
 
+export type Ranking = {
+  variable_id: string;
+  name: string;
+  unit: string;
+  admin_level: string;
+  year: number | null;
+  turvar_id: string | null;
+  stats: { count: number; min: number | null; max: number | null; mean: number | null; median: number | null };
+  results: { domain_id: string; domain_name: string; value: number; rank: number }[];
+};
+
+export type Growth = {
+  variable_id: string;
+  name: string;
+  unit: string;
+  admin_level: string;
+  year_from: number | null;
+  year_to: number | null;
+  turvar_id: string | null;
+  results: {
+    domain_id: string;
+    domain_name: string;
+    value_from: number;
+    value_to: number;
+    change: number;
+    change_pct: number | null;
+    rank: number;
+  }[];
+};
+
 export type Region = {
   domain_id: string;
   domain_name: string;
@@ -109,6 +139,14 @@ export const api = {
   regionVariables: (domainId: string, params: Record<string, string> = {}) => {
     const q = new URLSearchParams(params).toString();
     return get<RegionVariables>(`/stats/regions/${domainId}/variables/${q ? `?${q}` : ""}`);
+  },
+  ranking: (variableId: string, params: Record<string, string> = {}) => {
+    const q = new URLSearchParams(params).toString();
+    return get<Ranking>(`/stats/variables/${variableId}/ranking/${q ? `?${q}` : ""}`);
+  },
+  growth: (variableId: string, params: Record<string, string> = {}) => {
+    const q = new URLSearchParams(params).toString();
+    return get<Growth>(`/stats/variables/${variableId}/growth/${q ? `?${q}` : ""}`);
   },
 };
 
