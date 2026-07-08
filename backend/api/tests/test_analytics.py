@@ -1,7 +1,7 @@
 import pytest
 from rest_framework.test import APIClient
 
-from api.analytics import distribution, growth_rows, pearson, rank_rows
+from api.analytics import distribution, growth_rows, pearson, percentile_rank, rank_rows
 from catalog.models import AdminLevel, Domain, PeriodData, Subject, SubjectCategory, Variable
 from stats.aggregates import refresh_variable_stats
 from stats.models import DataPoint
@@ -26,6 +26,15 @@ def test_rank_rows_desc_and_asc():
     assert desc[0]["rank"] == 1
     asc = rank_rows([dict(r) for r in rows], "asc")
     assert [r["domain_id"] for r in asc] == ["a", "b"]
+
+
+def test_percentile_rank():
+    # value 9 among [5,9] -> highest -> rank 1 of 2, percentile 100
+    assert percentile_rank(9, [5, 9]) == (1, 2, 100)
+    assert percentile_rank(5, [5, 9]) == (2, 2, 0)
+    # middle of three
+    assert percentile_rank(7, [5, 7, 9]) == (2, 3, 50)
+    assert percentile_rank(1, []) == (None, 0, None)
 
 
 def test_pearson_perfect_and_none():
@@ -143,6 +152,28 @@ def test_correlate_two_indicators_across_provinces(api_client, dataset):
 def test_correlate_requires_both_params(api_client, dataset):
     resp = api_client.get("/api/stats/correlate/", {"x": "455"})
     assert resp.status_code == 400
+
+
+@pytest.mark.django_db
+def test_region_profile_ranks_region_among_peers(api_client, dataset):
+    # dataset: Aceh (68->70) and Sumut (72->73) at province level for var 455.
+    # In 2024, Aceh=70 is lowest of 2 provinces -> rank 2, percentile 0.
+    resp = api_client.get("/api/stats/regions/1100/profile/")
+
+    assert resp.status_code == 200
+    assert resp.data["region"]["domain_name"] == "Aceh"
+    row = next(r for r in resp.data["results"] if r["variable_id"] == "455")
+    assert row["year"] == 2024
+    assert row["value"] == 70.0
+    assert row["rank"] == 2 and row["of"] == 2
+    assert row["percentile"] == 0
+
+
+@pytest.mark.django_db
+def test_region_profile_national_has_no_peers(api_client, dataset):
+    resp = api_client.get("/api/stats/regions/0000/profile/")
+    assert resp.status_code == 200
+    assert resp.data["results"] == []
 
 
 @pytest.mark.django_db

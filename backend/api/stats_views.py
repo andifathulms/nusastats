@@ -4,6 +4,8 @@ needs. Kept separate from views.py (the coverage-metadata API) so the two
 concerns stay distinct.
 """
 
+from collections import defaultdict
+
 from django.db.models import Avg, Count, Max, Min
 from rest_framework import viewsets
 from rest_framework.decorators import action
@@ -13,7 +15,7 @@ from rest_framework.views import APIView
 from catalog.models import AdminLevel, CoverageRecord, CoverageStatus, Domain, SubjectCategory, Variable
 from stats.models import DataPoint
 
-from .analytics import distribution, growth_rows, pearson, rank_rows
+from .analytics import distribution, growth_rows, pearson, percentile_rank, rank_rows
 from .stats_filters import RegionFilter, StatsVariableFilter
 from .stats_serializers import DataPointSerializer, RegionSerializer, VariableWithDataSerializer
 
@@ -447,6 +449,88 @@ class RegionViewSet(viewsets.ReadOnlyModelViewSet):
                 "results": results,
             }
         )
+
+    @action(detail=True, methods=["get"])
+    def profile(self, request, domain_id=None):
+        """`/api/stats/regions/{domain_id}/profile/` — how this region ranks
+        against its peers (other regions at the same admin level) across its
+        indicators. For each indicator (top `limit` by data volume, default
+        40) it reports the region's latest value, rank, and percentile
+        (100 = top-ranked, 0 = bottom). National has no peers -> empty.
+        """
+        region = self.get_object()
+        if region.admin_level == AdminLevel.NATIONAL:
+            return Response({"region": RegionSerializer(region).data, "results": []})
+
+        limit = int(request.query_params.get("limit", 40))
+        # Top indicators for this region by data volume, with the latest year
+        # each has here. (query 1)
+        agg = list(
+            DataPoint.objects.filter(domain=region)
+            .order_by()
+            .values("variable_id")
+            .annotate(c=Count("id"), ymax=Max("year"))
+            .order_by("-c")[:limit]
+        )
+        ymax_by_pk = {a["variable_id"]: a["ymax"] for a in agg}
+        var_pks = list(ymax_by_pk)
+        vars_by_pk = {
+            v.id: v
+            for v in Variable.objects.filter(id__in=var_pks).select_related("subject", "subject__subject_category")
+        }
+
+        # The region's own latest-year value per indicator (lowest turvar at
+        # that year), in one query rather than one per indicator. (query 2)
+        own = {}  # var_pk -> (year, turvar_id, value)
+        for r in DataPoint.objects.filter(domain=region, variable_id__in=var_pks).values(
+            "variable_id", "year", "turvar_id", "value"
+        ):
+            vpk = r["variable_id"]
+            if r["year"] != ymax_by_pk.get(vpk):
+                continue
+            cur = own.get(vpk)
+            if cur is None or r["turvar_id"] < cur[1]:
+                own[vpk] = (r["year"], r["turvar_id"], r["value"])
+
+        # Peers (same admin level) for exactly those (indicator, year, turvar)
+        # combos, in one query; matched precisely in Python. (query 3)
+        peers_by_pk = defaultdict(list)
+        if own:
+            years = {y for (y, _, _) in own.values()}
+            turvars = {tv for (_, tv, _) in own.values()}
+            for r in DataPoint.objects.filter(
+                admin_level=region.admin_level,
+                variable_id__in=list(own),
+                year__in=years,
+                turvar_id__in=turvars,
+            ).values("variable_id", "year", "turvar_id", "value"):
+                y, tv, _ = own[r["variable_id"]]
+                if r["year"] == y and r["turvar_id"] == tv:
+                    peers_by_pk[r["variable_id"]].append(r["value"])
+
+        results = []
+        for vpk, (year, _turvar, value) in own.items():
+            variable = vars_by_pk.get(vpk)
+            if not variable:
+                continue
+            rank, of, pct = percentile_rank(value, peers_by_pk.get(vpk, []))
+            results.append(
+                {
+                    "variable_id": variable.variable_id,
+                    "name": variable.name,
+                    "unit": variable.unit,
+                    "subject_category": variable.subject.subject_category.name,
+                    "year": year,
+                    "value": value,
+                    "rank": rank,
+                    "of": of,
+                    "percentile": pct,
+                }
+            )
+
+        # Strongest standings first.
+        results.sort(key=lambda r: (r["percentile"] is not None, r["percentile"] or 0), reverse=True)
+        return Response({"region": RegionSerializer(region).data, "count": len(results), "results": results})
 
 
 class CorrelateView(APIView):

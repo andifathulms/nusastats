@@ -20,6 +20,17 @@ def pearson(xs, ys):
     return round(cov / (vx**0.5 * vy**0.5), 4)
 
 
+def percentile_rank(value, peers):
+    """(rank, of, percentile) for `value` within `peers` (a region's value
+    among all regions). rank 1 = highest; percentile 100 = top, 0 = bottom."""
+    of = len(peers)
+    if of == 0:
+        return (None, 0, None)
+    rank = 1 + sum(1 for p in peers if p > value)
+    pct = round((of - rank) / (of - 1) * 100) if of > 1 else 100
+    return (rank, of, pct)
+
+
 def distribution(values):
     """Summary spread stats for a list of numeric values."""
     values = [v for v in values if v is not None]
