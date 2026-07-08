@@ -143,3 +143,18 @@ def test_correlate_two_indicators_across_provinces(api_client, dataset):
 def test_correlate_requires_both_params(api_client, dataset):
     resp = api_client.get("/api/stats/correlate/", {"x": "455"})
     assert resp.status_code == 400
+
+
+@pytest.mark.django_db
+def test_trend_returns_provincial_band_and_change(api_client, dataset):
+    # dataset: Aceh 68->70, Sumut 72->73 across 2020->2024, province level.
+    resp = api_client.get("/api/stats/variables/455/trend/")
+
+    assert resp.status_code == 200
+    assert resp.data["has_national"] is False
+    rows = {r["year"]: r for r in resp.data["results"]}
+    assert rows[2020]["prov_min"] == 68.0 and rows[2020]["prov_max"] == 72.0
+    assert rows[2020]["prov_mean"] == 70.0  # (68+72)/2
+    assert rows[2024]["prov_mean"] == 71.5  # (70+73)/2
+    # change on prov_mean line: 70 -> 71.5 = +2.14%
+    assert resp.data["change_pct"] == 2.14

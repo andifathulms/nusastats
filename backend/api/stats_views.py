@@ -4,7 +4,7 @@ needs. Kept separate from views.py (the coverage-metadata API) so the two
 concerns stay distinct.
 """
 
-from django.db.models import Count, Max, Min
+from django.db.models import Avg, Count, Max, Min
 from rest_framework import viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -265,6 +265,71 @@ class VariableDataViewSet(viewsets.ReadOnlyModelViewSet):
                 "turvar_id": turvar_id,
                 "stats": stats,
                 "results": ranked,
+            }
+        )
+
+    @action(detail=True, methods=["get"])
+    def trend(self, request, variable_id=None):
+        """`/api/stats/variables/{id}/trend/` — the national trajectory over
+        time: per year the national value (if the indicator has a national
+        aggregate) plus the mean/min/max across provinces (a disparity
+        band). Params: turvar_id (default lowest present). Also returns the
+        overall change and CAGR of whichever line exists.
+        """
+        variable = self.get_object()
+        turvar_id = request.query_params.get("turvar_id")
+
+        def with_turvar(qs):
+            tv = turvar_id or qs.order_by("turvar_id").values_list("turvar_id", flat=True).first()
+            return qs.filter(turvar_id=tv) if tv is not None else qs
+
+        nat = {
+            r["year"]: r["v"]
+            for r in with_turvar(DataPoint.objects.filter(variable=variable, admin_level=AdminLevel.NATIONAL))
+            .exclude(year__isnull=True)
+            .values("year")
+            .annotate(v=Avg("value"))
+        }
+        prov = {
+            r["year"]: r
+            for r in with_turvar(DataPoint.objects.filter(variable=variable, admin_level=AdminLevel.PROVINCE))
+            .exclude(year__isnull=True)
+            .values("year")
+            .annotate(mean=Avg("value"), lo=Min("value"), hi=Max("value"))
+        }
+
+        years = sorted(set(nat) | set(prov))
+        rows = [
+            {
+                "year": y,
+                "national": round(nat[y], 4) if y in nat else None,
+                "prov_mean": round(prov[y]["mean"], 4) if y in prov else None,
+                "prov_min": prov[y]["lo"] if y in prov else None,
+                "prov_max": prov[y]["hi"] if y in prov else None,
+            }
+            for y in years
+        ]
+
+        # Headline change/CAGR on whichever line exists (national preferred).
+        line = [(r["year"], r["national"] if r["national"] is not None else r["prov_mean"]) for r in rows]
+        line = [(y, v) for y, v in line if v is not None]
+        change = cagr = None
+        if len(line) >= 2 and line[0][1]:
+            first_v, last_v = line[0][1], line[-1][1]
+            span = line[-1][0] - line[0][0]
+            change = round((last_v - first_v) / first_v * 100, 2)
+            if span > 0 and first_v > 0 and last_v > 0:
+                cagr = round(((last_v / first_v) ** (1 / span) - 1) * 100, 2)
+
+        return Response(
+            {
+                "variable_id": variable.variable_id,
+                "name": variable.name,
+                "unit": variable.unit,
+                "has_national": bool(nat),
+                "change_pct": change,
+                "cagr_pct": cagr,
+                "results": rows,
             }
         )
 
