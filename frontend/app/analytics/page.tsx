@@ -3,12 +3,14 @@
 import { useState } from "react";
 import { RankGrowthSection } from "@/components/RankGrowthSection";
 import { CorrelationSection } from "@/components/CorrelationSection";
+import { TrendSection } from "@/components/TrendSection";
 
-type Mode = "ranking" | "growth" | "correlation";
+type Mode = "ranking" | "growth" | "trend" | "correlation";
 
 const MODES: { v: Mode; label: string; hint: string }[] = [
   { v: "ranking", label: "Ranking", hint: "rank regions by an indicator" },
   { v: "growth", label: "Growth", hint: "year-over-year change per region" },
+  { v: "trend", label: "National trend", hint: "national trajectory over time" },
   { v: "correlation", label: "Correlation", hint: "relate two indicators" },
 ];
 
@@ -39,7 +41,9 @@ export default function AnalyticsPage() {
         ))}
       </div>
 
-      {mode === "correlation" ? <CorrelationSection /> : <RankGrowthSection mode={mode} />}
+      {mode === "correlation" && <CorrelationSection />}
+      {mode === "trend" && <TrendSection />}
+      {(mode === "ranking" || mode === "growth") && <RankGrowthSection mode={mode} />}
     </div>
   );
 }

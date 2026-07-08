@@ -83,6 +83,22 @@ export type Ranking = {
   results: { domain_id: string; domain_name: string; value: number; rank: number }[];
 };
 
+export type Trend = {
+  variable_id: string;
+  name: string;
+  unit: string;
+  has_national: boolean;
+  change_pct: number | null;
+  cagr_pct: number | null;
+  results: {
+    year: number;
+    national: number | null;
+    prov_mean: number | null;
+    prov_min: number | null;
+    prov_max: number | null;
+  }[];
+};
+
 export type Correlation = {
   x: { variable_id: string; name: string; unit: string };
   y: { variable_id: string; name: string; unit: string };
@@ -161,6 +177,10 @@ export const api = {
   correlate: (params: Record<string, string>) => {
     const q = new URLSearchParams(params).toString();
     return get<Correlation>(`/stats/correlate/?${q}`);
+  },
+  trend: (variableId: string, params: Record<string, string> = {}) => {
+    const q = new URLSearchParams(params).toString();
+    return get<Trend>(`/stats/variables/${variableId}/trend/${q ? `?${q}` : ""}`);
   },
 };
 
