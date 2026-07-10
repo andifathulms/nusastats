@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import {
   CartesianGrid,
+  Cell,
   ResponsiveContainer,
   Scatter,
   ScatterChart,
@@ -14,6 +15,7 @@ import {
 import {
   dukcapilApi,
   formatNumber,
+  groupColor,
   regionLabel,
   type DukcapilCorrelation as Corr,
   type DukcapilIndicatorGroups,
@@ -109,11 +111,23 @@ export function DukcapilCorrelation({ groups }: { groups: DukcapilIndicatorGroup
   const [regencies, setRegencies] = useState<DukcapilRegionRow[]>([]);
   const [selProv, setSelProv] = useState("");
   const [selKab, setSelKab] = useState("");
+  const [colorBy, setColorBy] = useState<"none" | "province" | "regency">("none");
+  const [nameMaps, setNameMaps] = useState<{ province: Record<string, string>; regency: Record<string, string> }>({
+    province: {},
+    regency: {},
+  });
   const [data, setData] = useState<Corr | null>(null);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     dukcapilApi.regions({ level: "province" }).then(setProvinces);
+    Promise.all([dukcapilApi.regions({ level: "province" }), dukcapilApi.regions({ level: "regency" })]).then(
+      ([prov, reg]) =>
+        setNameMaps({
+          province: Object.fromEntries(prov.map((x) => [x.code, regionLabel(x.name, x.status)])),
+          regency: Object.fromEntries(reg.map((x) => [x.code, regionLabel(x.name, x.status)])),
+        })
+    );
   }, []);
   useEffect(() => {
     if (!selProv) {
@@ -147,6 +161,23 @@ export function DukcapilCorrelation({ groups }: { groups: DukcapilIndicatorGroup
 
   const rDesc = describeR(data?.r ?? null);
   const levelLabel = LEVELS.find(([v]) => v === level)?.[1] ?? level;
+
+  const colorDims: ["province" | "regency", string][] =
+    level === "regency"
+      ? [["province", "Provinsi"]]
+      : level === "district" || level === "village"
+      ? [["province", "Provinsi"], ["regency", "Kab/Kota"]]
+      : [];
+  const effColorBy = colorDims.some(([v]) => v === colorBy) ? colorBy : "none";
+  const groupOf = (code: string) =>
+    effColorBy === "province" ? code.slice(0, 2) : effColorBy === "regency" ? code.slice(0, 4) : "";
+  const legend =
+    effColorBy === "none"
+      ? []
+      : Array.from(new Set((data?.results ?? []).map((p) => groupOf(p.domain_id)))).map((g) => ({
+          code: g,
+          name: nameMaps[effColorBy][g] ?? g,
+        }));
 
   return (
     <div className="space-y-6">
@@ -188,6 +219,21 @@ export function DukcapilCorrelation({ groups }: { groups: DukcapilIndicatorGroup
               disabled={!selProv}
               placeholder={level === "village" ? "Pilih kab/kota" : "Semua kab/kota"}
             />
+          )}
+          {colorDims.length > 0 && (
+            <select
+              value={effColorBy}
+              onChange={(e) => setColorBy(e.target.value as "none" | "province" | "regency")}
+              className="rounded-lg border border-ink-border bg-ink-panel px-3 py-2 text-sm text-ink-text focus:border-ink-accent/60 focus:outline-none"
+              title="Warnai titik menurut wilayah induk"
+            >
+              <option value="none">Warnai: —</option>
+              {colorDims.map(([v, lbl]) => (
+                <option key={v} value={v}>
+                  Warnai: {lbl}
+                </option>
+              ))}
+            </select>
           )}
         </div>
       </Panel>
@@ -262,9 +308,22 @@ export function DukcapilCorrelation({ groups }: { groups: DukcapilIndicatorGroup
                     );
                   }}
                 />
-                <Scatter data={data.results} fill="#8b5e3c" fillOpacity={0.75} />
+                <Scatter data={data.results} fill="#8b5e3c" fillOpacity={0.75}>
+                  {effColorBy !== "none" &&
+                    data.results.map((p) => <Cell key={p.domain_id} fill={groupColor(groupOf(p.domain_id))} />)}
+                </Scatter>
               </ScatterChart>
             </ResponsiveContainer>
+            {legend.length > 0 && (
+              <div className="mt-3 flex flex-wrap gap-x-3 gap-y-1 text-[11px]">
+                {legend.map((g) => (
+                  <span key={g.code} className="inline-flex items-center gap-1">
+                    <span className="h-2 w-2 rounded-sm" style={{ background: groupColor(g.code) }} />
+                    <span className="text-ink-muted">{g.name}</span>
+                  </span>
+                ))}
+              </div>
+            )}
           </Panel>
         </>
       ) : (

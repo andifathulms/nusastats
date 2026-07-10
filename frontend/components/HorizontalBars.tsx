@@ -2,7 +2,7 @@
 
 import { Bar, BarChart, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 
-export type BarDatum = { label: string; value: number; highlight?: boolean };
+export type BarDatum = { label: string; value: number; highlight?: boolean; color?: string };
 
 export function HorizontalBars({
   data,
@@ -46,7 +46,7 @@ export function HorizontalBars({
           {data.map((d, i) => (
             <Cell
               key={i}
-              fill={colorNeg && d.value < 0 ? colorNeg : d.highlight ? "#1f7a45" : colorPos}
+              fill={d.color ?? (colorNeg && d.value < 0 ? colorNeg : d.highlight ? "#1f7a45" : colorPos)}
             />
           ))}
         </Bar>

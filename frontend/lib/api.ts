@@ -259,6 +259,17 @@ export function regionLabel(name: string, status?: string): string {
   return name;
 }
 
+// Deterministic distinct-ish colour for a grouping key (e.g. a province or
+// kabupaten code) — used to colour ranking bars / scatter points by ancestor.
+export function groupColor(key: string): string {
+  let h = 2166136261;
+  for (let i = 0; i < key.length; i++) {
+    h ^= key.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return `hsl(${Math.abs(h) % 360}, 52%, 45%)`;
+}
+
 const _KEEP_UPPER = new Set(["DKI", "DIY", "DI"]);
 // Title-case a raw UPPERCASE name (for geojson fallbacks / breadcrumb scope).
 export function titleCase(s: string): string {

@@ -5,6 +5,7 @@ import {
   DUKCAPIL_LEVELS,
   dukcapilApi,
   formatNumber,
+  groupColor,
   regionLabel,
   titleCase,
   type DukcapilCorrelation,
@@ -34,6 +35,11 @@ export default function DukcapilPage() {
   const [order, setOrder] = useState<"desc" | "asc">("desc");
   const [percentMode, setPercentMode] = useState(false);
   const [page, setPage] = useState(0);
+  const [colorBy, setColorBy] = useState<"none" | "province" | "regency">("none");
+  const [nameMaps, setNameMaps] = useState<{ province: Record<string, string>; regency: Record<string, string> }>({
+    province: {},
+    regency: {},
+  });
 
   // Cascading parent filters (province -> regency -> district).
   const [provinces, setProvinces] = useState<DukcapilRegionRow[]>([]);
@@ -51,6 +57,14 @@ export default function DukcapilPage() {
     dukcapilApi.summary().then(setSummary);
     dukcapilApi.indicators().then(setCatalog);
     dukcapilApi.regions({ level: "province" }).then(setProvinces);
+    // Code -> name maps for the "colour by" legend (province + all kab/kota).
+    Promise.all([dukcapilApi.regions({ level: "province" }), dukcapilApi.regions({ level: "regency" })]).then(
+      ([prov, reg]) =>
+        setNameMaps({
+          province: Object.fromEntries(prov.map((x) => [x.code, regionLabel(x.name, x.status)])),
+          regency: Object.fromEntries(reg.map((x) => [x.code, regionLabel(x.name, x.status)])),
+        })
+    );
   }, []);
 
   // Load child options as parents are picked (by ancestor code, not
@@ -117,10 +131,30 @@ export default function DukcapilPage() {
   }, [indicator, level, order, ancestor, percentOf, page]);
 
   const indUnit = rankData?.unit || rankData?.indicator.unit || "";
+  // "Colour by" ancestor — only offered where it groups meaningfully.
+  const colorDims: ["province" | "regency", string][] =
+    level === "regency"
+      ? [["province", "Provinsi"]]
+      : level === "district" || level === "village"
+      ? [["province", "Provinsi"], ["regency", "Kab/Kota"]]
+      : [];
+  const effColorBy = colorDims.some(([v]) => v === colorBy) ? colorBy : "none";
+  const groupOf = (code: string) =>
+    effColorBy === "province" ? code.slice(0, 2) : effColorBy === "regency" ? code.slice(0, 4) : "";
+
   const bars: BarDatum[] = (rankData?.results ?? []).map((r) => ({
     label: regionLabel(r.domain_name, r.status),
     value: r.value,
+    color: effColorBy !== "none" ? groupColor(groupOf(r.domain_id)) : undefined,
   }));
+
+  const colorLegend =
+    effColorBy === "none"
+      ? []
+      : Array.from(new Set((rankData?.results ?? []).map((r) => groupOf(r.domain_id)))).map((g) => ({
+          code: g,
+          name: nameMaps[effColorBy][g] ?? g,
+        }));
 
   const totals = summary?.national_totals ?? {};
 
@@ -298,6 +332,25 @@ export default function DukcapilPage() {
               {order === "desc" ? "Tertinggi ↓" : "Terendah ↑"}
             </button>
           </div>
+
+          {/* Colour by ancestor. */}
+          {colorDims.length > 0 && (
+            <div>
+              <label className="mb-1.5 block text-xs uppercase tracking-wide text-ink-muted">Warnai</label>
+              <select
+                value={effColorBy}
+                onChange={(e) => setColorBy(e.target.value as "none" | "province" | "regency")}
+                className="rounded-lg border border-ink-border bg-ink-panel px-3 py-2 text-sm text-ink-text focus:border-ink-accent/60 focus:outline-none"
+              >
+                <option value="none">—</option>
+                {colorDims.map(([v, lbl]) => (
+                  <option key={v} value={v}>
+                    {lbl}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
         </div>
 
         {noFilter && (
@@ -342,6 +395,16 @@ export default function DukcapilPage() {
             <div className="flex h-40 items-center justify-center text-sm text-ink-muted">Memuat…</div>
           ) : (
             <HorizontalBars data={bars} unit={indUnit} />
+          )}
+          {colorLegend.length > 0 && (
+            <div className="mt-3 flex flex-wrap gap-x-3 gap-y-1 text-[11px]">
+              {colorLegend.map((g) => (
+                <span key={g.code} className="inline-flex items-center gap-1">
+                  <span className="h-2 w-2 rounded-sm" style={{ background: groupColor(g.code) }} />
+                  <span className="text-ink-muted">{g.name}</span>
+                </span>
+              ))}
+            </div>
           )}
         </Panel>
 
