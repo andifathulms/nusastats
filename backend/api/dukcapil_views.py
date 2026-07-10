@@ -8,11 +8,14 @@ extracting `{code: value}` maps from JSONB — the same shape the BPS ranking
 endpoints use, so nothing about the BPS/`stats` stack is touched.
 """
 
+import re
+
 from django.db.models import Count
 from django.db.models.fields.json import KeyTextTransform
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 
+from catalog.models import Domain
 from dukcapil.derived import DERIVED, DERIVED_BY_FIELD
 from dukcapil.derived import meta as derived_meta
 from dukcapil.indicators import GROUP_ORDER
@@ -396,5 +399,83 @@ def correlate(request):
             "n": len(results),
             "r": r,
             "results": results,
+        }
+    )
+
+
+def _norm(s):
+    return re.sub(r"[^a-z0-9]", "", (s or "").lower())
+
+
+def bps_regency_status(domain_id):
+    """BPS/Kemendagri convention: the kab-number (3rd-4th digit) >= 71 => Kota."""
+    try:
+        return "Kota" if int(domain_id[2:4]) >= 71 else "Kabupaten"
+    except (ValueError, IndexError):
+        return ""
+
+
+def _resolve_dukcapil_regency(domain_id, bps_name, period):
+    """A BPS regency domain_id -> the matching Dukcapil regency. 479/514 match
+    by code identity; the rest by (normalised name, Kota/Kabupaten status) —
+    BPS and Dukcapil diverge on some codes (e.g. the Papua reorg)."""
+    exact = DukcapilRegion.objects.filter(level="regency", period=period, code=domain_id).first()
+    if exact:
+        return exact
+    status, key = bps_regency_status(domain_id), _norm(bps_name)
+    if not key:
+        return None
+    for r in DukcapilRegion.objects.filter(level="regency", period=period):
+        if r.status == status and _norm(r.name) == key:
+            return r
+    return None
+
+
+@api_view(["GET"])
+def regency_bridge(request, domain_id):
+    """`/api/dukcapil/regency-bridge/<bps_domain_id>/` — bridge a BPS regency
+    to the Dukcapil side: the matched Dukcapil regency plus its kecamatan (with
+    population + village counts), so the BPS region page can drill into the
+    Dukcapil administrative tree. Villages per kecamatan come from the rank
+    endpoint (level=village&kec=<code>)."""
+    period, _ = _resolve_period(request)
+    bps = Domain.objects.filter(domain_id=domain_id).first()
+    reg = _resolve_dukcapil_regency(domain_id, bps.domain_name if bps else "", period)
+    if not reg:
+        return Response({"bps_domain_id": domain_id, "dukcapil": None, "districts": []})
+
+    code = reg.code
+    districts = DukcapilRegion.objects.filter(level="district", period=period, kab_code=code)
+    pop = _value_map(districts, "jumlah_penduduk")
+    vcounts = dict(
+        DukcapilRegion.objects.filter(level="village", period=period, kab_code=code)
+        .values("kec_code")
+        .order_by()
+        .annotate(c=Count("id"))
+        .values_list("kec_code", "c")
+    )
+    dist = [
+        {
+            "code": d["code"],
+            "name": d["name"],
+            "status": d["status"],
+            "population": pop.get(d["code"], (None, None))[1],
+            "village_count": vcounts.get(d["code"], 0),
+        }
+        for d in districts.values("code", "name", "status")
+    ]
+    dist.sort(key=lambda x: -(x["population"] or 0))
+    return Response(
+        {
+            "bps_domain_id": domain_id,
+            "dukcapil": {
+                "code": reg.code,
+                "name": reg.name,
+                "status": reg.status,
+                "population": region_value(reg.attributes, "jumlah_penduduk"),
+                "district_count": len(dist),
+                "village_count": sum(vcounts.values()),
+            },
+            "districts": dist,
         }
     )
