@@ -27,6 +27,7 @@ INSTALLED_APPS = [
     "crawler",
     "api",
     "stats",
+    "dukcapil",
 ]
 
 MIDDLEWARE = [
