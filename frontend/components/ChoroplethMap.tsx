@@ -32,12 +32,17 @@ export function ChoroplethMap({
   max,
   unit,
   geojsonUrl = "/indonesia-provinces.geojson",
+  provFilter,
 }: {
   values: Map<string, MapValue>;
   min: number;
   max: number;
   unit?: string;
   geojsonUrl?: string;
+  // 2-digit province codes; when set, only regions in those provinces render
+  // (and the map zooms to them). Region codes are hierarchical, so a province
+  // code is a prefix of its regencies'/districts' codes.
+  provFilter?: string[];
 }) {
   const [fc, setFc] = useState<FC | null>(null);
   const [hover, setHover] = useState<{ id: string; x: number; y: number } | null>(null);
@@ -50,14 +55,20 @@ export function ChoroplethMap({
       .catch(() => setFc(null));
   }, [geojsonUrl]);
 
+  const filterKey = provFilter?.join(",") ?? "";
   const { paths, vb } = useMemo(() => {
     if (!fc) return { paths: [] as { id: string; d: string }[], vb: "0 0 1000 400" };
+    const active = filterKey
+      ? fc.features.filter((f) => filterKey.split(",").some((p) => f.properties.domain_id.startsWith(p)))
+      : fc.features;
+    if (!active.length) return { paths: [], vb: "0 0 1000 400" };
+
     let lonMin = 180, lonMax = -180, latMin = 90, latMax = -90;
     const eachRing = (f: Feature, cb: (ring: number[][]) => void) => {
       const polys = f.geometry.type === "Polygon" ? [f.geometry.coordinates] : f.geometry.coordinates;
       (polys as number[][][][]).forEach((poly) => poly.forEach((ring) => cb(ring as number[][])));
     };
-    fc.features.forEach((f) =>
+    active.forEach((f) =>
       eachRing(f, (ring) =>
         ring.forEach(([lon, lat]) => {
           lonMin = Math.min(lonMin, lon);
@@ -74,7 +85,7 @@ export function ChoroplethMap({
     const px = (lon: number) => (lon - lonMin) * s * cosMid;
     const py = (lat: number) => (latMax - lat) * s;
 
-    const paths = fc.features.map((f) => {
+    const paths = active.map((f) => {
       let d = "";
       eachRing(f, (ring) => {
         d += ring.map(([lon, lat], i) => `${i === 0 ? "M" : "L"}${px(lon).toFixed(1)} ${py(lat).toFixed(1)}`).join("") + "Z";
@@ -82,7 +93,7 @@ export function ChoroplethMap({
       return { id: f.properties.domain_id, d };
     });
     return { paths, vb: `0 0 ${W.toFixed(0)} ${H.toFixed(0)}` };
-  }, [fc]);
+  }, [fc, filterKey]);
 
   const nameById = useMemo(() => {
     const m = new Map<string, string>();
