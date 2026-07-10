@@ -11,8 +11,23 @@ import {
   YAxis,
   ZAxis,
 } from "recharts";
-import { dukcapilApi, formatNumber, regionLabel, type DukcapilCorrelation as Corr, type DukcapilIndicatorGroups } from "@/lib/api";
+import {
+  dukcapilApi,
+  formatNumber,
+  regionLabel,
+  type DukcapilCorrelation as Corr,
+  type DukcapilIndicatorGroups,
+  type DukcapilLevel,
+  type DukcapilRegionRow,
+} from "@/lib/api";
 import { Panel, SectionTitle } from "@/components/ui";
+
+const LEVELS: [DukcapilLevel, string][] = [
+  ["province", "Provinsi"],
+  ["regency", "Kabupaten/Kota"],
+  ["district", "Kecamatan"],
+  ["village", "Desa/Kelurahan"],
+];
 
 function describeR(r: number | null): { text: string; tone: string } {
   if (r === null) return { text: "tidak terhitung", tone: "text-ink-muted" };
@@ -56,24 +71,82 @@ function GroupedSelect({
   );
 }
 
+function RegionSelect({
+  value,
+  onChange,
+  options,
+  placeholder,
+  disabled,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  options: DukcapilRegionRow[];
+  placeholder: string;
+  disabled?: boolean;
+}) {
+  return (
+    <select
+      value={value}
+      disabled={disabled}
+      onChange={(e) => onChange(e.target.value)}
+      className="rounded-lg border border-ink-border bg-ink-panel px-3 py-2 text-sm text-ink-text focus:border-ink-accent/60 focus:outline-none disabled:opacity-40"
+    >
+      <option value="">{placeholder}</option>
+      {options.map((o) => (
+        <option key={o.code} value={o.code}>
+          {regionLabel(o.name, o.status)}
+        </option>
+      ))}
+    </select>
+  );
+}
+
 export function DukcapilCorrelation({ groups }: { groups: DukcapilIndicatorGroups["groups"] }) {
   const [x, setX] = useState("pct_sarjana");
   const [y, setY] = useState("pop_density");
-  const [level, setLevel] = useState<"province" | "regency">("province");
+  const [level, setLevel] = useState<DukcapilLevel>("province");
+  const [provinces, setProvinces] = useState<DukcapilRegionRow[]>([]);
+  const [regencies, setRegencies] = useState<DukcapilRegionRow[]>([]);
+  const [selProv, setSelProv] = useState("");
+  const [selKab, setSelKab] = useState("");
   const [data, setData] = useState<Corr | null>(null);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (!x || !y) return;
+    dukcapilApi.regions({ level: "province" }).then(setProvinces);
+  }, []);
+  useEffect(() => {
+    if (!selProv) {
+      setRegencies([]);
+      setSelKab("");
+      return;
+    }
+    dukcapilApi.regions({ level: "regency", prov: selProv }).then(setRegencies);
+  }, [selProv]);
+
+  // District/village would be far too many points nationwide, so require a
+  // scope: a province for kecamatan, a kabupaten for desa.
+  const needProv = level === "district" && !selProv;
+  const needKab = level === "village" && !selKab;
+  const blocked = needProv || needKab;
+  const ancestor: Record<string, string> = selKab ? { kab: selKab } : selProv ? { prov: selProv } : {};
+
+  const scopeKey = `${selProv}/${selKab}`;
+  useEffect(() => {
+    if (!x || !y || blocked) {
+      setData(null);
+      return;
+    }
     setLoading(true);
     dukcapilApi
-      .correlate({ x, y, level })
+      .correlate({ x, y, level, ...ancestor })
       .then(setData)
       .finally(() => setLoading(false));
-  }, [x, y, level]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [x, y, level, scopeKey, blocked]);
 
   const rDesc = describeR(data?.r ?? null);
-  const levelLabel = level === "province" ? "provinsi" : "kabupaten/kota";
+  const levelLabel = LEVELS.find(([v]) => v === level)?.[1] ?? level;
 
   return (
     <div className="space-y-6">
@@ -82,22 +155,50 @@ export function DukcapilCorrelation({ groups }: { groups: DukcapilIndicatorGroup
           <GroupedSelect label="Sumbu X" value={x} onChange={setX} groups={groups} />
           <GroupedSelect label="Sumbu Y" value={y} onChange={setY} groups={groups} />
         </div>
-        <div className="inline-flex gap-1 rounded-lg border border-ink-border/80 bg-ink-panel/50 p-0.5">
-          {(["province", "regency"] as const).map((l) => (
-            <button
-              key={l}
-              onClick={() => setLevel(l)}
-              className={`rounded-md px-3 py-1 text-xs font-medium transition-colors ${
-                level === l ? "bg-brand-gradient text-white" : "text-ink-muted hover:bg-ink-panel2/70 hover:text-ink-text"
-              }`}
-            >
-              {l === "province" ? "Provinsi" : "Kabupaten/Kota"}
-            </button>
-          ))}
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="inline-flex gap-1 rounded-lg border border-ink-border/80 bg-ink-panel/50 p-0.5">
+            {LEVELS.map(([v, lbl]) => (
+              <button
+                key={v}
+                onClick={() => setLevel(v)}
+                className={`rounded-md px-3 py-1 text-xs font-medium transition-colors ${
+                  level === v ? "bg-brand-gradient text-white" : "text-ink-muted hover:bg-ink-panel2/70 hover:text-ink-text"
+                }`}
+              >
+                {lbl}
+              </button>
+            ))}
+          </div>
+          {level !== "province" && (
+            <RegionSelect
+              value={selProv}
+              onChange={(v) => {
+                setSelProv(v);
+                setSelKab("");
+              }}
+              options={provinces}
+              placeholder={level === "regency" ? "Semua provinsi" : "Pilih provinsi"}
+            />
+          )}
+          {(level === "district" || level === "village") && (
+            <RegionSelect
+              value={selKab}
+              onChange={setSelKab}
+              options={regencies}
+              disabled={!selProv}
+              placeholder={level === "village" ? "Pilih kab/kota" : "Semua kab/kota"}
+            />
+          )}
         </div>
       </Panel>
 
-      {data && data.n > 0 && (
+      {blocked ? (
+        <Panel>
+          <div className="py-8 text-center text-sm text-ink-muted">
+            Pilih {needProv ? "provinsi" : "kabupaten/kota"} untuk menampilkan korelasi tingkat {levelLabel.toLowerCase()}.
+          </div>
+        </Panel>
+      ) : data && data.n > 0 ? (
         <>
           <Panel className="flex flex-wrap items-center gap-6">
             <div>
@@ -107,7 +208,7 @@ export function DukcapilCorrelation({ groups }: { groups: DukcapilIndicatorGroup
             <div className={`text-sm ${rDesc.tone}`}>
               {rDesc.text}
               <div className="text-ink-muted">
-                dari {data.n} {levelLabel}
+                dari {data.n} {levelLabel.toLowerCase()}
               </div>
             </div>
           </Panel>
@@ -142,7 +243,7 @@ export function DukcapilCorrelation({ groups }: { groups: DukcapilIndicatorGroup
                   width={64}
                   label={{ value: data.y.unit || "", angle: -90, position: "insideLeft", fill: "#544c40", fontSize: 11 }}
                 />
-                <ZAxis range={[55, 55]} />
+                <ZAxis range={[50, 50]} />
                 <Tooltip
                   cursor={{ strokeDasharray: "3 3", stroke: "#babba9" }}
                   content={({ active, payload }) => {
@@ -161,11 +262,17 @@ export function DukcapilCorrelation({ groups }: { groups: DukcapilIndicatorGroup
                     );
                   }}
                 />
-                <Scatter data={data.results} fill="#8b5e3c" fillOpacity={0.8} />
+                <Scatter data={data.results} fill="#8b5e3c" fillOpacity={0.75} />
               </ScatterChart>
             </ResponsiveContainer>
           </Panel>
         </>
+      ) : (
+        data && (
+          <Panel>
+            <div className="py-8 text-center text-sm text-ink-muted">Tidak ada data untuk pasangan indikator ini.</div>
+          </Panel>
+        )
       )}
     </div>
   );
