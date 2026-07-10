@@ -9,16 +9,17 @@ import { Panel, SectionTitle } from "@/components/ui";
 // `domain_id` is exactly the Dukcapil region code (prov=2 / kab=4 / kec=6
 // digits) — the ranking's domain_id matches directly, and a province code is a
 // prefix of its regencies'/districts' codes (used by the filter).
-const GEOJSON: Record<MapLevel, string> = {
+const SINGLE_GEOJSON: Record<"province" | "regency" | "district", string> = {
   province: "/dukcapil-provinces.geojson",
   regency: "/dukcapil-regencies.geojson",
   district: "/dukcapil-districts.geojson",
 };
-type MapLevel = "province" | "regency" | "district";
+type MapLevel = "province" | "regency" | "district" | "village";
 const MAP_LEVELS: [MapLevel, string][] = [
   ["province", "Provinsi"],
   ["regency", "Kabupaten/Kota"],
   ["district", "Kecamatan"],
+  ["village", "Desa/Kelurahan"],
 ];
 
 export function DukcapilMap({
@@ -42,14 +43,34 @@ export function DukcapilMap({
     dukcapilApi.regions({ level: "province" }).then(setProvinces);
   }, []);
 
+  // Village values are fetched per selected province (all 83k at once is too
+  // big); other levels are one nationwide call. provKey only varies the fetch
+  // for village, so toggling the filter doesn't refetch the other levels.
+  const provKey = mapLevel === "village" ? selProvs.join(",") : "";
   useEffect(() => {
+    if (mapLevel === "village" && !selProvs.length) {
+      setRank(null);
+      return;
+    }
     setLoading(true);
     setRank(null);
-    dukcapilApi
-      .rank({ indicator, level: mapLevel, order: "desc", ...(percentOf ? { percent_of: percentOf } : {}) })
-      .then(setRank)
+    const base: Record<string, string> = {
+      indicator,
+      order: "desc",
+      ...(percentOf ? { percent_of: percentOf } : {}),
+    };
+    const calls =
+      mapLevel === "village"
+        ? selProvs.map((p) => dukcapilApi.rank({ ...base, level: "village", prov: p }))
+        : [dukcapilApi.rank({ ...base, level: mapLevel })];
+    Promise.all(calls)
+      .then((rs) => {
+        const first = rs.find(Boolean);
+        setRank(first ? { ...first, results: rs.flatMap((r) => r.results) } : null);
+      })
       .finally(() => setLoading(false));
-  }, [indicator, mapLevel, percentOf]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [indicator, mapLevel, percentOf, provKey]);
 
   // The visible rows (filtered to the selected provinces). Both the colour
   // scale and the top-list are computed from these, so the filtered view gets
@@ -72,8 +93,12 @@ export function DukcapilMap({
   const effUnit = rank?.unit || (percentOf ? "%" : unit);
   const fmt = (v: number | null) => (percentOf ? `${v ?? "–"}%` : formatNumber(v));
 
-  // Kecamatan nationwide is too dense/heavy to be useful — require a province.
-  const needFilter = mapLevel === "district" && selProvs.length === 0;
+  // Kecamatan/desa nationwide is too dense/heavy — require a province filter.
+  const needFilter = (mapLevel === "district" || mapLevel === "village") && selProvs.length === 0;
+  const geojsonUrls =
+    mapLevel === "village"
+      ? selProvs.map((p) => `/dukcapil-villages-${p}.geojson`)
+      : [SINGLE_GEOJSON[mapLevel]];
 
   return (
     <Panel>
@@ -101,7 +126,8 @@ export function DukcapilMap({
 
       {needFilter ? (
         <div className="flex h-64 items-center justify-center px-6 text-center text-sm text-ink-muted">
-          Peta kecamatan padat — pilih satu atau beberapa provinsi di filter untuk menampilkannya.
+          Peta {mapLevel === "village" ? "desa/kelurahan" : "kecamatan"} padat — pilih satu atau beberapa
+          provinsi di filter untuk menampilkannya.
         </div>
       ) : (
         <>
@@ -110,7 +136,7 @@ export function DukcapilMap({
             min={min}
             max={max}
             unit={effUnit}
-            geojsonUrl={GEOJSON[mapLevel]}
+            geojsonUrls={geojsonUrls}
             provFilter={selProvs}
           />
           <div className="mt-4 grid grid-cols-2 gap-x-6 gap-y-1 text-sm sm:grid-cols-3">

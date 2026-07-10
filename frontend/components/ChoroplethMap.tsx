@@ -32,14 +32,16 @@ export function ChoroplethMap({
   min,
   max,
   unit,
-  geojsonUrl = "/indonesia-provinces.geojson",
+  geojsonUrls = ["/indonesia-provinces.geojson"],
   provFilter,
 }: {
   values: Map<string, MapValue>;
   min: number;
   max: number;
   unit?: string;
-  geojsonUrl?: string;
+  // One or more geojson files to fetch and merge (villages load one per
+  // selected province).
+  geojsonUrls?: string[];
   // 2-digit province codes; when set, only regions in those provinces render
   // (and the map zooms to them). Region codes are hierarchical, so a province
   // code is a prefix of its regencies'/districts' codes.
@@ -48,13 +50,21 @@ export function ChoroplethMap({
   const [fc, setFc] = useState<FC | null>(null);
   const [hover, setHover] = useState<{ id: string; x: number; y: number } | null>(null);
 
+  const urlKey = geojsonUrls.join(",");
   useEffect(() => {
     setFc(null);
-    fetch(geojsonUrl)
-      .then((r) => r.json())
-      .then(setFc)
-      .catch(() => setFc(null));
-  }, [geojsonUrl]);
+    if (!geojsonUrls.length) return;
+    let cancelled = false;
+    Promise.all(geojsonUrls.map((u) => fetch(u).then((r) => r.json())))
+      .then((fcs) => {
+        if (!cancelled) setFc({ features: fcs.flatMap((f: FC) => f.features) });
+      })
+      .catch(() => !cancelled && setFc(null));
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [urlKey]);
 
   const filterKey = provFilter?.join(",") ?? "";
   const { paths, vb } = useMemo(() => {
