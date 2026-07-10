@@ -323,13 +323,17 @@ def rank(request):
         indicator_data, unit = DukcapilIndicatorSerializer(ind).data, ind.unit
 
     stats = distribution([r["value"] for r in rows])
-    ranked = rank_rows(rows, order=order)
-    limit = request.query_params.get("limit")
-    if limit:
-        ranked = ranked[: int(limit)]
+    full = rank_rows(rows, order=order)
+    total = len(full)
 
-    status_by = dict(qs.values_list("code", "status"))
-    for r in ranked:
+    # Pagination: distribution stats are over the full set; only a page of
+    # ranked rows is returned.
+    offset = max(0, int(request.query_params.get("offset", 0)))
+    limit = request.query_params.get("limit")
+    page = full[offset : offset + int(limit)] if limit else full[offset:]
+
+    status_by = dict(qs.filter(code__in=[r["domain_id"] for r in page]).values_list("code", "status"))
+    for r in page:
         r["status"] = status_by.get(r["domain_id"], "")
 
     return Response(
@@ -341,7 +345,9 @@ def rank(request):
             "percent_of": percent_of,
             "unit": unit,
             "stats": stats,
-            "results": ranked,
+            "total": total,
+            "offset": offset,
+            "results": page,
         }
     )
 

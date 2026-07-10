@@ -280,6 +280,8 @@ export type DukcapilRank = {
   percent_of: string | null;
   unit: string;
   stats: { count: number; min: number | null; max: number | null; mean: number | null; median: number | null };
+  total: number;
+  offset: number;
   results: { domain_id: string; domain_name: string; status: string; value: number; rank: number }[];
 };
 

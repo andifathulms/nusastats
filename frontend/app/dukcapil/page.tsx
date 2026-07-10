@@ -33,6 +33,7 @@ export default function DukcapilPage() {
   const [indicator, setIndicator] = useState("jumlah_penduduk");
   const [order, setOrder] = useState<"desc" | "asc">("desc");
   const [percentMode, setPercentMode] = useState(false);
+  const [page, setPage] = useState(0);
 
   // Cascading parent filters (province -> regency -> district).
   const [provinces, setProvinces] = useState<DukcapilRegionRow[]>([]);
@@ -93,6 +94,11 @@ export default function DukcapilPage() {
     !selectedInd?.derived;
   const percentOf = percentMode && canPercent ? "jumlah_penduduk" : null;
 
+  // Reset to the first page whenever the query (not the page) changes.
+  useEffect(() => {
+    setPage(0);
+  }, [indicator, level, order, ancestor, percentOf]);
+
   useEffect(() => {
     setLoading(true);
     setDetail(null);
@@ -102,12 +108,13 @@ export default function DukcapilPage() {
         level,
         order,
         limit: String(TOP_N),
+        offset: String(page * TOP_N),
         ...ancestor,
         ...(percentOf ? { percent_of: percentOf } : {}),
       })
       .then(setRankData)
       .finally(() => setLoading(false));
-  }, [indicator, level, order, ancestor, percentOf]);
+  }, [indicator, level, order, ancestor, percentOf, page]);
 
   const indUnit = rankData?.unit || rankData?.indicator.unit || "";
   const bars: BarDatum[] = (rankData?.results ?? []).map((r) => ({
@@ -317,9 +324,20 @@ export default function DukcapilPage() {
       {/* Ranking. */}
       <div className="grid gap-6 lg:grid-cols-3">
         <Panel className="lg:col-span-2">
-          <SectionTitle hint={`${rankData?.level ?? level} · top ${TOP_N}`}>
-            {rankData?.indicator.label_id ?? "Peringkat"} {indUnit && <span>({indUnit})</span>}
-          </SectionTitle>
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+            <h2 className="text-sm font-semibold uppercase tracking-wide text-ink-muted">
+              {rankData?.indicator.label_id ?? "Peringkat"} {indUnit && <span>({indUnit})</span>}
+            </h2>
+            {rankData && rankData.total > 0 && (
+              <Pager
+                offset={rankData.offset}
+                shown={rankData.results.length}
+                total={rankData.total}
+                onPrev={() => setPage((p) => Math.max(0, p - 1))}
+                onNext={() => setPage((p) => p + 1)}
+              />
+            )}
+          </div>
           {loading ? (
             <div className="flex h-40 items-center justify-center text-sm text-ink-muted">Memuat…</div>
           ) : (
@@ -399,6 +417,37 @@ function Select({
           </option>
         ))}
       </select>
+    </div>
+  );
+}
+
+function Pager({
+  offset,
+  shown,
+  total,
+  onPrev,
+  onNext,
+}: {
+  offset: number;
+  shown: number;
+  total: number;
+  onPrev: () => void;
+  onNext: () => void;
+}) {
+  const from = total ? offset + 1 : 0;
+  const to = offset + shown;
+  const btn = "rounded-md border border-ink-border px-2 py-0.5 text-ink-text hover:border-ink-accent/60 disabled:opacity-30";
+  return (
+    <div className="flex items-center gap-2 text-xs text-ink-muted">
+      <span className="tabular-nums">
+        {from}–{to} dari {formatNumber(total)}
+      </span>
+      <button onClick={onPrev} disabled={offset === 0} className={btn} title="Sebelumnya">
+        ‹
+      </button>
+      <button onClick={onNext} disabled={to >= total} className={btn} title="Berikutnya">
+        ›
+      </button>
     </div>
   );
 }
