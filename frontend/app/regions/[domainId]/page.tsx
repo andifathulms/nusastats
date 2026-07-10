@@ -2,8 +2,9 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { api, formatNumber, type RegionProfile, type RegionVariables } from "@/lib/api";
+import { api, bpsRegencyStatus, formatNumber, type RegionProfile, type RegionVariables } from "@/lib/api";
 import { Badge, Panel, SectionTitle, StatTile } from "@/components/ui";
+import { DukcapilDrilldown } from "@/components/DukcapilDrilldown";
 
 const LEVEL_LABEL: Record<string, string> = {
   national: "National",
@@ -16,7 +17,7 @@ export default function RegionDetailPage({ params }: { params: { domainId: strin
   const [data, setData] = useState<RegionVariables | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
-  const [view, setView] = useState<"indicators" | "profile">("indicators");
+  const [view, setView] = useState<"indicators" | "profile" | "wilayah">("indicators");
   const [profile, setProfile] = useState<RegionProfile | null>(null);
 
   useEffect(() => {
@@ -49,7 +50,11 @@ export default function RegionDetailPage({ params }: { params: { domainId: strin
         </Link>
         <div className="mt-1 flex flex-wrap items-center gap-3">
           <h1 className="text-2xl font-semibold text-ink-text">{region.domain_name}</h1>
-          <Badge tone="accent">{LEVEL_LABEL[region.admin_level] ?? region.admin_level}</Badge>
+          <Badge tone="accent">
+            {region.admin_level === "regency"
+              ? bpsRegencyStatus(region.domain_id) || "Kabupaten/Kota"
+              : LEVEL_LABEL[region.admin_level] ?? region.admin_level}
+          </Badge>
           {region.parent_province_name && (
             <Link href={`/regions/${region.parent_province_id}`} className="text-sm text-ink-muted hover:text-ink-text">
               in {region.parent_province_name}
@@ -70,21 +75,27 @@ export default function RegionDetailPage({ params }: { params: { domainId: strin
 
       {region.admin_level !== "national" && (
         <div className="inline-flex rounded-xl border border-ink-border/80 bg-ink-panel/50 p-1 backdrop-blur-sm">
-          {(["indicators", "profile"] as const).map((v) => (
+          {([
+            ["indicators", "Indicators"],
+            ["profile", "Profile (how it ranks)"],
+            ...(region.admin_level === "regency" ? [["wilayah", "Wilayah (Dukcapil)"]] : []),
+          ] as [typeof view, string][]).map(([v, label]) => (
             <button
               key={v}
               onClick={() => setView(v)}
-              className={`rounded-lg px-4 py-1.5 text-sm font-medium capitalize transition-colors ${
+              className={`rounded-lg px-4 py-1.5 text-sm font-medium transition-colors ${
                 view === v ? "bg-brand-gradient text-white shadow-glow" : "text-ink-muted hover:text-ink-text"
               }`}
             >
-              {v === "profile" ? "Profile (how it ranks)" : "Indicators"}
+              {label}
             </button>
           ))}
         </div>
       )}
 
-      {view === "profile" && region.admin_level !== "national" ? (
+      {view === "wilayah" && region.admin_level === "regency" ? (
+        <DukcapilDrilldown domainId={domainId} />
+      ) : view === "profile" && region.admin_level !== "national" ? (
         <ProfileView profile={profile} regionLevel={region.admin_level} domainId={domainId} />
       ) : (
       <div>

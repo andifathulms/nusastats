@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { api, type Region } from "@/lib/api";
+import { api, bpsRegencyStatus, regionLabel, type Region } from "@/lib/api";
 import { Panel } from "@/components/ui";
 
 export default function RegionsPage() {
@@ -98,10 +98,14 @@ export default function RegionsPage() {
 }
 
 function RegionCard({ region, small }: { region: Region; small?: boolean }) {
+  const label =
+    region.admin_level === "regency"
+      ? regionLabel(region.domain_name, bpsRegencyStatus(region.domain_id))
+      : region.domain_name;
   return (
     <Link href={`/regions/${region.domain_id}`}>
       <Panel className={`transition-colors hover:border-ink-accent/60 ${small ? "p-3" : ""}`}>
-        <div className={`font-medium text-ink-text ${small ? "text-sm" : ""}`}>{region.domain_name}</div>
+        <div className={`font-medium text-ink-text ${small ? "text-sm" : ""}`}>{label}</div>
         <div className="mt-0.5 text-xs text-ink-muted">code {region.domain_id}</div>
       </Panel>
     </Link>

@@ -335,8 +335,24 @@ export type DukcapilCorrelation = {
   results: { domain_id: string; domain_name: string; status?: string; x: number; y: number }[];
 };
 
+export type DukcapilBridge = {
+  bps_domain_id: string;
+  dukcapil:
+    | { code: string; name: string; status: string; population: number | null; district_count: number; village_count: number }
+    | null;
+  districts: { code: string; name: string; status: string; population: number | null; village_count: number }[];
+};
+
+// BPS regency domain_id encodes Kota vs Kabupaten the same way as Dukcapil:
+// the kab-number (3rd-4th digit) >= 71 means Kota.
+export function bpsRegencyStatus(domainId: string): string {
+  const kab = parseInt(domainId.slice(2, 4), 10);
+  return isNaN(kab) ? "" : kab >= 71 ? "Kota" : "Kabupaten";
+}
+
 export const dukcapilApi = {
   summary: () => get<DukcapilSummary>("/dukcapil/summary/"),
+  regencyBridge: (domainId: string) => get<DukcapilBridge>(`/dukcapil/regency-bridge/${domainId}/`),
   indicators: () => get<DukcapilIndicatorGroups>("/dukcapil/indicators/"),
   regions: (params: Record<string, string> = {}) => {
     const q = new URLSearchParams(params).toString();
