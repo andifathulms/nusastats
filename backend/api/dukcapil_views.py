@@ -265,6 +265,7 @@ def region_detail(request, code):
                 "code": region.code,
                 "level": region.level,
                 "name": region.name,
+                "status": region.status,
                 "parent_code": region.parent_code,
                 "parent_name": region.parent.name if region.parent else None,
                 "nama_prop": region.nama_prop,
@@ -327,6 +328,10 @@ def rank(request):
     if limit:
         ranked = ranked[: int(limit)]
 
+    status_by = dict(qs.values_list("code", "status"))
+    for r in ranked:
+        r["status"] = status_by.get(r["domain_id"], "")
+
     return Response(
         {
             "indicator": indicator_data,
@@ -368,8 +373,9 @@ def correlate(request):
 
     x_by = _metric_values(qs, x_field)
     y_by = _metric_values(qs, y_field)
+    status_by = dict(qs.values_list("code", "status"))
     results = [
-        {"domain_id": c, "domain_name": x_by[c][0], "x": x_by[c][1], "y": y_by[c][1]}
+        {"domain_id": c, "domain_name": x_by[c][0], "status": status_by.get(c, ""), "x": x_by[c][1], "y": y_by[c][1]}
         for c in x_by
         if c in y_by
     ]

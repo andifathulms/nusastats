@@ -5,6 +5,8 @@ import {
   DUKCAPIL_LEVELS,
   dukcapilApi,
   formatNumber,
+  regionLabel,
+  titleCase,
   type DukcapilCorrelation,
   type DukcapilIndicatorGroups,
   type DukcapilLevel,
@@ -109,7 +111,7 @@ export default function DukcapilPage() {
 
   const indUnit = rankData?.unit || rankData?.indicator.unit || "";
   const bars: BarDatum[] = (rankData?.results ?? []).map((r) => ({
-    label: r.domain_name,
+    label: regionLabel(r.domain_name, r.status),
     value: r.value,
   }));
 
@@ -349,7 +351,7 @@ export default function DukcapilPage() {
                 >
                   <span className="flex items-center gap-2 truncate">
                     <span className="w-6 shrink-0 text-xs tabular-nums text-ink-muted">{r.rank}</span>
-                    <span className="truncate text-ink-text">{r.domain_name}</span>
+                    <span className="truncate text-ink-text">{regionLabel(r.domain_name, r.status)}</span>
                   </span>
                   <span className="shrink-0 tabular-nums text-ink-muted">{fmtVal(r.value)}</span>
                 </button>
@@ -393,7 +395,7 @@ function Select({
         <option value="">{placeholder}</option>
         {options.map((o) => (
           <option key={o.code} value={o.code}>
-            {o.name}
+            {regionLabel(o.name, o.status)}
           </option>
         ))}
       </select>
@@ -412,13 +414,17 @@ function Stat({ row, value }: { row: string; value: string }) {
 
 function RegionProfile({ detail, onClose }: { detail: DukcapilRegionDetail; onClose: () => void }) {
   const r = detail.region;
-  const scope = [r.nama_kec, r.nama_kab, r.nama_prop].filter(Boolean).join(", ");
+  const scope = [r.nama_kec, r.nama_kab, r.nama_prop].filter(Boolean).map(titleCase).join(", ");
   return (
     <Panel glow>
       <div className="mb-3 flex items-start justify-between gap-3">
         <div>
-          <SectionTitle hint={scope || undefined}>Profil: {r.name}</SectionTitle>
-          <p className="text-xs text-ink-muted">
+          <div className="flex items-center gap-2">
+            <h3 className="text-base font-semibold text-ink-text">{r.name}</h3>
+            {r.status && <Badge tone="muted">{r.status}</Badge>}
+          </div>
+          {scope && <div className="mt-0.5 text-xs text-ink-muted">{scope}</div>}
+          <p className="mt-1 text-xs text-ink-muted">
             Peringkat & persentil dihitung terhadap {detail.peer_scope}.
           </p>
         </div>

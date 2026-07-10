@@ -13,11 +13,12 @@ from django.utils import timezone
 
 from .client import SERVICES, DukcapilClient
 from .models import DukcapilFetchLog, DukcapilRegion, current_period
+from .normalize import name_and_status
 
 CHUNK = 2000
 
 _UPDATE_FIELDS = [
-    "name", "parent_code", "prov_code", "kab_code", "kec_code",
+    "name", "status", "parent_code", "prov_code", "kab_code", "kec_code",
     "no_prop", "no_kab", "no_kec", "no_kel",
     "nama_prop", "nama_kab", "nama_kec", "attributes", "fetch_log", "fetched_at",
 ]
@@ -78,14 +79,16 @@ def _unique_code(base, level, a, seen):
 
 
 def _row(level, a, log, now, seen, period):
-    base, parent_code, name = _codes(level, a)
+    base, parent_code, raw_name = _codes(level, a)
     code = _unique_code(base, level, a, seen)
     prov_code, kab_code, kec_code = _ancestor_codes(a)
+    name, status = name_and_status(level, raw_name)
     return DukcapilRegion(
         code=code,
         level=level,
         period=period,
         name=name,
+        status=status,
         parent_code=parent_code,
         prov_code=prov_code,
         kab_code=kab_code,

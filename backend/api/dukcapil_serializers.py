@@ -16,4 +16,4 @@ class DukcapilRegionSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = DukcapilRegion
-        fields = ("code", "level", "name", "parent_code", "parent_name")
+        fields = ("code", "level", "name", "status", "parent_code", "parent_name")

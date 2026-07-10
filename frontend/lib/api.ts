@@ -246,9 +246,31 @@ export type DukcapilRegionRow = {
   code: string;
   level: DukcapilLevel;
   name: string;
+  status: string;
   parent_code: string;
   parent_name: string | null;
 };
+
+// "Kota Bogor" / "Kab. Bogor" / "Bogor" — keeps the Kota vs Kabupaten
+// distinction visible; other levels show the plain name.
+export function regionLabel(name: string, status?: string): string {
+  if (status === "Kota") return `Kota ${name}`;
+  if (status === "Kabupaten") return `Kab. ${name}`;
+  return name;
+}
+
+const _KEEP_UPPER = new Set(["DKI", "DIY", "DI"]);
+// Title-case a raw UPPERCASE name (for geojson fallbacks / breadcrumb scope).
+export function titleCase(s: string): string {
+  return (s || "")
+    .split(" ")
+    .map((w) =>
+      _KEEP_UPPER.has(w.toUpperCase())
+        ? w.toUpperCase()
+        : w.replace(/[A-Za-z']+/g, (m) => m[0].toUpperCase() + m.slice(1).toLowerCase())
+    )
+    .join(" ");
+}
 
 export type DukcapilRank = {
   indicator: DukcapilIndicator;
@@ -258,7 +280,7 @@ export type DukcapilRank = {
   percent_of: string | null;
   unit: string;
   stats: { count: number; min: number | null; max: number | null; mean: number | null; median: number | null };
-  results: { domain_id: string; domain_name: string; value: number; rank: number }[];
+  results: { domain_id: string; domain_name: string; status: string; value: number; rank: number }[];
 };
 
 export type DukcapilRegionDetail = {
@@ -266,6 +288,7 @@ export type DukcapilRegionDetail = {
     code: string;
     level: DukcapilLevel;
     name: string;
+    status: string;
     parent_code: string;
     parent_name: string | null;
     nama_prop: string;
@@ -294,7 +317,7 @@ export type DukcapilCorrelation = {
   level: DukcapilLevel;
   n: number;
   r: number | null;
-  results: { domain_id: string; domain_name: string; x: number; y: number }[];
+  results: { domain_id: string; domain_name: string; status?: string; x: number; y: number }[];
 };
 
 export const dukcapilApi = {

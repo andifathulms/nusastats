@@ -72,7 +72,11 @@ class DukcapilRegion(models.Model):
     # be 16 digits.
     code = models.CharField(max_length=32)
     level = models.CharField(max_length=16, choices=DukcapilLevel.choices)
+    # Title-cased, with any "KOTA "/"KAB. " prefix stripped into `status`.
     name = models.CharField(max_length=255)
+    # Structured type: Provinsi / Kota / Kabupaten / Kecamatan (blank for
+    # village — desa/kelurahan isn't carried in the Dukcapil data).
+    status = models.CharField(max_length=16, blank=True)
 
     # Monthly snapshot key ("YYYY-MM"). Coverage is re-crawled monthly; each
     # crawl writes rows under its own period, so history accumulates into a

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { titleCase } from "@/lib/api";
 
 type Feature = {
   properties: { domain_id: string; name: string };
@@ -97,7 +98,7 @@ export function ChoroplethMap({
 
   const nameById = useMemo(() => {
     const m = new Map<string, string>();
-    fc?.features.forEach((f) => m.set(f.properties.domain_id, f.properties.name));
+    fc?.features.forEach((f) => m.set(f.properties.domain_id, titleCase(f.properties.name)));
     return m;
   }, [fc]);
 
@@ -147,7 +148,7 @@ export function ChoroplethMap({
           className="pointer-events-none fixed z-30 rounded-lg border border-ink-border bg-ink-panel px-3 py-1.5 text-xs shadow-xl shadow-black/50"
           style={{ left: hover.x + 12, top: hover.y + 12 }}
         >
-          <div className="font-medium text-ink-text">{nameById.get(hover.id)}</div>
+          <div className="font-medium text-ink-text">{values.get(hover.id)?.name ?? nameById.get(hover.id)}</div>
           <div className="text-ink-muted">
             {values.has(hover.id) ? `${values.get(hover.id)!.value.toLocaleString()} ${unit ?? ""}` : "no data"}
           </div>

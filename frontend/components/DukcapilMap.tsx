@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { dukcapilApi, formatNumber, type DukcapilRank, type DukcapilRegionRow } from "@/lib/api";
+import { dukcapilApi, formatNumber, regionLabel, type DukcapilRank, type DukcapilRegionRow } from "@/lib/api";
 import { ChoroplethMap, type MapValue } from "@/components/ChoroplethMap";
 import { Panel, SectionTitle } from "@/components/ui";
 
@@ -62,7 +62,7 @@ export function DukcapilMap({
 
   const values = useMemo(() => {
     const m = new Map<string, MapValue>();
-    visible.forEach((r) => m.set(r.domain_id, { value: r.value, name: r.domain_name }));
+    visible.forEach((r) => m.set(r.domain_id, { value: r.value, name: regionLabel(r.domain_name, r.status) }));
     return m;
   }, [visible]);
 
@@ -117,7 +117,7 @@ export function DukcapilMap({
             {visible.slice(0, 6).map((r, i) => (
               <div key={r.domain_id} className="flex items-baseline justify-between">
                 <span className="truncate text-ink-text">
-                  {i + 1}. {r.domain_name}
+                  {i + 1}. {regionLabel(r.domain_name, r.status)}
                 </span>
                 <span className="tabular-nums text-ink-muted">{fmt(r.value)}</span>
               </div>

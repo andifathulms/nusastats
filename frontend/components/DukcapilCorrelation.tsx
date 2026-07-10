@@ -11,7 +11,7 @@ import {
   YAxis,
   ZAxis,
 } from "recharts";
-import { dukcapilApi, formatNumber, type DukcapilCorrelation as Corr, type DukcapilIndicatorGroups } from "@/lib/api";
+import { dukcapilApi, formatNumber, regionLabel, type DukcapilCorrelation as Corr, type DukcapilIndicatorGroups } from "@/lib/api";
 import { Panel, SectionTitle } from "@/components/ui";
 
 function describeR(r: number | null): { text: string; tone: string } {
@@ -147,10 +147,10 @@ export function DukcapilCorrelation({ groups }: { groups: DukcapilIndicatorGroup
                   cursor={{ strokeDasharray: "3 3", stroke: "#babba9" }}
                   content={({ active, payload }) => {
                     if (!active || !payload || !payload.length) return null;
-                    const p = payload[0].payload as { domain_name: string; x: number; y: number };
+                    const p = payload[0].payload as { domain_name: string; status?: string; x: number; y: number };
                     return (
                       <div className="rounded-lg border border-ink-border bg-ink-panel px-3 py-2 text-xs">
-                        <div className="font-medium text-ink-text">{p.domain_name}</div>
+                        <div className="font-medium text-ink-text">{regionLabel(p.domain_name, p.status)}</div>
                         <div className="text-ink-muted">
                           {data.x.label_id.slice(0, 28)}: {formatNumber(p.x)}
                         </div>
