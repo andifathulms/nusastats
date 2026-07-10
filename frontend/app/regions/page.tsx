@@ -45,7 +45,7 @@ export default function RegionsPage() {
       </div>
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-        <div className="inline-flex rounded-lg border border-ink-border p-1">
+        <div className="inline-flex rounded-xl border border-ink-border/80 bg-ink-panel/50 p-1 backdrop-blur-sm">
           {(["province", "regency"] as const).map((l) => (
             <button
               key={l}
@@ -53,8 +53,8 @@ export default function RegionsPage() {
                 setLevel(l);
                 setSearch("");
               }}
-              className={`rounded-md px-3 py-1.5 text-sm ${
-                level === l ? "bg-ink-accent text-white" : "text-ink-muted hover:text-ink-text"
+              className={`rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${
+                level === l ? "bg-brand-gradient text-white shadow-glow" : "text-ink-muted hover:text-ink-text"
               }`}
             >
               {l === "province" ? "Provinces (34)" : "Kabupaten/Kota (514)"}

@@ -10,8 +10,9 @@ type FC = { features: Feature[] };
 
 export type MapValue = { value: number; name: string };
 
-// Sequential low->high scale, readable on the dark shell.
-const STOPS = ["#26314f", "#2f5a86", "#3f86c0", "#5bb0e0", "#9fe6ff"];
+// Sequential low->high scale — pale cream deepening to navy, readable on the paper shell.
+const STOPS = ["#f3e4c9", "#b9b5a9", "#7f8788", "#445868", "#0a2947"];
+const NO_DATA_FILL = "#e7e7dc";
 
 function lerpHex(a: string, b: string, t: number): string {
   const pa = [1, 3, 5].map((i) => parseInt(a.slice(i, i + 2), 16));
@@ -94,14 +95,14 @@ export function ChoroplethMap({
       <svg viewBox={vb} className="w-full" style={{ maxHeight: 520 }} preserveAspectRatio="xMidYMid meet">
         {paths.map((p) => {
           const v = values.get(p.id);
-          const fill = v ? scale((v.value - min) / span) : "#1a2338";
+          const fill = v ? scale((v.value - min) / span) : NO_DATA_FILL;
           const isHover = hover?.id === p.id;
           return (
             <path
               key={p.id}
               d={p.d}
               fill={fill}
-              stroke={isHover ? "#e6ebf5" : "#0b1020"}
+              stroke={isHover ? "#051220" : "#f3e4c9"}
               strokeWidth={isHover ? 1.5 : 0.5}
               onMouseEnter={(e) => setHover({ id: p.id, x: e.clientX, y: e.clientY })}
               onMouseMove={(e) => setHover({ id: p.id, x: e.clientX, y: e.clientY })}
@@ -123,13 +124,13 @@ export function ChoroplethMap({
           {max.toLocaleString()} {unit}
         </span>
         <span className="ml-3 inline-flex items-center gap-1">
-          <span className="inline-block h-2 w-2 rounded-sm" style={{ background: "#1a2338" }} /> no data
+          <span className="inline-block h-2 w-2 rounded-sm" style={{ background: NO_DATA_FILL }} /> no data
         </span>
       </div>
 
       {hover && (
         <div
-          className="pointer-events-none fixed z-30 rounded-lg border border-ink-border bg-ink-panel px-3 py-1.5 text-xs shadow-xl"
+          className="pointer-events-none fixed z-30 rounded-lg border border-ink-border bg-ink-panel px-3 py-1.5 text-xs shadow-xl shadow-black/50"
           style={{ left: hover.x + 12, top: hover.y + 12 }}
         >
           <div className="font-medium text-ink-text">{nameById.get(hover.id)}</div>

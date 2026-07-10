@@ -146,30 +146,30 @@ export function CorrelationSection() {
             </SectionTitle>
             <ResponsiveContainer width="100%" height={420}>
               <ScatterChart margin={{ top: 12, right: 24, bottom: 24, left: 12 }}>
-                <CartesianGrid stroke="#1b2540" />
+                <CartesianGrid stroke="#e7e7dc" />
                 <XAxis
                   type="number"
                   dataKey="x"
                   name={data.x.name}
-                  tick={{ fill: "#9aa7c2", fontSize: 11 }}
-                  axisLine={{ stroke: "#26314f" }}
+                  tick={{ fill: "#544c40", fontSize: 11 }}
+                  axisLine={{ stroke: "#babba9" }}
                   tickLine={false}
-                  label={{ value: `${data.x.name}${data.x.unit ? ` (${data.x.unit})` : ""}`, position: "insideBottom", offset: -12, fill: "#9aa7c2", fontSize: 11 }}
+                  label={{ value: `${data.x.name}${data.x.unit ? ` (${data.x.unit})` : ""}`, position: "insideBottom", offset: -12, fill: "#544c40", fontSize: 11 }}
                 />
                 <YAxis
                   type="number"
                   dataKey="y"
                   name={data.y.name}
-                  tick={{ fill: "#9aa7c2", fontSize: 11 }}
-                  axisLine={{ stroke: "#26314f" }}
+                  tick={{ fill: "#544c40", fontSize: 11 }}
+                  axisLine={{ stroke: "#babba9" }}
                   tickLine={false}
                   width={64}
-                  label={{ value: data.y.unit || "", angle: -90, position: "insideLeft", fill: "#9aa7c2", fontSize: 11 }}
+                  label={{ value: data.y.unit || "", angle: -90, position: "insideLeft", fill: "#544c40", fontSize: 11 }}
                 />
                 <ZAxis range={[55, 55]} />
                 <Tooltip
-                  cursor={{ strokeDasharray: "3 3", stroke: "#26314f" }}
-                  contentStyle={{ background: "#141b2e", border: "1px solid #26314f", borderRadius: 8, color: "#e6ebf5" }}
+                  cursor={{ strokeDasharray: "3 3", stroke: "#babba9" }}
+                  contentStyle={{ background: "#ffffff", border: "1px solid #babba9", borderRadius: 8, color: "#051220" }}
                   content={({ active, payload }) => {
                     if (!active || !payload || !payload.length) return null;
                     const p = payload[0].payload as { domain_name: string; x: number; y: number };
@@ -186,7 +186,7 @@ export function CorrelationSection() {
                     );
                   }}
                 />
-                <Scatter data={data.results} fill="#5b8cff" fillOpacity={0.8} />
+                <Scatter data={data.results} fill="#8b5e3c" fillOpacity={0.8} />
               </ScatterChart>
             </ResponsiveContainer>
           </Panel>

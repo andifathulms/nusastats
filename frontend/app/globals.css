@@ -3,12 +3,21 @@
 @tailwind utilities;
 
 :root {
-  color-scheme: dark;
+  color-scheme: light;
 }
 
 body {
-  background: #0b1020;
-  color: #e6ebf5;
+  background:
+    radial-gradient(ellipse 90% 55% at 50% -12%, rgba(139, 94, 60, 0.08), transparent 60%),
+    radial-gradient(ellipse 60% 40% at 92% 0%, rgba(10, 41, 71, 0.07), transparent 60%),
+    #eaeceb;
+  background-attachment: fixed;
+  color: #051220;
+}
+
+::selection {
+  background: rgba(139, 94, 60, 0.28);
+  color: #051220;
 }
 
 /* Thin, unobtrusive scrollbars for data tables */
@@ -17,6 +26,11 @@ body {
   width: 8px;
 }
 .scroll-thin::-webkit-scrollbar-thumb {
-  background: #26314f;
+  background: #98998a;
   border-radius: 8px;
+}
+
+/* Subtle paper grain for the app shell */
+.bg-noise {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.02'/%3E%3C/svg%3E");
 }

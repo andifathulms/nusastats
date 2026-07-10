@@ -69,13 +69,13 @@ export default function RegionDetailPage({ params }: { params: { domainId: strin
       </div>
 
       {region.admin_level !== "national" && (
-        <div className="inline-flex rounded-lg border border-ink-border p-1">
+        <div className="inline-flex rounded-xl border border-ink-border/80 bg-ink-panel/50 p-1 backdrop-blur-sm">
           {(["indicators", "profile"] as const).map((v) => (
             <button
               key={v}
               onClick={() => setView(v)}
-              className={`rounded-md px-4 py-1.5 text-sm capitalize ${
-                view === v ? "bg-ink-accent text-white" : "text-ink-muted hover:text-ink-text"
+              className={`rounded-lg px-4 py-1.5 text-sm font-medium capitalize transition-colors ${
+                view === v ? "bg-brand-gradient text-white shadow-glow" : "text-ink-muted hover:text-ink-text"
               }`}
             >
               {v === "profile" ? "Profile (how it ranks)" : "Indicators"}
@@ -167,7 +167,7 @@ function ProfileView({
         <div className="max-h-[36rem] divide-y divide-ink-border/40 overflow-auto scroll-thin">
           {profile.results.map((r) => {
             const pct = r.percentile ?? 0;
-            const color = pct >= 66 ? "#4dd0a7" : pct >= 33 ? "#f2b34e" : "#e5686f";
+            const color = pct >= 66 ? "#1f7a45" : pct >= 33 ? "#a6650a" : "#b23a3a";
             return (
               <div key={r.variable_id} className="flex items-center gap-3 px-4 py-2.5">
                 <div className="w-1/2 min-w-0">

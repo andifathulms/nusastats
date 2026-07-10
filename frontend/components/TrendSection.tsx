@@ -100,33 +100,33 @@ export function TrendSection() {
             </SectionTitle>
             <ResponsiveContainer width="100%" height={360}>
               <ComposedChart data={rows} margin={{ top: 8, right: 16, bottom: 0, left: 8 }}>
-                <CartesianGrid stroke="#1b2540" vertical={false} />
-                <XAxis dataKey="year" tick={{ fill: "#9aa7c2", fontSize: 12 }} axisLine={{ stroke: "#26314f" }} tickLine={false} />
+                <CartesianGrid stroke="#e7e7dc" vertical={false} />
+                <XAxis dataKey="year" tick={{ fill: "#544c40", fontSize: 12 }} axisLine={{ stroke: "#babba9" }} tickLine={false} />
                 <YAxis
-                  tick={{ fill: "#9aa7c2", fontSize: 12 }}
-                  axisLine={{ stroke: "#26314f" }}
+                  tick={{ fill: "#544c40", fontSize: 12 }}
+                  axisLine={{ stroke: "#babba9" }}
                   tickLine={false}
                   width={64}
                   domain={["auto", "auto"]}
                   tickFormatter={(v) => (Math.abs(v) >= 1000 ? `${(v / 1000).toLocaleString()}k` : `${v}`)}
                 />
                 <Tooltip
-                  contentStyle={{ background: "#141b2e", border: "1px solid #26314f", borderRadius: 8, color: "#e6ebf5" }}
-                  labelStyle={{ color: "#9aa7c2" }}
+                  contentStyle={{ background: "#ffffff", border: "1px solid #babba9", borderRadius: 8, color: "#051220" }}
+                  labelStyle={{ color: "#544c40" }}
                   formatter={(v: number | number[], name: string) => {
                     if (Array.isArray(v)) return [`${formatNumber(v[0])} – ${formatNumber(v[1])}`, "Province range"];
                     return [formatNumber(v as number), name === "national" ? "National" : "Provincial mean"];
                   }}
                 />
                 <Legend
-                  wrapperStyle={{ fontSize: 12, color: "#9aa7c2" }}
+                  wrapperStyle={{ fontSize: 12, color: "#544c40" }}
                   formatter={(v) => (v === "national" ? "National" : v === "prov_mean" ? "Provincial mean" : "Province range")}
                 />
-                <Area dataKey="band" stroke="none" fill="#5b8cff" fillOpacity={0.12} legendType="none" />
+                <Area dataKey="band" stroke="none" fill="#8b5e3c" fillOpacity={0.12} legendType="none" />
                 {data.has_national && (
-                  <Line type="monotone" dataKey="national" stroke="#5b8cff" strokeWidth={2.5} dot={false} connectNulls />
+                  <Line type="monotone" dataKey="national" stroke="#8b5e3c" strokeWidth={2.5} dot={false} connectNulls />
                 )}
-                <Line type="monotone" dataKey="prov_mean" stroke="#4dd0a7" strokeWidth={2} strokeDasharray={data.has_national ? "4 3" : undefined} dot={false} connectNulls />
+                <Line type="monotone" dataKey="prov_mean" stroke="#1f7a45" strokeWidth={2} strokeDasharray={data.has_national ? "4 3" : undefined} dot={false} connectNulls />
               </ComposedChart>
             </ResponsiveContainer>
           </Panel>

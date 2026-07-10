@@ -28,14 +28,16 @@ export default function AnalyticsPage() {
         </p>
       </div>
 
-      <div className="inline-flex flex-wrap gap-1 rounded-lg border border-ink-border p-1">
+      <div className="inline-flex flex-wrap gap-1 rounded-xl border border-ink-border/80 bg-ink-panel/50 p-1 backdrop-blur-sm">
         {MODES.map((m) => (
           <button
             key={m.v}
             onClick={() => setMode(m.v)}
             title={m.hint}
-            className={`rounded-md px-4 py-1.5 text-sm ${
-              mode === m.v ? "bg-ink-accent text-white" : "text-ink-muted hover:text-ink-text"
+            className={`rounded-lg px-4 py-1.5 text-sm font-medium transition-colors ${
+              mode === m.v
+                ? "bg-brand-gradient text-white shadow-glow"
+                : "text-ink-muted hover:bg-ink-panel2/70 hover:text-ink-text"
             }`}
           >
             {m.label}

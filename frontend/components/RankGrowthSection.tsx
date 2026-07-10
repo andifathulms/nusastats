@@ -189,7 +189,7 @@ function GrowthView({ growth, loading }: { growth: Growth; loading: boolean }) {
         <SectionTitle hint={`${growth.year_from} → ${growth.year_to} · % change${loading ? " · loading…" : ""}`}>
           {growth.name} — change by region
         </SectionTitle>
-        <HorizontalBars data={bars} unit="%" colorPos="#4dd0a7" colorNeg="#e5686f" />
+        <HorizontalBars data={bars} unit="%" colorPos="#1f7a45" colorNeg="#b23a3a" />
       </Panel>
 
       <RankTable

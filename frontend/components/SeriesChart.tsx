@@ -30,21 +30,21 @@ export function SeriesChart({
   return (
     <ResponsiveContainer width="100%" height={340}>
       <LineChart data={rows} margin={{ top: 8, right: 16, bottom: 0, left: 8 }}>
-        <CartesianGrid stroke="#1b2540" vertical={false} />
-        <XAxis dataKey="year" tick={{ fill: "#9aa7c2", fontSize: 12 }} axisLine={{ stroke: "#26314f" }} tickLine={false} />
+        <CartesianGrid stroke="#e7e7dc" vertical={false} />
+        <XAxis dataKey="year" tick={{ fill: "#544c40", fontSize: 12 }} axisLine={{ stroke: "#babba9" }} tickLine={false} />
         <YAxis
-          tick={{ fill: "#9aa7c2", fontSize: 12 }}
-          axisLine={{ stroke: "#26314f" }}
+          tick={{ fill: "#544c40", fontSize: 12 }}
+          axisLine={{ stroke: "#babba9" }}
           tickLine={false}
           width={64}
           tickFormatter={(v) => (Math.abs(v) >= 1000 ? `${(v / 1000).toLocaleString()}k` : `${v}`)}
         />
         <Tooltip
-          contentStyle={{ background: "#141b2e", border: "1px solid #26314f", borderRadius: 8, color: "#e6ebf5" }}
-          labelStyle={{ color: "#9aa7c2" }}
+          contentStyle={{ background: "#ffffff", border: "1px solid #babba9", borderRadius: 8, color: "#051220" }}
+          labelStyle={{ color: "#544c40" }}
           formatter={(v: number, name: string) => [`${v?.toLocaleString?.() ?? v}${unit ? ` ${unit}` : ""}`, name]}
         />
-        <Legend wrapperStyle={{ fontSize: 12, color: "#9aa7c2" }} />
+        <Legend wrapperStyle={{ fontSize: 12, color: "#544c40" }} />
         {entities.map((e, i) => (
           <Line
             key={e.key}

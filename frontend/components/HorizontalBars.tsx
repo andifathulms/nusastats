@@ -7,7 +7,7 @@ export type BarDatum = { label: string; value: number; highlight?: boolean };
 export function HorizontalBars({
   data,
   unit,
-  colorPos = "#5b8cff",
+  colorPos = "#8b5e3c",
   colorNeg,
 }: {
   data: BarDatum[];
@@ -24,8 +24,8 @@ export function HorizontalBars({
       <BarChart data={data} layout="vertical" margin={{ top: 4, right: 48, bottom: 4, left: 8 }}>
         <XAxis
           type="number"
-          tick={{ fill: "#9aa7c2", fontSize: 11 }}
-          axisLine={{ stroke: "#26314f" }}
+          tick={{ fill: "#544c40", fontSize: 11 }}
+          axisLine={{ stroke: "#babba9" }}
           tickLine={false}
           tickFormatter={(v) => (Math.abs(v) >= 1000 ? `${(v / 1000).toLocaleString()}k` : `${v}`)}
         />
@@ -33,20 +33,20 @@ export function HorizontalBars({
           type="category"
           dataKey="label"
           width={150}
-          tick={{ fill: "#c7d0e4", fontSize: 12 }}
-          axisLine={{ stroke: "#26314f" }}
+          tick={{ fill: "#051220", fontSize: 12 }}
+          axisLine={{ stroke: "#babba9" }}
           tickLine={false}
         />
         <Tooltip
-          cursor={{ fill: "#1b2540" }}
-          contentStyle={{ background: "#141b2e", border: "1px solid #26314f", borderRadius: 8, color: "#e6ebf5" }}
+          cursor={{ fill: "#e7e7dc" }}
+          contentStyle={{ background: "#ffffff", border: "1px solid #babba9", borderRadius: 8, color: "#051220" }}
           formatter={(v: number) => [`${v?.toLocaleString?.() ?? v}${unit ? ` ${unit}` : ""}`, ""]}
         />
         <Bar dataKey="value" radius={[0, 4, 4, 0]}>
           {data.map((d, i) => (
             <Cell
               key={i}
-              fill={colorNeg && d.value < 0 ? colorNeg : d.highlight ? "#4dd0a7" : colorPos}
+              fill={colorNeg && d.value < 0 ? colorNeg : d.highlight ? "#1f7a45" : colorPos}
             />
           ))}
         </Bar>
