@@ -101,9 +101,10 @@ def simplify_geom(geom, eps, nd=3):
 
 
 def build(service, layer, fields, offset_tol, eps, key_fn, name_field, out_path,
-          wheres=None, page=2000):
+          wheres=None, page=2000, nd=3):
     """Fetch (optionally per `wheres` clause, to keep dense levels' payloads
-    small), simplify, and write. `wheres` defaults to one nationwide query."""
+    small), simplify, and write. `wheres` defaults to one nationwide query.
+    `nd` = coordinate decimals kept (higher preserves small polygons)."""
     feats = []
     for where in (wheres or ["1=1"]):
         offset = 0
@@ -115,7 +116,7 @@ def build(service, layer, fields, offset_tol, eps, key_fn, name_field, out_path,
                 code = key_fn(p)
                 if not code or not f.get("geometry"):
                     continue
-                geom = simplify_geom(f["geometry"], eps)
+                geom = simplify_geom(f["geometry"], eps, nd=nd)
                 if not geom["coordinates"]:
                     continue
                 feats.append({
@@ -155,6 +156,22 @@ def kec_code(p):
     return f"{int(a):02d}{int(b):02d}{int(c):02d}"
 
 
+def desa_code(p):
+    k = p.get("kode_desa_spatial")
+    return str(int(k)) if k is not None else ""
+
+
+def build_villages(out_dir, eps, only=None):
+    """One geojson per province (83k villages nationwide is too much for a
+    single file/request). nd=4 keeps small village polygons from collapsing."""
+    provs = only or distinct_provs("AGR_VISUAL_KEL_FIX", 0)
+    for p in provs:
+        build("AGR_VISUAL_KEL_FIX", 0, "no_prop,kode_desa_spatial,nama_kel", 0.004, eps or 0.0015,
+              desa_code, "nama_kel", f"{out_dir}/dukcapil-villages-{int(p):02d}.geojson",
+              wheres=[f"no_prop={p}"], page=1000, nd=4)
+        sys.stderr.write(f"province {p} done\n")
+
+
 if __name__ == "__main__":
     which = sys.argv[1]
     out_dir = sys.argv[2]
@@ -169,6 +186,10 @@ if __name__ == "__main__":
         build("AGR_VISUAL_KEC_FIX", 2, "no_prop,no_kab,no_kec,nama_kec", 0.008, eps or 0.003,
               kec_code, "nama_kec", f"{out_dir}/dukcapil-districts.geojson",
               wheres=[f"no_prop={p}" for p in provs], page=1000)
+    elif which == "desa":
+        # One file per province. Optional 4th+ args = specific province numbers.
+        only = [int(x) for x in sys.argv[4:]] or None
+        build_villages(out_dir, eps, only=only)
     else:
         build("AGR_VISUAL_KAB_FIX", 3, "no_prop,no_kab,nama_kab", 0.01, eps or 0.004,
               kab_code, "nama_kab", f"{out_dir}/dukcapil-regencies.geojson")
