@@ -14,14 +14,17 @@ import {
   type DukcapilSummary,
 } from "@/lib/api";
 import { HorizontalBars, type BarDatum } from "@/components/HorizontalBars";
+import { DukcapilMap } from "@/components/DukcapilMap";
 import { Badge, Panel, SectionTitle, StatTile } from "@/components/ui";
 
 const TOP_N = 25;
+type View = "ranking" | "map";
 
 export default function DukcapilPage() {
   const [summary, setSummary] = useState<DukcapilSummary | null>(null);
   const [catalog, setCatalog] = useState<DukcapilIndicatorGroups | null>(null);
 
+  const [view, setView] = useState<View>("ranking");
   const [level, setLevel] = useState<DukcapilLevel>("province");
   const [indicator, setIndicator] = useState("jumlah_penduduk");
   const [order, setOrder] = useState<"desc" | "asc">("desc");
@@ -86,6 +89,35 @@ export default function DukcapilPage() {
 
   const totals = summary?.national_totals ?? {};
 
+  const selectedInd = useMemo(() => {
+    for (const g of catalog?.groups ?? []) {
+      const found = g.indicators.find((i) => i.field === indicator);
+      if (found) return found;
+    }
+    return null;
+  }, [catalog, indicator]);
+
+  const indicatorSelect = (
+    <div className="min-w-[220px] flex-1">
+      <label className="mb-1.5 block text-xs uppercase tracking-wide text-ink-muted">Indikator</label>
+      <select
+        value={indicator}
+        onChange={(e) => setIndicator(e.target.value)}
+        className="w-full rounded-lg border border-ink-border bg-ink-panel px-3 py-2 text-sm text-ink-text focus:border-ink-accent/60 focus:outline-none"
+      >
+        {catalog?.groups.map((g) => (
+          <optgroup key={g.group} label={g.group}>
+            {g.indicators.map((i) => (
+              <option key={i.field} value={i.field}>
+                {i.label_id}
+              </option>
+            ))}
+          </optgroup>
+        ))}
+      </select>
+    </div>
+  );
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -112,6 +144,23 @@ export default function DukcapilPage() {
         )}
       </div>
 
+      {/* View switch. */}
+      <div className="inline-flex flex-wrap gap-1 rounded-xl border border-ink-border/80 bg-ink-panel/50 p-1">
+        {([["ranking", "Peringkat"], ["map", "Peta"]] as [View, string][]).map(([v, label]) => (
+          <button
+            key={v}
+            onClick={() => setView(v)}
+            className={`rounded-lg px-4 py-1.5 text-sm font-medium transition-colors ${
+              view === v
+                ? "bg-brand-gradient text-white shadow-glow"
+                : "text-ink-muted hover:bg-ink-panel2/70 hover:text-ink-text"
+            }`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
       {/* National headline totals (summed from provinces). */}
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <StatTile label="Jumlah Penduduk" value={totals.jumlah_penduduk ?? "–"} sub="jiwa (nasional)" />
@@ -120,7 +169,12 @@ export default function DukcapilPage() {
         <StatTile label="Perempuan" value={totals.wanita ?? "–"} sub="jiwa" accent="warn" />
       </div>
 
-      {/* Controls. */}
+      {/* Controls. In map view only the indicator matters (province geometry). */}
+      {view === "map" ? (
+        <Panel>
+          <div className="flex flex-wrap items-end gap-4">{indicatorSelect}</div>
+        </Panel>
+      ) : (
       <Panel>
         <div className="flex flex-wrap items-end gap-4">
           {/* Level switch. */}
@@ -181,24 +235,7 @@ export default function DukcapilPage() {
           )}
 
           {/* Indicator picker (grouped). */}
-          <div className="min-w-[220px] flex-1">
-            <label className="mb-1.5 block text-xs uppercase tracking-wide text-ink-muted">Indikator</label>
-            <select
-              value={indicator}
-              onChange={(e) => setIndicator(e.target.value)}
-              className="w-full rounded-lg border border-ink-border bg-ink-panel px-3 py-2 text-sm text-ink-text focus:border-ink-accent/60 focus:outline-none"
-            >
-              {catalog?.groups.map((g) => (
-                <optgroup key={g.group} label={g.group}>
-                  {g.indicators.map((i) => (
-                    <option key={i.field} value={i.field}>
-                      {i.label_id}
-                    </option>
-                  ))}
-                </optgroup>
-              ))}
-            </select>
-          </div>
+          {indicatorSelect}
 
           {/* Order toggle. */}
           <div>
@@ -218,7 +255,14 @@ export default function DukcapilPage() {
           </p>
         )}
       </Panel>
+      )}
 
+      {view === "map" ? (
+        selectedInd && (
+          <DukcapilMap indicator={indicator} label={selectedInd.label_id} unit={selectedInd.unit} />
+        )
+      ) : (
+      <>
       {/* Ranking. */}
       <div className="grid gap-6 lg:grid-cols-3">
         <Panel className="lg:col-span-2">
@@ -267,6 +311,8 @@ export default function DukcapilPage() {
       </div>
 
       {detail && <RegionProfile detail={detail} onClose={() => setDetail(null)} />}
+      </>
+      )}
     </div>
   );
 }
