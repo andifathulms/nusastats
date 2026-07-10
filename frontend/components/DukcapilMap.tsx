@@ -6,9 +6,9 @@ import { ChoroplethMap, type MapValue } from "@/components/ChoroplethMap";
 import { Panel, SectionTitle } from "@/components/ui";
 
 // Map geojson comes from the same Dukcapil ArcGIS service as the data, so its
-// `domain_id` is exactly the Dukcapil region code (prov=2 / kab=4 / kec=6
-// digits) — the ranking's domain_id matches directly, and a province code is a
-// prefix of its regencies'/districts' codes (used by the filter).
+// `domain_id` is exactly the Dukcapil region code (prov=2 / kab=4 / kec=6 /
+// desa=10 digits) — the ranking's domain_id matches directly, and an ancestor
+// code is a prefix of its descendants' codes (used by the filter).
 const SINGLE_GEOJSON: Record<"province" | "regency" | "district", string> = {
   province: "/dukcapil-provinces.geojson",
   regency: "/dukcapil-regencies.geojson",
@@ -35,7 +35,9 @@ export function DukcapilMap({
 }) {
   const [mapLevel, setMapLevel] = useState<MapLevel>("province");
   const [provinces, setProvinces] = useState<DukcapilRegionRow[]>([]);
+  const [regencies, setRegencies] = useState<DukcapilRegionRow[]>([]);
   const [selProvs, setSelProvs] = useState<string[]>([]);
+  const [selKabs, setSelKabs] = useState<string[]>([]);
   const [rank, setRank] = useState<DukcapilRank | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -43,12 +45,31 @@ export function DukcapilMap({
     dukcapilApi.regions({ level: "province" }).then(setProvinces);
   }, []);
 
-  // Village values are fetched per selected province (all 83k at once is too
-  // big); other levels are one nationwide call. provKey only varies the fetch
-  // for village, so toggling the filter doesn't refetch the other levels.
-  const provKey = mapLevel === "village" ? selProvs.join(",") : "";
+  // Kabupaten options follow the selected provinces; drop any selected kab
+  // whose province is no longer selected.
+  const provKeyAll = selProvs.join(",");
   useEffect(() => {
-    if (mapLevel === "village" && !selProvs.length) {
+    if (!selProvs.length) {
+      setRegencies([]);
+      return;
+    }
+    Promise.all(selProvs.map((p) => dukcapilApi.regions({ level: "regency", prov: p }))).then((rs) =>
+      setRegencies(rs.flat())
+    );
+    setSelKabs((kabs) => kabs.filter((k) => selProvs.includes(k.slice(0, 2))));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [provKeyAll]);
+
+  // Effective filter: the selected kabupaten (4-digit) if any, else the
+  // selected provinces (2-digit). Village geometry/values still load by
+  // province (that's how the files/queries are chunked).
+  const filterPrefixes = selKabs.length ? selKabs : selProvs;
+  const loadProvs = selKabs.length ? Array.from(new Set(selKabs.map((k) => k.slice(0, 2)))) : selProvs;
+  const prefixKey = filterPrefixes.join(",");
+
+  const provKey = mapLevel === "village" ? loadProvs.join(",") : "";
+  useEffect(() => {
+    if ((mapLevel === "district" || mapLevel === "village") && !selProvs.length) {
       setRank(null);
       return;
     }
@@ -61,7 +82,7 @@ export function DukcapilMap({
     };
     const calls =
       mapLevel === "village"
-        ? selProvs.map((p) => dukcapilApi.rank({ ...base, level: "village", prov: p }))
+        ? loadProvs.map((p) => dukcapilApi.rank({ ...base, level: "village", prov: p }))
         : [dukcapilApi.rank({ ...base, level: mapLevel })];
     Promise.all(calls)
       .then((rs) => {
@@ -72,14 +93,14 @@ export function DukcapilMap({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [indicator, mapLevel, percentOf, provKey]);
 
-  // The visible rows (filtered to the selected provinces). Both the colour
-  // scale and the top-list are computed from these, so the filtered view gets
-  // the full colour range rather than being squished by nationwide extremes.
+  // Visible rows = filtered to the selection. Colour scale + top-list use
+  // these, so a filtered view gets the full colour range.
   const visible = useMemo(() => {
     const rows = rank?.results ?? [];
-    if (!selProvs.length) return rows;
-    return rows.filter((r) => selProvs.some((p) => r.domain_id.startsWith(p)));
-  }, [rank, selProvs]);
+    if (!filterPrefixes.length) return rows;
+    return rows.filter((r) => filterPrefixes.some((p) => r.domain_id.startsWith(p)));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rank, prefixKey]);
 
   const values = useMemo(() => {
     const m = new Map<string, MapValue>();
@@ -93,11 +114,10 @@ export function DukcapilMap({
   const effUnit = rank?.unit || (percentOf ? "%" : unit);
   const fmt = (v: number | null) => (percentOf ? `${v ?? "–"}%` : formatNumber(v));
 
-  // Kecamatan/desa nationwide is too dense/heavy — require a province filter.
   const needFilter = (mapLevel === "district" || mapLevel === "village") && selProvs.length === 0;
   const geojsonUrls =
     mapLevel === "village"
-      ? selProvs.map((p) => `/dukcapil-villages-${p}.geojson`)
+      ? loadProvs.map((p) => `/dukcapil-villages-${p}.geojson`)
       : [SINGLE_GEOJSON[mapLevel]];
 
   return (
@@ -107,7 +127,14 @@ export function DukcapilMap({
           {label} {effUnit && <span>({effUnit})</span>}
         </SectionTitle>
         <div className="flex flex-wrap items-center gap-2">
-          <ProvinceFilter provinces={provinces} selected={selProvs} onChange={setSelProvs} />
+          <MultiSelect label="Provinsi" options={provinces} selected={selProvs} onChange={setSelProvs} />
+          <MultiSelect
+            label="Kab/Kota"
+            options={regencies}
+            selected={selKabs}
+            onChange={setSelKabs}
+            disabled={!selProvs.length}
+          />
           <div className="inline-flex gap-1 rounded-lg border border-ink-border/80 bg-ink-panel/50 p-0.5">
             {MAP_LEVELS.map(([v, lbl]) => (
               <button
@@ -127,7 +154,7 @@ export function DukcapilMap({
       {needFilter ? (
         <div className="flex h-64 items-center justify-center px-6 text-center text-sm text-ink-muted">
           Peta {mapLevel === "village" ? "desa/kelurahan" : "kecamatan"} padat — pilih satu atau beberapa
-          provinsi di filter untuk menampilkannya.
+          provinsi (dan kab/kota) di filter untuk menampilkannya.
         </div>
       ) : (
         <>
@@ -137,7 +164,7 @@ export function DukcapilMap({
             max={max}
             unit={effUnit}
             geojsonUrls={geojsonUrls}
-            provFilter={selProvs}
+            provFilter={filterPrefixes}
           />
           <div className="mt-4 grid grid-cols-2 gap-x-6 gap-y-1 text-sm sm:grid-cols-3">
             {visible.slice(0, 6).map((r, i) => (
@@ -155,14 +182,18 @@ export function DukcapilMap({
   );
 }
 
-function ProvinceFilter({
-  provinces,
+function MultiSelect({
+  label,
+  options,
   selected,
   onChange,
+  disabled,
 }: {
-  provinces: DukcapilRegionRow[];
+  label: string;
+  options: DukcapilRegionRow[];
   selected: string[];
   onChange: (v: string[]) => void;
+  disabled?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const boxRef = useRef<HTMLDivElement>(null);
@@ -178,17 +209,18 @@ function ProvinceFilter({
   const toggle = (code: string) =>
     onChange(selected.includes(code) ? selected.filter((c) => c !== code) : [...selected, code]);
 
-  const labelText = selected.length === 0 ? "Semua provinsi" : `${selected.length} provinsi`;
+  const labelText = selected.length === 0 ? `Semua ${label.toLowerCase()}` : `${selected.length} dipilih`;
 
   return (
     <div ref={boxRef} className="relative">
       <button
-        onClick={() => setOpen((o) => !o)}
-        className="rounded-lg border border-ink-border bg-ink-panel px-3 py-1.5 text-xs text-ink-text hover:border-ink-accent/60"
+        onClick={() => !disabled && setOpen((o) => !o)}
+        disabled={disabled}
+        className="rounded-lg border border-ink-border bg-ink-panel px-3 py-1.5 text-xs text-ink-text hover:border-ink-accent/60 disabled:opacity-40"
       >
-        Filter: {labelText} ▾
+        {label}: {labelText} ▾
       </button>
-      {open && (
+      {open && !disabled && (
         <div className="absolute right-0 z-30 mt-1 w-60 rounded-lg border border-ink-border bg-ink-panel shadow-xl shadow-black/40">
           <div className="flex items-center justify-between border-b border-ink-border px-3 py-2 text-xs">
             <span className="text-ink-muted">{selected.length} dipilih</span>
@@ -197,18 +229,18 @@ function ProvinceFilter({
             </button>
           </div>
           <div className="max-h-64 overflow-y-auto scroll-thin py-1">
-            {provinces.map((p) => (
+            {options.map((o) => (
               <label
-                key={p.code}
+                key={o.code}
                 className="flex cursor-pointer items-center gap-2 px-3 py-1.5 text-sm hover:bg-ink-panel2"
               >
                 <input
                   type="checkbox"
-                  checked={selected.includes(p.code)}
-                  onChange={() => toggle(p.code)}
+                  checked={selected.includes(o.code)}
+                  onChange={() => toggle(o.code)}
                   className="accent-[#8b5e3c]"
                 />
-                <span className="truncate text-ink-text">{p.name}</span>
+                <span className="truncate text-ink-text">{regionLabel(o.name, o.status)}</span>
               </label>
             ))}
           </div>
