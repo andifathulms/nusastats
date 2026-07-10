@@ -5,14 +5,24 @@ The source stores names in UPPERCASE, and encodes city-vs-regency only as a
 "KOTA TANGERANG" into ("Tangerang", "Kota") and "TANGERANG" into
 ("Tangerang", "Kabupaten").
 
-Note: desa vs kelurahan is NOT present anywhere in the Dukcapil population
-data, so village status is left blank (would need an external MFD reference).
+Desa vs kelurahan isn't in a data field, but the standard Kemendagri 10-digit
+region code encodes it: the 7th digit (first of the 4-digit village part) is
+1 for Kelurahan and 2 for Desa. Verified against the live data — 8,468 (1) vs
+74,929 (2), matching Indonesia's real ~8.5k kelurahan / ~75k desa split.
 """
 
 import re
 
 # Acronyms to keep uppercase through title-casing.
 _KEEP_UPPER = {"DKI", "DIY", "DI"}
+
+
+def village_status(code):
+    """'Kelurahan' / 'Desa' from the 7th digit of the 10-digit code, or '' for
+    the ~0.1% with a non-standard code (dirty/objectid-suffixed rows)."""
+    if code and len(code) >= 10 and code[:10].isdigit():
+        return {"1": "Kelurahan", "2": "Desa"}.get(code[6], "")
+    return ""
 
 
 def _cap_word(w):
@@ -31,9 +41,9 @@ def title_case(s):
 _KABUPATEN_PREFIXES = ("KABUPATEN ", "KAB. ", "KAB ")
 
 
-def name_and_status(level, raw):
+def name_and_status(level, raw, code=None):
     """(clean_name, status) for a region. status is Provinsi / Kota /
-    Kabupaten / Kecamatan; blank for village (desa/kelurahan not in source)."""
+    Kabupaten / Kecamatan / Kelurahan / Desa (village from `code`)."""
     raw = (raw or "").strip()
     up = raw.upper()
     if level == "regency":
@@ -47,4 +57,4 @@ def name_and_status(level, raw):
         return title_case(raw), "Provinsi"
     if level == "district":
         return title_case(raw), "Kecamatan"
-    return title_case(raw), ""  # village
+    return title_case(raw), village_status(code)  # village

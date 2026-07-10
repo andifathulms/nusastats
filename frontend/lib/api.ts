@@ -256,6 +256,8 @@ export type DukcapilRegionRow = {
 export function regionLabel(name: string, status?: string): string {
   if (status === "Kota") return `Kota ${name}`;
   if (status === "Kabupaten") return `Kab. ${name}`;
+  if (status === "Kelurahan") return `Kel. ${name}`;
+  if (status === "Desa") return `Desa ${name}`;
   return name;
 }
 

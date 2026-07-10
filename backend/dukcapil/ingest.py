@@ -82,7 +82,7 @@ def _row(level, a, log, now, seen, period):
     base, parent_code, raw_name = _codes(level, a)
     code = _unique_code(base, level, a, seen)
     prov_code, kab_code, kec_code = _ancestor_codes(a)
-    name, status = name_and_status(level, raw_name)
+    name, status = name_and_status(level, raw_name, code)
     return DukcapilRegion(
         code=code,
         level=level,
