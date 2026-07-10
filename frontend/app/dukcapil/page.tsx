@@ -16,6 +16,7 @@ import {
 import { HorizontalBars, type BarDatum } from "@/components/HorizontalBars";
 import { DukcapilMap } from "@/components/DukcapilMap";
 import { DukcapilCorrelation } from "@/components/DukcapilCorrelation";
+import { RegionCharts } from "@/components/RegionCharts";
 import { Badge, Panel, SectionTitle, StatTile } from "@/components/ui";
 
 const TOP_N = 25;
@@ -428,6 +429,7 @@ function RegionProfile({ detail, onClose }: { detail: DukcapilRegionDetail; onCl
           Tutup
         </button>
       </div>
+      <RegionCharts detail={detail} />
       <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
         {detail.groups.map((g) => (
           <div key={g.group}>
