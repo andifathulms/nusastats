@@ -13,6 +13,8 @@ from django.db.models.fields.json import KeyTextTransform
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 
+from dukcapil.derived import DERIVED, DERIVED_BY_FIELD
+from dukcapil.derived import meta as derived_meta
 from dukcapil.indicators import GROUP_ORDER
 from dukcapil.models import DukcapilFetchLog, DukcapilIndicator, DukcapilLevel, DukcapilRegion
 from dukcapil.values import region_value, to_number
@@ -68,7 +70,8 @@ def _value_map(qs, field):
 def _extract(qs, fields):
     """{code: (name, {field: value})} for several JSON fields in one query
     (each field extracted with its own KeyTextTransform). Used where a row
-    needs more than one field at once — e.g. a value and its % denominator."""
+    needs more than one field at once — e.g. a value and its % denominator,
+    or the several raw inputs of a derived metric."""
     ann = {f"f{i}": KeyTextTransform(f, "attributes") for i, f in enumerate(fields)}
     out = {}
     for row in qs.annotate(**ann).values("code", "name", *ann.keys()):
@@ -78,6 +81,20 @@ def _extract(qs, fields):
             if v is not None:
                 vals[f] = v
         out[row["code"]] = (row["name"], vals)
+    return out
+
+
+def _metric_values(qs, field):
+    """{code: (name, value)} for either a raw JSON field or a derived
+    indicator (computed from its required raw fields per region)."""
+    spec = DERIVED_BY_FIELD.get(field)
+    if not spec:
+        return _value_map(qs, field)
+    out = {}
+    for code, (name, vals) in _extract(qs, spec["requires"]).items():
+        val = spec["fn"](vals)
+        if val is not None:
+            out[code] = (name, val)
     return out
 
 
@@ -117,21 +134,29 @@ def summary(request):
 
 @api_view(["GET"])
 def indicators(request):
-    """`/api/dukcapil/indicators/` — the catalog, grouped for the picker."""
+    """`/api/dukcapil/indicators/` — the catalog, grouped for the picker.
+    Includes derived demographic indicators (sex ratio, dependency ratio,
+    density, % Sarjana, KTP coverage, …) alongside the raw fields, each
+    flagged `derived` so the UI can badge them and disable the % toggle."""
     rows = list(DukcapilIndicator.objects.all())
     by_group = {}
     for r in rows:
-        by_group.setdefault(r.group, []).append(DukcapilIndicatorSerializer(r).data)
-    groups = [
-        {"group": g, "indicators": by_group[g]}
-        for g in GROUP_ORDER
-        if g in by_group
-    ]
-    # Any groups not in the explicit order (defensive) appended at the end.
+        d = DukcapilIndicatorSerializer(r).data
+        d["derived"] = False
+        by_group.setdefault(r.group, []).append(d)
+    for spec in DERIVED:
+        by_group.setdefault(spec["group"], []).append(derived_meta(spec))
+
+    # Derived group ordering: keep known groups in place, add "Rasio & Turunan".
+    order = list(GROUP_ORDER)
+    if "Rasio & Turunan" not in order:
+        order.insert(order.index("Kelompok Umur") + 1 if "Kelompok Umur" in order else len(order),
+                     "Rasio & Turunan")
+    groups = [{"group": g, "indicators": by_group[g]} for g in order if g in by_group]
     for g, items in by_group.items():
-        if g not in GROUP_ORDER:
+        if g not in order:
             groups.append({"group": g, "indicators": items})
-    return Response({"count": len(rows), "groups": groups})
+    return Response({"count": len(rows) + len(DERIVED), "groups": groups})
 
 
 @api_view(["GET"])
@@ -178,11 +203,18 @@ def region_detail(request, code):
     fields = [ind.field for ind in catalog]
     ann = {f"f{i}": KeyTextTransform(f, "attributes") for i, f in enumerate(fields)}
     peer_values = {f: [] for f in fields}
+    derived_peer_values = {d["field"]: [] for d in DERIVED}
     for row in peers_qs.annotate(**ann).values(*ann.keys()):
+        rowvals = {}
         for i, f in enumerate(fields):
             v = to_number(row[f"f{i}"])
             if v is not None:
                 peer_values[f].append(v)
+                rowvals[f] = v
+        for d in DERIVED:  # derived inputs are a subset of the raw fields
+            dv = d["fn"](rowvals)
+            if dv is not None:
+                derived_peer_values[d["field"]].append(dv)
 
     by_group = {}
     for ind in catalog:
@@ -199,10 +231,34 @@ def region_detail(request, code):
                 "rank": rank,
                 "of": of,
                 "percentile": pct,
+                "derived": False,
             }
         )
 
-    groups = [{"group": g, "indicators": by_group[g]} for g in GROUP_ORDER if g in by_group]
+    # Derived demographic metrics for this region, ranked against peers.
+    for d in DERIVED:
+        rvals = {k: region_value(region.attributes, k) for k in d["requires"]}
+        value = d["fn"](rvals)
+        if value is None:
+            continue
+        rank, of, pct = percentile_rank(value, derived_peer_values[d["field"]])
+        by_group.setdefault(d["group"], []).append(
+            {
+                "field": d["field"],
+                "label_id": d["label_id"],
+                "unit": d["unit"],
+                "value": value,
+                "rank": rank,
+                "of": of,
+                "percentile": pct,
+                "derived": True,
+            }
+        )
+
+    order = list(GROUP_ORDER)
+    if "Rasio & Turunan" not in order:
+        order.append("Rasio & Turunan")
+    groups = [{"group": g, "indicators": by_group[g]} for g in order if g in by_group]
     return Response(
         {
             "region": {
@@ -227,8 +283,9 @@ def rank(request):
     regions at a level by one indicator, plus distribution stats. `parent`
     keeps the village level usable (rank desa within one kabupaten)."""
     field = request.query_params.get("indicator", "jumlah_penduduk")
-    ind = DukcapilIndicator.objects.filter(field=field).first()
-    if not ind:
+    spec = DERIVED_BY_FIELD.get(field)
+    ind = None if spec else DukcapilIndicator.objects.filter(field=field).first()
+    if not spec and not ind:
         return Response({"detail": f"Unknown indicator {field!r}."}, status=404)
 
     level = request.query_params.get("level", DukcapilLevel.PROVINCE)
@@ -237,23 +294,32 @@ def rank(request):
     qs = DukcapilRegion.objects.filter(level=level, period=period)
     qs, scope = _apply_ancestor(qs, request)
 
-    # Optional: express the value as a percentage of another field (usually
-    # jumlah_penduduk) per region — e.g. "% penduduk beragama Islam".
     percent_of = request.query_params.get("percent_of")
-    if percent_of and percent_of != field:
-        data = _extract(qs, [field, percent_of])
+    if spec:
+        # Derived metrics are already ratios/rates — no percentage base.
+        percent_of = None
+        rows = [
+            {"domain_id": code, "domain_name": name, "value": v}
+            for code, (name, v) in _metric_values(qs, field).items()
+        ]
+        indicator_data, unit = derived_meta(spec), spec["unit"]
+    elif percent_of and percent_of != field:
+        # Express the value as a percentage of another field (usually
+        # jumlah_penduduk) per region — e.g. "% penduduk beragama Islam".
         rows = []
-        for code, (name, vals) in data.items():
+        for code, (name, vals) in _extract(qs, [field, percent_of]).items():
             v, base = vals.get(field), vals.get(percent_of)
             if v is None or not base:
                 continue
             rows.append({"domain_id": code, "domain_name": name, "value": round(v / base * 100, 2)})
+        indicator_data, unit = DukcapilIndicatorSerializer(ind).data, "%"
     else:
         percent_of = None
         rows = [
             {"domain_id": code, "domain_name": name, "value": v}
             for code, (name, v) in _value_map(qs, field).items()
         ]
+        indicator_data, unit = DukcapilIndicatorSerializer(ind).data, ind.unit
 
     stats = distribution([r["value"] for r in rows])
     ranked = rank_rows(rows, order=order)
@@ -263,12 +329,12 @@ def rank(request):
 
     return Response(
         {
-            "indicator": DukcapilIndicatorSerializer(ind).data,
+            "indicator": indicator_data,
             "level": level,
             "scope": scope,
             "order": order,
             "percent_of": percent_of,
-            "unit": "%" if percent_of else ind.unit,
+            "unit": unit,
             "stats": stats,
             "results": ranked,
         }
@@ -284,9 +350,15 @@ def correlate(request):
     if not x_field or not y_field:
         return Response({"detail": "x and y indicator params are required."}, status=400)
 
-    x_ind = DukcapilIndicator.objects.filter(field=x_field).first()
-    y_ind = DukcapilIndicator.objects.filter(field=y_field).first()
-    if not x_ind or not y_ind:
+    def resolve(f):
+        spec = DERIVED_BY_FIELD.get(f)
+        if spec:
+            return derived_meta(spec)
+        ind = DukcapilIndicator.objects.filter(field=f).first()
+        return DukcapilIndicatorSerializer(ind).data if ind else None
+
+    x_meta, y_meta = resolve(x_field), resolve(y_field)
+    if not x_meta or not y_meta:
         return Response({"detail": "Unknown x or y indicator."}, status=404)
 
     level = request.query_params.get("level", DukcapilLevel.PROVINCE)
@@ -294,8 +366,8 @@ def correlate(request):
     qs = DukcapilRegion.objects.filter(level=level, period=period)
     qs, _scope = _apply_ancestor(qs, request)
 
-    x_by = _value_map(qs, x_field)
-    y_by = _value_map(qs, y_field)
+    x_by = _metric_values(qs, x_field)
+    y_by = _metric_values(qs, y_field)
     results = [
         {"domain_id": c, "domain_name": x_by[c][0], "x": x_by[c][1], "y": y_by[c][1]}
         for c in x_by
@@ -306,8 +378,8 @@ def correlate(request):
 
     return Response(
         {
-            "x": DukcapilIndicatorSerializer(x_ind).data,
-            "y": DukcapilIndicatorSerializer(y_ind).data,
+            "x": x_meta,
+            "y": y_meta,
             "level": level,
             "n": len(results),
             "r": r,
