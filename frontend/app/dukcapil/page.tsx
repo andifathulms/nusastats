@@ -70,13 +70,23 @@ export default function DukcapilPage() {
     return p;
   }, [selProv, selReg, selDist]);
 
+  const selectedInd = useMemo(() => {
+    for (const g of catalog?.groups ?? []) {
+      const found = g.indicators.find((i) => i.field === indicator);
+      if (found) return found;
+    }
+    return null;
+  }, [catalog, indicator]);
+
   // Deep levels with no ancestor picked fall back to a nationwide top-N.
   const noFilter = (level === "district" || level === "village") && !selProv;
 
   // Percentage mode: express the value as a share of total population.
-  // Meaningless for a few indicators (population itself, area, density), so
-  // the toggle is disabled for those.
-  const canPercent = !["jumlah_penduduk", "luas_wilayah", "kepadatan_penduduk"].includes(indicator);
+  // Meaningless for population/area/density and for derived ratios (which are
+  // already rates/percentages), so the toggle is disabled for those.
+  const canPercent =
+    !["jumlah_penduduk", "luas_wilayah", "kepadatan_penduduk"].includes(indicator) &&
+    !selectedInd?.derived;
   const percentOf = percentMode && canPercent ? "jumlah_penduduk" : null;
 
   useEffect(() => {
@@ -102,14 +112,6 @@ export default function DukcapilPage() {
   }));
 
   const totals = summary?.national_totals ?? {};
-
-  const selectedInd = useMemo(() => {
-    for (const g of catalog?.groups ?? []) {
-      const found = g.indicators.find((i) => i.field === indicator);
-      if (found) return found;
-    }
-    return null;
-  }, [catalog, indicator]);
 
   const percentToggle = (
     <div>
@@ -431,7 +433,12 @@ function RegionProfile({ detail, onClose }: { detail: DukcapilRegionDetail; onCl
                 <div key={i.field} className="text-sm">
                   <div className="flex items-center justify-between gap-2">
                     <span className="truncate text-ink-muted">{i.label_id}</span>
-                    <span className="shrink-0 tabular-nums text-ink-text">{formatNumber(i.value)}</span>
+                    <span className="shrink-0 tabular-nums text-ink-text">
+                      {formatNumber(i.value)}
+                      {i.derived && i.unit && (
+                        <span className="ml-1 text-[10px] font-normal text-ink-muted">{i.unit}</span>
+                      )}
+                    </span>
                   </div>
                   {i.percentile !== null && (
                     <div className="mt-0.5 flex items-center gap-2">

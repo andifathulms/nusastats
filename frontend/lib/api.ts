@@ -234,6 +234,7 @@ export type DukcapilIndicator = {
   unit: string;
   is_string: boolean;
   sort: number;
+  derived?: boolean;
 };
 
 export type DukcapilIndicatorGroups = {
@@ -282,6 +283,7 @@ export type DukcapilRegionDetail = {
       rank: number | null;
       of: number;
       percentile: number | null;
+      derived?: boolean;
     }[];
   }[];
 };
