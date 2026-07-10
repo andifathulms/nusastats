@@ -15,6 +15,15 @@ AGE_WORK = ("u15", "u20", "u25", "u30", "u35", "u40", "u45", "u50", "u55", "u60"
 AGE_OLD = ("u65", "u70", "u75")  # 65+
 SARJANA = ("s1", "s2", "s3")  # s1 label is "Diploma IV/Strata I"
 SLTA_PLUS = ("slta", "d1_dan_d2", "d3", "s1", "s2", "s3")
+RELIGIONS = ("islam", "kristen", "katholik", "hindu", "budha", "konghucu", "kepercayaan")
+BLOOD_O = ("o", "o_", "o1")
+BLOOD_KNOWN = ("a", "a_", "a1", "b", "b_", "b1", "ab", "ab_", "ab1", "o", "o_", "o1")
+# (field, lower-bound age) for the 16 five-year bands; u75 is open-ended.
+AGE_BANDS = [
+    ("u0", 0), ("u5", 5), ("u10", 10), ("u15", 15), ("u20", 20), ("u25", 25),
+    ("u30", 30), ("u35", 35), ("u40", 40), ("u45", 45), ("u50", 50), ("u55", 55),
+    ("u60", 60), ("u65", 65), ("u70", 70), ("u75", 75),
+]
 
 
 def _val(v, spec):
@@ -52,6 +61,37 @@ def _mk(field, label_id, group, unit, num, den, scale, cap=None):
             "requires": requires, "fn": fn, "derived": True}
 
 
+def _custom(field, label_id, group, unit, requires, fn):
+    """A derived indicator whose value isn't a simple num/den ratio."""
+    return {"field": field, "label_id": label_id, "group": group, "unit": unit,
+            "requires": tuple(requires), "fn": fn, "derived": True}
+
+
+def _religion_diversity(v):
+    """Simpson diversity index across the 7 religions, ×100: the chance two
+    random residents follow different religions (0 = uniform, ~100 = evenly
+    mixed)."""
+    counts = [v.get(r) for r in RELIGIONS if v.get(r) is not None]
+    tot = sum(counts)
+    if tot <= 0:
+        return None
+    return round((1 - sum((c / tot) ** 2 for c in counts)) * 100, 2)
+
+
+def _median_age(v):
+    """Median age interpolated from the 16 five-year age bands."""
+    bands = [(lb, v.get(f)) for f, lb in AGE_BANDS if v.get(f) is not None]
+    total = sum(c for _, c in bands)
+    if total <= 0:
+        return None
+    half, cum = total / 2, 0.0
+    for lb, c in bands:
+        if cum + c >= half and c > 0:
+            return round(lb + (half - cum) / c * 5, 1)  # 5-year band width
+        cum += c
+    return None
+
+
 DERIVED = [
     _mk("sex_ratio", "Rasio Jenis Kelamin", "Rasio & Turunan", "L per 100 P",
         "pria", "wanita", 100),
@@ -79,6 +119,28 @@ DERIVED = [
         "jml_meninggal", "jumlah_penduduk", 1000),
     _mk("pct_married", "% Berstatus Kawin", "Status Perkawinan", "%",
         "kawin", "jumlah_penduduk", 100),
+
+    # --- Easy adds -----------------------------------------------------------
+    _mk("pct_children", "% Anak (0-14)", "Rasio & Turunan", "%",
+        AGE_YOUNG, "jumlah_penduduk", 100),
+    _custom("median_age", "Usia Median (perkiraan)", "Rasio & Turunan", "tahun",
+            [f for f, _ in AGE_BANDS], _median_age),
+    _mk("child_woman_ratio", "Rasio Anak per 1.000 Wanita", "Rasio & Turunan", "per 1.000 ♀",
+        "u0", "wanita", 1000),
+    _custom("religion_diversity", "Indeks Keragaman Agama", "Agama", "0-100",
+            RELIGIONS, _religion_diversity),
+    _mk("pct_unmarried", "% Belum Kawin", "Status Perkawinan", "%",
+        "belum_kawin", "jumlah_penduduk", 100),
+    _mk("pct_divorced", "% Cerai Hidup", "Status Perkawinan", "%",
+        "cerai_hidup", "jumlah_penduduk", 100),
+    _mk("pct_blood_o", "% Golongan Darah O", "Golongan Darah", "%",
+        BLOOD_O, BLOOD_KNOWN, 100),
+    _mk("pct_fisher", "% Nelayan", "Pekerjaan", "%",
+        "nelayan", "jumlah_penduduk", 100),
+    _mk("pct_entrepreneur", "% Wiraswasta", "Pekerjaan", "%",
+        "wiraswasta", "jumlah_penduduk", 100),
+    _mk("net_migration_rate", "Perpindahan per 1.000", "Peristiwa Vital", "per 1.000",
+        "perpindahan_pddk", "jumlah_penduduk", 1000),
 ]
 
 DERIVED_BY_FIELD = {d["field"]: d for d in DERIVED}
