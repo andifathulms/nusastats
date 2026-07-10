@@ -65,6 +65,22 @@ def _value_map(qs, field):
     return out
 
 
+def _extract(qs, fields):
+    """{code: (name, {field: value})} for several JSON fields in one query
+    (each field extracted with its own KeyTextTransform). Used where a row
+    needs more than one field at once — e.g. a value and its % denominator."""
+    ann = {f"f{i}": KeyTextTransform(f, "attributes") for i, f in enumerate(fields)}
+    out = {}
+    for row in qs.annotate(**ann).values("code", "name", *ann.keys()):
+        vals = {}
+        for i, f in enumerate(fields):
+            v = to_number(row[f"f{i}"])
+            if v is not None:
+                vals[f] = v
+        out[row["code"]] = (row["name"], vals)
+    return out
+
+
 @api_view(["GET"])
 def summary(request):
     """`/api/dukcapil/summary/` — per-level region counts and national
@@ -221,8 +237,24 @@ def rank(request):
     qs = DukcapilRegion.objects.filter(level=level, period=period)
     qs, scope = _apply_ancestor(qs, request)
 
-    vmap = _value_map(qs, field)
-    rows = [{"domain_id": code, "domain_name": name, "value": v} for code, (name, v) in vmap.items()]
+    # Optional: express the value as a percentage of another field (usually
+    # jumlah_penduduk) per region — e.g. "% penduduk beragama Islam".
+    percent_of = request.query_params.get("percent_of")
+    if percent_of and percent_of != field:
+        data = _extract(qs, [field, percent_of])
+        rows = []
+        for code, (name, vals) in data.items():
+            v, base = vals.get(field), vals.get(percent_of)
+            if v is None or not base:
+                continue
+            rows.append({"domain_id": code, "domain_name": name, "value": round(v / base * 100, 2)})
+    else:
+        percent_of = None
+        rows = [
+            {"domain_id": code, "domain_name": name, "value": v}
+            for code, (name, v) in _value_map(qs, field).items()
+        ]
+
     stats = distribution([r["value"] for r in rows])
     ranked = rank_rows(rows, order=order)
     limit = request.query_params.get("limit")
@@ -235,6 +267,8 @@ def rank(request):
             "level": level,
             "scope": scope,
             "order": order,
+            "percent_of": percent_of,
+            "unit": "%" if percent_of else ind.unit,
             "stats": stats,
             "results": ranked,
         }
