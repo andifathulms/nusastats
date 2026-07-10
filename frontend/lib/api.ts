@@ -252,8 +252,10 @@ export type DukcapilRegionRow = {
 export type DukcapilRank = {
   indicator: DukcapilIndicator;
   level: DukcapilLevel;
-  parent: string | null;
+  scope: Record<string, string>;
   order: string;
+  percent_of: string | null;
+  unit: string;
   stats: { count: number; min: number | null; max: number | null; mean: number | null; median: number | null };
   results: { domain_id: string; domain_name: string; value: number; rank: number }[];
 };

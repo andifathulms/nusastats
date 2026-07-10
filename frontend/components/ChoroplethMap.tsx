@@ -31,21 +31,24 @@ export function ChoroplethMap({
   min,
   max,
   unit,
+  geojsonUrl = "/indonesia-provinces.geojson",
 }: {
   values: Map<string, MapValue>;
   min: number;
   max: number;
   unit?: string;
+  geojsonUrl?: string;
 }) {
   const [fc, setFc] = useState<FC | null>(null);
   const [hover, setHover] = useState<{ id: string; x: number; y: number } | null>(null);
 
   useEffect(() => {
-    fetch("/indonesia-provinces.geojson")
+    setFc(null);
+    fetch(geojsonUrl)
       .then((r) => r.json())
       .then(setFc)
       .catch(() => setFc(null));
-  }, []);
+  }, [geojsonUrl]);
 
   const { paths, vb } = useMemo(() => {
     if (!fc) return { paths: [] as { id: string; d: string }[], vb: "0 0 1000 400" };

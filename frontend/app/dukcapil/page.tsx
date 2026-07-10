@@ -28,6 +28,7 @@ export default function DukcapilPage() {
   const [level, setLevel] = useState<DukcapilLevel>("province");
   const [indicator, setIndicator] = useState("jumlah_penduduk");
   const [order, setOrder] = useState<"desc" | "asc">("desc");
+  const [percentMode, setPercentMode] = useState(false);
 
   // Cascading parent filters (province -> regency -> district).
   const [provinces, setProvinces] = useState<DukcapilRegionRow[]>([]);
@@ -72,16 +73,29 @@ export default function DukcapilPage() {
   // Deep levels with no ancestor picked fall back to a nationwide top-N.
   const noFilter = (level === "district" || level === "village") && !selProv;
 
+  // Percentage mode: express the value as a share of total population.
+  // Meaningless for a few indicators (population itself, area, density), so
+  // the toggle is disabled for those.
+  const canPercent = !["jumlah_penduduk", "luas_wilayah", "kepadatan_penduduk"].includes(indicator);
+  const percentOf = percentMode && canPercent ? "jumlah_penduduk" : null;
+
   useEffect(() => {
     setLoading(true);
     setDetail(null);
     dukcapilApi
-      .rank({ indicator, level, order, limit: String(TOP_N), ...ancestor })
+      .rank({
+        indicator,
+        level,
+        order,
+        limit: String(TOP_N),
+        ...ancestor,
+        ...(percentOf ? { percent_of: percentOf } : {}),
+      })
       .then(setRankData)
       .finally(() => setLoading(false));
-  }, [indicator, level, order, ancestor]);
+  }, [indicator, level, order, ancestor, percentOf]);
 
-  const indUnit = rankData?.indicator.unit || "";
+  const indUnit = rankData?.unit || rankData?.indicator.unit || "";
   const bars: BarDatum[] = (rankData?.results ?? []).map((r) => ({
     label: r.domain_name,
     value: r.value,
@@ -96,6 +110,23 @@ export default function DukcapilPage() {
     }
     return null;
   }, [catalog, indicator]);
+
+  const percentToggle = (
+    <div>
+      <label className="mb-1.5 block text-xs uppercase tracking-wide text-ink-muted">Satuan</label>
+      <button
+        onClick={() => setPercentMode((p) => !p)}
+        disabled={!canPercent}
+        title={canPercent ? "Beralih nilai / persentase penduduk" : "Tidak berlaku untuk indikator ini"}
+        className="rounded-lg border border-ink-border bg-ink-panel px-3 py-2 text-sm text-ink-text hover:border-ink-accent/60 disabled:opacity-40"
+      >
+        {percentOf ? "% penduduk" : "Nilai"}
+      </button>
+    </div>
+  );
+
+  const fmtVal = (v: number | null | undefined) =>
+    percentOf ? `${v ?? "–"}%` : formatNumber(v);
 
   const indicatorSelect = (
     <div className="min-w-[220px] flex-1">
@@ -172,7 +203,10 @@ export default function DukcapilPage() {
       {/* Controls. In map view only the indicator matters (province geometry). */}
       {view === "map" ? (
         <Panel>
-          <div className="flex flex-wrap items-end gap-4">{indicatorSelect}</div>
+          <div className="flex flex-wrap items-end gap-4">
+            {indicatorSelect}
+            {percentToggle}
+          </div>
         </Panel>
       ) : (
       <Panel>
@@ -237,6 +271,9 @@ export default function DukcapilPage() {
           {/* Indicator picker (grouped). */}
           {indicatorSelect}
 
+          {/* Percentage toggle. */}
+          {percentToggle}
+
           {/* Order toggle. */}
           <div>
             <label className="mb-1.5 block text-xs uppercase tracking-wide text-ink-muted">Urutan</label>
@@ -259,7 +296,12 @@ export default function DukcapilPage() {
 
       {view === "map" ? (
         selectedInd && (
-          <DukcapilMap indicator={indicator} label={selectedInd.label_id} unit={selectedInd.unit} />
+          <DukcapilMap
+            indicator={indicator}
+            label={selectedInd.label_id}
+            unit={selectedInd.unit}
+            percentOf={percentOf}
+          />
         )
       ) : (
       <>
@@ -302,7 +344,7 @@ export default function DukcapilPage() {
                     <span className="w-6 shrink-0 text-xs tabular-nums text-ink-muted">{r.rank}</span>
                     <span className="truncate text-ink-text">{r.domain_name}</span>
                   </span>
-                  <span className="shrink-0 tabular-nums text-ink-muted">{formatNumber(r.value)}</span>
+                  <span className="shrink-0 tabular-nums text-ink-muted">{fmtVal(r.value)}</span>
                 </button>
               ))}
             </div>
