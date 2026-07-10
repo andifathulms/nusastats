@@ -204,19 +204,126 @@ export const api = {
   },
 };
 
+// --- Kemendagri / Dukcapil source -----------------------------------------
+// A separate data source from BPS (different region codes, different origin).
+// Kept under its own `dukcapilApi` object and `/api/dukcapil/` paths so the
+// two sources never get mixed up in the UI.
+
+export type DukcapilLevel = "province" | "regency" | "district" | "village";
+
+export const DUKCAPIL_LEVELS: { v: DukcapilLevel; label: string }[] = [
+  { v: "province", label: "Provinsi" },
+  { v: "regency", label: "Kabupaten/Kota" },
+  { v: "district", label: "Kecamatan" },
+  { v: "village", label: "Desa/Kelurahan" },
+];
+
+export type DukcapilSummary = {
+  source: string;
+  period: string | null;
+  periods: string[];
+  by_level: { level: DukcapilLevel; label: string; regions: number }[];
+  national_totals: Record<string, number>;
+  last_fetched_at: string | null;
+};
+
+export type DukcapilIndicator = {
+  field: string;
+  label_id: string;
+  group: string;
+  unit: string;
+  is_string: boolean;
+  sort: number;
+};
+
+export type DukcapilIndicatorGroups = {
+  count: number;
+  groups: { group: string; indicators: DukcapilIndicator[] }[];
+};
+
+export type DukcapilRegionRow = {
+  code: string;
+  level: DukcapilLevel;
+  name: string;
+  parent_code: string;
+  parent_name: string | null;
+};
+
+export type DukcapilRank = {
+  indicator: DukcapilIndicator;
+  level: DukcapilLevel;
+  parent: string | null;
+  order: string;
+  stats: { count: number; min: number | null; max: number | null; mean: number | null; median: number | null };
+  results: { domain_id: string; domain_name: string; value: number; rank: number }[];
+};
+
+export type DukcapilRegionDetail = {
+  region: {
+    code: string;
+    level: DukcapilLevel;
+    name: string;
+    parent_code: string;
+    parent_name: string | null;
+    nama_prop: string;
+    nama_kab: string;
+    nama_kec: string;
+  };
+  peer_scope: string;
+  groups: {
+    group: string;
+    indicators: {
+      field: string;
+      label_id: string;
+      unit: string;
+      value: number;
+      rank: number | null;
+      of: number;
+      percentile: number | null;
+    }[];
+  }[];
+};
+
+export type DukcapilCorrelation = {
+  x: DukcapilIndicator;
+  y: DukcapilIndicator;
+  level: DukcapilLevel;
+  n: number;
+  r: number | null;
+  results: { domain_id: string; domain_name: string; x: number; y: number }[];
+};
+
+export const dukcapilApi = {
+  summary: () => get<DukcapilSummary>("/dukcapil/summary/"),
+  indicators: () => get<DukcapilIndicatorGroups>("/dukcapil/indicators/"),
+  regions: (params: Record<string, string> = {}) => {
+    const q = new URLSearchParams(params).toString();
+    return get<DukcapilRegionRow[]>(`/dukcapil/regions/${q ? `?${q}` : ""}`);
+  },
+  regionDetail: (code: string) => get<DukcapilRegionDetail>(`/dukcapil/regions/${code}/`),
+  rank: (params: Record<string, string> = {}) => {
+    const q = new URLSearchParams(params).toString();
+    return get<DukcapilRank>(`/dukcapil/rank/${q ? `?${q}` : ""}`);
+  },
+  correlate: (params: Record<string, string>) => {
+    const q = new URLSearchParams(params).toString();
+    return get<DukcapilCorrelation>(`/dukcapil/correlate/?${q}`);
+  },
+};
+
 export function formatNumber(n: number | null | undefined): string {
   if (n === null || n === undefined) return "–";
   return n.toLocaleString("en-US");
 }
 
-// Categorical palette for chart series — distinguishable in dark mode.
+// Categorical palette for chart series — validated for CVD-safe adjacency on the dark panel surface.
 export const SERIES_COLORS = [
-  "#5b8cff",
-  "#4dd0a7",
-  "#f2b34e",
-  "#e5686f",
-  "#a98bf0",
-  "#4bb6d6",
-  "#e089c4",
-  "#8bc34a",
+  "#a8602e", // brown (brand)
+  "#2f5fa8", // steel blue (brand navy family)
+  "#3f7d34", // sage
+  "#b9860b", // gold
+  "#8b3fa3", // plum
+  "#00897b", // teal
+  "#b6473f", // rust red
+  "#b23e72", // rose
 ];
