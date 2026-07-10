@@ -87,6 +87,14 @@ class DukcapilRegion(models.Model):
         "self", null=True, blank=True, on_delete=models.SET_NULL, related_name="children"
     )
 
+    # Denormalized ancestor codes (composed Kemendagri wilayah codes:
+    # prov=2, kab=4, kec=6 digits). Let any level be filtered by any
+    # ancestor directly — e.g. rank all *villages* in a kabupaten by
+    # kab_code, without needing the immediate-parent kecamatan.
+    prov_code = models.CharField(max_length=8, blank=True)
+    kab_code = models.CharField(max_length=8, blank=True)
+    kec_code = models.CharField(max_length=8, blank=True)
+
     # Kemendagri numeric hierarchy components, kept for joins/crosswalks.
     no_prop = models.IntegerField(null=True, blank=True)
     no_kab = models.IntegerField(null=True, blank=True)
@@ -110,7 +118,9 @@ class DukcapilRegion(models.Model):
         indexes = [
             models.Index(fields=["level", "period"]),
             models.Index(fields=["level", "period", "parent_code"]),
-            models.Index(fields=["parent_code"]),
+            models.Index(fields=["level", "period", "prov_code"]),
+            models.Index(fields=["level", "period", "kab_code"]),
+            models.Index(fields=["level", "period", "kec_code"]),
         ]
         ordering = ["level", "code"]
 

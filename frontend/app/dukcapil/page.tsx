@@ -44,38 +44,39 @@ export default function DukcapilPage() {
     dukcapilApi.regions({ level: "province" }).then(setProvinces);
   }, []);
 
-  // Load child options as parents are picked.
+  // Load child options as parents are picked (by ancestor code, not
+  // immediate parent — so a province lists all its regencies, etc.).
   useEffect(() => {
     if (!selProv) return setRegencies([]);
-    dukcapilApi.regions({ level: "regency", parent: selProv }).then(setRegencies);
+    dukcapilApi.regions({ level: "regency", prov: selProv }).then(setRegencies);
   }, [selProv]);
   useEffect(() => {
     if (!selReg) return setDistricts([]);
-    dukcapilApi.regions({ level: "district", parent: selReg }).then(setDistricts);
+    dukcapilApi.regions({ level: "district", kab: selReg }).then(setDistricts);
   }, [selReg]);
 
-  // Which parent code scopes the ranking (the immediate parent of `level`).
-  const parent = useMemo(() => {
-    if (level === "regency") return selProv;
-    if (level === "district") return selReg;
-    if (level === "village") return selDist;
-    return "";
-  }, [level, selProv, selReg, selDist]);
+  // Ancestor scope for the ranking: whichever ancestors are selected. The
+  // backend applies the deepest one, so picking just a province — or
+  // province+kabupaten — both narrow the results (adaptive filtering).
+  const ancestor = useMemo(() => {
+    const p: Record<string, string> = {};
+    if (selProv) p.prov = selProv;
+    if (selReg) p.kab = selReg;
+    if (selDist) p.kec = selDist;
+    return p;
+  }, [selProv, selReg, selDist]);
 
-  // Deeper levels are too numerous to rank nationwide meaningfully — nudge
-  // the user to narrow, but still allow a top-N national view.
-  const needsParent = (level === "district" || level === "village") && !parent;
+  // Deep levels with no ancestor picked fall back to a nationwide top-N.
+  const noFilter = (level === "district" || level === "village") && !selProv;
 
   useEffect(() => {
     setLoading(true);
     setDetail(null);
-    const params: Record<string, string> = { indicator, level, order, limit: String(TOP_N) };
-    if (parent) params.parent = parent;
     dukcapilApi
-      .rank(params)
+      .rank({ indicator, level, order, limit: String(TOP_N), ...ancestor })
       .then(setRankData)
       .finally(() => setLoading(false));
-  }, [indicator, level, order, parent]);
+  }, [indicator, level, order, ancestor]);
 
   const indUnit = rankData?.indicator.unit || "";
   const bars: BarDatum[] = (rankData?.results ?? []).map((r) => ({
@@ -211,9 +212,9 @@ export default function DukcapilPage() {
           </div>
         </div>
 
-        {needsParent && (
+        {noFilter && (
           <p className="mt-3 text-xs text-ink-muted">
-            Menampilkan {TOP_N} teratas se-nasional. Pilih wilayah induk di atas untuk memfokuskan.
+            Menampilkan {TOP_N} teratas se-nasional. Pilih provinsi (dan kab/kota) di atas untuk memfokuskan.
           </p>
         )}
       </Panel>

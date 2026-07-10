@@ -17,7 +17,8 @@ from .models import DukcapilFetchLog, DukcapilRegion, current_period
 CHUNK = 2000
 
 _UPDATE_FIELDS = [
-    "name", "parent_code", "no_prop", "no_kab", "no_kec", "no_kel",
+    "name", "parent_code", "prov_code", "kab_code", "kec_code",
+    "no_prop", "no_kab", "no_kec", "no_kel",
     "nama_prop", "nama_kab", "nama_kec", "attributes", "fetch_log", "fetched_at",
 ]
 
@@ -29,27 +30,34 @@ def _int(v):
         return None
 
 
+def _ancestor_codes(a):
+    """(prov_code, kab_code, kec_code) composed Kemendagri wilayah codes
+    (2/4/6 digits) from a raw record's no_prop/no_kab/no_kec."""
+    p, k, c = _int(a.get("no_prop")), _int(a.get("no_kab")), _int(a.get("no_kec"))
+    prov = f"{p:02d}" if p is not None else ""
+    kab = f"{prov}{k:02d}" if prov and k is not None else ""
+    kec = f"{kab}{c:02d}" if kab and c is not None else ""
+    return prov, kab, kec
+
+
 def _codes(level, a):
     """(code, parent_code, name) for a raw attribute record at `level`.
 
-    Codes are the composed Kemendagri wilayah code: prov(2) / kab(4) / kec(6)
-    digits, and the full village code (10) from `kode_desa_spatial`. Because
-    the widths differ per level, codes are globally unique across levels,
-    which lets parent relinking match `parent_code` -> `code` directly.
+    Codes are the composed Kemendagri wilayah code (prov/kab/kec) or, at
+    village level, the full 10-digit `kode_desa_spatial`. Because the widths
+    differ per level, codes are globally unique across levels, which lets
+    parent relinking match `parent_code` -> `code` directly.
     """
-    p, k, c = _int(a.get("no_prop")), _int(a.get("no_kab")), _int(a.get("no_kec"))
-    prov = f"{p:02d}" if p is not None else ""
-    reg = f"{prov}{k:02d}" if p is not None and k is not None else ""
-    dist = f"{reg}{c:02d}" if reg and c is not None else ""
+    prov, kab, kec = _ancestor_codes(a)
     if level == "province":
         return prov, "", a.get("nama_prop") or prov
     if level == "regency":
-        return reg, prov, a.get("nama_kab") or reg
+        return kab, prov, a.get("nama_kab") or kab
     if level == "district":
-        return dist, reg, a.get("nama_kec") or dist
+        return kec, kab, a.get("nama_kec") or kec
     # village: prefer the authoritative full code; parent district = first 6.
     kode = _int(a.get("kode_desa_spatial"))
-    vcode = str(kode) if kode is not None else dist
+    vcode = str(kode) if kode is not None else kec
     return vcode, vcode[:6], a.get("nama_kel") or vcode
 
 
@@ -72,12 +80,16 @@ def _unique_code(base, level, a, seen):
 def _row(level, a, log, now, seen, period):
     base, parent_code, name = _codes(level, a)
     code = _unique_code(base, level, a, seen)
+    prov_code, kab_code, kec_code = _ancestor_codes(a)
     return DukcapilRegion(
         code=code,
         level=level,
         period=period,
         name=name,
         parent_code=parent_code,
+        prov_code=prov_code,
+        kab_code=kab_code,
+        kec_code=kec_code,
         no_prop=_int(a.get("no_prop")),
         no_kab=_int(a.get("no_kab")),
         no_kec=_int(a.get("no_kec")),

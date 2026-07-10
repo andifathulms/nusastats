@@ -40,6 +40,18 @@ def _resolve_period(request):
     return (periods[0] if periods else None), periods
 
 
+def _apply_ancestor(qs, request):
+    """Narrow to the deepest selected ancestor (kec > kab > prov). This makes
+    filtering adaptive: picking only a province, or province+kabupaten, both
+    work — a level is filtered by whichever ancestor code is given, not by
+    requiring its immediate parent. Returns (queryset, applied_scope)."""
+    for param, field in (("kec", "kec_code"), ("kab", "kab_code"), ("prov", "prov_code")):
+        val = request.query_params.get(param)
+        if val:
+            return qs.filter(**{field: val}), {param: val}
+    return qs, {}
+
+
 def _value_map(qs, field):
     """{code: (name, value)} for one JSON field, pulled without loading the
     whole attributes blob per row (KeyTextTransform extracts just the key)."""
@@ -115,9 +127,7 @@ def regions(request):
     qs = DukcapilRegion.objects.filter(period=period)
     level = request.query_params.get("level", DukcapilLevel.PROVINCE)
     qs = qs.filter(level=level)
-    parent = request.query_params.get("parent")
-    if parent:
-        qs = qs.filter(parent_code=parent)
+    qs, _scope = _apply_ancestor(qs, request)
     search = request.query_params.get("search")
     if search:
         qs = qs.filter(name__icontains=search)
@@ -209,9 +219,7 @@ def rank(request):
     order = request.query_params.get("order", "desc")
     period, _ = _resolve_period(request)
     qs = DukcapilRegion.objects.filter(level=level, period=period)
-    parent = request.query_params.get("parent")
-    if parent:
-        qs = qs.filter(parent_code=parent)
+    qs, scope = _apply_ancestor(qs, request)
 
     vmap = _value_map(qs, field)
     rows = [{"domain_id": code, "domain_name": name, "value": v} for code, (name, v) in vmap.items()]
@@ -225,7 +233,7 @@ def rank(request):
         {
             "indicator": DukcapilIndicatorSerializer(ind).data,
             "level": level,
-            "parent": parent,
+            "scope": scope,
             "order": order,
             "stats": stats,
             "results": ranked,
@@ -250,9 +258,7 @@ def correlate(request):
     level = request.query_params.get("level", DukcapilLevel.PROVINCE)
     period, _ = _resolve_period(request)
     qs = DukcapilRegion.objects.filter(level=level, period=period)
-    parent = request.query_params.get("parent")
-    if parent:
-        qs = qs.filter(parent_code=parent)
+    qs, _scope = _apply_ancestor(qs, request)
 
     x_by = _value_map(qs, x_field)
     y_by = _value_map(qs, y_field)
