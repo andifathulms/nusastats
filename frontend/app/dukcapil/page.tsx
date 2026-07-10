@@ -15,10 +15,11 @@ import {
 } from "@/lib/api";
 import { HorizontalBars, type BarDatum } from "@/components/HorizontalBars";
 import { DukcapilMap } from "@/components/DukcapilMap";
+import { DukcapilCorrelation } from "@/components/DukcapilCorrelation";
 import { Badge, Panel, SectionTitle, StatTile } from "@/components/ui";
 
 const TOP_N = 25;
-type View = "ranking" | "map";
+type View = "ranking" | "map" | "correlation";
 
 export default function DukcapilPage() {
   const [summary, setSummary] = useState<DukcapilSummary | null>(null);
@@ -179,7 +180,7 @@ export default function DukcapilPage() {
 
       {/* View switch. */}
       <div className="inline-flex flex-wrap gap-1 rounded-xl border border-ink-border/80 bg-ink-panel/50 p-1">
-        {([["ranking", "Peringkat"], ["map", "Peta"]] as [View, string][]).map(([v, label]) => (
+        {([["ranking", "Peringkat"], ["map", "Peta"], ["correlation", "Korelasi"]] as [View, string][]).map(([v, label]) => (
           <button
             key={v}
             onClick={() => setView(v)}
@@ -202,8 +203,9 @@ export default function DukcapilPage() {
         <StatTile label="Perempuan" value={totals.wanita ?? "–"} sub="jiwa" accent="warn" />
       </div>
 
-      {/* Controls. In map view only the indicator matters (province geometry). */}
-      {view === "map" ? (
+      {/* Controls. In map view only the indicator matters (province geometry);
+          correlation has its own controls. */}
+      {view === "correlation" ? null : view === "map" ? (
         <Panel>
           <div className="flex flex-wrap items-end gap-4">
             {indicatorSelect}
@@ -296,7 +298,9 @@ export default function DukcapilPage() {
       </Panel>
       )}
 
-      {view === "map" ? (
+      {view === "correlation" ? (
+        catalog && <DukcapilCorrelation groups={catalog.groups} />
+      ) : view === "map" ? (
         selectedInd && (
           <DukcapilMap
             indicator={indicator}
