@@ -486,7 +486,7 @@ _REGENCY_CROSSWALK = {
 }
 
 
-def _resolve_dukcapil_regency(domain_id, bps_name, period):
+def _resolve_dukcapil_regency(domain_id, bps_name, period, regs=None):
     """A BPS regency domain_id -> the matching Dukcapil regency.
 
     BPS and Kemendagri number regencies DIFFERENTLY within most provinces, so
@@ -505,7 +505,8 @@ def _resolve_dukcapil_regency(domain_id, bps_name, period):
     status, key = bps_regency_status(domain_id), _norm(bps_name)
     if not key:
         return None
-    regs = list(DukcapilRegion.objects.filter(level="regency", period=period))
+    if regs is None:
+        regs = list(DukcapilRegion.objects.filter(level="regency", period=period))
     fam = _status_family(status)
     prov = domain_id[:2]
     # 1) same province + status + name (resolves the vast majority)
@@ -521,6 +522,37 @@ def _resolve_dukcapil_regency(domain_id, bps_name, period):
     if len(m) == 1:
         return m[0]
     return None
+
+
+@api_view(["GET"])
+def regency_crosswalk(request):
+    """`/api/dukcapil/regency-crosswalk/` — every BPS regency domain_id mapped to
+    its Kemendagri (Dukcapil) regency code + its modern province (2-digit code +
+    name). Lets BPS data (which numbers regencies differently and uses the stale
+    34-province structure) be joined to the Kemendagri geometry and aggregated
+    into the current 38 provinces. Resolution reuses `_resolve_dukcapil_regency`
+    (name + Kota/Kabupaten status), with the region set prefetched once."""
+    period, _ = _resolve_period(request)
+    regs = list(DukcapilRegion.objects.filter(level="regency", period=period))
+    prov_names = dict(
+        DukcapilRegion.objects.filter(level="province", period=period).values_list("code", "name")
+    )
+    out = []
+    for d in Domain.objects.all():
+        did = d.domain_id
+        if not (len(did) == 4 and did.isdigit() and not did.endswith("00")):
+            continue
+        r = _resolve_dukcapil_regency(did, d.domain_name, period, regs=regs)
+        if not r:
+            continue
+        pc = r.code[:2]
+        out.append({
+            "bps_domain_id": did,
+            "kemendagri_code": r.code,
+            "prov_code": pc,
+            "prov_name": prov_names.get(pc, pc),
+        })
+    return Response({"count": len(out), "results": out})
 
 
 @api_view(["GET"])

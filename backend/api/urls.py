@@ -26,5 +26,6 @@ urlpatterns = [
     path("dukcapil/regions/<str:code>/", dukcapil_views.region_detail, name="dukcapil-region-detail"),
     path("dukcapil/rank/", dukcapil_views.rank, name="dukcapil-rank"),
     path("dukcapil/correlate/", dukcapil_views.correlate, name="dukcapil-correlate"),
+    path("dukcapil/regency-crosswalk/", dukcapil_views.regency_crosswalk, name="dukcapil-regency-crosswalk"),
     path("dukcapil/regency-bridge/<str:domain_id>/", dukcapil_views.regency_bridge, name="dukcapil-regency-bridge"),
 ]
