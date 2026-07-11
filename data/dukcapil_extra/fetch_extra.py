@@ -107,12 +107,32 @@ if __name__ == "__main__":
     which = sys.argv[1] if len(sys.argv) > 1 else "all"
     man = []
     if which == "kel":
-        # Direct: just the historical village population (83k), no iteration.
-        base = f"{BASE}/AGR_VISUAL_KEL_202401/MapServer"
-        cnt = get(f"{base}/0/query?where=1%3D1&returnCountOnly=true&f=json").get("count")
+        # Historical village population (83k) fetched PER PROVINCE (small,
+        # robust to the flaky network — one nationwide pull kept truncating).
+        base = f"{BASE}/AGR_VISUAL_KEL_202401/MapServer/0/query"
+        cnt = get(f"{base}?where=1%3D1&returnCountOnly=true&f=json").get("count")
+        feats, page = [], 2000
+        for pp in range(11, 97):
+            off = 0
+            while True:
+                qs = urllib.parse.urlencode({
+                    "where": f"no_prop={pp}", "outFields": "*", "returnGeometry": "false",
+                    "f": "json", "resultOffset": off, "resultRecordCount": page,
+                })
+                d = get(f"{base}?{qs}")
+                fs = d.get("features", [])
+                feats += [f["attributes"] for f in fs]
+                if len(fs) < page and not d.get("exceededTransferLimit"):
+                    break
+                if not fs:
+                    break
+                off += page
+                time.sleep(0.3)
+            if any(f.get("no_prop") == pp for f in feats[-1:]):
+                sys.stderr.write(f"  prov {pp}: {len(feats)} cumulative\n")
         fn = f"AGR_VISUAL_KEL_202401_L0_n{cnt}.json"
-        n = fetch_layer(base, 0, os.path.join(OUT, fn), page=10000)
-        sys.stderr.write(f"KEL: saved {n} -> {fn}\n")
+        json.dump(feats, open(os.path.join(OUT, fn), "w"), ensure_ascii=False)
+        sys.stderr.write(f"KEL: saved {len(feats)} / {cnt} -> {fn}\n")
         raise SystemExit
     if which == "village":
         # Fetch every layer including the big village ones (skip nothing);
