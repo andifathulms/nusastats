@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import {
   DUKCAPIL_LEVELS,
   dukcapilApi,
+  dukcapilAncestry,
   formatNumber,
   groupColor,
   regionLabel,
@@ -140,6 +141,7 @@ export default function DukcapilAnalyticsPage() {
   const bars: BarDatum[] = (rankData?.results ?? []).map((r) => ({
     label: regionLabel(r.domain_name, r.status),
     value: r.value,
+    sub: dukcapilAncestry(level, r),
     color: effColorBy !== "none" ? groupColor(groupOf(r.domain_id)) : undefined,
   }));
 
@@ -395,19 +397,25 @@ export default function DukcapilAnalyticsPage() {
               <Panel>
                 <SectionTitle hint="klik untuk profil lengkap">Peringkat</SectionTitle>
                 <div className="max-h-72 space-y-1 overflow-y-auto scroll-thin">
-                  {(rankData?.results ?? []).map((r) => (
-                    <button
-                      key={r.domain_id}
-                      onClick={() => dukcapilApi.regionDetail(r.domain_id).then(setDetail)}
-                      className="flex w-full items-center justify-between rounded-lg px-2 py-1.5 text-left text-sm hover:bg-ink-panel2"
-                    >
-                      <span className="flex items-center gap-2 truncate">
-                        <span className="w-6 shrink-0 text-xs tabular-nums text-ink-muted">{r.rank}</span>
-                        <span className="truncate text-ink-text">{regionLabel(r.domain_name, r.status)}</span>
-                      </span>
-                      <span className="shrink-0 tabular-nums text-ink-muted">{fmtVal(r.value)}</span>
-                    </button>
-                  ))}
+                  {(rankData?.results ?? []).map((r) => {
+                    const ancestry = dukcapilAncestry(level, r);
+                    return (
+                      <button
+                        key={r.domain_id}
+                        onClick={() => dukcapilApi.regionDetail(r.domain_id).then(setDetail)}
+                        className="flex w-full items-center justify-between gap-2 rounded-lg px-2 py-1.5 text-left text-sm hover:bg-ink-panel2"
+                      >
+                        <span className="flex min-w-0 items-baseline gap-2">
+                          <span className="w-6 shrink-0 text-xs tabular-nums text-ink-muted">{r.rank}</span>
+                          <span className="min-w-0">
+                            <span className="block truncate text-ink-text">{regionLabel(r.domain_name, r.status)}</span>
+                            {ancestry && <span className="block truncate text-xs text-ink-muted">{ancestry}</span>}
+                          </span>
+                        </span>
+                        <span className="shrink-0 tabular-nums text-ink-muted">{fmtVal(r.value)}</span>
+                      </button>
+                    );
+                  })}
                 </div>
               </Panel>
             </div>

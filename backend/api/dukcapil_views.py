@@ -335,9 +335,21 @@ def rank(request):
     limit = request.query_params.get("limit")
     page = full[offset : offset + int(limit)] if limit else full[offset:]
 
-    status_by = dict(qs.filter(code__in=[r["domain_id"] for r in page]).values_list("code", "status"))
+    # Enrich the page rows with status + denormalized ancestor names so the UI
+    # can show where each region sits (kab -> its prov; kec -> prov + kab; desa
+    # -> prov + kab + kec). One query over just the page's codes.
+    meta = {
+        row[0]: row[1:]
+        for row in qs.filter(code__in=[r["domain_id"] for r in page]).values_list(
+            "code", "status", "nama_prop", "nama_kab", "nama_kec"
+        )
+    }
     for r in page:
-        r["status"] = status_by.get(r["domain_id"], "")
+        m = meta.get(r["domain_id"])
+        r["status"] = (m[0] if m else "") or ""
+        r["nama_prop"] = (m[1] if m else "") or ""
+        r["nama_kab"] = (m[2] if m else "") or ""
+        r["nama_kec"] = (m[3] if m else "") or ""
 
     return Response(
         {

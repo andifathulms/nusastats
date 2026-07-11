@@ -295,7 +295,19 @@ export type DukcapilRank = {
   stats: { count: number; min: number | null; max: number | null; mean: number | null; median: number | null };
   total: number;
   offset: number;
-  results: { domain_id: string; domain_name: string; status: string; value: number; rank: number }[];
+  results: DukcapilRankRow[];
+};
+
+export type DukcapilRankRow = {
+  domain_id: string;
+  domain_name: string;
+  status: string;
+  value: number;
+  rank: number;
+  // Denormalized ancestor names (present per level; empty where not applicable).
+  nama_prop?: string;
+  nama_kab?: string;
+  nama_kec?: string;
 };
 
 export type DukcapilRegionDetail = {
@@ -348,6 +360,33 @@ export type DukcapilBridge = {
 export function bpsRegencyStatus(domainId: string): string {
   const kab = parseInt(domainId.slice(2, 4), 10);
   return isNaN(kab) ? "" : kab >= 71 ? "Kota" : "Kabupaten";
+}
+
+// Label a kabupaten/kota ancestor. Source `nama_kab` is inconsistent — some
+// already carry the "KOTA"/"KABUPATEN" prefix ("KOTA LANGSA"), others don't
+// ("JAKARTA TIMUR"). Only add a Kota/Kab. prefix (derived from the kab-number
+// in the code) when it isn't already there, to avoid "Kota Kota Langsa".
+function kabAncestorLabel(code: string, namaKab: string): string {
+  const upper = namaKab.trim().toUpperCase();
+  const t = titleCase(namaKab);
+  if (upper.startsWith("KOTA") || upper.startsWith("KAB")) return t;
+  return regionLabel(t, bpsRegencyStatus(code));
+}
+
+// The administrative ancestry of a ranked/mapped Dukcapil region, most-specific
+// first: kab -> "Provinsi"; kec -> "Kab. X · Provinsi"; desa -> "Kec. Y · Kab. X
+// · Provinsi". The kab-number in the code (digits 3-4) gives the Kota/Kab. label
+// even from a kec/desa code. Returns "" for provinces (no ancestry).
+export function dukcapilAncestry(
+  level: DukcapilLevel,
+  row: { domain_id: string; nama_prop?: string; nama_kab?: string; nama_kec?: string }
+): string {
+  const prov = row.nama_prop ? titleCase(row.nama_prop) : "";
+  const kab = row.nama_kab ? kabAncestorLabel(row.domain_id, row.nama_kab) : "";
+  const kec = row.nama_kec ? (/^KEC/i.test(row.nama_kec.trim()) ? titleCase(row.nama_kec) : `Kec. ${titleCase(row.nama_kec)}`) : "";
+  const parts =
+    level === "regency" ? [prov] : level === "district" ? [kab, prov] : level === "village" ? [kec, kab, prov] : [];
+  return parts.filter(Boolean).join(" · ");
 }
 
 export const dukcapilApi = {

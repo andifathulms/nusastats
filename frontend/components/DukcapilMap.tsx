@@ -1,7 +1,14 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { dukcapilApi, formatNumber, regionLabel, type DukcapilRank, type DukcapilRegionRow } from "@/lib/api";
+import {
+  dukcapilApi,
+  dukcapilAncestry,
+  formatNumber,
+  regionLabel,
+  type DukcapilRank,
+  type DukcapilRegionRow,
+} from "@/lib/api";
 import { ChoroplethMap, type MapValue } from "@/components/ChoroplethMap";
 import { Panel, SectionTitle } from "@/components/ui";
 
@@ -104,8 +111,15 @@ export function DukcapilMap({
 
   const values = useMemo(() => {
     const m = new Map<string, MapValue>();
-    visible.forEach((r) => m.set(r.domain_id, { value: r.value, name: regionLabel(r.domain_name, r.status) }));
+    visible.forEach((r) =>
+      m.set(r.domain_id, {
+        value: r.value,
+        name: regionLabel(r.domain_name, r.status),
+        sub: dukcapilAncestry(mapLevel, r),
+      })
+    );
     return m;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visible]);
 
   const nums = visible.map((r) => r.value);
@@ -166,15 +180,21 @@ export function DukcapilMap({
             geojsonUrls={geojsonUrls}
             provFilter={filterPrefixes}
           />
-          <div className="mt-4 grid grid-cols-2 gap-x-6 gap-y-1 text-sm sm:grid-cols-3">
-            {visible.slice(0, 6).map((r, i) => (
-              <div key={r.domain_id} className="flex items-baseline justify-between">
-                <span className="truncate text-ink-text">
-                  {i + 1}. {regionLabel(r.domain_name, r.status)}
-                </span>
-                <span className="tabular-nums text-ink-muted">{fmt(r.value)}</span>
-              </div>
-            ))}
+          <div className="mt-4 grid grid-cols-1 gap-x-6 gap-y-2 text-sm sm:grid-cols-2 lg:grid-cols-3">
+            {visible.slice(0, 6).map((r, i) => {
+              const ancestry = dukcapilAncestry(mapLevel, r);
+              return (
+                <div key={r.domain_id} className="flex items-baseline justify-between gap-2">
+                  <span className="min-w-0">
+                    <span className="block truncate text-ink-text">
+                      {i + 1}. {regionLabel(r.domain_name, r.status)}
+                    </span>
+                    {ancestry && <span className="block truncate text-xs text-ink-muted">{ancestry}</span>}
+                  </span>
+                  <span className="shrink-0 tabular-nums text-ink-muted">{fmt(r.value)}</span>
+                </div>
+              );
+            })}
           </div>
         </>
       )}
@@ -238,7 +258,7 @@ function MultiSelect({
                   type="checkbox"
                   checked={selected.includes(o.code)}
                   onChange={() => toggle(o.code)}
-                  className="accent-[#1D4ED8]"
+                  className="accent-ink-accent"
                 />
                 <span className="truncate text-ink-text">{regionLabel(o.name, o.status)}</span>
               </label>

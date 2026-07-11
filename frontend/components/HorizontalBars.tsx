@@ -3,7 +3,22 @@
 import { Bar, BarChart, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { CHART } from "@/lib/api";
 
-export type BarDatum = { label: string; value: number; highlight?: boolean; color?: string };
+export type BarDatum = { label: string; value: number; highlight?: boolean; color?: string; sub?: string };
+
+function BarTooltip({ active, payload, unit }: { active?: boolean; payload?: any[]; unit?: string }) {
+  if (!active || !payload?.length) return null;
+  const d = payload[0].payload as BarDatum;
+  return (
+    <div className="rounded-lg border border-ink-border bg-ink-panel px-3 py-2 text-xs shadow-panel">
+      <div className="font-medium text-ink-text">{d.label}</div>
+      {d.sub && <div className="mt-0.5 text-ink-muted">{d.sub}</div>}
+      <div className="mt-1 tabular-nums text-ink-text">
+        {d.value?.toLocaleString?.() ?? d.value}
+        {unit ? ` ${unit}` : ""}
+      </div>
+    </div>
+  );
+}
 
 export function HorizontalBars({
   data,
@@ -17,7 +32,7 @@ export function HorizontalBars({
   colorNeg?: string;
 }) {
   if (!data.length) {
-    return <div className="flex h-40 items-center justify-center text-sm text-ink-muted">No data.</div>;
+    return <div className="flex h-40 items-center justify-center text-sm text-ink-muted">Tidak ada data.</div>;
   }
   const height = Math.max(160, data.length * 26 + 20);
   return (
@@ -38,11 +53,7 @@ export function HorizontalBars({
           axisLine={{ stroke: CHART.axisLine }}
           tickLine={false}
         />
-        <Tooltip
-          cursor={{ fill: CHART.cursor }}
-          contentStyle={{ background: CHART.tooltipBg, border: `1px solid ${CHART.tooltipBorder}`, borderRadius: 8, color: CHART.text }}
-          formatter={(v: number) => [`${v?.toLocaleString?.() ?? v}${unit ? ` ${unit}` : ""}`, ""]}
-        />
+        <Tooltip cursor={{ fill: CHART.cursor }} content={<BarTooltip unit={unit} />} />
         <Bar dataKey="value" radius={[0, 4, 4, 0]}>
           {data.map((d, i) => (
             <Cell

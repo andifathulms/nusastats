@@ -9,7 +9,7 @@ type Feature = {
 };
 type FC = { features: Feature[] };
 
-export type MapValue = { value: number; name: string };
+export type MapValue = { value: number; name: string; sub?: string };
 
 // Sequential low->high scale — single-hue royal blue ramp.
 const STOPS = ["#EAF0FD", "#B7CBF3", "#7CA0E8", "#3F6FD6", "#14264F"];
@@ -112,7 +112,7 @@ export function ChoroplethMap({
     return m;
   }, [fc]);
 
-  if (!fc) return <div className="flex h-80 items-center justify-center text-sm text-ink-muted">Loading map…</div>;
+  if (!fc) return <div className="flex h-80 items-center justify-center text-sm text-ink-muted">Memuat peta…</div>;
   const span = max - min || 1;
 
   return (
@@ -149,18 +149,21 @@ export function ChoroplethMap({
           {max.toLocaleString()} {unit}
         </span>
         <span className="ml-3 inline-flex items-center gap-1">
-          <span className="inline-block h-2 w-2 rounded-sm" style={{ background: NO_DATA_FILL }} /> no data
+          <span className="inline-block h-2 w-2 rounded-sm" style={{ background: NO_DATA_FILL }} /> tanpa data
         </span>
       </div>
 
       {hover && (
         <div
-          className="pointer-events-none fixed z-30 rounded-lg border border-ink-border bg-ink-panel px-3 py-1.5 text-xs shadow-xl shadow-black/50"
+          className="pointer-events-none fixed z-30 rounded-lg border border-ink-border bg-ink-panel px-3 py-2 text-xs shadow-panel"
           style={{ left: hover.x + 12, top: hover.y + 12 }}
         >
           <div className="font-medium text-ink-text">{values.get(hover.id)?.name ?? nameById.get(hover.id)}</div>
-          <div className="text-ink-muted">
-            {values.has(hover.id) ? `${values.get(hover.id)!.value.toLocaleString()} ${unit ?? ""}` : "no data"}
+          {values.get(hover.id)?.sub && (
+            <div className="mt-0.5 text-ink-muted">{values.get(hover.id)!.sub}</div>
+          )}
+          <div className="mt-1 tabular-nums text-ink-text">
+            {values.has(hover.id) ? `${values.get(hover.id)!.value.toLocaleString()} ${unit ?? ""}` : "tanpa data"}
           </div>
         </div>
       )}
