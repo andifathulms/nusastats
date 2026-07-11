@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { api, bpsRegionLabel } from "@/lib/api";
+import { CartesianGrid, Cell, Scatter, ScatterChart, Tooltip as RTooltip, XAxis, YAxis, ZAxis, ResponsiveContainer } from "recharts";
+import { api, bpsRegionLabel, CHART, groupColor } from "@/lib/api";
 import { type CompositionConfig } from "@/lib/posts";
 import { Panel } from "@/components/ui";
 import { SeriesChart } from "@/components/SeriesChart";
@@ -257,7 +258,124 @@ export function CompositionPost({ config }: { config: CompositionConfig }) {
           trendUnit={config.trend?.unit}
         />
       )}
+
+      <CorrelationPanel rows={displayRows} sectors={sectors} groups={config.groups} />
     </div>
+  );
+}
+
+function pearson(xs: number[], ys: number[]): number {
+  const n = xs.length;
+  if (n < 2) return NaN;
+  const mx = xs.reduce((a, v) => a + v, 0) / n;
+  const my = ys.reduce((a, v) => a + v, 0) / n;
+  let sxy = 0, sxx = 0, syy = 0;
+  for (let i = 0; i < n; i++) {
+    const dx = xs[i] - mx, dy = ys[i] - my;
+    sxy += dx * dy; sxx += dx * dx; syy += dy * dy;
+  }
+  return sxx && syy ? sxy / Math.sqrt(sxx * syy) : NaN;
+}
+
+function CorrelationPanel({
+  rows,
+  sectors,
+  groups,
+}: {
+  rows: RegionRow[];
+  sectors: Sector[];
+  groups?: { label: string; color: string; ids: string[] }[];
+}) {
+  // Axis choices: the higher-level groups first, then the individual sectors.
+  const dims = useMemo(
+    () => [
+      ...(groups ?? []).map((g) => ({ key: `g:${g.label}`, label: `${g.label} (%)`, ids: g.ids })),
+      ...sectors.map((s) => ({ key: `s:${s.id}`, label: `${s.label} (%)`, ids: [s.id] })),
+    ],
+    [groups, sectors]
+  );
+  const [xKey, setXKey] = useState("");
+  const [yKey, setYKey] = useState("");
+  const xd = dims.find((d) => d.key === xKey) ?? dims[0];
+  const yd = dims.find((d) => d.key === yKey) ?? dims[1] ?? dims[0];
+
+  const share = (row: RegionRow, ids: string[]) =>
+    row.total ? (ids.reduce((a, id) => a + (row.byId[id] ?? 0), 0) / row.total) * 100 : 0;
+
+  const points = useMemo(
+    () =>
+      xd && yd
+        ? rows.map((r) => ({ x: share(r, xd.ids), y: share(r, yd.ids), name: r.name, fill: groupColor(r.domain_id.slice(0, 2)) }))
+        : [],
+    [rows, xd, yd]
+  );
+  const r = useMemo(() => pearson(points.map((p) => p.x), points.map((p) => p.y)), [points]);
+
+  if (dims.length < 2) return null;
+
+  const Select = ({ v, on }: { v: string; on: (s: string) => void }) => (
+    <select
+      value={v}
+      onChange={(e) => on(e.target.value)}
+      className="rounded-lg border border-ink-border bg-ink-panel2 px-2 py-1.5 text-sm text-ink-text outline-none focus:border-ink-accent/60"
+    >
+      {dims.map((d) => (
+        <option key={d.key} value={d.key}>{d.label}</option>
+      ))}
+    </select>
+  );
+
+  return (
+    <Panel>
+      <div className="mb-3 flex flex-wrap items-center gap-2">
+        <span className="text-sm font-semibold text-ink-text">Korelasi antar-sektor</span>
+        <span className="ml-auto flex items-center gap-2 text-xs text-ink-muted">
+          <Select v={xd?.key ?? ""} on={setXKey} /> vs <Select v={yd?.key ?? ""} on={setYKey} />
+        </span>
+      </div>
+      <div className="mb-2 text-xs text-ink-muted">
+        Korelasi (r) ={" "}
+        <span className={`font-semibold ${Math.abs(r) >= 0.5 ? "text-ink-text" : "text-ink-muted"}`}>
+          {isNaN(r) ? "–" : r.toFixed(2)}
+        </span>{" "}
+        · {points.length} wilayah · tiap titik satu wilayah, warna = provinsi
+      </div>
+      <ResponsiveContainer width="100%" height={320}>
+        <ScatterChart margin={{ top: 8, right: 16, bottom: 24, left: 8 }}>
+          <CartesianGrid stroke={CHART.grid} />
+          <XAxis
+            type="number" dataKey="x" name={xd?.label} tick={{ fill: CHART.axisTick, fontSize: 12 }}
+            axisLine={{ stroke: CHART.axisLine }} tickLine={false} unit="%"
+            label={{ value: xd?.label, position: "insideBottom", offset: -12, fill: CHART.axisTick, fontSize: 12 }}
+          />
+          <YAxis
+            type="number" dataKey="y" name={yd?.label} tick={{ fill: CHART.axisTick, fontSize: 12 }}
+            axisLine={{ stroke: CHART.axisLine }} tickLine={false} width={48} unit="%"
+          />
+          <ZAxis range={[36, 36]} />
+          <RTooltip
+            cursor={{ strokeDasharray: "3 3" }}
+            contentStyle={{ background: CHART.tooltipBg, border: `1px solid ${CHART.tooltipBorder}`, borderRadius: 8 }}
+            formatter={(v: number, n: string) => [`${v.toFixed(1)}%`, n === "x" ? xd?.label : yd?.label]}
+            labelFormatter={() => ""}
+            content={({ payload }) =>
+              payload && payload.length ? (
+                <div className="rounded-lg border border-ink-border bg-ink-panel px-3 py-2 text-xs shadow-panel">
+                  <div className="font-medium text-ink-text">{payload[0].payload.name}</div>
+                  <div className="mt-0.5 text-ink-muted">{xd?.label}: {payload[0].payload.x.toFixed(1)}%</div>
+                  <div className="text-ink-muted">{yd?.label}: {payload[0].payload.y.toFixed(1)}%</div>
+                </div>
+              ) : null
+            }
+          />
+          <Scatter data={points} fillOpacity={0.75}>
+            {points.map((p, i) => (
+              <Cell key={i} fill={p.fill} />
+            ))}
+          </Scatter>
+        </ScatterChart>
+      </ResponsiveContainer>
+    </Panel>
   );
 }
 
