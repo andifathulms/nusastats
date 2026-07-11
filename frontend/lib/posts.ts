@@ -23,6 +23,10 @@ export type CompositionConfig = {
   // Optional annual time series (a different variable) for the selected region:
   // trend line + ranking movement. `totalTurvarId` selects the grand-total row.
   trend?: { variableId: string; totalTurvarId: string; unit: string; label: string };
+  // Optional PROVINCE-level sector history (var keyed by province in `vervar`),
+  // for a Total/Komponen-over-time toggle. `partialLastYear` marks the latest
+  // period as year-to-date (BPS reports it as a single quarter).
+  history?: { variableId: string; totalTurvarId: string; unit: string; label: string; partialLastYear?: boolean };
 };
 
 export type Post = {
@@ -56,6 +60,7 @@ export const POSTS: Post[] = [
       year: "2026",
       note: "PDRB triwulanan atas dasar harga berlaku, menurut 17 kategori lapangan usaha. Sumber: BPS.",
       trend: { variableId: "2193", totalTurvarId: "1550", unit: "Milyar Rupiah", label: "PDRB tahunan (harga berlaku)" },
+      history: { variableId: "2268", totalTurvarId: "2022", unit: "Milyar Rupiah", label: "PDRB per lapangan usaha (harga berlaku)", partialLastYear: true },
       groups: [
         { label: "Primer", color: "#5FBF6A", ids: ["2005", "2006"] },
         { label: "Sekunder", color: "#EE9A3A", ids: ["2007", "2008", "2009", "2010"] },

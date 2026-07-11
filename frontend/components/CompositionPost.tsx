@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { CartesianGrid, Cell, Scatter, ScatterChart, Tooltip as RTooltip, XAxis, YAxis, ZAxis, ResponsiveContainer } from "recharts";
+import { CartesianGrid, Cell, Legend, Line, LineChart, Scatter, ScatterChart, Tooltip as RTooltip, XAxis, YAxis, ZAxis, ResponsiveContainer } from "recharts";
 import { api, bpsRegionLabel, CHART, dukcapilApi, groupColor, type RegencyCrosswalk } from "@/lib/api";
 import { type CompositionConfig } from "@/lib/posts";
 import { Panel } from "@/components/ui";
@@ -254,6 +254,7 @@ export function CompositionPost({ config }: { config: CompositionConfig }) {
           row={selected}
           sectors={sectors}
           groups={config.groups}
+          history={config.history}
           trendSeries={displayTrend?.byRegion.get(selected.domain_id) ?? null}
           trendRanks={displayTrend?.rankByRegion.get(selected.domain_id) ?? null}
           trendLabel={config.trend?.label}
@@ -573,6 +574,7 @@ function Detail({
   row,
   sectors,
   groups,
+  history,
   trendSeries,
   trendRanks,
   trendLabel,
@@ -581,11 +583,13 @@ function Detail({
   row: RegionRow;
   sectors: Sector[];
   groups?: { label: string; color: string; ids: string[] }[];
+  history?: { variableId: string; totalTurvarId: string; unit: string; label: string; partialLastYear?: boolean };
   trendSeries?: { year: number; value: number }[] | null;
   trendRanks?: Record<number, number> | null;
   trendLabel?: string;
   trendUnit?: string;
 }) {
+  const isProvince = row.domain_id.length <= 2; // province rows are 2-digit
   const parts = sectors
     .map((s) => ({ ...s, value: row.byId[s.id] ?? 0, share: row.total ? ((row.byId[s.id] ?? 0) / row.total) * 100 : 0 }))
     .sort((a, b) => b.value - a.value);
@@ -636,10 +640,107 @@ function Detail({
         </div>
       </Panel>
 
-      {trendSeries && trendSeries.length > 1 && (
-        <TrendPanel series={trendSeries} ranks={trendRanks ?? {}} label={trendLabel} unit={trendUnit} />
+      {/* Province: native 17-sector history w/ Total↔Komponen toggle (incl. 2026).
+          Kabupaten: total-only trend (no kab sector history exists at BPS). */}
+      {isProvince && history ? (
+        <HistoryPanel provCode={row.domain_id} sectors={sectors} cfg={history} ranks={trendRanks ?? {}} />
+      ) : (
+        trendSeries && trendSeries.length > 1 && (
+          <TrendPanel series={trendSeries} ranks={trendRanks ?? {}} label={trendLabel} unit={trendUnit} />
+        )
       )}
     </div>
+  );
+}
+
+function HistoryPanel({
+  provCode,
+  sectors,
+  cfg,
+  ranks,
+}: {
+  provCode: string;
+  sectors: Sector[];
+  cfg: { variableId: string; totalTurvarId: string; unit: string; label: string; partialLastYear?: boolean };
+  ranks: Record<number, number>;
+}) {
+  const [rows, setRows] = useState<Record<string, number>[] | null>(null);
+  const [mode, setMode] = useState<"total" | "components">("total");
+
+  useEffect(() => {
+    let cancelled = false;
+    setRows(null);
+    api.series(cfg.variableId, { vervar_id: provCode }).then((s) => {
+      if (cancelled) return;
+      const byYear = new Map<number, Record<string, number>>();
+      for (const d of s.results) {
+        if (d.year == null) continue;
+        const y = byYear.get(d.year) ?? { year: d.year };
+        y[d.turvar_id] = d.value;
+        byYear.set(d.year, y);
+      }
+      setRows([...byYear.values()].sort((a, b) => a.year - b.year));
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [provCode, cfg.variableId]);
+
+  if (!rows) return <Panel><div className="flex h-40 items-center justify-center text-sm text-ink-muted">Memuat…</div></Panel>;
+  const first = rows[0], last = rows[rows.length - 1];
+  const lastYear = last?.year;
+  // Growth to the last FULL year (the partial current year would understate it).
+  const endRow = cfg.partialLastYear && rows.length > 1 ? rows[rows.length - 2] : last;
+  const growth = first?.[cfg.totalTurvarId] ? (endRow[cfg.totalTurvarId] / first[cfg.totalTurvarId] - 1) * 100 : 0;
+
+  return (
+    <Panel>
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+        <div className="text-xs font-medium uppercase tracking-wide text-ink-muted">
+          {cfg.label} · {first?.year}–{lastYear}
+        </div>
+        <div className="inline-flex rounded-lg border border-ink-border/80 bg-ink-panel2/50 p-0.5">
+          {(["total", "components"] as const).map((m) => (
+            <button
+              key={m}
+              onClick={() => setMode(m)}
+              className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
+                mode === m ? "bg-brand-gradient text-white" : "text-ink-muted hover:text-ink-text"
+              }`}
+            >
+              {m === "total" ? "Total" : "Per sektor"}
+            </button>
+          ))}
+        </div>
+      </div>
+      <ResponsiveContainer width="100%" height={mode === "components" ? 380 : 300}>
+        <LineChart data={rows} margin={{ top: 8, right: 16, bottom: 0, left: 8 }}>
+          <CartesianGrid stroke={CHART.grid} vertical={false} />
+          <XAxis dataKey="year" tick={{ fill: CHART.axisTick, fontSize: 12 }} axisLine={{ stroke: CHART.axisLine }} tickLine={false} />
+          <YAxis
+            tick={{ fill: CHART.axisTick, fontSize: 12 }} axisLine={{ stroke: CHART.axisLine }} tickLine={false} width={56}
+            tickFormatter={(v) => (Math.abs(v) >= 1000 ? `${(v / 1000).toLocaleString("id-ID")}k` : `${v}`)}
+          />
+          <RTooltip
+            contentStyle={{ background: CHART.tooltipBg, border: `1px solid ${CHART.tooltipBorder}`, borderRadius: 8 }}
+            formatter={(v: number, n: string) => [`${v?.toLocaleString?.("id-ID") ?? v} M`, n]}
+          />
+          {mode === "components" && <Legend wrapperStyle={{ fontSize: 11 }} />}
+          {mode === "total" ? (
+            <Line type="monotone" dataKey={cfg.totalTurvarId} name="PDRB" stroke={CHART.accent} strokeWidth={2} dot={false} />
+          ) : (
+            sectors.map((s) => (
+              <Line key={s.id} type="monotone" dataKey={s.id} name={s.label} stroke={s.color} strokeWidth={1.6} dot={false} />
+            ))
+          )}
+        </LineChart>
+      </ResponsiveContainer>
+      <div className="mt-2 text-xs text-ink-muted">
+        Pertumbuhan {first?.year}→{endRow?.year}: <span className="font-semibold text-ink-text">{growth >= 0 ? "+" : ""}{growth.toLocaleString("id-ID", { maximumFractionDigits: 0 })}%</span>
+        {ranks[endRow?.year] != null && <> · Peringkat {endRow?.year}: #{ranks[endRow?.year]} nasional</>}
+        {cfg.partialLastYear && <> · <span className="text-amber-600">{lastYear} = data berjalan (belum setahun penuh)</span></>}
+      </div>
+    </Panel>
   );
 }
 
