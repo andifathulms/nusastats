@@ -238,7 +238,7 @@ function MultiSelect({
                   type="checkbox"
                   checked={selected.includes(o.code)}
                   onChange={() => toggle(o.code)}
-                  className="accent-[#8b5e3c]"
+                  className="accent-[#1D4ED8]"
                 />
                 <span className="truncate text-ink-text">{regionLabel(o.name, o.status)}</span>
               </label>

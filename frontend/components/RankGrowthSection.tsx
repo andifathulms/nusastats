@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { api, formatNumber, type Dimensions, type Growth, type Ranking } from "@/lib/api";
+import { api, CHART, formatNumber, type Dimensions, type Growth, type Ranking } from "@/lib/api";
 import { Panel, SectionTitle, StatTile } from "@/components/ui";
 import { HorizontalBars, type BarDatum } from "@/components/HorizontalBars";
 import { IndicatorPicker, type PickedVariable } from "@/components/IndicatorPicker";
@@ -68,7 +68,7 @@ export function RankGrowthSection({ mode }: { mode: "ranking" | "growth" }) {
   }, [variable, dims, isRegional, mode, adminLevel, turvarId, year, yearFrom, yearTo, order]);
 
   const selectClass =
-    "rounded-lg border border-ink-border bg-ink-panel2 px-3 py-2 text-sm text-ink-text focus:border-ink-accent focus:outline-none";
+    "rounded-lg border border-ink-border bg-ink-panel2 px-3 py-2 text-sm text-ink-text focus:border-ink-accent focus:outline-none focus:ring-2 focus:ring-ink-accent/15 transition-colors";
 
   return (
     <div className="space-y-6">
@@ -79,7 +79,7 @@ export function RankGrowthSection({ mode }: { mode: "ranking" | "growth" }) {
             <select value={adminLevel} onChange={(e) => setAdminLevel(e.target.value)} className={selectClass}>
               {regionLevels.map((l) => (
                 <option key={l} value={l}>
-                  {l === "province" ? "Provinces" : "Kabupaten/Kota"}
+                  {l === "province" ? "Provinsi" : "Kabupaten/Kota"}
                 </option>
               ))}
             </select>
@@ -105,22 +105,22 @@ export function RankGrowthSection({ mode }: { mode: "ranking" | "growth" }) {
                 <select value={yearFrom ?? ""} onChange={(e) => setYearFrom(Number(e.target.value))} className={selectClass}>
                   {dims?.years.map((y) => (
                     <option key={y} value={y}>
-                      from {y}
+                      dari {y}
                     </option>
                   ))}
                 </select>
                 <select value={yearTo ?? ""} onChange={(e) => setYearTo(Number(e.target.value))} className={selectClass}>
                   {dims?.years.map((y) => (
                     <option key={y} value={y}>
-                      to {y}
+                      sampai {y}
                     </option>
                   ))}
                 </select>
               </>
             )}
             <select value={order} onChange={(e) => setOrder(e.target.value as "desc" | "asc")} className={selectClass}>
-              <option value="desc">Highest first</option>
-              <option value="asc">Lowest first</option>
+              <option value="desc">Tertinggi dulu</option>
+              <option value="asc">Terendah dulu</option>
             </select>
           </div>
         )}
@@ -129,8 +129,8 @@ export function RankGrowthSection({ mode }: { mode: "ranking" | "growth" }) {
       {!isRegional && dims && (
         <Panel>
           <div className="text-sm text-ink-muted">
-            This indicator has no province/kabupaten breakdown, so there’s nothing to rank across regions. Pick a
-            regional indicator (e.g. life expectancy, poverty rate, unemployment).
+            Indikator ini tidak memiliki rincian provinsi/kabupaten, sehingga tidak ada yang dapat diperingkatkan antarwilayah. Pilih
+            indikator kewilayahan (mis. angka harapan hidup, tingkat kemiskinan, pengangguran).
           </div>
         </Panel>
       )}
@@ -151,26 +151,26 @@ function RankingView({ ranking, loading }: { ranking: Ranking; loading: boolean 
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <StatTile label="Highest" value={top ? `${top.value}` : "–"} sub={top?.domain_name} />
-        <StatTile label="Lowest" value={bottom ? `${bottom.value}` : "–"} sub={bottom?.domain_name} />
-        <StatTile label="Mean" value={ranking.stats.mean ?? "–"} sub={`${ranking.stats.count} regions`} />
+        <StatTile label="Tertinggi" value={top ? `${top.value}` : "–"} sub={top?.domain_name} />
+        <StatTile label="Terendah" value={bottom ? `${bottom.value}` : "–"} sub={bottom?.domain_name} />
+        <StatTile label="Rata-rata" value={ranking.stats.mean ?? "–"} sub={`${ranking.stats.count} wilayah`} />
         <StatTile label="Median" value={ranking.stats.median ?? "–"} />
       </div>
 
       <Panel>
-        <SectionTitle hint={`${ranking.year} · ${ranking.unit || "value"}${loading ? " · loading…" : ""}`}>
-          {ranking.name} — top {Math.min(CHART_CAP, ranking.results.length)}
+        <SectionTitle hint={`${ranking.year} · ${ranking.unit || "nilai"}${loading ? " · memuat…" : ""}`}>
+          {ranking.name} — {Math.min(CHART_CAP, ranking.results.length)} teratas
         </SectionTitle>
         <HorizontalBars data={bars} unit={ranking.unit} />
         {ranking.results.length > CHART_CAP && (
           <div className="mt-2 text-xs text-ink-muted">
-            Showing top {CHART_CAP} of {ranking.results.length}; full ranking in the table below.
+            Menampilkan {CHART_CAP} teratas dari {ranking.results.length}; peringkat lengkap ada di tabel di bawah.
           </div>
         )}
       </Panel>
 
       <RankTable
-        headers={["#", "Region", ranking.unit || "Value"]}
+        headers={["#", "Wilayah", ranking.unit || "Nilai"]}
         rows={ranking.results.map((r) => [String(r.rank), r.domain_id, r.domain_name, formatNumber(r.value)])}
       />
     </div>
@@ -186,14 +186,14 @@ function GrowthView({ growth, loading }: { growth: Growth; loading: boolean }) {
   return (
     <div className="space-y-6">
       <Panel>
-        <SectionTitle hint={`${growth.year_from} → ${growth.year_to} · % change${loading ? " · loading…" : ""}`}>
-          {growth.name} — change by region
+        <SectionTitle hint={`${growth.year_from} → ${growth.year_to} · perubahan %${loading ? " · memuat…" : ""}`}>
+          {growth.name} — perubahan per wilayah
         </SectionTitle>
-        <HorizontalBars data={bars} unit="%" colorPos="#1f7a45" colorNeg="#b23a3a" />
+        <HorizontalBars data={bars} unit="%" colorPos={CHART.good} colorNeg={CHART.bad} />
       </Panel>
 
       <RankTable
-        headers={["#", "Region", "From", "To", "Change", "%"]}
+        headers={["#", "Wilayah", "Dari", "Sampai", "Perubahan", "%"]}
         rows={growth.results.map((r) => [
           String(r.rank),
           r.domain_id,
@@ -213,10 +213,10 @@ function RankTable({ headers, rows }: { headers: string[]; rows: string[][] }) {
     <Panel className="p-0 overflow-hidden">
       <div className="max-h-[32rem] overflow-auto scroll-thin">
         <table className="w-full text-sm">
-          <thead className="sticky top-0 bg-ink-panel">
-            <tr className="border-b border-ink-border text-left text-xs uppercase tracking-wide text-ink-muted">
+          <thead className="sticky top-0 bg-ink-panel2/70 backdrop-blur">
+            <tr className="border-b border-ink-border text-left text-[11px] uppercase tracking-wider text-ink-muted">
               {headers.map((h, i) => (
-                <th key={i} className={`px-4 py-2 font-medium ${i >= 2 ? "text-right" : ""}`}>
+                <th key={i} className={`px-5 py-2.5 font-semibold ${i >= 2 ? "text-right" : ""}`}>
                   {h}
                 </th>
               ))}
@@ -224,15 +224,15 @@ function RankTable({ headers, rows }: { headers: string[]; rows: string[][] }) {
           </thead>
           <tbody>
             {rows.map((r, i) => (
-              <tr key={i} className="border-b border-ink-border/40">
-                <td className="px-4 py-2 tabular-nums text-ink-muted">{r[0]}</td>
-                <td className="px-4 py-2">
-                  <Link href={`/regions/${r[1]}`} className="text-ink-accent hover:underline">
+              <tr key={i} className="border-b border-ink-border/40 transition-colors last:border-0 hover:bg-ink-accent/[0.04]">
+                <td className="px-5 py-2 tabular-nums text-ink-muted">{r[0]}</td>
+                <td className="px-5 py-2">
+                  <Link href={`/regions/${r[1]}`} className="font-medium text-ink-accent hover:underline">
                     {r[2]}
                   </Link>
                 </td>
                 {r.slice(3).map((cell, j) => (
-                  <td key={j} className="px-4 py-2 text-right tabular-nums text-ink-text">
+                  <td key={j} className="px-5 py-2 text-right font-medium tabular-nums text-ink-text">
                     {cell}
                   </td>
                 ))}

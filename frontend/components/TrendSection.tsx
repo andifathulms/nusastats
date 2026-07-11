@@ -12,7 +12,7 @@ import {
   CartesianGrid,
   Legend,
 } from "recharts";
-import { api, formatNumber, type Dimensions, type Trend } from "@/lib/api";
+import { api, CHART, formatNumber, type Dimensions, type Trend } from "@/lib/api";
 import { Panel, SectionTitle, StatTile } from "@/components/ui";
 import { IndicatorPicker, type PickedVariable } from "@/components/IndicatorPicker";
 
@@ -57,7 +57,7 @@ export function TrendSection() {
   }));
 
   const selectClass =
-    "rounded-lg border border-ink-border bg-ink-panel2 px-3 py-2 text-sm text-ink-text focus:border-ink-accent focus:outline-none";
+    "rounded-lg border border-ink-border bg-ink-panel2 px-3 py-2 text-sm text-ink-text focus:border-ink-accent focus:outline-none focus:ring-2 focus:ring-ink-accent/15 transition-colors";
 
   return (
     <div className="space-y-6">
@@ -78,55 +78,55 @@ export function TrendSection() {
         <>
           <div className="grid grid-cols-2 gap-4 lg:grid-cols-3">
             <StatTile
-              label="Total change"
+              label="Perubahan total"
               value={data.change_pct === null ? "–" : `${data.change_pct > 0 ? "+" : ""}${data.change_pct}%`}
-              sub={data.has_national ? "national, first→last year" : "provincial mean, first→last"}
+              sub={data.has_national ? "nasional, tahun awal→akhir" : "rata-rata provinsi, awal→akhir"}
             />
             <StatTile
-              label="Annual growth (CAGR)"
+              label="Pertumbuhan tahunan (CAGR)"
               value={data.cagr_pct === null ? "–" : `${data.cagr_pct > 0 ? "+" : ""}${data.cagr_pct}%`}
-              sub="compound, per year"
+              sub="majemuk, per tahun"
             />
             <StatTile
-              label="Series"
-              value={data.has_national ? "National + provinces" : "Provinces only"}
-              sub={data.has_national ? "" : "no national aggregate published"}
+              label="Deret"
+              value={data.has_national ? "Nasional + provinsi" : "Provinsi saja"}
+              sub={data.has_national ? "" : "tidak ada agregat nasional yang diterbitkan"}
             />
           </div>
 
           <Panel>
-            <SectionTitle hint={loading ? "loading…" : "line = national (or provincial mean); band = province min–max"}>
+            <SectionTitle hint={loading ? "memuat…" : "garis = nasional (atau rata-rata provinsi); pita = minimum–maksimum provinsi"}>
               {data.name} {data.unit && <span className="text-ink-muted">({data.unit})</span>}
             </SectionTitle>
             <ResponsiveContainer width="100%" height={360}>
               <ComposedChart data={rows} margin={{ top: 8, right: 16, bottom: 0, left: 8 }}>
-                <CartesianGrid stroke="#e7e7dc" vertical={false} />
-                <XAxis dataKey="year" tick={{ fill: "#544c40", fontSize: 12 }} axisLine={{ stroke: "#babba9" }} tickLine={false} />
+                <CartesianGrid stroke={CHART.grid} vertical={false} />
+                <XAxis dataKey="year" tick={{ fill: CHART.axisTick, fontSize: 12 }} axisLine={{ stroke: CHART.axisLine }} tickLine={false} />
                 <YAxis
-                  tick={{ fill: "#544c40", fontSize: 12 }}
-                  axisLine={{ stroke: "#babba9" }}
+                  tick={{ fill: CHART.axisTick, fontSize: 12 }}
+                  axisLine={{ stroke: CHART.axisLine }}
                   tickLine={false}
                   width={64}
                   domain={["auto", "auto"]}
                   tickFormatter={(v) => (Math.abs(v) >= 1000 ? `${(v / 1000).toLocaleString()}k` : `${v}`)}
                 />
                 <Tooltip
-                  contentStyle={{ background: "#ffffff", border: "1px solid #babba9", borderRadius: 8, color: "#051220" }}
-                  labelStyle={{ color: "#544c40" }}
+                  contentStyle={{ background: CHART.tooltipBg, border: `1px solid ${CHART.tooltipBorder}`, borderRadius: 8, color: CHART.text }}
+                  labelStyle={{ color: CHART.axisTick }}
                   formatter={(v: number | number[], name: string) => {
-                    if (Array.isArray(v)) return [`${formatNumber(v[0])} – ${formatNumber(v[1])}`, "Province range"];
-                    return [formatNumber(v as number), name === "national" ? "National" : "Provincial mean"];
+                    if (Array.isArray(v)) return [`${formatNumber(v[0])} – ${formatNumber(v[1])}`, "Rentang provinsi"];
+                    return [formatNumber(v as number), name === "national" ? "Nasional" : "Rata-rata provinsi"];
                   }}
                 />
                 <Legend
-                  wrapperStyle={{ fontSize: 12, color: "#544c40" }}
-                  formatter={(v) => (v === "national" ? "National" : v === "prov_mean" ? "Provincial mean" : "Province range")}
+                  wrapperStyle={{ fontSize: 12, color: CHART.axisTick }}
+                  formatter={(v) => (v === "national" ? "Nasional" : v === "prov_mean" ? "Rata-rata provinsi" : "Rentang provinsi")}
                 />
-                <Area dataKey="band" stroke="none" fill="#8b5e3c" fillOpacity={0.12} legendType="none" />
+                <Area dataKey="band" stroke="none" fill={CHART.accent} fillOpacity={0.12} legendType="none" />
                 {data.has_national && (
-                  <Line type="monotone" dataKey="national" stroke="#8b5e3c" strokeWidth={2.5} dot={false} connectNulls />
+                  <Line type="monotone" dataKey="national" stroke={CHART.accent} strokeWidth={2.5} dot={false} connectNulls />
                 )}
-                <Line type="monotone" dataKey="prov_mean" stroke="#1f7a45" strokeWidth={2} strokeDasharray={data.has_national ? "4 3" : undefined} dot={false} connectNulls />
+                <Line type="monotone" dataKey="prov_mean" stroke={CHART.good} strokeWidth={2} strokeDasharray={data.has_national ? "4 3" : undefined} dot={false} connectNulls />
               </ComposedChart>
             </ResponsiveContainer>
           </Panel>

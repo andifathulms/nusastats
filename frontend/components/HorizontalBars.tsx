@@ -1,13 +1,14 @@
 "use client";
 
 import { Bar, BarChart, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { CHART } from "@/lib/api";
 
 export type BarDatum = { label: string; value: number; highlight?: boolean; color?: string };
 
 export function HorizontalBars({
   data,
   unit,
-  colorPos = "#8b5e3c",
+  colorPos = CHART.accent,
   colorNeg,
 }: {
   data: BarDatum[];
@@ -24,8 +25,8 @@ export function HorizontalBars({
       <BarChart data={data} layout="vertical" margin={{ top: 4, right: 48, bottom: 4, left: 8 }}>
         <XAxis
           type="number"
-          tick={{ fill: "#544c40", fontSize: 11 }}
-          axisLine={{ stroke: "#babba9" }}
+          tick={{ fill: CHART.axisTick, fontSize: 11 }}
+          axisLine={{ stroke: CHART.axisLine }}
           tickLine={false}
           tickFormatter={(v) => (Math.abs(v) >= 1000 ? `${(v / 1000).toLocaleString()}k` : `${v}`)}
         />
@@ -33,20 +34,20 @@ export function HorizontalBars({
           type="category"
           dataKey="label"
           width={150}
-          tick={{ fill: "#051220", fontSize: 12 }}
-          axisLine={{ stroke: "#babba9" }}
+          tick={{ fill: CHART.text, fontSize: 12 }}
+          axisLine={{ stroke: CHART.axisLine }}
           tickLine={false}
         />
         <Tooltip
-          cursor={{ fill: "#e7e7dc" }}
-          contentStyle={{ background: "#ffffff", border: "1px solid #babba9", borderRadius: 8, color: "#051220" }}
+          cursor={{ fill: CHART.cursor }}
+          contentStyle={{ background: CHART.tooltipBg, border: `1px solid ${CHART.tooltipBorder}`, borderRadius: 8, color: CHART.text }}
           formatter={(v: number) => [`${v?.toLocaleString?.() ?? v}${unit ? ` ${unit}` : ""}`, ""]}
         />
         <Bar dataKey="value" radius={[0, 4, 4, 0]}>
           {data.map((d, i) => (
             <Cell
               key={i}
-              fill={d.color ?? (colorNeg && d.value < 0 ? colorNeg : d.highlight ? "#1f7a45" : colorPos)}
+              fill={d.color ?? (colorNeg && d.value < 0 ? colorNeg : d.highlight ? CHART.good : colorPos)}
             />
           ))}
         </Bar>

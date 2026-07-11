@@ -10,7 +10,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { SERIES_COLORS } from "@/lib/api";
+import { CHART, SERIES_COLORS } from "@/lib/api";
 
 export type SeriesEntity = { key: string; label: string };
 
@@ -25,26 +25,26 @@ export function SeriesChart({
   unit?: string;
 }) {
   if (!rows.length || !entities.length) {
-    return <div className="flex h-[320px] items-center justify-center text-sm text-ink-muted">No data to chart.</div>;
+    return <div className="flex h-[320px] items-center justify-center text-sm text-ink-muted">Tidak ada data untuk digambar.</div>;
   }
   return (
     <ResponsiveContainer width="100%" height={340}>
       <LineChart data={rows} margin={{ top: 8, right: 16, bottom: 0, left: 8 }}>
-        <CartesianGrid stroke="#e7e7dc" vertical={false} />
-        <XAxis dataKey="year" tick={{ fill: "#544c40", fontSize: 12 }} axisLine={{ stroke: "#babba9" }} tickLine={false} />
+        <CartesianGrid stroke={CHART.grid} vertical={false} />
+        <XAxis dataKey="year" tick={{ fill: CHART.axisTick, fontSize: 12 }} axisLine={{ stroke: CHART.axisLine }} tickLine={false} />
         <YAxis
-          tick={{ fill: "#544c40", fontSize: 12 }}
-          axisLine={{ stroke: "#babba9" }}
+          tick={{ fill: CHART.axisTick, fontSize: 12 }}
+          axisLine={{ stroke: CHART.axisLine }}
           tickLine={false}
           width={64}
           tickFormatter={(v) => (Math.abs(v) >= 1000 ? `${(v / 1000).toLocaleString()}k` : `${v}`)}
         />
         <Tooltip
-          contentStyle={{ background: "#ffffff", border: "1px solid #babba9", borderRadius: 8, color: "#051220" }}
-          labelStyle={{ color: "#544c40" }}
+          contentStyle={{ background: CHART.tooltipBg, border: `1px solid ${CHART.tooltipBorder}`, borderRadius: 8, color: CHART.text }}
+          labelStyle={{ color: CHART.axisTick }}
           formatter={(v: number, name: string) => [`${v?.toLocaleString?.() ?? v}${unit ? ` ${unit}` : ""}`, name]}
         />
-        <Legend wrapperStyle={{ fontSize: 12, color: "#544c40" }} />
+        <Legend wrapperStyle={{ fontSize: 12, color: CHART.axisTick }} />
         {entities.map((e, i) => (
           <Line
             key={e.key}

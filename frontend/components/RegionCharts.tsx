@@ -11,7 +11,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { formatNumber, SERIES_COLORS, type DukcapilRegionDetail } from "@/lib/api";
+import { CHART, formatNumber, SERIES_COLORS, type DukcapilRegionDetail } from "@/lib/api";
 
 type Datum = { name: string; value: number };
 
@@ -35,10 +35,10 @@ function AgeDistribution({ detail }: { detail: DukcapilRegionDetail }) {
       <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-ink-accent">Distribusi Usia</div>
       <ResponsiveContainer width="100%" height={200}>
         <BarChart data={data} margin={{ top: 4, right: 8, bottom: 4, left: 4 }}>
-          <XAxis dataKey="name" tick={{ fill: "#544c40", fontSize: 9 }} interval={0} angle={-45} textAnchor="end" height={44} axisLine={{ stroke: "#babba9" }} tickLine={false} />
-          <YAxis tick={{ fill: "#544c40", fontSize: 10 }} axisLine={false} tickLine={false} width={44} tickFormatter={(v) => (v >= 1000 ? `${Math.round(v / 1000)}k` : `${v}`)} />
+          <XAxis dataKey="name" tick={{ fill: CHART.axisTick, fontSize: 9 }} interval={0} angle={-45} textAnchor="end" height={44} axisLine={{ stroke: CHART.axisLine }} tickLine={false} />
+          <YAxis tick={{ fill: CHART.axisTick, fontSize: 10 }} axisLine={false} tickLine={false} width={44} tickFormatter={(v) => (v >= 1000 ? `${Math.round(v / 1000)}k` : `${v}`)} />
           <Tooltip
-            cursor={{ fill: "#e7e7dc" }}
+            cursor={{ fill: CHART.cursor }}
             content={({ active, payload, label }) =>
               active && payload?.length ? (
                 <div className="rounded-lg border border-ink-border bg-ink-panel px-3 py-1.5 text-xs">
@@ -48,7 +48,7 @@ function AgeDistribution({ detail }: { detail: DukcapilRegionDetail }) {
               ) : null
             }
           />
-          <Bar dataKey="value" fill="#8b5e3c" radius={[3, 3, 0, 0]} />
+          <Bar dataKey="value" fill={CHART.accent} radius={[3, 3, 0, 0]} />
         </BarChart>
       </ResponsiveContainer>
     </div>

@@ -13,6 +13,7 @@ import {
   ZAxis,
 } from "recharts";
 import {
+  CHART,
   dukcapilApi,
   formatNumber,
   groupColor,
@@ -265,33 +266,33 @@ export function DukcapilCorrelation({ groups }: { groups: DukcapilIndicatorGroup
             </SectionTitle>
             <ResponsiveContainer width="100%" height={420}>
               <ScatterChart margin={{ top: 12, right: 24, bottom: 24, left: 12 }}>
-                <CartesianGrid stroke="#e7e7dc" />
+                <CartesianGrid stroke={CHART.grid} />
                 <XAxis
                   type="number"
                   dataKey="x"
-                  tick={{ fill: "#544c40", fontSize: 11 }}
-                  axisLine={{ stroke: "#babba9" }}
+                  tick={{ fill: CHART.axisTick, fontSize: 11 }}
+                  axisLine={{ stroke: CHART.axisLine }}
                   tickLine={false}
                   label={{
                     value: `${data.x.label_id}${data.x.unit ? ` (${data.x.unit})` : ""}`,
                     position: "insideBottom",
                     offset: -12,
-                    fill: "#544c40",
+                    fill: CHART.axisTick,
                     fontSize: 11,
                   }}
                 />
                 <YAxis
                   type="number"
                   dataKey="y"
-                  tick={{ fill: "#544c40", fontSize: 11 }}
-                  axisLine={{ stroke: "#babba9" }}
+                  tick={{ fill: CHART.axisTick, fontSize: 11 }}
+                  axisLine={{ stroke: CHART.axisLine }}
                   tickLine={false}
                   width={64}
-                  label={{ value: data.y.unit || "", angle: -90, position: "insideLeft", fill: "#544c40", fontSize: 11 }}
+                  label={{ value: data.y.unit || "", angle: -90, position: "insideLeft", fill: CHART.axisTick, fontSize: 11 }}
                 />
                 <ZAxis range={[50, 50]} />
                 <Tooltip
-                  cursor={{ strokeDasharray: "3 3", stroke: "#babba9" }}
+                  cursor={{ strokeDasharray: "3 3", stroke: CHART.axisLine }}
                   content={({ active, payload }) => {
                     if (!active || !payload || !payload.length) return null;
                     const p = payload[0].payload as { domain_name: string; status?: string; x: number; y: number };
@@ -308,7 +309,7 @@ export function DukcapilCorrelation({ groups }: { groups: DukcapilIndicatorGroup
                     );
                   }}
                 />
-                <Scatter data={data.results} fill="#8b5e3c" fillOpacity={0.75}>
+                <Scatter data={data.results} fill={CHART.accent} fillOpacity={0.75}>
                   {effColorBy !== "none" &&
                     data.results.map((p) => <Cell key={p.domain_id} fill={groupColor(groupOf(p.domain_id))} />)}
                 </Scatter>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { titleCase } from "@/lib/api";
+import { CHART, titleCase } from "@/lib/api";
 
 type Feature = {
   properties: { domain_id: string; name: string };
@@ -11,9 +11,9 @@ type FC = { features: Feature[] };
 
 export type MapValue = { value: number; name: string };
 
-// Sequential low->high scale — pale cream deepening to navy, readable on the paper shell.
-const STOPS = ["#f3e4c9", "#b9b5a9", "#7f8788", "#445868", "#0a2947"];
-const NO_DATA_FILL = "#e7e7dc";
+// Sequential low->high scale — single-hue royal blue ramp.
+const STOPS = ["#EAF0FD", "#B7CBF3", "#7CA0E8", "#3F6FD6", "#14264F"];
+const NO_DATA_FILL = "#EEF2FB";
 
 function lerpHex(a: string, b: string, t: number): string {
   const pa = [1, 3, 5].map((i) => parseInt(a.slice(i, i + 2), 16));
@@ -127,7 +127,7 @@ export function ChoroplethMap({
               key={p.id}
               d={p.d}
               fill={fill}
-              stroke={isHover ? "#051220" : "#f3e4c9"}
+              stroke={isHover ? CHART.text : "#FFFFFF"}
               strokeWidth={isHover ? 1.5 : 0.5}
               onMouseEnter={(e) => setHover({ id: p.id, x: e.clientX, y: e.clientY })}
               onMouseMove={(e) => setHover({ id: p.id, x: e.clientX, y: e.clientY })}

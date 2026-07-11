@@ -52,7 +52,7 @@ export function MapSection() {
   }, [ranking]);
 
   const selectClass =
-    "rounded-lg border border-ink-border bg-ink-panel2 px-3 py-2 text-sm text-ink-text focus:border-ink-accent focus:outline-none";
+    "rounded-lg border border-ink-border bg-ink-panel2 px-3 py-2 text-sm text-ink-text focus:border-ink-accent focus:outline-none focus:ring-2 focus:ring-ink-accent/15 transition-colors";
 
   return (
     <div className="space-y-6">
@@ -83,15 +83,15 @@ export function MapSection() {
       {!hasProvince && dims && (
         <Panel>
           <div className="text-sm text-ink-muted">
-            This indicator has no provincial data to map. Pick a province-level indicator.
+            Indikator ini tidak memiliki data provinsi untuk dipetakan. Pilih indikator tingkat provinsi.
           </div>
         </Panel>
       )}
 
       {hasProvince && ranking && (
         <Panel>
-          <SectionTitle hint={`${ranking.year} · ${ranking.unit || "value"}${loading ? " · loading…" : ""}`}>
-            {ranking.name} by province
+          <SectionTitle hint={`${ranking.year} · ${ranking.unit || "nilai"}${loading ? " · memuat…" : ""}`}>
+            {ranking.name} per provinsi
           </SectionTitle>
           <ChoroplethMap
             values={values}
