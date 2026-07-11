@@ -23,6 +23,14 @@ const NAV: NavSection[] = [
     items: [],
   },
   {
+    key: "sorotan",
+    label: "Sorotan",
+    icon: SparkIcon,
+    home: "/sorotan",
+    match: (p) => p === "/sorotan" || p.startsWith("/sorotan/"),
+    items: [],
+  },
+  {
     key: "wilayah",
     label: "Wilayah",
     icon: MapPinIcon,
@@ -146,6 +154,20 @@ function LayersIcon({ className }: { className?: string }) {
     <svg viewBox="0 0 24 24" fill="none" className={className}>
       <path d="M12 3 3 8l9 5 9-5-9-5Z" stroke="currentColor" strokeWidth="1.7" strokeLinejoin="round" />
       <path d="m3 12 9 5 9-5M3 16l9 5 9-5" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function SparkIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" className={className}>
+      <path
+        d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9L12 3Z"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinejoin="round"
+      />
+      <path d="M18.5 15.5l.7 1.8 1.8.7-1.8.7-.7 1.8-.7-1.8-1.8-.7 1.8-.7.7-1.8Z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" />
     </svg>
   );
 }
