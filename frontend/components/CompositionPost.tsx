@@ -190,6 +190,7 @@ function Detail({ row, sectors }: { row: RegionRow; sectors: Sector[] }) {
     .map((s) => ({ ...s, value: row.byId[s.id] ?? 0, share: row.total ? ((row.byId[s.id] ?? 0) / row.total) * 100 : 0 }))
     .sort((a, b) => b.value - a.value);
   const top3 = parts.slice(0, 3).reduce((a, p) => a + p.share, 0);
+  const maxPart = parts[0]?.value || 1; // top sector = full bar, rest relative to it
 
   return (
     <div className="space-y-4">
@@ -224,7 +225,7 @@ function Detail({ row, sectors }: { row: RegionRow; sectors: Sector[] }) {
               <span className="h-2.5 w-2.5 shrink-0 rounded-sm" style={{ background: p.color }} />
               <span className="w-44 shrink-0 truncate text-sm text-ink-text" title={p.label}>{p.label}</span>
               <div className="h-2 flex-1 overflow-hidden rounded-full bg-ink-panel2">
-                <div className="h-full rounded-full" style={{ width: `${p.share}%`, background: p.color }} />
+                <div className="h-full rounded-full" style={{ width: `${(p.value / maxPart) * 100}%`, background: p.color }} />
               </div>
               <span className="w-14 shrink-0 text-right text-sm tabular-nums text-ink-text">{pct(p.share)}</span>
               <span className="hidden w-24 shrink-0 text-right text-xs tabular-nums text-ink-muted sm:block">{rp(p.value)}</span>
