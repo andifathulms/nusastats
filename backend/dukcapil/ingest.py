@@ -115,6 +115,7 @@ def ingest_level(level, period, client=None, on_page=None):
 
     total = 0
     seen = set()  # per-level, spans pages: guarantees unique codes
+    seen_kds = set()  # village kode_desa_spatial, to drop exact duplicate rows
     for url, status, raw, layer_id, feats in client.iter_pages(level):
         now = timezone.now()
         log = DukcapilFetchLog.objects.create(
@@ -128,7 +129,22 @@ def ingest_level(level, period, client=None, on_page=None):
             response_sha256=hashlib.sha256(raw).hexdigest(),
             fetched_at=now,
         )
-        rows = [_row(level, f.get("attributes", {}), log, now, seen, period) for f in feats]
+        rows = []
+        for f in feats:
+            a = f.get("attributes", {})
+            # Drop exact duplicate village rows: the source occasionally returns
+            # the same kode_desa_spatial twice (identical data, different
+            # objectid). Without this they'd be kept as distinct `-objectid`
+            # codes, inflating village counts and double-counting population.
+            # Dirty rows with no kode_desa_spatial (kds is None) are untouched —
+            # they still get a unique objectid-suffixed code via _unique_code.
+            if level == "village":
+                kds = _int(a.get("kode_desa_spatial"))
+                if kds is not None:
+                    if kds in seen_kds:
+                        continue
+                    seen_kds.add(kds)
+            rows.append(_row(level, a, log, now, seen, period))
         for i in range(0, len(rows), CHUNK):
             DukcapilRegion.objects.bulk_create(
                 rows[i : i + CHUNK],
