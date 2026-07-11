@@ -46,8 +46,15 @@ Fetched with `fetch_big.py` (one geojson per province, `big-villages-<prov>.geoj
   = our `kode_desa_spatial` → **direct join** to Dukcapil village data. BIG also
   carries BPS codes (`KD*BPS`) for a BPS↔Kemendagri crosswalk.
 - ~1.0 GB raw (nd=5, ~1 m, full vertices). **Too big to serve as-is** — for the
-  web maps, generate a Douglas-Peucker-simplified display version (~100 pts/desa,
-  visually identical at any web zoom, ~10× smaller) from this archive.
+  web maps, `simplify_big.py` writes a Douglas-Peucker display copy per province
+  to `frontend/public/dukcapil-villages-<prov>.geojson`, and `dissolve.py`
+  derives smooth kec/kab/prov outlines from it (dissolve full-res desa first,
+  then simplify — see the script header).
+- `compute_area.py` computes the true geodesic per-desa **land area** from this
+  archive → `backend/dukcapil/data/big_area.json` (committed, ~1.8 MB), which
+  `manage.py load_big_area` ingests into `DukcapilRegion.luas_big`. This exists
+  because Dukcapil's own `luas_wilayah` is the kabupaten total copied onto every
+  desa (broken at village level); `luas_big` is the real per-region area.
 
 ## Regenerate
 
@@ -55,4 +62,8 @@ Fetched with `fetch_big.py` (one geojson per province, `big-villages-<prov>.geoj
 python3 dukcapil_extra/fetch_extra.py all       # themed + historical (prov/kab/kec)
 python3 dukcapil_extra/fetch_extra.py village   # + historical village (83k)
 python3 big_boundaries/fetch_big.py             # all BIG desa boundaries (1 GB)
+python3 big_boundaries/simplify_big.py 0.0004   # -> frontend/public display desa
+python3 big_boundaries/dissolve.py              # -> smooth kec/kab/prov outlines
+python3 big_boundaries/compute_area.py          # -> backend .../big_area.json
+#   then: manage.py load_big_area               # -> DukcapilRegion.luas_big
 ```
