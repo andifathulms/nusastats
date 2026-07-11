@@ -13,8 +13,8 @@ import { Badge, Panel, SectionTitle } from "@/components/ui";
 import { SeriesChart, type SeriesEntity } from "@/components/SeriesChart";
 
 const LEVEL_LABEL: Record<string, string> = {
-  national: "National",
-  province: "Province",
+  national: "Nasional",
+  province: "Provinsi",
   regency: "Kabupaten/Kota",
 };
 
@@ -127,8 +127,8 @@ export default function VariableDetailPage({ params }: { params: { variableId: s
     return { rows, entities };
   }, [points, dims, isGeographic, selected]);
 
-  if (error) return <div className="text-ink-muted">Failed to load: {error}</div>;
-  if (!dims) return <div className="text-ink-muted">Loading…</div>;
+  if (error) return <div className="text-ink-muted">Gagal memuat: {error}</div>;
+  if (!dims) return <div className="text-ink-muted">Memuat…</div>;
 
   const chooserItems: { id: string; label: string }[] = isGeographic
     ? regions
@@ -141,29 +141,31 @@ export default function VariableDetailPage({ params }: { params: { variableId: s
 
   return (
     <div className="space-y-6">
-      <div>
-        <Link href="/variables" className="text-sm text-ink-muted hover:text-ink-text">
-          ← Variables
+      <header className="border-b border-ink-border pb-5">
+        <Link href="/variables" className="text-sm text-ink-muted transition-colors hover:text-ink-accent">
+          ← Variabel
         </Link>
-        <h1 className="mt-1 text-2xl font-semibold text-ink-text">{dims.name}</h1>
-        <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-ink-muted">
+        <h1 className="mt-2 font-display text-2xl font-medium leading-tight tracking-tight text-ink-text sm:text-3xl">
+          {dims.name}
+        </h1>
+        <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-ink-muted">
           {dims.unit && <Badge tone="accent">{dims.unit}</Badge>}
           <Badge>
-            {dims.years.length ? `${dims.years[0]}–${dims.years[dims.years.length - 1]}` : "no years"}
+            {dims.years.length ? `${dims.years[0]}–${dims.years[dims.years.length - 1]}` : "tanpa tahun"}
           </Badge>
           {dims.admin_levels.map((l) => (
             <Badge key={l}>{LEVEL_LABEL[l] ?? l}</Badge>
           ))}
-          <span>variable_id {dims.variable_id}</span>
+          <span className="text-ink-faint">variable_id {dims.variable_id}</span>
         </div>
-      </div>
+      </header>
 
       <div className="grid gap-6 lg:grid-cols-[280px_1fr]">
         {/* Controls */}
         <div className="space-y-4">
           {dims.turvars.length > 1 && (
             <Panel>
-              <SectionTitle>Breakdown</SectionTitle>
+              <SectionTitle>Rincian</SectionTitle>
               <select
                 value={turvarId}
                 onChange={(e) => setTurvarId(e.target.value)}
@@ -179,7 +181,7 @@ export default function VariableDetailPage({ params }: { params: { variableId: s
           )}
 
           <Panel>
-            <SectionTitle hint="pick up to 8">{isGeographic ? "Regions" : "Classifications"}</SectionTitle>
+            <SectionTitle hint="pilih maksimal 8">{isGeographic ? "Wilayah" : "Klasifikasi"}</SectionTitle>
             {isGeographic && dims.admin_levels.length > 1 && (
               <div className="mb-3 flex gap-1">
                 {dims.admin_levels.map((l) => (
@@ -201,7 +203,7 @@ export default function VariableDetailPage({ params }: { params: { variableId: s
               <input
                 value={regionSearch}
                 onChange={(e) => setRegionSearch(e.target.value)}
-                placeholder="Filter…"
+                placeholder="Saring…"
                 className="mb-2 w-full rounded-lg border border-ink-border bg-ink-panel2 px-3 py-1.5 text-sm text-ink-text placeholder:text-ink-muted focus:border-ink-accent focus:outline-none"
               />
             )}
@@ -227,24 +229,24 @@ export default function VariableDetailPage({ params }: { params: { variableId: s
         {/* Chart + table */}
         <div className="space-y-6">
           <Panel>
-            <SectionTitle hint={loading ? "loading…" : `${entities.length} series · ${rows.length} periods`}>
-              Time series
+            <SectionTitle hint={loading ? "memuat…" : `${entities.length} deret · ${rows.length} periode`}>
+              Deret waktu
             </SectionTitle>
             <SeriesChart rows={rows} entities={entities} unit={dims.unit} />
           </Panel>
 
           <Panel className="p-0 overflow-hidden">
             <div className="border-b border-ink-border px-4 py-3">
-              <SectionTitle>Raw values</SectionTitle>
+              <SectionTitle>Nilai mentah</SectionTitle>
             </div>
             <div className="max-h-80 overflow-auto scroll-thin">
               <table className="w-full text-sm">
-                <thead className="sticky top-0 bg-ink-panel">
-                  <tr className="text-left text-xs uppercase tracking-wide text-ink-muted">
-                    <th className="px-4 py-2 font-medium">Year</th>
-                    <th className="px-4 py-2 font-medium">{isGeographic ? "Region" : "Classification"}</th>
-                    <th className="px-4 py-2 font-medium">Breakdown</th>
-                    <th className="px-4 py-2 font-medium text-right">Value</th>
+                <thead className="sticky top-0 bg-ink-panel2/70 backdrop-blur">
+                  <tr className="border-b border-ink-border text-left text-[11px] uppercase tracking-wider text-ink-muted">
+                    <th className="px-5 py-2.5 font-semibold">Tahun</th>
+                    <th className="px-5 py-2.5 font-semibold">{isGeographic ? "Wilayah" : "Klasifikasi"}</th>
+                    <th className="px-5 py-2.5 font-semibold">Rincian</th>
+                    <th className="px-5 py-2.5 text-right font-semibold">Nilai</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -252,11 +254,11 @@ export default function VariableDetailPage({ params }: { params: { variableId: s
                     .filter((p) => (isGeographic ? true : selected.includes(p.vervar_id)))
                     .slice(0, 500)
                     .map((p, i) => (
-                      <tr key={i} className="border-b border-ink-border/40">
-                        <td className="px-4 py-1.5 tabular-nums text-ink-muted">{p.year}</td>
-                        <td className="px-4 py-1.5">{isGeographic ? p.domain_name : p.vervar_label}</td>
-                        <td className="px-4 py-1.5 text-ink-muted">{p.turvar_label || "—"}</td>
-                        <td className="px-4 py-1.5 text-right tabular-nums text-ink-text">
+                      <tr key={i} className="border-b border-ink-border/40 transition-colors last:border-0 hover:bg-ink-accent/[0.04]">
+                        <td className="px-5 py-2 tabular-nums text-ink-muted">{p.year}</td>
+                        <td className="px-5 py-2 text-ink-text">{isGeographic ? p.domain_name : p.vervar_label}</td>
+                        <td className="px-5 py-2 text-ink-muted">{p.turvar_label || "—"}</td>
+                        <td className="px-5 py-2 text-right font-medium tabular-nums text-ink-text">
                           {formatNumber(p.value)}
                         </td>
                       </tr>

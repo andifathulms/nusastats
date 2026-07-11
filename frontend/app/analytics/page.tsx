@@ -9,11 +9,11 @@ import { MapSection } from "@/components/MapSection";
 type Mode = "ranking" | "growth" | "trend" | "correlation" | "map";
 
 const MODES: { v: Mode; label: string; hint: string }[] = [
-  { v: "map", label: "Map", hint: "choropleth by province" },
-  { v: "ranking", label: "Ranking", hint: "rank regions by an indicator" },
-  { v: "growth", label: "Growth", hint: "year-over-year change per region" },
-  { v: "trend", label: "National trend", hint: "national trajectory over time" },
-  { v: "correlation", label: "Correlation", hint: "relate two indicators" },
+  { v: "map", label: "Peta", hint: "peta koroplet per provinsi" },
+  { v: "ranking", label: "Peringkat", hint: "peringkat wilayah menurut indikator" },
+  { v: "growth", label: "Pertumbuhan", hint: "perubahan antar tahun per wilayah" },
+  { v: "trend", label: "Tren nasional", hint: "lintasan nasional dari waktu ke waktu" },
+  { v: "correlation", label: "Korelasi", hint: "hubungkan dua indikator" },
 ];
 
 export default function AnalyticsPage() {
@@ -21,12 +21,16 @@ export default function AnalyticsPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold text-ink-text">Analytics</h1>
-        <p className="mt-1 text-sm text-ink-muted">
-          Rank regions, track growth over time, or correlate two indicators — all computed from the real data.
+      <header className="border-b border-ink-border pb-5">
+        <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wider text-ink-accent">
+          <span className="h-1.5 w-1.5 rounded-full bg-ink-accent" />
+          Badan Pusat Statistik
+        </div>
+        <h1 className="mt-2 font-display text-3xl font-medium tracking-tight text-ink-text sm:text-4xl">Analitik</h1>
+        <p className="mt-2 max-w-2xl text-sm text-ink-muted">
+          Peringkatkan wilayah, lacak pertumbuhan dari waktu ke waktu, atau korelasikan dua indikator — semuanya dihitung dari data sebenarnya.
         </p>
-      </div>
+      </header>
 
       <div className="inline-flex flex-wrap gap-1 rounded-xl border border-ink-border/80 bg-ink-panel/50 p-1 backdrop-blur-sm">
         {MODES.map((m) => (

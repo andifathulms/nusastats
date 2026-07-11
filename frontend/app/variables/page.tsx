@@ -5,9 +5,9 @@ import { api, formatNumber, type Paginated, type Summary, type VariableRow } fro
 import { Badge, Panel, VariableLink } from "@/components/ui";
 
 const LEVELS = [
-  { v: "", label: "All levels" },
-  { v: "national", label: "National" },
-  { v: "province", label: "Province" },
+  { v: "", label: "Semua tingkat" },
+  { v: "national", label: "Nasional" },
+  { v: "province", label: "Provinsi" },
   { v: "regency", label: "Kabupaten/Kota" },
 ];
 
@@ -51,27 +51,37 @@ export default function VariablesPage() {
   const pageSize = 50;
   const totalPages = data ? Math.max(1, Math.ceil(data.count / pageSize)) : 1;
   const selectClass =
-    "rounded-lg border border-ink-border bg-ink-panel px-3 py-2.5 text-sm text-ink-text focus:border-ink-accent focus:outline-none";
+    "rounded-lg border border-ink-border bg-ink-panel px-3 py-2.5 text-sm text-ink-text transition-colors focus:border-ink-accent focus:outline-none focus:ring-2 focus:ring-ink-accent/15";
 
   return (
-    <div className="space-y-5">
-      <div>
-        <h1 className="text-2xl font-semibold text-ink-text">Variables</h1>
-        <p className="mt-1 text-sm text-ink-muted">
-          {data ? `${formatNumber(data.count)} indicators` : "Loading…"}
-          {(category || adminLevel) && " matching your filters"} — click one to chart its time series.
+    <div className="space-y-6">
+      <header className="border-b border-ink-border pb-5">
+        <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wider text-ink-accent">
+          <span className="h-1.5 w-1.5 rounded-full bg-ink-accent" />
+          Badan Pusat Statistik
+        </div>
+        <h1 className="mt-2 font-display text-3xl font-medium tracking-tight text-ink-text sm:text-4xl">Variabel</h1>
+        <p className="mt-2 text-sm text-ink-muted">
+          {data ? (
+            <>
+              <span className="font-medium text-ink-text">{formatNumber(data.count)}</span> indikator
+            </>
+          ) : (
+            "Memuat…"
+          )}
+          {(category || adminLevel) && " yang cocok dengan saringan Anda"} — klik salah satu untuk melihat grafik deret waktunya.
         </p>
-      </div>
+      </header>
 
       <div className="flex flex-col gap-3 sm:flex-row">
         <input
           value={keyword}
           onChange={(e) => setKeyword(e.target.value)}
-          placeholder="Search (e.g. harapan hidup, kemiskinan, inflasi)…"
-          className="flex-1 rounded-lg border border-ink-border bg-ink-panel px-4 py-2.5 text-sm text-ink-text placeholder:text-ink-muted focus:border-ink-accent focus:outline-none"
+          placeholder="Cari (mis. harapan hidup, kemiskinan, inflasi)…"
+          className="flex-1 rounded-lg border border-ink-border bg-ink-panel px-4 py-2.5 text-sm text-ink-text transition-colors placeholder:text-ink-faint focus:border-ink-accent focus:outline-none focus:ring-2 focus:ring-ink-accent/15"
         />
         <select value={category} onChange={(e) => setCategory(e.target.value)} className={selectClass}>
-          <option value="">All categories</option>
+          <option value="">Semua kategori</option>
           {categories.map((c) => (
             <option key={c} value={c}>
               {c}
@@ -87,49 +97,53 @@ export default function VariablesPage() {
         </select>
       </div>
 
-      <Panel className="p-0 overflow-hidden">
+      <Panel className="overflow-hidden p-0">
         <div className="overflow-x-auto scroll-thin">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-ink-border text-left text-xs uppercase tracking-wide text-ink-muted">
-                <th className="px-4 py-3 font-medium">Indicator</th>
-                <th className="px-4 py-3 font-medium">Category</th>
-                <th className="px-4 py-3 font-medium">Levels</th>
-                <th className="px-4 py-3 font-medium text-right">Years</th>
-                <th className="px-4 py-3 font-medium text-right">Data points</th>
+              <tr className="border-b border-ink-border bg-ink-panel2/50 text-left text-[11px] uppercase tracking-wider text-ink-muted">
+                <th className="px-5 py-3 font-semibold">Indikator</th>
+                <th className="px-5 py-3 font-semibold">Kategori</th>
+                <th className="px-5 py-3 font-semibold">Tingkat</th>
+                <th className="px-5 py-3 text-right font-semibold">Tahun</th>
+                <th className="px-5 py-3 text-right font-semibold">Titik data</th>
               </tr>
             </thead>
             <tbody>
               {data?.results.map((v) => (
-                <tr key={v.id} className="border-b border-ink-border/50 hover:bg-ink-panel2/40">
-                  <td className="px-4 py-3">
+                <tr key={v.id} className="border-b border-ink-border/50 transition-colors last:border-0 hover:bg-ink-accent/[0.04]">
+                  <td className="px-5 py-3">
                     <VariableLink variableId={v.variable_id}>{v.name}</VariableLink>
-                    {v.unit && <span className="ml-2 text-xs text-ink-muted">({v.unit})</span>}
+                    {v.unit && <span className="ml-2 text-xs text-ink-faint">({v.unit})</span>}
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="px-5 py-3">
                     <Badge>{v.subject_category}</Badge>
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="px-5 py-3">
                     <div className="flex gap-1">
                       {(v.admin_levels ?? []).map((l) => (
-                        <span key={l} className="text-xs text-ink-muted" title={l}>
+                        <span
+                          key={l}
+                          title={l}
+                          className="grid h-5 w-5 place-items-center rounded border border-ink-border bg-ink-panel2 text-[10px] font-semibold text-ink-muted"
+                        >
                           {l[0].toUpperCase()}
                         </span>
                       ))}
                     </div>
                   </td>
-                  <td className="px-4 py-3 text-right tabular-nums text-ink-muted">
+                  <td className="px-5 py-3 text-right tabular-nums text-ink-muted">
                     {v.year_min && v.year_max ? `${v.year_min}–${v.year_max}` : "–"}
                   </td>
-                  <td className="px-4 py-3 text-right tabular-nums text-ink-text">
+                  <td className="px-5 py-3 text-right font-medium tabular-nums text-ink-text">
                     {formatNumber(v.data_point_count)}
                   </td>
                 </tr>
               ))}
               {data && data.results.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="px-4 py-8 text-center text-ink-muted">
-                    No indicators match your filters.
+                  <td colSpan={5} className="px-4 py-10 text-center text-ink-muted">
+                    Tidak ada indikator yang cocok dengan saringan Anda.
                   </td>
                 </tr>
               )}
@@ -139,21 +153,21 @@ export default function VariablesPage() {
       </Panel>
 
       <div className="flex items-center justify-between text-sm text-ink-muted">
-        <span>{loading ? "Loading…" : `Page ${page} of ${formatNumber(totalPages)}`}</span>
+        <span>{loading ? "Memuat…" : `Halaman ${page} dari ${formatNumber(totalPages)}`}</span>
         <div className="flex gap-2">
           <button
             disabled={page <= 1}
             onClick={() => setPage((p) => p - 1)}
             className="rounded-lg border border-ink-border px-3 py-1.5 disabled:opacity-40 hover:bg-ink-panel2"
           >
-            ← Prev
+            ← Sebelumnya
           </button>
           <button
             disabled={page >= totalPages}
             onClick={() => setPage((p) => p + 1)}
             className="rounded-lg border border-ink-border px-3 py-1.5 disabled:opacity-40 hover:bg-ink-panel2"
           >
-            Next →
+            Berikutnya →
           </button>
         </div>
       </div>
