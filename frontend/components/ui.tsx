@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
 import { formatNumber } from "@/lib/api";
 
 export function Panel({
@@ -42,17 +41,16 @@ export function StatTile({
     warn: "bg-ink-warn",
   };
   return (
-    <Panel className="relative overflow-hidden pt-4 transition-shadow hover:shadow-md">
-      <div className={`absolute inset-x-0 top-0 h-[3px] ${dot[accent]}`} />
-      <div className="flex items-center gap-2 text-xs uppercase tracking-wide text-ink-muted">
+    <div className="rounded-2xl border border-ink-border bg-ink-panel p-4 shadow-tile transition-shadow hover:shadow-panel">
+      <div className="flex items-center gap-2 text-[11px] font-medium uppercase tracking-wider text-ink-muted">
         <span className={`h-1.5 w-1.5 rounded-full ${dot[accent]}`} />
         {label}
       </div>
-      <div className="mt-2 text-3xl font-semibold tabular-nums text-ink-text">
+      <div className="mt-2.5 text-[28px] font-semibold leading-none tabular-nums text-ink-text">
         {typeof value === "number" ? formatNumber(value) : value}
       </div>
-      {sub && <div className="mt-1 text-xs text-ink-muted">{sub}</div>}
-    </Panel>
+      {sub && <div className="mt-1.5 text-xs text-ink-muted">{sub}</div>}
+    </div>
   );
 }
 
@@ -65,13 +63,15 @@ export function Badge({
 }) {
   const tones: Record<string, string> = {
     muted: "bg-ink-panel2 text-ink-muted border-ink-border",
-    accent: "bg-ink-accent/15 text-ink-accent border-ink-accent/30",
-    good: "bg-ink-good/15 text-ink-good border-ink-good/30",
-    warn: "bg-ink-warn/15 text-ink-warn border-ink-warn/30",
-    bad: "bg-ink-bad/15 text-ink-bad border-ink-bad/30",
+    accent: "bg-ink-accent/10 text-ink-accent border-ink-accent/25",
+    good: "bg-ink-good/12 text-ink-good border-ink-good/30",
+    warn: "bg-ink-warn/12 text-ink-warn border-ink-warn/30",
+    bad: "bg-ink-bad/12 text-ink-bad border-ink-bad/30",
   };
   return (
-    <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium ${tones[tone]}`}>
+    <span
+      className={`inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-medium ${tones[tone]}`}
+    >
       {children}
     </span>
   );
@@ -80,7 +80,7 @@ export function Badge({
 export function SectionTitle({ children, hint }: { children: React.ReactNode; hint?: string }) {
   return (
     <div className="mb-3 flex items-baseline gap-3">
-      <h2 className="text-sm font-semibold uppercase tracking-wide text-ink-muted">{children}</h2>
+      <h2 className="text-xs font-semibold uppercase tracking-wider text-ink-muted">{children}</h2>
       {hint && <span className="text-xs text-ink-muted/70">{hint}</span>}
     </div>
   );
@@ -88,38 +88,9 @@ export function SectionTitle({ children, hint }: { children: React.ReactNode; hi
 
 export function VariableLink({ variableId, children }: { variableId: string; children: React.ReactNode }) {
   return (
-    <Link href={`/variables/${variableId}`} className="text-ink-accent2 hover:underline">
+    <Link href={`/variables/${variableId}`} className="font-medium text-ink-accent hover:underline">
       {children}
     </Link>
   );
 }
 
-export function NavLink({
-  href,
-  children,
-  collapsed = false,
-  title,
-}: {
-  href: string;
-  children: React.ReactNode;
-  collapsed?: boolean;
-  title?: string;
-}) {
-  const pathname = usePathname();
-  const active = href === "/" ? pathname === "/" : pathname?.startsWith(href);
-  return (
-    <Link
-      href={href}
-      title={collapsed ? title : undefined}
-      className={`flex items-center gap-2.5 rounded-lg py-2 text-sm font-medium transition-colors ${
-        collapsed ? "justify-center px-0" : "px-3"
-      } ${
-        active
-          ? "bg-coal-hover text-coal-text shadow-[inset_2px_0_0_0_#ba9a7b]"
-          : "text-coal-muted hover:bg-coal-hover/60 hover:text-coal-text"
-      }`}
-    >
-      {children}
-    </Link>
-  );
-}
