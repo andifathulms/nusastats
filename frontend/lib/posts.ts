@@ -15,6 +15,9 @@ export type CompositionConfig = {
   adminLevel: "province" | "regency";
   year?: string;
   note: string;
+  topN?: number; // how many regions to rank (default 50)
+  // Optional short display names per turvar_id (else the raw label is cleaned).
+  shortLabels?: Record<string, string>;
 };
 
 export type Post = {
@@ -46,7 +49,15 @@ export const POSTS: Post[] = [
       unit: "Milyar Rupiah",
       adminLevel: "regency",
       year: "2026",
+      topN: 50,
       note: "PDRB triwulanan seri 2010 atas dasar harga konstan (2010=100), menurut 17 kategori lapangan usaha. Sumber: BPS.",
+      shortLabels: {
+        "2005": "Pertanian", "2006": "Pertambangan", "2007": "Industri", "2008": "Listrik & Gas",
+        "2009": "Air & Limbah", "2010": "Konstruksi", "2011": "Perdagangan", "2012": "Transportasi",
+        "2013": "Akomodasi & Mamin", "2014": "Infokom", "2015": "Keuangan", "2016": "Real Estate",
+        "2017": "Jasa Perusahaan", "2018": "Pemerintahan", "2019": "Pendidikan", "2020": "Kesehatan",
+        "2021": "Jasa Lainnya",
+      },
     },
   },
 ];
