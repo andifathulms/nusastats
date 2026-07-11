@@ -106,6 +106,14 @@ def run(services, tag, skip_above=SKIP_ABOVE):
 if __name__ == "__main__":
     which = sys.argv[1] if len(sys.argv) > 1 else "all"
     man = []
+    if which == "kel":
+        # Direct: just the historical village population (83k), no iteration.
+        base = f"{BASE}/AGR_VISUAL_KEL_202401/MapServer"
+        cnt = get(f"{base}/0/query?where=1%3D1&returnCountOnly=true&f=json").get("count")
+        fn = f"AGR_VISUAL_KEL_202401_L0_n{cnt}.json"
+        n = fetch_layer(base, 0, os.path.join(OUT, fn), page=10000)
+        sys.stderr.write(f"KEL: saved {n} -> {fn}\n")
+        raise SystemExit
     if which == "village":
         # Fetch every layer including the big village ones (skip nothing);
         # existing files are skipped, so this only pulls what's missing.
