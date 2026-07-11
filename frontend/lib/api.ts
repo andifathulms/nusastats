@@ -260,11 +260,15 @@ export function regionLabel(name: string, status?: string): string {
   if (status === "Kabupaten Administrasi") return `Kab. Adm. ${name}`;
   if (status === "Kelurahan") return `Kel. ${name}`;
   if (status === "Desa") return `Desa ${name}`;
-  // Regional village designations (Aceh / Sumatera Barat) — used as their own
-  // prefix, same as "Desa X".
+  // Regional village designations (Aceh / Sumatera Barat / Papua / Maluku) —
+  // used as their own prefix, same as "Desa X".
   if (status === "Gampong") return `Gampong ${name}`;
   if (status === "Kute") return `Kute ${name}`;
   if (status === "Nagari") return `Nagari ${name}`;
+  if (status === "Kampung") return `Kampung ${name}`;
+  if (status === "Kampung Adat") return `Kampung Adat ${name}`;
+  if (status === "Negeri") return `Negeri ${name}`;
+  if (status === "Ohoi") return `Ohoi ${name}`;
   // Provinces (incl. Daerah Istimewa/Khusus) and districts (Kecamatan/Distrik/
   // Kapanewon/Kemantren) show as the plain name in rankings/maps; their status
   // is a detail-page badge, not a prefix.

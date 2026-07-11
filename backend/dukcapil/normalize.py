@@ -37,6 +37,32 @@ _PAPUA_PROVS = {"91", "92", "93", "94", "95", "96"}
 _DIY_PROV = "34"
 _YOGYA_KOTA = "3471"
 
+# Maluku desa-equivalent terms, by kabupaten (all verified against the data —
+# these kabupaten have zero Negeri/Ohoi exceptions, every "2" unit takes the
+# adat term). Kota Ambon is a Negeri/Desa mix at the same code digit, so it
+# needs a name list (below).
+_MALUKU_NEGERI_KAB = {"8101", "8105", "8106"}  # Maluku Tengah, Seram Bagian Timur/Barat
+_MALUKU_OHOI_KAB = {"8102", "8172"}  # Maluku Tenggara, Kota Tual (Kei/Evav)
+
+
+def _vnorm(s):
+    return re.sub(r"[^a-z0-9]", "", (s or "").lower())
+
+
+# Kota Ambon (8171) Negeri, keyed by (6-digit kecamatan code, normalized name).
+# Ambon mixes Negeri and Desa at the same 7th digit (2), so Negeri can't be read
+# off the code — this list is reconciled against the live data. Nusaniwe &
+# Urimessing are Negeri that the source codes as kelurahan (7th digit 1, with
+# duplicate rows); matching by name resolves both. Leitimur Selatan (817105) is
+# 100% Negeri.
+_AMBON_NEGERI = (
+    {("817101", n) for n in ("nusaniwe", "urimessing", "latuhalat", "seilale", "amahusu")}
+    | {("817102", n) for n in ("batumerah", "hativekecil", "soya")}
+    | {("817103", n) for n in ("passo", "halong")}
+    | {("817104", n) for n in ("hativebesar", "laha", "rumahtiga", "tawiri")}
+    | {("817105", n) for n in ("ema", "hatalai", "hukurila", "hutumury", "kilang", "leahari", "naku", "rutong")}
+)
+
 # Regency name prefixes to strip (longest first) before title-casing.
 _REGENCY_PREFIXES = (
     "KOTA ADMINISTRASI ", "KOTA ADM. ", "KOTA ADM ",
@@ -47,27 +73,42 @@ _REGENCY_PREFIXES = (
 _DISTRICT_PREFIXES = ("KECAMATAN ", "KEC. ", "KEC ", "DISTRIK ", "KAPANEWON ", "KEMANTREN ")
 
 
-def village_status(code):
-    """Village-level designation from the 10-digit code, or '' for the ~0.1%
-    with a non-standard code (dirty/objectid-suffixed rows).
+def village_status(code, name=""):
+    """Village-level designation from the 10-digit code (+ name, needed only for
+    Kota Ambon), or '' for the ~0.1% with a non-standard code.
 
-    Base is the Kemendagri 7th-digit convention (1=Kelurahan, 2=Desa), with
-    regional names overriding it:
-    - Aceh (prov 11): "Gampong" everywhere, "Kute" in Aceh Tenggara (kab 1102).
-    - Sumatera Barat (prov 13): the desa-equivalent is "Nagari" (kelurahan stay
-      kelurahan).
-
-    NOTE: Maluku's Negeri (adat villages, e.g. Batu Merah / Soya) are NOT
-    distinguishable here — Kemendagri codes them as plain Desa (7th digit 2) and
-    the data carries no adat/jenis field, so they fall under "Desa". Separating
-    them would need an external Negeri registry.
+    Base is the Kemendagri 7th-digit convention (1=Kelurahan, 2=Desa; 3=adat),
+    with regional terms overriding it:
+    - Papua (91-96): 2=Kampung, 3=Kampung Adat (only Kab Jayapura 9103 uses 3,
+      its 14 units), 1=Kelurahan.
+    - Maluku (81): Negeri in Maluku Tengah / Seram Bagian Timur+Barat; Ohoi in
+      Maluku Tenggara / Kota Tual; Kota Ambon is a Negeri/Desa mix resolved by
+      name (_AMBON_NEGERI); the rest plain Desa. All 1=Kelurahan.
+    - Aceh (11): Gampong, Kute in Aceh Tenggara (kab 1102).
+    - Sumatera Barat (13): 2=Nagari (kelurahan stay kelurahan).
     """
     if not (code and len(code) >= 10 and code[:10].isdigit()):
         return ""
-    prov, kab = code[:2], code[:4]
+    prov, kab, d = code[:2], code[:4], code[6]
+    if prov in _PAPUA_PROVS:
+        if d == "1":
+            return "Kelurahan"
+        return "Kampung Adat" if d == "3" else "Kampung"
     if prov == "11":  # Aceh
         return "Kute" if kab == "1102" else "Gampong"
-    base = {"1": "Kelurahan", "2": "Desa"}.get(code[6], "")
+    if prov == "81":  # Maluku
+        if kab == "8171" and (code[:6], _vnorm(name)) in _AMBON_NEGERI:
+            return "Negeri"  # incl. the two kelurahan-coded Negeri (Nusaniwe/Urimessing)
+        if d == "1":
+            return "Kelurahan"
+        if d == "2":
+            if kab in _MALUKU_NEGERI_KAB:
+                return "Negeri"
+            if kab in _MALUKU_OHOI_KAB:
+                return "Ohoi"
+            return "Desa"
+        return ""
+    base = {"1": "Kelurahan", "2": "Desa"}.get(d, "")
     if prov == "13" and base == "Desa":  # Sumatera Barat
         return "Nagari"
     return base
@@ -149,4 +190,8 @@ def name_and_status(level, raw, code=None):
         return title_case(_strip_prefix(up, _REGENCY_PREFIXES)), status
     if level == "district":
         return title_case(_strip_prefix(up, _DISTRICT_PREFIXES)), district_status(code)
-    return title_case(raw), village_status(code)  # village
+    # village: Papua's Kampung Adat carry a "DESA ADAT " name prefix (7th
+    # digit 3) — strip it; the term lives in `status`.
+    d = code[6] if len(code) >= 10 and code[:10].isdigit() else ""
+    clean = up[len("DESA ADAT "):] if d == "3" and up.startswith("DESA ADAT ") else raw
+    return title_case(clean), village_status(code, raw)
