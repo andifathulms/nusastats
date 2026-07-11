@@ -250,6 +250,7 @@ export function CompositionPost({ config }: { config: CompositionConfig }) {
         <Detail
           row={selected}
           sectors={sectors}
+          groups={config.groups}
           trendSeries={displayTrend?.byRegion.get(selected.domain_id) ?? null}
           trendRanks={displayTrend?.rankByRegion.get(selected.domain_id) ?? null}
           trendLabel={config.trend?.label}
@@ -306,6 +307,7 @@ function aggregateTrend(trend: Trend): Trend {
 function Detail({
   row,
   sectors,
+  groups,
   trendSeries,
   trendRanks,
   trendLabel,
@@ -313,6 +315,7 @@ function Detail({
 }: {
   row: RegionRow;
   sectors: Sector[];
+  groups?: { label: string; color: string; ids: string[] }[];
   trendSeries?: { year: number; value: number }[] | null;
   trendRanks?: Record<number, number> | null;
   trendLabel?: string;
@@ -338,8 +341,10 @@ function Detail({
         <Stat label="3 sektor teratas" value={pct(top3)} sub="konsentrasi ekonomi" />
       </div>
 
+      {groups && groups.length > 0 && <GroupPanel row={row} groups={groups} />}
+
       <Panel>
-        <div className="mb-2 text-xs font-medium uppercase tracking-wide text-ink-muted">Komposisi PDRB</div>
+        <div className="mb-2 text-xs font-medium uppercase tracking-wide text-ink-muted">Komposisi PDRB · 17 kategori</div>
         <div className="flex h-7 w-full overflow-hidden rounded-md ring-1 ring-ink-border">
           {sectors.map((s) => {
             const share = row.total ? ((row.byId[s.id] ?? 0) / row.total) * 100 : 0;
@@ -370,6 +375,39 @@ function Detail({
         <TrendPanel series={trendSeries} ranks={trendRanks ?? {}} label={trendLabel} unit={trendUnit} />
       )}
     </div>
+  );
+}
+
+function GroupPanel({ row, groups }: { row: RegionRow; groups: { label: string; color: string; ids: string[] }[] }) {
+  const g = groups.map((grp) => {
+    const value = grp.ids.reduce((a, id) => a + (row.byId[id] ?? 0), 0);
+    return { ...grp, value, share: row.total ? (value / row.total) * 100 : 0 };
+  });
+  const lead = [...g].sort((a, b) => b.value - a.value)[0];
+  return (
+    <Panel>
+      <div className="mb-2 flex items-baseline justify-between">
+        <span className="text-xs font-medium uppercase tracking-wide text-ink-muted">Kelompok sektor</span>
+        <span className="text-xs text-ink-muted">
+          Dominan: <span className="font-medium text-ink-text">{lead?.label}</span> ({pct(lead?.share ?? 0)})
+        </span>
+      </div>
+      <div className="flex h-7 w-full overflow-hidden rounded-md ring-1 ring-ink-border">
+        {g.map((grp) =>
+          grp.share > 0 ? (
+            <div key={grp.label} title={`${grp.label}: ${pct(grp.share)} · ${rp(grp.value)}`} style={{ width: `${grp.share}%`, background: grp.color }} />
+          ) : null
+        )}
+      </div>
+      <div className="mt-2 flex flex-wrap gap-x-5 gap-y-1">
+        {g.map((grp) => (
+          <span key={grp.label} className="inline-flex items-center gap-1.5 text-xs text-ink-muted">
+            <span className="h-2.5 w-2.5 rounded-sm" style={{ background: grp.color }} />
+            {grp.label} <span className="tabular-nums text-ink-text">{pct(grp.share)}</span>
+          </span>
+        ))}
+      </div>
+    </Panel>
   );
 }
 

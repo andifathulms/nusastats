@@ -17,6 +17,9 @@ export type CompositionConfig = {
   note: string;
   // Optional short display names per turvar_id (else the raw label is cleaned).
   shortLabels?: Record<string, string>;
+  // Optional higher-level grouping of the turvars (e.g. Primer/Sekunder/Tersier)
+  // for a coarse structural breakdown of the selected region.
+  groups?: { label: string; color: string; ids: string[] }[];
   // Optional annual time series (a different variable) for the selected region:
   // trend line + ranking movement. `totalTurvarId` selects the grand-total row.
   trend?: { variableId: string; totalTurvarId: string; unit: string; label: string };
@@ -53,6 +56,11 @@ export const POSTS: Post[] = [
       year: "2026",
       note: "PDRB triwulanan atas dasar harga berlaku, menurut 17 kategori lapangan usaha. Sumber: BPS.",
       trend: { variableId: "2193", totalTurvarId: "1550", unit: "Milyar Rupiah", label: "PDRB tahunan (harga berlaku)" },
+      groups: [
+        { label: "Primer", color: "#5FBF6A", ids: ["2005", "2006"] },
+        { label: "Sekunder", color: "#EE9A3A", ids: ["2007", "2008", "2009", "2010"] },
+        { label: "Tersier", color: "#6C6FE0", ids: ["2011", "2012", "2013", "2014", "2015", "2016", "2017", "2018", "2019", "2020", "2021"] },
+      ],
       shortLabels: {
         "2005": "Pertanian", "2006": "Pertambangan", "2007": "Industri", "2008": "Listrik & Gas",
         "2009": "Air & Limbah", "2010": "Konstruksi", "2011": "Perdagangan", "2012": "Transportasi",
