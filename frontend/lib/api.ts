@@ -375,6 +375,13 @@ export type DukcapilCorrelation = {
   results: { domain_id: string; domain_name: string; status?: string; x: number; y: number }[];
 };
 
+export type RegencyCrosswalk = {
+  bps_domain_id: string;
+  kemendagri_code: string;
+  prov_code: string;
+  prov_name: string;
+};
+
 export type DukcapilBridge = {
   bps_domain_id: string;
   dukcapil:
@@ -463,6 +470,8 @@ export function dukcapilAncestry(
 export const dukcapilApi = {
   summary: () => get<DukcapilSummary>("/dukcapil/summary/"),
   regencyBridge: (domainId: string) => get<DukcapilBridge>(`/dukcapil/regency-bridge/${domainId}/`),
+  regencyCrosswalk: () =>
+    get<{ count: number; results: RegencyCrosswalk[] }>("/dukcapil/regency-crosswalk/"),
   indicators: () => get<DukcapilIndicatorGroups>("/dukcapil/indicators/"),
   regions: (params: Record<string, string> = {}) => {
     const q = new URLSearchParams(params).toString();

@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { CartesianGrid, Cell, Scatter, ScatterChart, Tooltip as RTooltip, XAxis, YAxis, ZAxis, ResponsiveContainer } from "recharts";
-import { api, bpsRegionLabel, CHART, groupColor } from "@/lib/api";
+import { api, bpsRegionLabel, CHART, dukcapilApi, groupColor, type RegencyCrosswalk } from "@/lib/api";
 import { type CompositionConfig } from "@/lib/posts";
 import { Panel } from "@/components/ui";
 import { SeriesChart } from "@/components/SeriesChart";
@@ -36,7 +36,7 @@ export function CompositionPost({ config }: { config: CompositionConfig }) {
   const [sectors, setSectors] = useState<Sector[]>([]);
   const [rows, setRows] = useState<RegionRow[]>([]);
   const [trend, setTrend] = useState<Trend | null>(null);
-  const [provNames, setProvNames] = useState<Map<string, string>>(new Map());
+  const [xwalk, setXwalk] = useState<Map<string, RegencyCrosswalk>>(new Map());
   const [level, setLevel] = useState<"regency" | "province">("regency");
   const [sel, setSel] = useState<string | null>(null);
   const [page, setPage] = useState(0);
@@ -58,10 +58,10 @@ export function CompositionPost({ config }: { config: CompositionConfig }) {
         config.trend
           ? api.series(config.trend.variableId, { admin_level: config.adminLevel, turvar_id: config.trend.totalTurvarId })
           : Promise.resolve(null),
-        api.regions({ admin_level: "province" }),
+        dukcapilApi.regencyCrosswalk(),
       ]);
       if (cancelled) return;
-      setProvNames(new Map(provs.map((p) => [p.domain_id.slice(0, 2), p.domain_name])));
+      setXwalk(new Map(provs.results.map((x) => [x.bps_domain_id, x])));
 
       if (ts) {
         const byRegion = new Map<string, { year: number; value: number }[]>();
@@ -124,16 +124,14 @@ export function CompositionPost({ config }: { config: CompositionConfig }) {
 
   // Province view aggregates the loaded kabupaten data by 2-digit code prefix.
   const displayRows = useMemo(
-    () => (level === "province" ? aggregateRows(rows, provNames) : rows),
-    [level, rows, provNames]
+    () => (level === "province" ? aggregateRows(rows, xwalk) : rows),
+    [level, rows, xwalk]
   );
   const displayTrend = useMemo(
-    () => (level === "province" && trend ? aggregateTrend(trend) : trend),
-    [level, trend]
+    () => (level === "province" && trend ? aggregateTrend(trend, xwalk) : trend),
+    [level, trend, xwalk]
   );
-  // Map is always province-level (only province geometry exists), independent
-  // of the ranking's level toggle.
-  const provinceRows = useMemo(() => aggregateRows(rows, provNames), [rows, provNames]);
+  const provinceRows = useMemo(() => aggregateRows(rows, xwalk), [rows, xwalk]);
 
   const filtered = useMemo(
     () => (q ? displayRows.filter((r) => r.name.toLowerCase().includes(q.toLowerCase())) : displayRows),
@@ -263,20 +261,24 @@ export function CompositionPost({ config }: { config: CompositionConfig }) {
         />
       )}
 
-      <MapPanel rows={provinceRows} sectors={sectors} groups={config.groups} />
-      <CorrelationPanel rows={displayRows} sectors={sectors} groups={config.groups} provNames={provNames} />
+      <MapPanel rows={rows} provinceRows={provinceRows} sectors={sectors} groups={config.groups} xwalk={xwalk} />
+      <CorrelationPanel rows={displayRows} sectors={sectors} groups={config.groups} xwalk={xwalk} />
     </div>
   );
 }
 
 function MapPanel({
   rows,
+  provinceRows,
   sectors,
   groups,
+  xwalk,
 }: {
   rows: RegionRow[];
+  provinceRows: RegionRow[];
   sectors: Sector[];
   groups?: { label: string; color: string; ids: string[] }[];
+  xwalk: Map<string, RegencyCrosswalk>;
 }) {
   const dims = useMemo(
     () => [
@@ -286,18 +288,26 @@ function MapPanel({
     [groups, sectors]
   );
   const [dimKey, setDimKey] = useState("");
+  const [mapLevel, setMapLevel] = useState<"province" | "regency">("province");
   const dim = dims.find((d) => d.key === dimKey) ?? dims[0];
 
-  const values = useMemo(() => {
+  // Province choropleth keys by the 2-digit Kemendagri code (dukcapil-provinces);
+  // kabupaten keys by the Kemendagri regency code via the crosswalk
+  // (dukcapil-regencies) — BPS's own codes don't match that geometry.
+  const { values, geojsonUrls } = useMemo(() => {
     const m = new Map<string, MapValue>();
-    if (dim) {
-      for (const r of rows) {
-        const share = r.total ? (dim.ids.reduce((a, id) => a + (r.byId[id] ?? 0), 0) / r.total) * 100 : 0;
-        m.set(r.domain_id, { value: Math.round(share * 10) / 10, name: r.name });
-      }
+    const shareOf = (r: RegionRow) =>
+      dim && r.total ? Math.round((dim.ids.reduce((a, id) => a + (r.byId[id] ?? 0), 0) / r.total) * 1000) / 10 : 0;
+    if (mapLevel === "province") {
+      provinceRows.forEach((r) => m.set(r.domain_id, { value: shareOf(r), name: r.name }));
+      return { values: m, geojsonUrls: ["/dukcapil-provinces.geojson"] };
     }
-    return m;
-  }, [rows, dim]);
+    rows.forEach((r) => {
+      const kem = xwalk.get(r.domain_id)?.kemendagri_code;
+      if (kem) m.set(kem, { value: shareOf(r), name: r.name });
+    });
+    return { values: m, geojsonUrls: ["/dukcapil-regencies.geojson"] };
+  }, [mapLevel, provinceRows, rows, dim, xwalk]);
   const vals = [...values.values()].map((v) => v.value);
   const min = vals.length ? Math.min(...vals) : 0;
   const max = vals.length ? Math.max(...vals) : 100;
@@ -307,18 +317,35 @@ function MapPanel({
   return (
     <Panel>
       <div className="mb-3 flex flex-wrap items-center gap-2">
-        <span className="text-sm font-semibold text-ink-text">Peta share sektor per provinsi</span>
-        <select
-          value={dim?.key ?? ""}
-          onChange={(e) => setDimKey(e.target.value)}
-          className="ml-auto rounded-lg border border-ink-border bg-ink-panel2 px-2 py-1.5 text-sm text-ink-text outline-none focus:border-ink-accent/60"
-        >
-          {dims.map((d) => (
-            <option key={d.key} value={d.key}>{d.label}</option>
-          ))}
-        </select>
+        <span className="text-sm font-semibold text-ink-text">
+          Peta share sektor · {mapLevel === "province" ? "provinsi" : "kabupaten/kota"}
+        </span>
+        <div className="ml-auto flex items-center gap-2">
+          <div className="inline-flex rounded-lg border border-ink-border/80 bg-ink-panel2/50 p-0.5">
+            {(["province", "regency"] as const).map((lv) => (
+              <button
+                key={lv}
+                onClick={() => setMapLevel(lv)}
+                className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
+                  mapLevel === lv ? "bg-brand-gradient text-white" : "text-ink-muted hover:text-ink-text"
+                }`}
+              >
+                {lv === "province" ? "Provinsi" : "Kab/Kota"}
+              </button>
+            ))}
+          </div>
+          <select
+            value={dim?.key ?? ""}
+            onChange={(e) => setDimKey(e.target.value)}
+            className="rounded-lg border border-ink-border bg-ink-panel2 px-2 py-1.5 text-sm text-ink-text outline-none focus:border-ink-accent/60"
+          >
+            {dims.map((d) => (
+              <option key={d.key} value={d.key}>{d.label}</option>
+            ))}
+          </select>
+        </div>
       </div>
-      <ChoroplethMap values={values} min={min} max={max} unit="%" />
+      <ChoroplethMap key={mapLevel} values={values} min={min} max={max} unit="%" geojsonUrls={geojsonUrls} />
     </Panel>
   );
 }
@@ -340,13 +367,16 @@ function CorrelationPanel({
   rows,
   sectors,
   groups,
-  provNames,
+  xwalk,
 }: {
   rows: RegionRow[];
   sectors: Sector[];
   groups?: { label: string; color: string; ids: string[] }[];
-  provNames: Map<string, string>;
+  xwalk: Map<string, RegencyCrosswalk>;
 }) {
+  // Province of a row: itself if already a province row (2-digit id), else via
+  // the crosswalk (38-province).
+  const prov = (r: RegionRow) => (r.domain_id.length <= 2 ? { code: r.domain_id, name: r.name } : provOf(r.domain_id, xwalk));
   // Axis choices: the higher-level groups first, then the individual sectors.
   const dims = useMemo(
     () => [
@@ -367,20 +397,26 @@ function CorrelationPanel({
   // Provinces present among the rows, for the legend/filter.
   const provs = useMemo(() => {
     const set = new Map<string, string>();
-    rows.forEach((r) => set.set(r.domain_id.slice(0, 2), provNames.get(r.domain_id.slice(0, 2)) ?? r.domain_id.slice(0, 2)));
+    rows.forEach((r) => {
+      const p = prov(r);
+      set.set(p.code, p.name);
+    });
     return [...set.entries()].sort((a, b) => a[1].localeCompare(b[1]));
-  }, [rows, provNames]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rows, xwalk]);
 
   const visibleRows = useMemo(
-    () => (selProvs.size ? rows.filter((r) => selProvs.has(r.domain_id.slice(0, 2))) : rows),
-    [rows, selProvs]
+    () => (selProvs.size ? rows.filter((r) => selProvs.has(prov(r).code)) : rows),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [rows, selProvs, xwalk]
   );
   const points = useMemo(
     () =>
       xd && yd
-        ? visibleRows.map((r) => ({ x: share(r, xd.ids), y: share(r, yd.ids), name: r.name, fill: groupColor(r.domain_id.slice(0, 2)) }))
+        ? visibleRows.map((r) => ({ x: share(r, xd.ids), y: share(r, yd.ids), name: r.name, fill: groupColor(prov(r).code) }))
         : [],
-    [visibleRows, xd, yd]
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [visibleRows, xd, yd, xwalk]
   );
   const r = useMemo(() => pearson(points.map((p) => p.x), points.map((p) => p.y)), [points]);
 
@@ -483,32 +519,39 @@ function CorrelationPanel({
   );
 }
 
-// Aggregate kabupaten rows up to province by the 2-digit code prefix (province
-// domain_id = <cc>00). Sums the grand total and every sector; re-sorts by total.
-function aggregateRows(rows: RegionRow[], provNames: Map<string, string>): RegionRow[] {
+// Province code + name for a BPS regency, via the Kemendagri crosswalk (modern
+// 38-province structure), falling back to the BPS 2-digit prefix.
+function provOf(domainId: string, xwalk: Map<string, RegencyCrosswalk>) {
+  const cw = xwalk.get(domainId);
+  return { code: cw?.prov_code ?? domainId.slice(0, 2), name: cw?.prov_name ?? domainId.slice(0, 2) };
+}
+
+// Aggregate kabupaten rows up to province (modern 38 via crosswalk). Province
+// domain_id = the 2-digit Kemendagri province code. Sums total + every sector.
+function aggregateRows(rows: RegionRow[], xwalk: Map<string, RegencyCrosswalk>): RegionRow[] {
   const g = new Map<string, RegionRow>();
   for (const r of rows) {
-    const cc = r.domain_id.slice(0, 2);
-    const cur = g.get(cc) ?? { domain_id: `${cc}00`, name: provNames.get(cc) ?? cc, total: 0, byId: {} };
+    const p = provOf(r.domain_id, xwalk);
+    const cur = g.get(p.code) ?? { domain_id: p.code, name: p.name, total: 0, byId: {} };
     cur.total += r.total;
     for (const [k, v] of Object.entries(r.byId)) cur.byId[k] = (cur.byId[k] ?? 0) + v;
-    g.set(cc, cur);
+    g.set(p.code, cur);
   }
   return [...g.values()].sort((a, b) => b.total - a.total);
 }
 
 // Aggregate the annual trend to province (sum per year), re-ranking provinces.
-function aggregateTrend(trend: Trend): Trend {
+function aggregateTrend(trend: Trend, xwalk: Map<string, RegencyCrosswalk>): Trend {
   const byProv = new Map<string, Map<number, number>>();
   trend.byRegion.forEach((arr, dom) => {
-    const cc = dom.slice(0, 2);
+    const cc = provOf(dom, xwalk).code;
     const ym = byProv.get(cc) ?? new Map<number, number>();
     for (const { year, value } of arr) ym.set(year, (ym.get(year) ?? 0) + value);
     byProv.set(cc, ym);
   });
   const byRegion = new Map<string, { year: number; value: number }[]>();
   byProv.forEach((ym, cc) =>
-    byRegion.set(`${cc}00`, [...ym.entries()].map(([year, value]) => ({ year, value })).sort((a, b) => a.year - b.year))
+    byRegion.set(cc, [...ym.entries()].map(([year, value]) => ({ year, value })).sort((a, b) => a.year - b.year))
   );
   const years = new Set<number>();
   byRegion.forEach((arr) => arr.forEach((x) => years.add(x.year)));
