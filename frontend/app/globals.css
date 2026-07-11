@@ -8,29 +8,76 @@
 
 body {
   background:
-    radial-gradient(ellipse 90% 55% at 50% -12%, rgba(139, 94, 60, 0.08), transparent 60%),
-    radial-gradient(ellipse 60% 40% at 92% 0%, rgba(10, 41, 71, 0.07), transparent 60%),
-    #eaeceb;
+    radial-gradient(ellipse 90% 55% at 50% -12%, rgba(30, 69, 133, 0.08), transparent 60%),
+    radial-gradient(ellipse 60% 40% at 92% 0%, rgba(196, 154, 72, 0.07), transparent 60%),
+    #f4f6fb;
   background-attachment: fixed;
-  color: #051220;
+  color: #0d1b36;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Tighter, more deliberate heading rhythm for a premium feel. */
+h1,
+h2,
+h3 {
+  letter-spacing: -0.011em;
 }
 
 ::selection {
-  background: rgba(139, 94, 60, 0.28);
-  color: #051220;
+  background: rgba(30, 69, 133, 0.22);
+  color: #0d1b36;
 }
 
-/* Thin, unobtrusive scrollbars for data tables */
+/* Refined, themed page scrollbar — thin and subtle so it reads intentional,
+   not like a default grey gutter. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #c2cbe0 transparent;
+}
+::-webkit-scrollbar {
+  width: 11px;
+  height: 11px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #c2cbe0;
+  border: 3px solid transparent;
+  border-radius: 999px;
+  background-clip: content-box;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #aeb9d2;
+  background-clip: content-box;
+}
+
+/* Thin, unobtrusive scrollbars for inner scroll areas (data tables/lists). */
 .scroll-thin::-webkit-scrollbar {
   height: 8px;
   width: 8px;
 }
 .scroll-thin::-webkit-scrollbar-thumb {
-  background: #98998a;
+  background: #aeb9d2;
+  border: none;
   border-radius: 8px;
 }
 
-/* Subtle paper grain for the app shell */
+/* Custom chevron on native selects — kills the default "bootstrap" arrow and
+   unifies every dropdown across the app. */
+select {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%235B6B8A' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.65rem center;
+  background-size: 1rem;
+  padding-right: 2.1rem !important;
+}
+
+/* Subtle paper grain for the app shell. */
 .bg-noise {
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.02'/%3E%3C/svg%3E");
 }

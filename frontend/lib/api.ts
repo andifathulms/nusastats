@@ -374,14 +374,32 @@ export function formatNumber(n: number | null | undefined): string {
   return n.toLocaleString("en-US");
 }
 
-// Categorical palette for chart series — validated for CVD-safe adjacency on the dark panel surface.
+// Categorical palette for chart series — royal-blue-led, CVD-safe adjacency on the white panel surface.
 export const SERIES_COLORS = [
-  "#a8602e", // brown (brand)
-  "#2f5fa8", // steel blue (brand navy family)
-  "#3f7d34", // sage
-  "#b9860b", // gold
-  "#8b3fa3", // plum
-  "#00897b", // teal
-  "#b6473f", // rust red
-  "#b23e72", // rose
+  "#1E4585", // royal navy blue (brand)
+  "#C49A48", // royal gold
+  "#0E8F9C", // teal
+  "#C0392B", // red
+  "#7C3AED", // purple
+  "#15803D", // green
+  "#5B8DEF", // light royal blue (pair with a label/legend)
+  "#92400E", // brown
 ];
+
+// Central hex constants for Recharts (which can't read Tailwind tokens). Mirror the `ink.*`
+// tokens — keep these in sync with tailwind.config.ts so charts never re-inline stray hexes.
+export const CHART = {
+  axisTick: "#5B6B8A", // ink.muted
+  axisLine: "#AEB9D2", // ink.borderStrong
+  grid: "#E4EAF4", // ink.panel3
+  cursor: "#EEF2F9", // ink.panel2
+  tooltipBg: "#FFFFFF", // ink.panel
+  tooltipBorder: "#DBE1EE", // ink.border
+  text: "#0D1B36", // ink.text
+  accent: "#1E4585", // ink.accent (royal navy blue)
+  good: "#15803D", // ink.good
+  bad: "#DC2626", // ink.bad
+};
+
+// Rank/percentile colour ramp: green (high) → amber (mid) → red (low).
+export const PCT_COLOR = (p: number): string => (p >= 66 ? CHART.good : p >= 33 ? "#B45309" : CHART.bad);
