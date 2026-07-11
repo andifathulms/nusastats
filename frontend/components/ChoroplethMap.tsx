@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { CHART, titleCase } from "@/lib/api";
 
 type Feature = {
@@ -112,31 +112,128 @@ export function ChoroplethMap({
     return m;
   }, [fc]);
 
+  // --- pan / zoom / fullscreen -------------------------------------------
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const svgRef = useRef<SVGSVGElement>(null);
+  const drag = useRef<{ x: number; y: number } | null>(null);
+  const [t, setT] = useState({ k: 1, x: 0, y: 0 });
+  const [isFull, setIsFull] = useState(false);
+
+  // Reset the view when the map (geojson / filter) changes.
+  useEffect(() => setT({ k: 1, x: 0, y: 0 }), [urlKey, filterKey]);
+
+  useEffect(() => {
+    const on = () => setIsFull(!!document.fullscreenElement);
+    document.addEventListener("fullscreenchange", on);
+    return () => document.removeEventListener("fullscreenchange", on);
+  }, []);
+
+  const toSvg = useCallback((cx: number, cy: number) => {
+    const svg = svgRef.current!;
+    const p = svg.createSVGPoint();
+    p.x = cx;
+    p.y = cy;
+    return p.matrixTransform(svg.getScreenCTM()!.inverse());
+  }, []);
+
+  const zoomAt = useCallback(
+    (cx: number, cy: number, factor: number) => {
+      setT((cur) => {
+        const k = Math.min(80, Math.max(1, cur.k * factor));
+        const s = toSvg(cx, cy);
+        const dataX = (s.x - cur.x) / cur.k;
+        const dataY = (s.y - cur.y) / cur.k;
+        return { k, x: s.x - k * dataX, y: s.y - k * dataY };
+      });
+    },
+    [toSvg]
+  );
+
+  // Native (non-passive) wheel so we can preventDefault the page scroll.
+  useEffect(() => {
+    const svg = svgRef.current;
+    if (!svg) return;
+    const h = (e: WheelEvent) => {
+      e.preventDefault();
+      zoomAt(e.clientX, e.clientY, e.deltaY < 0 ? 1.15 : 1 / 1.15);
+    };
+    svg.addEventListener("wheel", h, { passive: false });
+    return () => svg.removeEventListener("wheel", h);
+  }, [zoomAt]);
+
+  const zoomBtn = (factor: number) => {
+    const r = svgRef.current?.getBoundingClientRect();
+    if (r) zoomAt(r.left + r.width / 2, r.top + r.height / 2, factor);
+  };
+  const onDown = (e: React.MouseEvent) => {
+    drag.current = { x: e.clientX, y: e.clientY };
+    setHover(null);
+  };
+  const onMove = (e: React.MouseEvent) => {
+    if (!drag.current) return;
+    const p0 = toSvg(drag.current.x, drag.current.y);
+    const p1 = toSvg(e.clientX, e.clientY);
+    setT((cur) => ({ ...cur, x: cur.x + (p1.x - p0.x), y: cur.y + (p1.y - p0.y) }));
+    drag.current = { x: e.clientX, y: e.clientY };
+  };
+  const onUp = () => (drag.current = null);
+  const toggleFull = () => {
+    if (document.fullscreenElement) document.exitFullscreen();
+    else wrapRef.current?.requestFullscreen();
+  };
+
   if (!fc) return <div className="flex h-80 items-center justify-center text-sm text-ink-muted">Memuat peta…</div>;
   const span = max - min || 1;
+  const btn =
+    "grid h-8 w-8 place-items-center rounded-md border border-ink-border bg-ink-panel text-ink-text shadow-sm hover:border-ink-accent/60";
 
   return (
-    <div className="relative">
-      <svg viewBox={vb} className="w-full" style={{ maxHeight: 520 }} preserveAspectRatio="xMidYMid meet">
-        {paths.map((p) => {
-          const v = values.get(p.id);
-          const fill = v ? scale((v.value - min) / span) : NO_DATA_FILL;
-          const isHover = hover?.id === p.id;
-          return (
-            <path
-              key={p.id}
-              d={p.d}
-              fill={fill}
-              stroke={isHover ? CHART.text : "#FFFFFF"}
-              strokeWidth={isHover ? 1.5 : 0.5}
-              onMouseEnter={(e) => setHover({ id: p.id, x: e.clientX, y: e.clientY })}
-              onMouseMove={(e) => setHover({ id: p.id, x: e.clientX, y: e.clientY })}
-              onMouseLeave={() => setHover(null)}
-              style={{ cursor: "pointer" }}
-            />
-          );
-        })}
-      </svg>
+    <div ref={wrapRef} className={isFull ? "fixed inset-0 z-50 flex flex-col bg-ink-bg p-4" : "relative"}>
+      <div className="relative flex-1">
+        <svg
+          ref={svgRef}
+          viewBox={vb}
+          className="w-full touch-none select-none"
+          style={{ maxHeight: isFull ? "none" : 520, height: isFull ? "calc(100vh - 6rem)" : undefined, cursor: "grab" }}
+          preserveAspectRatio="xMidYMid meet"
+          onMouseDown={onDown}
+          onMouseMove={onMove}
+          onMouseUp={onUp}
+          onMouseLeave={onUp}
+        >
+          <g transform={`translate(${t.x} ${t.y}) scale(${t.k})`}>
+            {paths.map((p) => {
+              const v = values.get(p.id);
+              const fill = v ? scale((v.value - min) / span) : NO_DATA_FILL;
+              const isHover = hover?.id === p.id;
+              return (
+                <path
+                  key={p.id}
+                  d={p.d}
+                  fill={fill}
+                  stroke={isHover ? CHART.text : "#FFFFFF"}
+                  strokeWidth={isHover ? 1.5 : 0.5}
+                  vectorEffect="non-scaling-stroke"
+                  onMouseEnter={(e) => !drag.current && setHover({ id: p.id, x: e.clientX, y: e.clientY })}
+                  onMouseMove={(e) => !drag.current && setHover({ id: p.id, x: e.clientX, y: e.clientY })}
+                  onMouseLeave={() => setHover(null)}
+                  style={{ cursor: "pointer" }}
+                />
+              );
+            })}
+          </g>
+        </svg>
+
+        {/* Map controls */}
+        <div className="absolute right-2 top-2 flex flex-col gap-1">
+          <button onClick={() => zoomBtn(1.5)} title="Perbesar" className={btn}>＋</button>
+          <button onClick={() => zoomBtn(1 / 1.5)} title="Perkecil" className={btn}>－</button>
+          <button onClick={() => setT({ k: 1, x: 0, y: 0 })} title="Atur ulang" className={btn}>⟲</button>
+          <button onClick={toggleFull} title={isFull ? "Keluar layar penuh" : "Layar penuh"} className={btn}>
+            {isFull ? "✕" : "⛶"}
+          </button>
+        </div>
+      </div>
 
       {/* Legend */}
       <div className="mt-3 flex items-center gap-3 text-xs text-ink-muted">
