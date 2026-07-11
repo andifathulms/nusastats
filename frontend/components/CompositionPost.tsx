@@ -91,6 +91,7 @@ export function CompositionPost({ config }: { config: CompositionConfig }) {
   const pageRows = filtered.slice(page * PAGE, page * PAGE + PAGE);
   const pages = Math.max(1, Math.ceil(filtered.length / PAGE));
   const selected = rows.find((r) => r.domain_id === sel);
+  const maxTotal = rows[0]?.total ?? 1; // #1 (largest economy) sets full-bar scale
 
   if (loading) return <div className="flex h-64 items-center justify-center text-sm text-ink-muted">Memuat…</div>;
 
@@ -141,16 +142,19 @@ export function CompositionPost({ config }: { config: CompositionConfig }) {
                   {r.name}
                 </span>
                 <span className="w-20 shrink-0 text-right text-xs tabular-nums text-ink-muted">{rp(r.total)}</span>
-                <span className="flex h-4 flex-1 overflow-hidden rounded ring-1 ring-ink-border/70">
+                {/* Bar length ∝ region total vs the #1 region; segments ∝ sectors.
+                    A segment's width over the full track = value / maxTotal. */}
+                <span className="flex h-4 flex-1 overflow-hidden rounded bg-ink-panel2 ring-1 ring-ink-border/70">
                   {sectors.map((s) => {
                     const v = r.byId[s.id] ?? 0;
-                    const share = r.total ? (v / r.total) * 100 : 0;
-                    if (share <= 0) return null;
+                    const w = maxTotal ? (v / maxTotal) * 100 : 0;
+                    if (w <= 0) return null;
                     return (
                       <span
                         key={s.id}
-                        style={{ width: `${share}%`, background: s.color }}
-                        title={`${s.label}: ${pct(share)} · ${rp(v)}`}
+                        className="shrink-0"
+                        style={{ width: `${w}%`, background: s.color }}
+                        title={`${s.label}: ${pct(r.total ? (v / r.total) * 100 : 0)} · ${rp(v)}`}
                       />
                     );
                   })}
