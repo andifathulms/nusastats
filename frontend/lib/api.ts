@@ -390,6 +390,14 @@ export function bpsRegencyStatus(domainId: string): string {
   return isNaN(kab) ? "" : kab >= 71 ? "Kota" : "Kabupaten";
 }
 
+// A BPS regency's display name with a Kota/Kab. prefix derived from its code —
+// so "Tangerang" disambiguates into "Kota Tangerang" vs "Kab. Tangerang". Any
+// prefix already in the source name is stripped first to avoid doubling.
+export function bpsRegionLabel(name: string, domainId: string): string {
+  const stripped = name.replace(/^(Kota|Kabupaten|Kab\.?)\s+/i, "");
+  return regionLabel(stripped, bpsRegencyStatus(domainId));
+}
+
 // DKI Jakarta's administrative cities/regency, by code — so an ancestry label
 // is consistent ("Kota Adm. Jakarta Barat") regardless of how the raw nama_kab
 // is spelled in each layer (kecamatan says "KOTA JAKARTA BARAT", desa says

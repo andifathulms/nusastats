@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { api } from "@/lib/api";
+import { api, bpsRegionLabel } from "@/lib/api";
 import { type CompositionConfig } from "@/lib/posts";
 import { Panel } from "@/components/ui";
 
@@ -15,7 +15,7 @@ const PALETTE = [
 const PAGE = 10;
 
 type Sector = { id: string; label: string; color: string };
-type RegionRow = { domain_id: string; domain_name: string; total: number; byId: Record<string, number> };
+type RegionRow = { domain_id: string; name: string; total: number; byId: Record<string, number> };
 
 // PDRB is in Milyar Rupiah; show large sums as Triliun.
 function rp(milyar: number): string {
@@ -70,7 +70,7 @@ export function CompositionPost({ config }: { config: CompositionConfig }) {
       }
       const regionRows: RegionRow[] = rank.results.map((r) => ({
         domain_id: r.domain_id,
-        domain_name: r.domain_name,
+        name: bpsRegionLabel(r.domain_name, r.domain_id),
         total: r.value,
         byId: byRegion.get(r.domain_id) ?? {},
       }));
@@ -85,7 +85,7 @@ export function CompositionPost({ config }: { config: CompositionConfig }) {
   }, [config.variableId, config.adminLevel, config.totalTurvarId, config.year, topN, config.shortLabels]);
 
   const filtered = useMemo(
-    () => (q ? rows.filter((r) => r.domain_name.toLowerCase().includes(q.toLowerCase())) : rows),
+    () => (q ? rows.filter((r) => r.name.toLowerCase().includes(q.toLowerCase())) : rows),
     [rows, q]
   );
   const pageRows = filtered.slice(page * PAGE, page * PAGE + PAGE);
@@ -137,8 +137,8 @@ export function CompositionPost({ config }: { config: CompositionConfig }) {
                 }`}
               >
                 <span className="w-6 shrink-0 text-right text-xs tabular-nums text-ink-muted">{rank}</span>
-                <span className="w-40 shrink-0 truncate text-sm text-ink-text" title={r.domain_name}>
-                  {r.domain_name}
+                <span className="w-40 shrink-0 truncate text-sm text-ink-text" title={r.name}>
+                  {r.name}
                 </span>
                 <span className="w-20 shrink-0 text-right text-xs tabular-nums text-ink-muted">{rp(r.total)}</span>
                 <span className="flex h-4 flex-1 overflow-hidden rounded ring-1 ring-ink-border/70">
@@ -191,12 +191,12 @@ function Detail({ row, sectors }: { row: RegionRow; sectors: Sector[] }) {
     <div className="space-y-4">
       <div className="flex items-center gap-2 pt-2">
         <div className="h-px flex-1 bg-ink-border" />
-        <div className="text-xs font-medium uppercase tracking-wide text-ink-muted">Rincian · {row.domain_name}</div>
+        <div className="text-xs font-medium uppercase tracking-wide text-ink-muted">Rincian · {row.name}</div>
         <div className="h-px flex-1 bg-ink-border" />
       </div>
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-        <Stat label="Total PDRB" value={rp(row.total)} sub={row.domain_name} />
+        <Stat label="Total PDRB" value={rp(row.total)} sub={row.name} />
         <Stat label="Sektor dominan" value={parts[0]?.label ?? "–"} sub={parts[0] ? pct(parts[0].share) + " dari PDRB" : undefined} />
         <Stat label="3 sektor teratas" value={pct(top3)} sub="konsentrasi ekonomi" />
       </div>
