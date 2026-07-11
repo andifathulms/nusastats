@@ -26,7 +26,6 @@ const pct = (p: number) => `${p.toLocaleString("id-ID", { maximumFractionDigits:
 const clean = (label: string) => label.replace(/^([A-Z](,[A-Z])*)\s+/, "");
 
 export function CompositionPost({ config }: { config: CompositionConfig }) {
-  const topN = config.topN ?? 50;
   const [sectors, setSectors] = useState<Sector[]>([]);
   const [rows, setRows] = useState<RegionRow[]>([]);
   const [sel, setSel] = useState<string | null>(null);
@@ -38,18 +37,10 @@ export function CompositionPost({ config }: { config: CompositionConfig }) {
     let cancelled = false;
     setLoading(true);
     (async () => {
-      // 1) top-N regions by grand total.
-      const rank = await api.ranking(config.variableId, {
-        admin_level: config.adminLevel,
-        turvar_id: config.totalTurvarId,
-        order: "desc",
-        limit: String(topN),
-        ...(config.year ? { year: config.year } : {}),
-      });
-      const ids = rank.results.map((r) => r.domain_id);
-      // 2) all their sector breakdowns in one call.
+      // Every region's full breakdown in one call (all turvars incl. the grand
+      // total), via admin_level — no per-id URL, and totals/order derived here.
       const s = await api.series(config.variableId, {
-        domain_id: ids,
+        admin_level: config.adminLevel,
         ...(config.year ? { year: config.year } : {}),
       });
       if (cancelled) return;
@@ -61,19 +52,23 @@ export function CompositionPost({ config }: { config: CompositionConfig }) {
         .sort((a, b) => a[0].localeCompare(b[0]))
         .map(([id, label], i) => ({ id, label: config.shortLabels?.[id] ?? clean(label), color: PALETTE[i % PALETTE.length] }));
 
-      const byRegion = new Map<string, Record<string, number>>();
+      // Group points by region: name, grand total, and per-sector values.
+      const byRegion = new Map<string, { name: string; total: number; byId: Record<string, number> }>();
       for (const d of s.results) {
-        if (d.turvar_id === config.totalTurvarId) continue;
-        const m = byRegion.get(d.domain_id) ?? {};
-        m[d.turvar_id] = d.value;
-        byRegion.set(d.domain_id, m);
+        const r = byRegion.get(d.domain_id) ?? { name: d.domain_name, total: 0, byId: {} };
+        if (d.turvar_id === config.totalTurvarId) r.total = d.value;
+        else r.byId[d.turvar_id] = d.value;
+        byRegion.set(d.domain_id, r);
       }
-      const regionRows: RegionRow[] = rank.results.map((r) => ({
-        domain_id: r.domain_id,
-        name: bpsRegionLabel(r.domain_name, r.domain_id),
-        total: r.value,
-        byId: byRegion.get(r.domain_id) ?? {},
-      }));
+      const regionRows: RegionRow[] = [...byRegion.entries()]
+        .map(([domain_id, r]) => ({
+          domain_id,
+          name: bpsRegionLabel(r.name, domain_id),
+          total: r.total || Object.values(r.byId).reduce((a, v) => a + v, 0),
+          byId: r.byId,
+        }))
+        .sort((a, b) => b.total - a.total);
+
       setSectors(secs);
       setRows(regionRows);
       setSel((cur) => cur ?? regionRows[0]?.domain_id ?? null);
@@ -82,7 +77,7 @@ export function CompositionPost({ config }: { config: CompositionConfig }) {
     return () => {
       cancelled = true;
     };
-  }, [config.variableId, config.adminLevel, config.totalTurvarId, config.year, topN, config.shortLabels]);
+  }, [config.variableId, config.adminLevel, config.totalTurvarId, config.year, config.shortLabels]);
 
   const filtered = useMemo(
     () => (q ? rows.filter((r) => r.name.toLowerCase().includes(q.toLowerCase())) : rows),
@@ -112,7 +107,7 @@ export function CompositionPost({ config }: { config: CompositionConfig }) {
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
           <div className="text-sm font-semibold text-ink-text">
             Peringkat & komposisi PDRB
-            <span className="ml-2 text-xs font-normal text-ink-muted">{topN} kabupaten/kota teratas</span>
+            <span className="ml-2 text-xs font-normal text-ink-muted">{rows.length} kabupaten/kota</span>
           </div>
           <input
             value={q}

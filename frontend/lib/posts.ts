@@ -15,7 +15,6 @@ export type CompositionConfig = {
   adminLevel: "province" | "regency";
   year?: string;
   note: string;
-  topN?: number; // how many regions to rank (default 50)
   // Optional short display names per turvar_id (else the raw label is cleaned).
   shortLabels?: Record<string, string>;
 };
@@ -49,7 +48,6 @@ export const POSTS: Post[] = [
       unit: "Milyar Rupiah",
       adminLevel: "regency",
       year: "2026",
-      topN: 50,
       note: "PDRB triwulanan atas dasar harga berlaku, menurut 17 kategori lapangan usaha. Sumber: BPS.",
       shortLabels: {
         "2005": "Pertanian", "2006": "Pertambangan", "2007": "Industri", "2008": "Listrik & Gas",
