@@ -107,6 +107,11 @@ DERIVED = [
         AGE_OLD, "jumlah_penduduk", 100),
     _mk("pop_density", "Kepadatan Penduduk (turunan)", "Kependudukan", "jiwa/km²",
         "jumlah_penduduk", "luas_wilayah", 1, cap=200000),
+    # BIG-polygon density — correct at every level (esp. desa, where
+    # luas_wilayah is the kabupaten total). luas_big is a model column, sourced
+    # by the read path, not an attributes key.
+    _mk("pop_density_big", "Kepadatan Penduduk (BIG)", "Kependudukan", "jiwa/km²",
+        "jumlah_penduduk", "luas_big", 1, cap=200000),
     _mk("avg_household", "Rata-rata Jiwa per KK", "Kependudukan", "jiwa/KK",
         "jumlah_penduduk", "jumlah_kk", 1),
     _mk("pct_sarjana", "% Sarjana ke atas (S1+)", "Pendidikan (Tamat)", "%",

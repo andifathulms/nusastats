@@ -22,6 +22,10 @@ INDICATORS = [
     ("wanita",              "Perempuan",                  "Kependudukan", "jiwa", False),
     ("luas_wilayah",        "Luas Wilayah",               "Kependudukan", "km²",  True),
     ("kepadatan_penduduk",  "Kepadatan Penduduk",         "Kependudukan", "jiwa/km²", True),
+    # Not a raw ArcGIS key: backed by the DukcapilRegion.luas_big column (BIG
+    # polygon area), since Dukcapil's own luas_wilayah is the kabupaten total
+    # copied onto every desa. Read via the column, not attributes.
+    ("luas_big",            "Luas Wilayah (BIG)",         "Kependudukan", "km²",  False),
 
     ("jml_lahir",           "Jumlah Lahir",               "Peristiwa Vital", "jiwa", False),
     ("jml_meninggal",       "Jumlah Meninggal",           "Peristiwa Vital", "jiwa", False),

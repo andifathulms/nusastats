@@ -110,6 +110,14 @@ class DukcapilRegion(models.Model):
 
     attributes = models.JSONField(default=dict)
 
+    # Land area (km²) computed from BIG 1:10k polygons, stored per-region.
+    # Kept OUT of `attributes` (which holds only the raw ArcGIS record) because
+    # it's derived from a different source; populated post-ingest by the
+    # `load_big_area` command and survives re-crawls. Needed because Dukcapil's
+    # own `luas_wilayah` is the kabupaten total copied onto every desa — useless
+    # at village level — whereas this is the true per-region polygon area.
+    luas_big = models.FloatField(null=True, blank=True)
+
     fetch_log = models.ForeignKey(
         DukcapilFetchLog, null=True, blank=True, on_delete=models.SET_NULL, related_name="regions"
     )

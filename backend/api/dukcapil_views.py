@@ -10,7 +10,7 @@ endpoints use, so nothing about the BPS/`stats` stack is touched.
 
 import re
 
-from django.db.models import Count
+from django.db.models import Count, F
 from django.db.models.fields.json import KeyTextTransform
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
@@ -57,11 +57,29 @@ def _apply_ancestor(qs, request):
     return qs, {}
 
 
+# Indicator fields backed by a real model column instead of the raw
+# `attributes` JSONB (computed post-ingest — currently just the BIG polygon
+# area). Sourced from the column in queries and per-region reads alike.
+_COLUMN_FIELDS = {"luas_big"}
+
+
+def _field_expr(field):
+    """Query expression for one indicator field: the model column when it's a
+    computed field, else the raw key pulled out of the attributes JSONB."""
+    return F(field) if field in _COLUMN_FIELDS else KeyTextTransform(field, "attributes")
+
+
+def _region_field(region, field):
+    """One region's value for `field` — from the column for computed fields,
+    else parsed out of its raw attributes."""
+    return getattr(region, field) if field in _COLUMN_FIELDS else region_value(region.attributes, field)
+
+
 def _value_map(qs, field):
-    """{code: (name, value)} for one JSON field, pulled without loading the
-    whole attributes blob per row (KeyTextTransform extracts just the key)."""
+    """{code: (name, value)} for one field, pulled without loading the whole
+    attributes blob per row (extracted as just that key / column)."""
     out = {}
-    for code, name, raw in qs.annotate(_v=KeyTextTransform(field, "attributes")).values_list(
+    for code, name, raw in qs.annotate(_v=_field_expr(field)).values_list(
         "code", "name", "_v"
     ):
         v = to_number(raw)
@@ -71,11 +89,11 @@ def _value_map(qs, field):
 
 
 def _extract(qs, fields):
-    """{code: (name, {field: value})} for several JSON fields in one query
-    (each field extracted with its own KeyTextTransform). Used where a row
-    needs more than one field at once — e.g. a value and its % denominator,
-    or the several raw inputs of a derived metric."""
-    ann = {f"f{i}": KeyTextTransform(f, "attributes") for i, f in enumerate(fields)}
+    """{code: (name, {field: value})} for several fields in one query (each
+    extracted from its own key/column). Used where a row needs more than one
+    field at once — e.g. a value and its % denominator, or the several raw
+    inputs of a derived metric."""
+    ann = {f"f{i}": _field_expr(f) for i, f in enumerate(fields)}
     out = {}
     for row in qs.annotate(**ann).values("code", "name", *ann.keys()):
         vals = {}
@@ -204,7 +222,7 @@ def region_detail(request, code):
     # One combined pass over the peer set (all indicator fields annotated),
     # rather than one full scan per indicator.
     fields = [ind.field for ind in catalog]
-    ann = {f"f{i}": KeyTextTransform(f, "attributes") for i, f in enumerate(fields)}
+    ann = {f"f{i}": _field_expr(f) for i, f in enumerate(fields)}
     peer_values = {f: [] for f in fields}
     derived_peer_values = {d["field"]: [] for d in DERIVED}
     for row in peers_qs.annotate(**ann).values(*ann.keys()):
@@ -221,7 +239,7 @@ def region_detail(request, code):
 
     by_group = {}
     for ind in catalog:
-        value = region_value(region.attributes, ind.field)
+        value = _region_field(region, ind.field)
         if value is None:
             continue
         rank, of, pct = percentile_rank(value, peer_values[ind.field])
@@ -240,7 +258,7 @@ def region_detail(request, code):
 
     # Derived demographic metrics for this region, ranked against peers.
     for d in DERIVED:
-        rvals = {k: region_value(region.attributes, k) for k in d["requires"]}
+        rvals = {k: _region_field(region, k) for k in d["requires"]}
         value = d["fn"](rvals)
         if value is None:
             continue
