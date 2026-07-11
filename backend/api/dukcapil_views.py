@@ -427,19 +427,52 @@ def bps_regency_status(domain_id):
         return ""
 
 
+# BPS regency domain_id -> Dukcapil regency code, for the four regencies whose
+# BPS and Kemendagri names diverge enough that normalized-name matching fails
+# (three spelling variants + one rename). Hand-verified against the Dukcapil
+# catalog. Everything else resolves by (province, status, name) or a national
+# (status, name) match, so only genuine renames need to live here.
+_REGENCY_CROSSWALK = {
+    "1277": "1277",  # Padangsidimpuan -> Padang Sidempuan
+    "7108": "7109",  # Siau Tagulandang Biaro -> Kep. Siau Tagulandang Biaro
+    "7309": "7310",  # Pangkajene Dan Kepulauan -> Pangkajene Kepulauan
+    "8101": "8103",  # Maluku Tenggara Barat -> Kepulauan Tanimbar (renamed)
+}
+
+
 def _resolve_dukcapil_regency(domain_id, bps_name, period):
-    """A BPS regency domain_id -> the matching Dukcapil regency. 479/514 match
-    by code identity; the rest by (normalised name, Kota/Kabupaten status) —
-    BPS and Dukcapil diverge on some codes (e.g. the Papua reorg)."""
-    exact = DukcapilRegion.objects.filter(level="regency", period=period, code=domain_id).first()
-    if exact:
-        return exact
+    """A BPS regency domain_id -> the matching Dukcapil regency.
+
+    BPS and Kemendagri number regencies DIFFERENTLY within most provinces, so
+    matching on code identity is wrong: a BPS code routinely collides with a
+    *different* Kemendagri region (e.g. BPS 7309 Pangkajene would hit Dukcapil
+    7309 Maros — a real, silent mismatch). We instead match on the identity of
+    the region itself — normalized name + Kota/Kabupaten status — scoped to the
+    province first, then nationally (the Papua reorg moved regencies onto new
+    province codes, and DKI labels its kota as 'Kabupaten'), with a small
+    hand-verified crosswalk for the few genuine renames/spelling splits."""
+    xcode = _REGENCY_CROSSWALK.get(domain_id)
+    if xcode:
+        r = DukcapilRegion.objects.filter(level="regency", period=period, code=xcode).first()
+        if r:
+            return r
     status, key = bps_regency_status(domain_id), _norm(bps_name)
     if not key:
         return None
-    for r in DukcapilRegion.objects.filter(level="regency", period=period):
-        if r.status == status and _norm(r.name) == key:
-            return r
+    regs = list(DukcapilRegion.objects.filter(level="regency", period=period))
+    prov = domain_id[:2]
+    # 1) same province + status + name (resolves the vast majority)
+    m = [r for r in regs if r.code[:2] == prov and r.status == status and _norm(r.name) == key]
+    if len(m) == 1:
+        return m[0]
+    # 2) national + status + name (Papua reorg: regency moved to a new province)
+    m = [r for r in regs if r.status == status and _norm(r.name) == key]
+    if len(m) == 1:
+        return m[0]
+    # 3) national name only, last resort (DKI kota are labeled 'Kabupaten')
+    m = [r for r in regs if _norm(r.name) == key]
+    if len(m) == 1:
+        return m[0]
     return None
 
 
