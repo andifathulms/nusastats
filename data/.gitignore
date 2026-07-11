@@ -1,0 +1,4 @@
+# Bulk raw geodata / large fetches — NOT committed (regenerate with the fetch
+# scripts). Git is not for GB-scale blobs.
+big_boundaries/*.geojson
+dukcapil_extra/AGR_VISUAL_KEL_202401_*.json
