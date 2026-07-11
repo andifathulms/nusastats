@@ -34,6 +34,8 @@ export function CompositionPost({ config }: { config: CompositionConfig }) {
   const [sectors, setSectors] = useState<Sector[]>([]);
   const [rows, setRows] = useState<RegionRow[]>([]);
   const [trend, setTrend] = useState<Trend | null>(null);
+  const [provNames, setProvNames] = useState<Map<string, string>>(new Map());
+  const [level, setLevel] = useState<"regency" | "province">("regency");
   const [sel, setSel] = useState<string | null>(null);
   const [page, setPage] = useState(0);
   const [q, setQ] = useState("");
@@ -46,7 +48,7 @@ export function CompositionPost({ config }: { config: CompositionConfig }) {
       // Every region's full breakdown in one call (all turvars incl. the grand
       // total), via admin_level — no per-id URL, and totals/order derived here.
       // In parallel, the annual total series for the trend/ranking-movement view.
-      const [s, ts] = await Promise.all([
+      const [s, ts, provs] = await Promise.all([
         api.series(config.variableId, {
           admin_level: config.adminLevel,
           ...(config.year ? { year: config.year } : {}),
@@ -54,8 +56,10 @@ export function CompositionPost({ config }: { config: CompositionConfig }) {
         config.trend
           ? api.series(config.trend.variableId, { admin_level: config.adminLevel, turvar_id: config.trend.totalTurvarId })
           : Promise.resolve(null),
+        api.regions({ admin_level: "province" }),
       ]);
       if (cancelled) return;
+      setProvNames(new Map(provs.map((p) => [p.domain_id.slice(0, 2), p.domain_name])));
 
       if (ts) {
         const byRegion = new Map<string, { year: number; value: number }[]>();
@@ -116,14 +120,24 @@ export function CompositionPost({ config }: { config: CompositionConfig }) {
     };
   }, [config.variableId, config.adminLevel, config.totalTurvarId, config.year, config.shortLabels, config.trend]);
 
+  // Province view aggregates the loaded kabupaten data by 2-digit code prefix.
+  const displayRows = useMemo(
+    () => (level === "province" ? aggregateRows(rows, provNames) : rows),
+    [level, rows, provNames]
+  );
+  const displayTrend = useMemo(
+    () => (level === "province" && trend ? aggregateTrend(trend) : trend),
+    [level, trend]
+  );
+
   const filtered = useMemo(
-    () => (q ? rows.filter((r) => r.name.toLowerCase().includes(q.toLowerCase())) : rows),
-    [rows, q]
+    () => (q ? displayRows.filter((r) => r.name.toLowerCase().includes(q.toLowerCase())) : displayRows),
+    [displayRows, q]
   );
   const pageRows = filtered.slice(page * PAGE, page * PAGE + PAGE);
   const pages = Math.max(1, Math.ceil(filtered.length / PAGE));
-  const selected = rows.find((r) => r.domain_id === sel);
-  const maxTotal = rows[0]?.total ?? 1; // #1 (largest economy) sets full-bar scale
+  const selected = displayRows.find((r) => r.domain_id === sel) ?? displayRows[0];
+  const maxTotal = displayRows[0]?.total ?? 1; // #1 (largest economy) sets full-bar scale
 
   if (loading) return <div className="flex h-64 items-center justify-center text-sm text-ink-muted">Memuat…</div>;
 
@@ -144,23 +158,43 @@ export function CompositionPost({ config }: { config: CompositionConfig }) {
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
           <div className="text-sm font-semibold text-ink-text">
             Peringkat & komposisi PDRB
-            <span className="ml-2 text-xs font-normal text-ink-muted">{rows.length} kabupaten/kota</span>
+            <span className="ml-2 text-xs font-normal text-ink-muted">
+              {displayRows.length} {level === "province" ? "provinsi" : "kabupaten/kota"}
+            </span>
           </div>
-          <input
-            value={q}
-            onChange={(e) => {
-              setQ(e.target.value);
-              setPage(0);
-            }}
-            placeholder="Cari…"
-            className="w-40 rounded-lg border border-ink-border bg-ink-panel2 px-2.5 py-1.5 text-sm text-ink-text outline-none focus:border-ink-accent/60"
-          />
+          <div className="flex items-center gap-2">
+            <div className="inline-flex rounded-lg border border-ink-border/80 bg-ink-panel2/50 p-0.5">
+              {(["regency", "province"] as const).map((lv) => (
+                <button
+                  key={lv}
+                  onClick={() => {
+                    setLevel(lv);
+                    setPage(0);
+                  }}
+                  className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
+                    level === lv ? "bg-brand-gradient text-white" : "text-ink-muted hover:text-ink-text"
+                  }`}
+                >
+                  {lv === "regency" ? "Kab/Kota" : "Provinsi"}
+                </button>
+              ))}
+            </div>
+            <input
+              value={q}
+              onChange={(e) => {
+                setQ(e.target.value);
+                setPage(0);
+              }}
+              placeholder="Cari…"
+              className="w-36 rounded-lg border border-ink-border bg-ink-panel2 px-2.5 py-1.5 text-sm text-ink-text outline-none focus:border-ink-accent/60"
+            />
+          </div>
         </div>
 
         <div className="space-y-1">
           {pageRows.map((r, i) => {
             const rank = filtered.indexOf(r) + 1;
-            const on = r.domain_id === sel;
+            const on = r.domain_id === selected?.domain_id;
             return (
               <button
                 key={r.domain_id}
@@ -216,14 +250,57 @@ export function CompositionPost({ config }: { config: CompositionConfig }) {
         <Detail
           row={selected}
           sectors={sectors}
-          trendSeries={trend?.byRegion.get(selected.domain_id) ?? null}
-          trendRanks={trend?.rankByRegion.get(selected.domain_id) ?? null}
+          trendSeries={displayTrend?.byRegion.get(selected.domain_id) ?? null}
+          trendRanks={displayTrend?.rankByRegion.get(selected.domain_id) ?? null}
           trendLabel={config.trend?.label}
           trendUnit={config.trend?.unit}
         />
       )}
     </div>
   );
+}
+
+// Aggregate kabupaten rows up to province by the 2-digit code prefix (province
+// domain_id = <cc>00). Sums the grand total and every sector; re-sorts by total.
+function aggregateRows(rows: RegionRow[], provNames: Map<string, string>): RegionRow[] {
+  const g = new Map<string, RegionRow>();
+  for (const r of rows) {
+    const cc = r.domain_id.slice(0, 2);
+    const cur = g.get(cc) ?? { domain_id: `${cc}00`, name: provNames.get(cc) ?? cc, total: 0, byId: {} };
+    cur.total += r.total;
+    for (const [k, v] of Object.entries(r.byId)) cur.byId[k] = (cur.byId[k] ?? 0) + v;
+    g.set(cc, cur);
+  }
+  return [...g.values()].sort((a, b) => b.total - a.total);
+}
+
+// Aggregate the annual trend to province (sum per year), re-ranking provinces.
+function aggregateTrend(trend: Trend): Trend {
+  const byProv = new Map<string, Map<number, number>>();
+  trend.byRegion.forEach((arr, dom) => {
+    const cc = dom.slice(0, 2);
+    const ym = byProv.get(cc) ?? new Map<number, number>();
+    for (const { year, value } of arr) ym.set(year, (ym.get(year) ?? 0) + value);
+    byProv.set(cc, ym);
+  });
+  const byRegion = new Map<string, { year: number; value: number }[]>();
+  byProv.forEach((ym, cc) =>
+    byRegion.set(`${cc}00`, [...ym.entries()].map(([year, value]) => ({ year, value })).sort((a, b) => a.year - b.year))
+  );
+  const years = new Set<number>();
+  byRegion.forEach((arr) => arr.forEach((x) => years.add(x.year)));
+  const rankByRegion = new Map<string, Record<number, number>>();
+  for (const y of years) {
+    [...byRegion.entries()]
+      .map(([id, arr]) => ({ id, v: arr.find((x) => x.year === y)?.value ?? 0 }))
+      .sort((a, b) => b.v - a.v)
+      .forEach((x, i) => {
+        const m = rankByRegion.get(x.id) ?? {};
+        m[y] = i + 1;
+        rankByRegion.set(x.id, m);
+      });
+  }
+  return { byRegion, rankByRegion };
 }
 
 function Detail({
