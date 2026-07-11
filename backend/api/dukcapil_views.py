@@ -461,6 +461,18 @@ def bps_regency_status(domain_id):
         return ""
 
 
+def _status_family(s):
+    """Collapse a regency status to its family so administrative variants match
+    the plain BPS-derived status: 'Kota Administrasi' -> kota, 'Kabupaten
+    Administrasi' -> kabupaten."""
+    s = (s or "").lower()
+    if s.startswith("kota"):
+        return "kota"
+    if s.startswith("kab"):
+        return "kabupaten"
+    return s
+
+
 # BPS regency domain_id -> Dukcapil regency code, for the four regencies whose
 # BPS and Kemendagri names diverge enough that normalized-name matching fails
 # (three spelling variants + one rename). Hand-verified against the Dukcapil
@@ -494,13 +506,14 @@ def _resolve_dukcapil_regency(domain_id, bps_name, period):
     if not key:
         return None
     regs = list(DukcapilRegion.objects.filter(level="regency", period=period))
+    fam = _status_family(status)
     prov = domain_id[:2]
     # 1) same province + status + name (resolves the vast majority)
-    m = [r for r in regs if r.code[:2] == prov and r.status == status and _norm(r.name) == key]
+    m = [r for r in regs if r.code[:2] == prov and _status_family(r.status) == fam and _norm(r.name) == key]
     if len(m) == 1:
         return m[0]
     # 2) national + status + name (Papua reorg: regency moved to a new province)
-    m = [r for r in regs if r.status == status and _norm(r.name) == key]
+    m = [r for r in regs if _status_family(r.status) == fam and _norm(r.name) == key]
     if len(m) == 1:
         return m[0]
     # 3) national name only, last resort (DKI kota are labeled 'Kabupaten')

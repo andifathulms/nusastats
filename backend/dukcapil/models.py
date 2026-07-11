@@ -74,9 +74,12 @@ class DukcapilRegion(models.Model):
     level = models.CharField(max_length=16, choices=DukcapilLevel.choices)
     # Title-cased, with any "KOTA "/"KAB. " prefix stripped into `status`.
     name = models.CharField(max_length=255)
-    # Structured type: Provinsi / Kota / Kabupaten / Kecamatan (blank for
-    # village — desa/kelurahan isn't carried in the Dukcapil data).
-    status = models.CharField(max_length=16, blank=True)
+    # Structured type derived in dukcapil.normalize. Province: Provinsi /
+    # "Daerah Istimewa"/"Daerah Khusus" (comma-joined for Aceh, which is both).
+    # Regency: Kota / Kabupaten / Kota Administrasi / Kabupaten Administrasi.
+    # District: Kecamatan / Distrik / Kapanewon / Kemantren. Village: Kelurahan
+    # / Desa. (Widened from 16 for the administrasi/daerah labels.)
+    status = models.CharField(max_length=64, blank=True)
 
     # Monthly snapshot key ("YYYY-MM"). Coverage is re-crawled monthly; each
     # crawl writes rows under its own period, so history accumulates into a

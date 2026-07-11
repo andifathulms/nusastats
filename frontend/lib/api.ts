@@ -256,8 +256,13 @@ export type DukcapilRegionRow = {
 export function regionLabel(name: string, status?: string): string {
   if (status === "Kota") return `Kota ${name}`;
   if (status === "Kabupaten") return `Kab. ${name}`;
+  if (status === "Kota Administrasi") return `Kota Adm. ${name}`;
+  if (status === "Kabupaten Administrasi") return `Kab. Adm. ${name}`;
   if (status === "Kelurahan") return `Kel. ${name}`;
   if (status === "Desa") return `Desa ${name}`;
+  // Provinces (incl. Daerah Istimewa/Khusus) and districts (Kecamatan/Distrik/
+  // Kapanewon/Kemantren) show as the plain name in rankings/maps; their status
+  // is a detail-page badge, not a prefix.
   return name;
 }
 
@@ -376,28 +381,63 @@ export function bpsRegencyStatus(domainId: string): string {
   return isNaN(kab) ? "" : kab >= 71 ? "Kota" : "Kabupaten";
 }
 
-// Label a kabupaten/kota ancestor. Source `nama_kab` is inconsistent — some
-// already carry the "KOTA"/"KABUPATEN" prefix ("KOTA LANGSA"), others don't
-// ("JAKARTA TIMUR"). Only add a Kota/Kab. prefix (derived from the kab-number
-// in the code) when it isn't already there, to avoid "Kota Kota Langsa".
+// DKI Jakarta's administrative cities/regency, by code — so an ancestry label
+// is consistent ("Kota Adm. Jakarta Barat") regardless of how the raw nama_kab
+// is spelled in each layer (kecamatan says "KOTA JAKARTA BARAT", desa says
+// "KOTA ADM. JAKARTA BARAT").
+const JKT_KOTA: Record<string, string> = {
+  "3171": "Jakarta Pusat", "3172": "Jakarta Utara", "3173": "Jakarta Barat",
+  "3174": "Jakarta Selatan", "3175": "Jakarta Timur",
+};
+
+// Kecamatan / Distrik / Kapanewon / Kemantren from a 6-digit code (mirrors the
+// backend dukcapil.normalize rules): Distrik across Papua (prov 91-96);
+// Kemantren in Kota Yogyakarta (3471), Kapanewon elsewhere in DIY (prov 34).
+function districtStatusFromCode(code: string): string {
+  const prov = code.slice(0, 2);
+  const kab = code.slice(0, 4);
+  if (["91", "92", "93", "94", "95", "96"].includes(prov)) return "Distrik";
+  if (prov === "34") return kab === "3471" ? "Kemantren" : "Kapanewon";
+  return "Kecamatan";
+}
+const KEC_PREFIX: Record<string, string> = {
+  Kecamatan: "Kec.", Distrik: "Distrik", Kapanewon: "Kapanewon", Kemantren: "Kemantren",
+};
+
+// Label a kabupaten/kota ancestor from a (kec/desa) code + raw nama_kab. DKI is
+// resolved canonically by code; elsewhere the source `nama_kab` is inconsistent
+// — some already carry the "KOTA"/"KABUPATEN" prefix, others don't — so only add
+// a Kota/Kab. prefix (from the kab-number) when it isn't already there.
 function kabAncestorLabel(code: string, namaKab: string): string {
+  const kab = code.slice(0, 4);
+  if (JKT_KOTA[kab]) return `Kota Adm. ${JKT_KOTA[kab]}`;
+  if (kab === "3101") return "Kab. Adm. Kepulauan Seribu";
   const upper = namaKab.trim().toUpperCase();
   const t = titleCase(namaKab);
   if (upper.startsWith("KOTA") || upper.startsWith("KAB")) return t;
   return regionLabel(t, bpsRegencyStatus(code));
 }
 
+// Label a kecamatan ancestor from a (kec/desa) code + raw nama_kec, using the
+// right term per region (Kec./Distrik/Kapanewon/Kemantren) and stripping any
+// prefix already present in the source name.
+function kecAncestorLabel(code: string, namaKec: string): string {
+  const status = districtStatusFromCode(code.slice(0, 6));
+  const t = titleCase(namaKec).replace(/^(Kecamatan|Kec\.?|Distrik|Kapanewon|Kemantren)\s+/i, "");
+  return `${KEC_PREFIX[status]} ${t}`;
+}
+
 // The administrative ancestry of a ranked/mapped Dukcapil region, most-specific
 // first: kab -> "Provinsi"; kec -> "Kab. X · Provinsi"; desa -> "Kec. Y · Kab. X
-// · Provinsi". The kab-number in the code (digits 3-4) gives the Kota/Kab. label
-// even from a kec/desa code. Returns "" for provinces (no ancestry).
+// · Provinsi". The code (digits 3-4 for kab, 5-6 for kec) gives the right
+// Kota/Kab./Distrik label even from a kec/desa code. "" for provinces.
 export function dukcapilAncestry(
   level: DukcapilLevel,
   row: { domain_id: string; nama_prop?: string; nama_kab?: string; nama_kec?: string }
 ): string {
   const prov = row.nama_prop ? titleCase(row.nama_prop) : "";
   const kab = row.nama_kab ? kabAncestorLabel(row.domain_id, row.nama_kab) : "";
-  const kec = row.nama_kec ? (/^KEC/i.test(row.nama_kec.trim()) ? titleCase(row.nama_kec) : `Kec. ${titleCase(row.nama_kec)}`) : "";
+  const kec = row.nama_kec ? kecAncestorLabel(row.domain_id, row.nama_kec) : "";
   const parts =
     level === "regency" ? [prov] : level === "district" ? [kab, prov] : level === "village" ? [kec, kab, prov] : [];
   return parts.filter(Boolean).join(" · ");
