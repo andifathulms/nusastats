@@ -264,7 +264,7 @@ export function CompositionPost({ config }: { config: CompositionConfig }) {
       )}
 
       <MapPanel rows={provinceRows} sectors={sectors} groups={config.groups} />
-      <CorrelationPanel rows={displayRows} sectors={sectors} groups={config.groups} />
+      <CorrelationPanel rows={displayRows} sectors={sectors} groups={config.groups} provNames={provNames} />
     </div>
   );
 }
@@ -340,10 +340,12 @@ function CorrelationPanel({
   rows,
   sectors,
   groups,
+  provNames,
 }: {
   rows: RegionRow[];
   sectors: Sector[];
   groups?: { label: string; color: string; ids: string[] }[];
+  provNames: Map<string, string>;
 }) {
   // Axis choices: the higher-level groups first, then the individual sectors.
   const dims = useMemo(
@@ -355,22 +357,40 @@ function CorrelationPanel({
   );
   const [xKey, setXKey] = useState("");
   const [yKey, setYKey] = useState("");
+  const [selProvs, setSelProvs] = useState<Set<string>>(new Set());
   const xd = dims.find((d) => d.key === xKey) ?? dims[0];
   const yd = dims.find((d) => d.key === yKey) ?? dims[1] ?? dims[0];
 
   const share = (row: RegionRow, ids: string[]) =>
     row.total ? (ids.reduce((a, id) => a + (row.byId[id] ?? 0), 0) / row.total) * 100 : 0;
 
+  // Provinces present among the rows, for the legend/filter.
+  const provs = useMemo(() => {
+    const set = new Map<string, string>();
+    rows.forEach((r) => set.set(r.domain_id.slice(0, 2), provNames.get(r.domain_id.slice(0, 2)) ?? r.domain_id.slice(0, 2)));
+    return [...set.entries()].sort((a, b) => a[1].localeCompare(b[1]));
+  }, [rows, provNames]);
+
+  const visibleRows = useMemo(
+    () => (selProvs.size ? rows.filter((r) => selProvs.has(r.domain_id.slice(0, 2))) : rows),
+    [rows, selProvs]
+  );
   const points = useMemo(
     () =>
       xd && yd
-        ? rows.map((r) => ({ x: share(r, xd.ids), y: share(r, yd.ids), name: r.name, fill: groupColor(r.domain_id.slice(0, 2)) }))
+        ? visibleRows.map((r) => ({ x: share(r, xd.ids), y: share(r, yd.ids), name: r.name, fill: groupColor(r.domain_id.slice(0, 2)) }))
         : [],
-    [rows, xd, yd]
+    [visibleRows, xd, yd]
   );
   const r = useMemo(() => pearson(points.map((p) => p.x), points.map((p) => p.y)), [points]);
 
   if (dims.length < 2) return null;
+  const toggleProv = (code: string) =>
+    setSelProvs((cur) => {
+      const n = new Set(cur);
+      n.has(code) ? n.delete(code) : n.add(code);
+      return n;
+    });
 
   const Select = ({ v, on }: { v: string; on: (s: string) => void }) => (
     <select
@@ -399,7 +419,32 @@ function CorrelationPanel({
         </span>{" "}
         · {points.length} wilayah · tiap titik satu wilayah, warna = provinsi
       </div>
-      <ResponsiveContainer width="100%" height={320}>
+
+      {/* Province legend + filter — click to isolate provinces */}
+      <div className="mb-3 flex flex-wrap gap-x-3 gap-y-1">
+        {selProvs.size > 0 && (
+          <button onClick={() => setSelProvs(new Set())} className="text-xs text-ink-accent hover:underline">
+            Semua provinsi
+          </button>
+        )}
+        {provs.map(([code, name]) => {
+          const on = selProvs.size === 0 || selProvs.has(code);
+          return (
+            <button
+              key={code}
+              onClick={() => toggleProv(code)}
+              className={`inline-flex items-center gap-1.5 text-xs transition-opacity ${on ? "opacity-100" : "opacity-30"}`}
+              title={name}
+            >
+              <span className="h-2.5 w-2.5 rounded-sm" style={{ background: groupColor(code) }} />
+              <span className="text-ink-muted">{name}</span>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Square so x and y read on the same scale */}
+      <ResponsiveContainer width="100%" aspect={1} className="mx-auto max-w-[560px]">
         <ScatterChart margin={{ top: 8, right: 16, bottom: 24, left: 8 }}>
           <CartesianGrid stroke={CHART.grid} />
           <XAxis
