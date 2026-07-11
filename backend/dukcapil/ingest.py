@@ -31,6 +31,17 @@ def _int(v):
         return None
 
 
+def _payload_sig(a):
+    """Fingerprint of a raw record ignoring `objectid` (the only field that
+    differs between the source's exact-duplicate rows). Two rows with the same
+    fingerprint are true duplicates; anything that differs in real content —
+    e.g. a future update that splits a merged desa/kelurahan by adding a field —
+    fingerprints differently and is kept, never silently dropped."""
+    return hashlib.md5(
+        json.dumps({k: v for k, v in a.items() if k != "objectid"}, sort_keys=True, default=str).encode()
+    ).hexdigest()
+
+
 def _ancestor_codes(a):
     """(prov_code, kab_code, kec_code) composed Kemendagri wilayah codes
     (2/4/6 digits) from a raw record's no_prop/no_kab/no_kec."""
@@ -115,7 +126,7 @@ def ingest_level(level, period, client=None, on_page=None):
 
     total = 0
     seen = set()  # per-level, spans pages: guarantees unique codes
-    seen_kds = set()  # village kode_desa_spatial, to drop exact duplicate rows
+    seen_sig = set()  # village payload fingerprints, to drop exact duplicate rows
     for url, status, raw, layer_id, feats in client.iter_pages(level):
         now = timezone.now()
         log = DukcapilFetchLog.objects.create(
@@ -132,18 +143,18 @@ def ingest_level(level, period, client=None, on_page=None):
         rows = []
         for f in feats:
             a = f.get("attributes", {})
-            # Drop exact duplicate village rows: the source occasionally returns
-            # the same kode_desa_spatial twice (identical data, different
-            # objectid). Without this they'd be kept as distinct `-objectid`
-            # codes, inflating village counts and double-counting population.
-            # Dirty rows with no kode_desa_spatial (kds is None) are untouched —
-            # they still get a unique objectid-suffixed code via _unique_code.
-            if level == "village":
-                kds = _int(a.get("kode_desa_spatial"))
-                if kds is not None:
-                    if kds in seen_kds:
-                        continue
-                    seen_kds.add(kds)
+            # Drop exact-duplicate village rows: the source occasionally returns
+            # the same village twice (identical payload, only objectid differs).
+            # Without this they'd be kept as distinct `-objectid` codes, inflating
+            # village counts and double-counting population. Dedup on the payload
+            # fingerprint (not just the code) so that if a future update ever
+            # gives two genuinely different records the same kode_desa_spatial,
+            # both are kept via objectid-suffixed codes rather than one dropped.
+            if level == "village" and a.get("kode_desa_spatial") is not None:
+                sig = _payload_sig(a)
+                if sig in seen_sig:
+                    continue
+                seen_sig.add(sig)
             rows.append(_row(level, a, log, now, seen, period))
         for i in range(0, len(rows), CHUNK):
             DukcapilRegion.objects.bulk_create(
