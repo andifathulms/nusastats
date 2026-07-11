@@ -48,11 +48,29 @@ _DISTRICT_PREFIXES = ("KECAMATAN ", "KEC. ", "KEC ", "DISTRIK ", "KAPANEWON ", "
 
 
 def village_status(code):
-    """'Kelurahan' / 'Desa' from the 7th digit of the 10-digit code, or '' for
-    the ~0.1% with a non-standard code (dirty/objectid-suffixed rows)."""
-    if code and len(code) >= 10 and code[:10].isdigit():
-        return {"1": "Kelurahan", "2": "Desa"}.get(code[6], "")
-    return ""
+    """Village-level designation from the 10-digit code, or '' for the ~0.1%
+    with a non-standard code (dirty/objectid-suffixed rows).
+
+    Base is the Kemendagri 7th-digit convention (1=Kelurahan, 2=Desa), with
+    regional names overriding it:
+    - Aceh (prov 11): "Gampong" everywhere, "Kute" in Aceh Tenggara (kab 1102).
+    - Sumatera Barat (prov 13): the desa-equivalent is "Nagari" (kelurahan stay
+      kelurahan).
+
+    NOTE: Maluku's Negeri (adat villages, e.g. Batu Merah / Soya) are NOT
+    distinguishable here — Kemendagri codes them as plain Desa (7th digit 2) and
+    the data carries no adat/jenis field, so they fall under "Desa". Separating
+    them would need an external Negeri registry.
+    """
+    if not (code and len(code) >= 10 and code[:10].isdigit()):
+        return ""
+    prov, kab = code[:2], code[:4]
+    if prov == "11":  # Aceh
+        return "Kute" if kab == "1102" else "Gampong"
+    base = {"1": "Kelurahan", "2": "Desa"}.get(code[6], "")
+    if prov == "13" and base == "Desa":  # Sumatera Barat
+        return "Nagari"
+    return base
 
 
 def _collapse_spaced(s):
