@@ -107,32 +107,46 @@ if __name__ == "__main__":
     which = sys.argv[1] if len(sys.argv) > 1 else "all"
     man = []
     if which == "kel":
-        # Historical village population (83k) fetched PER PROVINCE (small,
-        # robust to the flaky network — one nationwide pull kept truncating).
+        # Historical village population, RESUMABLE per-province: each province
+        # writes its own kel_prov_<pp>.json (skipped if present), with a
+        # dedup guard (breaks when a page adds no new codes — the layer's
+        # resultOffset pagination is unreliable). Re-run until every province
+        # file exists (the dukcapil server is very slow/flaky); the last run
+        # merges them into the final file.
         base = f"{BASE}/AGR_VISUAL_KEL_202401/MapServer/0/query"
-        cnt = get(f"{base}?where=1%3D1&returnCountOnly=true&f=json").get("count")
-        feats, page = [], 2000
+        page = 2000
         for pp in range(11, 97):
-            off = 0
+            pf = os.path.join(OUT, f"kel_prov_{pp}.json")
+            if os.path.exists(pf):
+                continue
+            seen, rows, off = set(), [], 0
             while True:
                 qs = urllib.parse.urlencode({
                     "where": f"no_prop={pp}", "outFields": "*", "returnGeometry": "false",
                     "f": "json", "resultOffset": off, "resultRecordCount": page,
                 })
-                d = get(f"{base}?{qs}")
-                fs = d.get("features", [])
-                feats += [f["attributes"] for f in fs]
-                if len(fs) < page and not d.get("exceededTransferLimit"):
-                    break
-                if not fs:
+                fs = get(f"{base}?{qs}").get("features", [])
+                new = 0
+                for f in fs:
+                    c = f["attributes"].get("kode_desa_spatial")
+                    if c not in seen:
+                        seen.add(c)
+                        rows.append(f["attributes"])
+                        new += 1
+                if not fs or new == 0:  # end, or repeated page (broken paging)
                     break
                 off += page
                 time.sleep(0.3)
-            if any(f.get("no_prop") == pp for f in feats[-1:]):
-                sys.stderr.write(f"  prov {pp}: {len(feats)} cumulative\n")
-        fn = f"AGR_VISUAL_KEL_202401_L0_n{cnt}.json"
-        json.dump(feats, open(os.path.join(OUT, fn), "w"), ensure_ascii=False)
-        sys.stderr.write(f"KEL: saved {len(feats)} / {cnt} -> {fn}\n")
+            json.dump(rows, open(pf, "w"), ensure_ascii=False)
+            sys.stderr.write(f"prov {pp}: {len(rows)} -> {os.path.basename(pf)}\n")
+        # Merge whatever province files exist so far.
+        allrows = []
+        for pp in range(11, 97):
+            pf = os.path.join(OUT, f"kel_prov_{pp}.json")
+            if os.path.exists(pf):
+                allrows += json.load(open(pf))
+        json.dump(allrows, open(os.path.join(OUT, "AGR_VISUAL_KEL_202401_L0.json"), "w"), ensure_ascii=False)
+        sys.stderr.write(f"KEL merged: {len(allrows)} rows\n")
         raise SystemExit
     if which == "village":
         # Fetch every layer including the big village ones (skip nothing);
