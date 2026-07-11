@@ -17,6 +17,9 @@ export type CompositionConfig = {
   note: string;
   // Optional short display names per turvar_id (else the raw label is cleaned).
   shortLabels?: Record<string, string>;
+  // Optional annual time series (a different variable) for the selected region:
+  // trend line + ranking movement. `totalTurvarId` selects the grand-total row.
+  trend?: { variableId: string; totalTurvarId: string; unit: string; label: string };
 };
 
 export type Post = {
@@ -49,6 +52,7 @@ export const POSTS: Post[] = [
       adminLevel: "regency",
       year: "2026",
       note: "PDRB triwulanan atas dasar harga berlaku, menurut 17 kategori lapangan usaha. Sumber: BPS.",
+      trend: { variableId: "2193", totalTurvarId: "1550", unit: "Milyar Rupiah", label: "PDRB tahunan (harga berlaku)" },
       shortLabels: {
         "2005": "Pertanian", "2006": "Pertambangan", "2007": "Industri", "2008": "Listrik & Gas",
         "2009": "Air & Limbah", "2010": "Konstruksi", "2011": "Perdagangan", "2012": "Transportasi",

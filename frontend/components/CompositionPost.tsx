@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { api, bpsRegionLabel } from "@/lib/api";
 import { type CompositionConfig } from "@/lib/posts";
 import { Panel } from "@/components/ui";
+import { SeriesChart } from "@/components/SeriesChart";
 
 // 17 distinct-but-harmonious hues, assigned per sector (turvar) so a colour
 // means the same category in every region's bar.
@@ -16,6 +17,10 @@ const PAGE = 10;
 
 type Sector = { id: string; label: string; color: string };
 type RegionRow = { domain_id: string; name: string; total: number; byId: Record<string, number> };
+type Trend = {
+  byRegion: Map<string, { year: number; value: number }[]>;
+  rankByRegion: Map<string, Record<number, number>>;
+};
 
 // PDRB is in Milyar Rupiah; show large sums as Triliun.
 function rp(milyar: number): string {
@@ -28,6 +33,7 @@ const clean = (label: string) => label.replace(/^([A-Z](,[A-Z])*)\s+/, "");
 export function CompositionPost({ config }: { config: CompositionConfig }) {
   const [sectors, setSectors] = useState<Sector[]>([]);
   const [rows, setRows] = useState<RegionRow[]>([]);
+  const [trend, setTrend] = useState<Trend | null>(null);
   const [sel, setSel] = useState<string | null>(null);
   const [page, setPage] = useState(0);
   const [q, setQ] = useState("");
@@ -39,11 +45,42 @@ export function CompositionPost({ config }: { config: CompositionConfig }) {
     (async () => {
       // Every region's full breakdown in one call (all turvars incl. the grand
       // total), via admin_level — no per-id URL, and totals/order derived here.
-      const s = await api.series(config.variableId, {
-        admin_level: config.adminLevel,
-        ...(config.year ? { year: config.year } : {}),
-      });
+      // In parallel, the annual total series for the trend/ranking-movement view.
+      const [s, ts] = await Promise.all([
+        api.series(config.variableId, {
+          admin_level: config.adminLevel,
+          ...(config.year ? { year: config.year } : {}),
+        }),
+        config.trend
+          ? api.series(config.trend.variableId, { admin_level: config.adminLevel, turvar_id: config.trend.totalTurvarId })
+          : Promise.resolve(null),
+      ]);
       if (cancelled) return;
+
+      if (ts) {
+        const byRegion = new Map<string, { year: number; value: number }[]>();
+        for (const d of ts.results) {
+          if (d.year == null) continue;
+          const arr = byRegion.get(d.domain_id) ?? [];
+          arr.push({ year: d.year, value: d.value });
+          byRegion.set(d.domain_id, arr);
+        }
+        byRegion.forEach((arr) => arr.sort((a, b) => a.year - b.year));
+        // Rank each region within every year (by that year's total, desc).
+        const rankByRegion = new Map<string, Record<number, number>>();
+        const years = [...new Set(ts.results.map((d) => d.year).filter((y): y is number => y != null))];
+        for (const y of years) {
+          ts.results
+            .filter((d) => d.year === y)
+            .sort((a, b) => b.value - a.value)
+            .forEach((d, i) => {
+              const m = rankByRegion.get(d.domain_id) ?? {};
+              m[y] = i + 1;
+              rankByRegion.set(d.domain_id, m);
+            });
+        }
+        setTrend({ byRegion, rankByRegion });
+      }
 
       // Sectors (exclude the grand total), in stable id order -> fixed colour.
       const seen = new Map<string, string>();
@@ -77,7 +114,7 @@ export function CompositionPost({ config }: { config: CompositionConfig }) {
     return () => {
       cancelled = true;
     };
-  }, [config.variableId, config.adminLevel, config.totalTurvarId, config.year, config.shortLabels]);
+  }, [config.variableId, config.adminLevel, config.totalTurvarId, config.year, config.shortLabels, config.trend]);
 
   const filtered = useMemo(
     () => (q ? rows.filter((r) => r.name.toLowerCase().includes(q.toLowerCase())) : rows),
@@ -175,12 +212,35 @@ export function CompositionPost({ config }: { config: CompositionConfig }) {
       </Panel>
 
       {/* Detail for the selected region */}
-      {selected && <Detail row={selected} sectors={sectors} />}
+      {selected && (
+        <Detail
+          row={selected}
+          sectors={sectors}
+          trendSeries={trend?.byRegion.get(selected.domain_id) ?? null}
+          trendRanks={trend?.rankByRegion.get(selected.domain_id) ?? null}
+          trendLabel={config.trend?.label}
+          trendUnit={config.trend?.unit}
+        />
+      )}
     </div>
   );
 }
 
-function Detail({ row, sectors }: { row: RegionRow; sectors: Sector[] }) {
+function Detail({
+  row,
+  sectors,
+  trendSeries,
+  trendRanks,
+  trendLabel,
+  trendUnit,
+}: {
+  row: RegionRow;
+  sectors: Sector[];
+  trendSeries?: { year: number; value: number }[] | null;
+  trendRanks?: Record<number, number> | null;
+  trendLabel?: string;
+  trendUnit?: string;
+}) {
   const parts = sectors
     .map((s) => ({ ...s, value: row.byId[s.id] ?? 0, share: row.total ? ((row.byId[s.id] ?? 0) / row.total) * 100 : 0 }))
     .sort((a, b) => b.value - a.value);
@@ -228,7 +288,47 @@ function Detail({ row, sectors }: { row: RegionRow; sectors: Sector[] }) {
           ))}
         </div>
       </Panel>
+
+      {trendSeries && trendSeries.length > 1 && (
+        <TrendPanel series={trendSeries} ranks={trendRanks ?? {}} label={trendLabel} unit={trendUnit} />
+      )}
     </div>
+  );
+}
+
+function TrendPanel({
+  series,
+  ranks,
+  label,
+  unit,
+}: {
+  series: { year: number; value: number }[];
+  ranks: Record<number, number>;
+  label?: string;
+  unit?: string;
+}) {
+  const first = series[0];
+  const last = series[series.length - 1];
+  const growth = first.value ? (last.value / first.value - 1) * 100 : 0;
+  const rankNow = ranks[last.year];
+  const rankThen = ranks[first.year];
+  const rankDelta = rankThen != null && rankNow != null ? rankThen - rankNow : null; // + = moved up
+  const chartRows = series.map((s) => ({ year: s.year, pdrb: s.value }));
+  const deltaText =
+    rankDelta == null ? "–" : rankDelta === 0 ? "tetap" : rankDelta > 0 ? `naik ${rankDelta}` : `turun ${-rankDelta}`;
+
+  return (
+    <Panel>
+      <div className="mb-2 text-xs font-medium uppercase tracking-wide text-ink-muted">
+        {label ?? "PDRB tahunan"} · {first.year}–{last.year}
+      </div>
+      <div className="mb-3 grid grid-cols-3 gap-3">
+        <Stat label={`Pertumbuhan ${first.year}→${last.year}`} value={`${growth >= 0 ? "+" : ""}${growth.toLocaleString("id-ID", { maximumFractionDigits: 0 })}%`} sub="nominal (harga berlaku)" />
+        <Stat label={`Peringkat ${last.year}`} value={rankNow != null ? `#${rankNow}` : "–"} sub="nasional" />
+        <Stat label={`Peringkat sejak ${first.year}`} value={deltaText} sub={rankThen != null ? `dari #${rankThen}` : undefined} />
+      </div>
+      <SeriesChart rows={chartRows} entities={[{ key: "pdrb", label: label ?? "PDRB" }]} unit={unit} />
+    </Panel>
   );
 }
 
