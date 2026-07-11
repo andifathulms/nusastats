@@ -44,13 +44,13 @@ export const POSTS: Post[] = [
     ],
     kind: "composition",
     composition: {
-      variableId: "2775",
+      variableId: "2776",
       totalTurvarId: "2022", // "Produk Domestik Regional Bruto" (grand total)
       unit: "Milyar Rupiah",
       adminLevel: "regency",
       year: "2026",
       topN: 50,
-      note: "PDRB triwulanan seri 2010 atas dasar harga konstan (2010=100), menurut 17 kategori lapangan usaha. Sumber: BPS.",
+      note: "PDRB triwulanan atas dasar harga berlaku, menurut 17 kategori lapangan usaha. Sumber: BPS.",
       shortLabels: {
         "2005": "Pertanian", "2006": "Pertambangan", "2007": "Industri", "2008": "Listrik & Gas",
         "2009": "Air & Limbah", "2010": "Konstruksi", "2011": "Perdagangan", "2012": "Transportasi",
