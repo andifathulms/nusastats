@@ -320,10 +320,26 @@ def rank(request):
     if spec:
         # Derived metrics are already ratios/rates — no percentage base.
         percent_of = None
-        rows = [
-            {"domain_id": code, "domain_name": name, "value": v}
-            for code, (name, v) in _metric_values(qs, field).items()
-        ]
+        # For small ratios (e.g. density = penduduk / luas) surface the operand
+        # values, labelled, so a tooltip can show what produced the number.
+        parts = list(spec["requires"]) if len(spec["requires"]) <= 3 else None
+        part_meta = (
+            {i.field: (i.label_id, i.unit) for i in DukcapilIndicator.objects.filter(field__in=parts)}
+            if parts else {}
+        )
+        rows = []
+        for code, (name, vals) in _extract(qs, spec["requires"]).items():
+            v = spec["fn"](vals)
+            if v is None:
+                continue
+            row = {"domain_id": code, "domain_name": name, "value": v}
+            if parts:
+                row["components"] = [
+                    {"field": f, "value": vals[f],
+                     "label": part_meta.get(f, (f, ""))[0], "unit": part_meta.get(f, (f, ""))[1]}
+                    for f in parts if vals.get(f) is not None
+                ]
+            rows.append(row)
         indicator_data, unit = derived_meta(spec), spec["unit"]
     elif percent_of and percent_of != field:
         # Express the value as a percentage of another field (usually

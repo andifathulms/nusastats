@@ -308,7 +308,21 @@ export type DukcapilRankRow = {
   nama_prop?: string;
   nama_kab?: string;
   nama_kec?: string;
+  // For small-ratio derived indicators (e.g. density), the labelled operand
+  // values behind the number (population, area) for the tooltip.
+  components?: { field: string; value: number; label: string; unit: string }[];
 };
+
+/** One-line "Penduduk: 12,345 · Luas Wilayah (BIG): 0.42 km²" for a ratio's
+ * operands, or undefined when there are none. */
+export function componentsText(
+  components?: { value: number; label: string; unit: string }[]
+): string | undefined {
+  if (!components?.length) return undefined;
+  return components
+    .map((c) => `${c.label}: ${formatNumber(c.value)}${c.unit ? ` ${c.unit}` : ""}`)
+    .join(" · ");
+}
 
 export type DukcapilRegionDetail = {
   region: {

@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
+  componentsText,
   dukcapilApi,
   dukcapilAncestry,
   formatNumber,
@@ -122,6 +123,7 @@ export function DukcapilMap({
         value: r.value,
         name: regionLabel(r.domain_name, r.status),
         sub: dukcapilAncestry(mapLevel, r),
+        extra: componentsText(r.components),
       })
     );
     return m;

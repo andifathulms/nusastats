@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import {
   DUKCAPIL_LEVELS,
   dukcapilApi,
+  componentsText,
   dukcapilAncestry,
   formatNumber,
   groupColor,
@@ -142,6 +143,7 @@ export default function DukcapilAnalyticsPage() {
     label: regionLabel(r.domain_name, r.status),
     value: r.value,
     sub: dukcapilAncestry(level, r),
+    extra: componentsText(r.components),
     color: effColorBy !== "none" ? groupColor(groupOf(r.domain_id)) : undefined,
   }));
 

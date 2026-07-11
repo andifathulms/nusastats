@@ -3,7 +3,7 @@
 import { Bar, BarChart, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { CHART } from "@/lib/api";
 
-export type BarDatum = { label: string; value: number; highlight?: boolean; color?: string; sub?: string };
+export type BarDatum = { label: string; value: number; highlight?: boolean; color?: string; sub?: string; extra?: string };
 
 function BarTooltip({ active, payload, unit }: { active?: boolean; payload?: any[]; unit?: string }) {
   if (!active || !payload?.length) return null;
@@ -16,6 +16,7 @@ function BarTooltip({ active, payload, unit }: { active?: boolean; payload?: any
         {d.value?.toLocaleString?.() ?? d.value}
         {unit ? ` ${unit}` : ""}
       </div>
+      {d.extra && <div className="mt-0.5 tabular-nums text-ink-muted">{d.extra}</div>}
     </div>
   );
 }

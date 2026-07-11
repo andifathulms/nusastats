@@ -9,7 +9,7 @@ type Feature = {
 };
 type FC = { features: Feature[] };
 
-export type MapValue = { value: number; name: string; sub?: string };
+export type MapValue = { value: number; name: string; sub?: string; extra?: string };
 
 // Sequential low->high scale — single-hue royal blue ramp.
 const STOPS = ["#EAF0FD", "#B7CBF3", "#7CA0E8", "#3F6FD6", "#14264F"];
@@ -262,6 +262,9 @@ export function ChoroplethMap({
           <div className="mt-1 tabular-nums text-ink-text">
             {values.has(hover.id) ? `${values.get(hover.id)!.value.toLocaleString()} ${unit ?? ""}` : "tanpa data"}
           </div>
+          {values.get(hover.id)?.extra && (
+            <div className="mt-0.5 tabular-nums text-ink-muted">{values.get(hover.id)!.extra}</div>
+          )}
         </div>
       )}
     </div>
