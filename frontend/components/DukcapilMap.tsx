@@ -94,7 +94,13 @@ export function DukcapilMap({
     Promise.all(calls)
       .then((rs) => {
         const first = rs.find(Boolean);
-        setRank(first ? { ...first, results: rs.flatMap((r) => r.results) } : null);
+        if (!first) return setRank(null);
+        // Per-province results are each sorted only within their province, so
+        // merge then re-sort globally + re-rank (else the top-list just shows
+        // the first-selected province's biggest, ignoring later ones).
+        const merged = rs.flatMap((r) => r.results).sort((a, b) => b.value - a.value);
+        merged.forEach((r, i) => (r.rank = i + 1));
+        setRank({ ...first, results: merged });
       })
       .finally(() => setLoading(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
