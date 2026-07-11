@@ -6,6 +6,7 @@ import { api, bpsRegionLabel, CHART, groupColor } from "@/lib/api";
 import { type CompositionConfig } from "@/lib/posts";
 import { Panel } from "@/components/ui";
 import { SeriesChart } from "@/components/SeriesChart";
+import { ChoroplethMap, type MapValue } from "@/components/ChoroplethMap";
 
 // 17 distinct-but-harmonious hues, assigned per sector (turvar) so a colour
 // means the same category in every region's bar.
@@ -130,6 +131,9 @@ export function CompositionPost({ config }: { config: CompositionConfig }) {
     () => (level === "province" && trend ? aggregateTrend(trend) : trend),
     [level, trend]
   );
+  // Map is always province-level (only province geometry exists), independent
+  // of the ranking's level toggle.
+  const provinceRows = useMemo(() => aggregateRows(rows, provNames), [rows, provNames]);
 
   const filtered = useMemo(
     () => (q ? displayRows.filter((r) => r.name.toLowerCase().includes(q.toLowerCase())) : displayRows),
@@ -259,8 +263,63 @@ export function CompositionPost({ config }: { config: CompositionConfig }) {
         />
       )}
 
+      <MapPanel rows={provinceRows} sectors={sectors} groups={config.groups} />
       <CorrelationPanel rows={displayRows} sectors={sectors} groups={config.groups} />
     </div>
+  );
+}
+
+function MapPanel({
+  rows,
+  sectors,
+  groups,
+}: {
+  rows: RegionRow[];
+  sectors: Sector[];
+  groups?: { label: string; color: string; ids: string[] }[];
+}) {
+  const dims = useMemo(
+    () => [
+      ...(groups ?? []).map((g) => ({ key: `g:${g.label}`, label: g.label, ids: g.ids })),
+      ...sectors.map((s) => ({ key: `s:${s.id}`, label: s.label, ids: [s.id] })),
+    ],
+    [groups, sectors]
+  );
+  const [dimKey, setDimKey] = useState("");
+  const dim = dims.find((d) => d.key === dimKey) ?? dims[0];
+
+  const values = useMemo(() => {
+    const m = new Map<string, MapValue>();
+    if (dim) {
+      for (const r of rows) {
+        const share = r.total ? (dim.ids.reduce((a, id) => a + (r.byId[id] ?? 0), 0) / r.total) * 100 : 0;
+        m.set(r.domain_id, { value: Math.round(share * 10) / 10, name: r.name });
+      }
+    }
+    return m;
+  }, [rows, dim]);
+  const vals = [...values.values()].map((v) => v.value);
+  const min = vals.length ? Math.min(...vals) : 0;
+  const max = vals.length ? Math.max(...vals) : 100;
+
+  if (dims.length < 1) return null;
+
+  return (
+    <Panel>
+      <div className="mb-3 flex flex-wrap items-center gap-2">
+        <span className="text-sm font-semibold text-ink-text">Peta share sektor per provinsi</span>
+        <select
+          value={dim?.key ?? ""}
+          onChange={(e) => setDimKey(e.target.value)}
+          className="ml-auto rounded-lg border border-ink-border bg-ink-panel2 px-2 py-1.5 text-sm text-ink-text outline-none focus:border-ink-accent/60"
+        >
+          {dims.map((d) => (
+            <option key={d.key} value={d.key}>{d.label}</option>
+          ))}
+        </select>
+      </div>
+      <ChoroplethMap values={values} min={min} max={max} unit="%" />
+    </Panel>
   );
 }
 
