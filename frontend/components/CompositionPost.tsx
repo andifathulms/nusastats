@@ -18,7 +18,10 @@ const PALETTE = [
 const PAGE = 10;
 
 type Sector = { id: string; label: string; color: string };
-type RegionRow = { domain_id: string; name: string; total: number; byId: Record<string, number> };
+// `total` = magnitude for ranking/size (latest FULL YEAR, harga konstan).
+// `compTotal` = the composition (latest-quarter 17-sector) grand total, the
+// denominator for sector shares. byId = per-sector values from that quarter.
+type RegionRow = { domain_id: string; name: string; total: number; compTotal: number; byId: Record<string, number> };
 type Trend = {
   byRegion: Map<string, { year: number; value: number }[]>;
   rankByRegion: Map<string, Record<number, number>>;
@@ -63,6 +66,7 @@ export function CompositionPost({ config }: { config: CompositionConfig }) {
       if (cancelled) return;
       setXwalk(new Map(provs.results.map((x) => [x.bps_domain_id, x])));
 
+      const latestTotal = new Map<string, number>(); // region -> latest full-year PDRB
       if (ts) {
         const byRegion = new Map<string, { year: number; value: number }[]>();
         for (const d of ts.results) {
@@ -72,6 +76,8 @@ export function CompositionPost({ config }: { config: CompositionConfig }) {
           byRegion.set(d.domain_id, arr);
         }
         byRegion.forEach((arr) => arr.sort((a, b) => a.year - b.year));
+        // Latest full-year total per region — the ranking magnitude.
+        byRegion.forEach((arr, dom) => arr.length && latestTotal.set(dom, arr[arr.length - 1].value));
         // Rank each region within every year (by that year's total, desc).
         const rankByRegion = new Map<string, Record<number, number>>();
         const years = [...new Set(ts.results.map((d) => d.year).filter((y): y is number => y != null))];
@@ -104,12 +110,18 @@ export function CompositionPost({ config }: { config: CompositionConfig }) {
         byRegion.set(d.domain_id, r);
       }
       const regionRows: RegionRow[] = [...byRegion.entries()]
-        .map(([domain_id, r]) => ({
-          domain_id,
-          name: bpsRegionLabel(r.name, domain_id),
-          total: r.total || Object.values(r.byId).reduce((a, v) => a + v, 0),
-          byId: r.byId,
-        }))
+        .map(([domain_id, r]) => {
+          const compTotal = r.total || Object.values(r.byId).reduce((a, v) => a + v, 0);
+          return {
+            domain_id,
+            name: bpsRegionLabel(r.name, domain_id),
+            // Rank/size by the latest full-year total; fall back to the
+            // composition quarter only if the annual series lacks the region.
+            total: latestTotal.get(domain_id) ?? compTotal,
+            compTotal,
+            byId: r.byId,
+          };
+        })
         .sort((a, b) => b.total - a.total);
 
       setSectors(secs);
@@ -211,19 +223,19 @@ export function CompositionPost({ config }: { config: CompositionConfig }) {
                   {r.name}
                 </span>
                 <span className="w-20 shrink-0 text-right text-xs tabular-nums text-ink-muted">{rp(r.total)}</span>
-                {/* Bar length ∝ region total vs the #1 region; segments ∝ sectors.
-                    A segment's width over the full track = value / maxTotal. */}
+                {/* Bar length ∝ region's full-year PDRB vs #1; segments split it
+                    by the (latest-quarter) sector shares. Width = share × total/max. */}
                 <span className="flex h-4 flex-1 overflow-hidden rounded bg-ink-panel2 ring-1 ring-ink-border/70">
                   {sectors.map((s) => {
-                    const v = r.byId[s.id] ?? 0;
-                    const w = maxTotal ? (v / maxTotal) * 100 : 0;
+                    const share = r.compTotal ? (r.byId[s.id] ?? 0) / r.compTotal : 0;
+                    const w = maxTotal ? share * (r.total / maxTotal) * 100 : 0;
                     if (w <= 0) return null;
                     return (
                       <span
                         key={s.id}
                         className="shrink-0"
                         style={{ width: `${w}%`, background: s.color }}
-                        title={`${s.label}: ${pct(r.total ? (v / r.total) * 100 : 0)} · ${rp(v)}`}
+                        title={`${s.label}: ${pct(share * 100)} · ≈ ${rp(share * r.total)}`}
                       />
                     );
                   })}
@@ -281,8 +293,10 @@ function MapPanel({
   groups?: { label: string; color: string; ids: string[] }[];
   xwalk: Map<string, RegencyCrosswalk>;
 }) {
+  // "PDRB (total)" first, then groups, then the 17 sectors. Empty ids = total.
   const dims = useMemo(
     () => [
+      { key: "total", label: "PDRB (total)", ids: [] as string[] },
       ...(groups ?? []).map((g) => ({ key: `g:${g.label}`, label: g.label, ids: g.ids })),
       ...sectors.map((s) => ({ key: `s:${s.id}`, label: s.label, ids: [s.id] })),
     ],
@@ -292,21 +306,25 @@ function MapPanel({
   const [mapLevel, setMapLevel] = useState<"province" | "regency">("province");
   const [metric, setMetric] = useState<"share" | "nominal">("share");
   const dim = dims.find((d) => d.key === dimKey) ?? dims[0];
+  const isTotal = !dim || dim.ids.length === 0;
+  const effMetric = isTotal ? "nominal" : metric; // total has no meaningful %
 
   // Province choropleth keys by the 2-digit Kemendagri code (dukcapil-provinces);
   // kabupaten keys by the Kemendagri regency code via the crosswalk
   // (dukcapil-regencies) — BPS's own codes don't match that geometry.
   const { values, geojsonUrls } = useMemo(() => {
     const m = new Map<string, MapValue>();
-    const nominalOf = (r: RegionRow) => (dim ? dim.ids.reduce((a, id) => a + (r.byId[id] ?? 0), 0) : 0); // Milyar
-    const shareOf = (r: RegionRow) => (r.total ? (nominalOf(r) / r.total) * 100 : 0);
+    // Share from the composition quarter; nominal = full-year total/estimate.
+    const shareOf = (r: RegionRow) =>
+      isTotal ? 100 : r.compTotal ? (dim.ids.reduce((a, id) => a + (r.byId[id] ?? 0), 0) / r.compTotal) * 100 : 0;
+    const nominalOf = (r: RegionRow) => (isTotal ? r.total : (shareOf(r) / 100) * r.total); // Milyar
     // Colour by the chosen metric; the tooltip's `extra` shows the other one.
     const mv = (r: RegionRow): MapValue => {
       const nom = nominalOf(r);
       const shr = shareOf(r);
-      return metric === "share"
-        ? { value: Math.round(shr * 10) / 10, name: r.name, extra: rp(nom) }
-        : { value: Math.round((nom / 1000) * 100) / 100, name: r.name, extra: `${shr.toLocaleString("id-ID", { maximumFractionDigits: 1 })}% dari PDRB` };
+      return effMetric === "share"
+        ? { value: Math.round(shr * 10) / 10, name: r.name, extra: `≈ ${rp(nom)}` }
+        : { value: Math.round((nom / 1000) * 100) / 100, name: r.name, extra: isTotal ? undefined : `${shr.toLocaleString("id-ID", { maximumFractionDigits: 1 })}% dari PDRB` };
     };
     if (mapLevel === "province") {
       provinceRows.forEach((r) => m.set(r.domain_id, mv(r)));
@@ -317,11 +335,11 @@ function MapPanel({
       if (kem) m.set(kem, mv(r));
     });
     return { values: m, geojsonUrls: ["/dukcapil-regencies.geojson"] };
-  }, [mapLevel, metric, provinceRows, rows, dim, xwalk]);
+  }, [mapLevel, effMetric, isTotal, provinceRows, rows, dim, xwalk]);
   const vals = [...values.values()].map((v) => v.value);
   const min = vals.length ? Math.min(...vals) : 0;
   const max = vals.length ? Math.max(...vals) : 100;
-  const unit = metric === "share" ? "%" : "T";
+  const unit = effMetric === "share" ? "%" : "T";
 
   if (dims.length < 1) return null;
 
@@ -416,7 +434,7 @@ function CorrelationPanel({
   const yd = dims.find((d) => d.key === yKey) ?? dims[1] ?? dims[0];
 
   const share = (row: RegionRow, ids: string[]) =>
-    row.total ? (ids.reduce((a, id) => a + (row.byId[id] ?? 0), 0) / row.total) * 100 : 0;
+    row.compTotal ? (ids.reduce((a, id) => a + (row.byId[id] ?? 0), 0) / row.compTotal) * 100 : 0;
 
   // Provinces present among the rows, for the legend/filter.
   const provs = useMemo(() => {
@@ -556,8 +574,9 @@ function aggregateRows(rows: RegionRow[], xwalk: Map<string, RegencyCrosswalk>):
   const g = new Map<string, RegionRow>();
   for (const r of rows) {
     const p = provOf(r.domain_id, xwalk);
-    const cur = g.get(p.code) ?? { domain_id: p.code, name: p.name, total: 0, byId: {} };
+    const cur = g.get(p.code) ?? { domain_id: p.code, name: p.name, total: 0, compTotal: 0, byId: {} };
     cur.total += r.total;
+    cur.compTotal += r.compTotal;
     for (const [k, v] of Object.entries(r.byId)) cur.byId[k] = (cur.byId[k] ?? 0) + v;
     g.set(p.code, cur);
   }
@@ -613,8 +632,13 @@ function Detail({
   trendUnit?: string;
 }) {
   const isProvince = row.domain_id.length <= 2; // province rows are 2-digit
+  // Shares from the composition quarter (compTotal); nominal is the full-year
+  // estimate = share × full-year total.
   const parts = sectors
-    .map((s) => ({ ...s, value: row.byId[s.id] ?? 0, share: row.total ? ((row.byId[s.id] ?? 0) / row.total) * 100 : 0 }))
+    .map((s) => {
+      const share = row.compTotal ? ((row.byId[s.id] ?? 0) / row.compTotal) * 100 : 0;
+      return { ...s, share, value: (share / 100) * row.total };
+    })
     .sort((a, b) => b.value - a.value);
   const top3 = parts.slice(0, 3).reduce((a, p) => a + p.share, 0);
   const maxPart = parts[0]?.value || 1; // top sector = full bar, rest relative to it
@@ -639,7 +663,7 @@ function Detail({
         <div className="mb-2 text-xs font-medium uppercase tracking-wide text-ink-muted">Komposisi PDRB · 17 kategori</div>
         <div className="flex h-7 w-full overflow-hidden rounded-md ring-1 ring-ink-border">
           {sectors.map((s) => {
-            const share = row.total ? ((row.byId[s.id] ?? 0) / row.total) * 100 : 0;
+            const share = row.compTotal ? ((row.byId[s.id] ?? 0) / row.compTotal) * 100 : 0;
             if (share <= 0) return null;
             return <div key={s.id} title={`${s.label}: ${pct(share)}`} style={{ width: `${share}%`, background: s.color }} />;
           })}
@@ -702,7 +726,9 @@ function HistoryPanel({
         y[d.turvar_id] = d.value;
         byYear.set(d.year, y);
       }
-      setRows([...byYear.values()].sort((a, b) => a.year - b.year));
+      const ordered = [...byYear.values()].sort((a, b) => a.year - b.year);
+      // Drop the partial current year (BPS reports it as one quarter).
+      setRows(cfg.partialLastYear ? ordered.slice(0, -1) : ordered);
     });
     return () => {
       cancelled = true;
@@ -711,16 +737,14 @@ function HistoryPanel({
 
   if (!rows) return <Panel><div className="flex h-40 items-center justify-center text-sm text-ink-muted">Memuat…</div></Panel>;
   const first = rows[0], last = rows[rows.length - 1];
-  const lastYear = last?.year;
-  // Growth to the last FULL year (the partial current year would understate it).
-  const endRow = cfg.partialLastYear && rows.length > 1 ? rows[rows.length - 2] : last;
-  const growth = first?.[cfg.totalTurvarId] ? (endRow[cfg.totalTurvarId] / first[cfg.totalTurvarId] - 1) * 100 : 0;
+  const endRow = last; // partial year already dropped
+  const growth = first?.[cfg.totalTurvarId] ? (last[cfg.totalTurvarId] / first[cfg.totalTurvarId] - 1) * 100 : 0;
 
   return (
     <Panel>
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <div className="text-xs font-medium uppercase tracking-wide text-ink-muted">
-          {cfg.label} · {first?.year}–{lastYear}
+          {cfg.label} · {first?.year}–{endRow?.year}
         </div>
         <div className="inline-flex rounded-lg border border-ink-border/80 bg-ink-panel2/50 p-0.5">
           {(["total", "components"] as const).map((m) => (
@@ -761,7 +785,6 @@ function HistoryPanel({
       <div className="mt-2 text-xs text-ink-muted">
         Pertumbuhan {first?.year}→{endRow?.year}: <span className="font-semibold text-ink-text">{growth >= 0 ? "+" : ""}{growth.toLocaleString("id-ID", { maximumFractionDigits: 0 })}%</span>
         {ranks[endRow?.year] != null && <> · Peringkat {endRow?.year}: #{ranks[endRow?.year]} nasional</>}
-        {cfg.partialLastYear && <> · <span className="text-amber-600">{lastYear} = data berjalan (belum setahun penuh)</span></>}
       </div>
     </Panel>
   );
@@ -769,8 +792,9 @@ function HistoryPanel({
 
 function GroupPanel({ row, groups }: { row: RegionRow; groups: { label: string; color: string; ids: string[] }[] }) {
   const g = groups.map((grp) => {
-    const value = grp.ids.reduce((a, id) => a + (row.byId[id] ?? 0), 0);
-    return { ...grp, value, share: row.total ? (value / row.total) * 100 : 0 };
+    const abs = grp.ids.reduce((a, id) => a + (row.byId[id] ?? 0), 0);
+    const share = row.compTotal ? (abs / row.compTotal) * 100 : 0;
+    return { ...grp, value: (share / 100) * row.total, share };
   });
   const lead = [...g].sort((a, b) => b.value - a.value)[0];
   return (

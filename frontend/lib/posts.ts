@@ -58,9 +58,12 @@ export const POSTS: Post[] = [
       unit: "Milyar Rupiah",
       adminLevel: "regency",
       year: "2026",
-      note: "PDRB triwulanan atas dasar harga berlaku, menurut 17 kategori lapangan usaha. Sumber: BPS.",
-      trend: { variableId: "2193", totalTurvarId: "1550", unit: "Milyar Rupiah", label: "PDRB tahunan (harga berlaku)" },
-      history: { variableId: "2268", totalTurvarId: "2022", unit: "Milyar Rupiah", label: "PDRB per lapangan usaha (harga berlaku)", partialLastYear: true },
+      note: "Komposisi sektor: PDRB triwulanan harga berlaku menurut 17 kategori lapangan usaha (triwulan terkini). Peringkat & besaran: PDRB tahunan harga konstan (2010=100) tahun penuh terakhir. Sumber: BPS.",
+      // Total/magnitude + trend + ranking-movement use harga konstan (real
+      // growth), full years only. Composition shares come from the (latest-
+      // quarter) 17-sector variable above — there is no full-year kab 17-sector.
+      trend: { variableId: "2194", totalTurvarId: "1550", unit: "Milyar Rupiah", label: "PDRB tahunan (harga konstan 2010)" },
+      history: { variableId: "2267", totalTurvarId: "2022", unit: "Milyar Rupiah", label: "PDRB per lapangan usaha (harga konstan 2010)", partialLastYear: true },
       groups: [
         { label: "Primer", color: "#5FBF6A", ids: ["2005", "2006"] },
         { label: "Sekunder", color: "#EE9A3A", ids: ["2007", "2008", "2009", "2010"] },
