@@ -290,6 +290,7 @@ function MapPanel({
   );
   const [dimKey, setDimKey] = useState("");
   const [mapLevel, setMapLevel] = useState<"province" | "regency">("province");
+  const [metric, setMetric] = useState<"share" | "nominal">("share");
   const dim = dims.find((d) => d.key === dimKey) ?? dims[0];
 
   // Province choropleth keys by the 2-digit Kemendagri code (dukcapil-provinces);
@@ -297,21 +298,30 @@ function MapPanel({
   // (dukcapil-regencies) — BPS's own codes don't match that geometry.
   const { values, geojsonUrls } = useMemo(() => {
     const m = new Map<string, MapValue>();
-    const shareOf = (r: RegionRow) =>
-      dim && r.total ? Math.round((dim.ids.reduce((a, id) => a + (r.byId[id] ?? 0), 0) / r.total) * 1000) / 10 : 0;
+    const nominalOf = (r: RegionRow) => (dim ? dim.ids.reduce((a, id) => a + (r.byId[id] ?? 0), 0) : 0); // Milyar
+    const shareOf = (r: RegionRow) => (r.total ? (nominalOf(r) / r.total) * 100 : 0);
+    // Colour by the chosen metric; the tooltip's `extra` shows the other one.
+    const mv = (r: RegionRow): MapValue => {
+      const nom = nominalOf(r);
+      const shr = shareOf(r);
+      return metric === "share"
+        ? { value: Math.round(shr * 10) / 10, name: r.name, extra: rp(nom) }
+        : { value: Math.round((nom / 1000) * 100) / 100, name: r.name, extra: `${shr.toLocaleString("id-ID", { maximumFractionDigits: 1 })}% dari PDRB` };
+    };
     if (mapLevel === "province") {
-      provinceRows.forEach((r) => m.set(r.domain_id, { value: shareOf(r), name: r.name }));
+      provinceRows.forEach((r) => m.set(r.domain_id, mv(r)));
       return { values: m, geojsonUrls: ["/dukcapil-provinces.geojson"] };
     }
     rows.forEach((r) => {
       const kem = xwalk.get(r.domain_id)?.kemendagri_code;
-      if (kem) m.set(kem, { value: shareOf(r), name: r.name });
+      if (kem) m.set(kem, mv(r));
     });
     return { values: m, geojsonUrls: ["/dukcapil-regencies.geojson"] };
-  }, [mapLevel, provinceRows, rows, dim, xwalk]);
+  }, [mapLevel, metric, provinceRows, rows, dim, xwalk]);
   const vals = [...values.values()].map((v) => v.value);
   const min = vals.length ? Math.min(...vals) : 0;
   const max = vals.length ? Math.max(...vals) : 100;
+  const unit = metric === "share" ? "%" : "T";
 
   if (dims.length < 1) return null;
 
@@ -319,9 +329,22 @@ function MapPanel({
     <Panel>
       <div className="mb-3 flex flex-wrap items-center gap-2">
         <span className="text-sm font-semibold text-ink-text">
-          Peta share sektor · {mapLevel === "province" ? "provinsi" : "kabupaten/kota"}
+          Peta sektor · {mapLevel === "province" ? "provinsi" : "kabupaten/kota"}
         </span>
-        <div className="ml-auto flex items-center gap-2">
+        <div className="ml-auto flex flex-wrap items-center gap-2">
+          <div className="inline-flex rounded-lg border border-ink-border/80 bg-ink-panel2/50 p-0.5">
+            {(["share", "nominal"] as const).map((mt) => (
+              <button
+                key={mt}
+                onClick={() => setMetric(mt)}
+                className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
+                  metric === mt ? "bg-brand-gradient text-white" : "text-ink-muted hover:text-ink-text"
+                }`}
+              >
+                {mt === "share" ? "Persentase" : "Nominal"}
+              </button>
+            ))}
+          </div>
           <div className="inline-flex rounded-lg border border-ink-border/80 bg-ink-panel2/50 p-0.5">
             {(["province", "regency"] as const).map((lv) => (
               <button
@@ -346,7 +369,7 @@ function MapPanel({
           </select>
         </div>
       </div>
-      <ChoroplethMap key={mapLevel} values={values} min={min} max={max} unit="%" geojsonUrls={geojsonUrls} />
+      <ChoroplethMap key={mapLevel} values={values} min={min} max={max} unit={unit} geojsonUrls={geojsonUrls} />
     </Panel>
   );
 }
