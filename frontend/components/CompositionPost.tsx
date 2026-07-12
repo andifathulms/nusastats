@@ -855,14 +855,16 @@ function RankChart({ rows }: { rows: { year: number; rank: number }[] }) {
   // visible — not [1..maxRank], which would pin a #339 line to the bottom.
   const rr = rows.map((r) => r.rank);
   const minR = Math.min(...rr), maxR = Math.max(...rr);
-  const pad = Math.max(1, Math.round((maxR - minR) * 0.3));
+  // Fractional padding (no clamp to 1) so even a flat #1 sits centred, not on
+  // the top edge. Integer ticks only, so no "#0.4" shows.
+  const pad = Math.max(0.6, (maxR - minR) * 0.3);
   return (
     <ResponsiveContainer width="100%" height={300}>
       <LineChart data={rows} margin={{ top: 8, right: 16, bottom: 0, left: 8 }}>
         <CartesianGrid stroke={CHART.grid} vertical={false} />
         <XAxis dataKey="year" tick={{ fill: CHART.axisTick, fontSize: 12 }} axisLine={{ stroke: CHART.axisLine }} tickLine={false} />
         <YAxis
-          reversed domain={[Math.max(1, minR - pad), maxR + pad]} allowDecimals={false} width={40}
+          reversed domain={[minR - pad, maxR + pad]} allowDecimals={false} width={40}
           tick={{ fill: CHART.axisTick, fontSize: 12 }} axisLine={{ stroke: CHART.axisLine }} tickLine={false}
           tickFormatter={(v) => `#${v}`}
         />
