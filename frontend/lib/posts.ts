@@ -6,7 +6,7 @@
 // (e.g. PDRB by 17 lapangan-usaha categories). Reuses the existing BPS API —
 // `ranking` (turvar=total) for the region list, `series` for one region's parts.
 
-export type PostKind = "composition" | "poverty" | "hdi" | "demography" | "gender" | "prosperity";
+export type PostKind = "composition" | "poverty" | "expenditure" | "hdi" | "demography" | "gender" | "prosperity";
 
 export type CompositionConfig = {
   variableId: string;
@@ -53,6 +53,21 @@ export type PovertyConfig = {
   latestYear: number;
   firstYear: number;
   fullCoverageYear: number; // first year all 34 provinces report (national sums valid from here)
+  note: string;
+};
+
+// `expenditure`: PDRB decomposed by USE (pengeluaran) — Konsumsi RT / LNPRT /
+// Pemerintah, PMTB + Inventori (investasi), and Net Ekspor. Unlike the 17
+// lapangan-usaha sectors this is full-year at kabupaten level (2010–2025), so it
+// gets real kab history; and Net Ekspor can be NEGATIVE (net importers), so the
+// viz is diverging bars, not a 100% stack.
+export type ExpenditureConfig = {
+  variableId: string; // konstan, kab, 6 components + total, 2010–2025 (2194)
+  totalTurvarId: string; // "1550"
+  unit: string;
+  year: string; // latest full year for the composition, e.g. "2025"
+  components: { id: string; label: string; color: string }[];
+  groups: { label: string; color: string; ids: string[] }[];
   note: string;
 };
 
@@ -150,6 +165,7 @@ export type Post = {
   kind: PostKind;
   composition?: CompositionConfig;
   poverty?: PovertyConfig;
+  expenditure?: ExpenditureConfig;
   hdi?: HdiConfig;
   demography?: DemographyConfig;
   gender?: GenderConfig;
@@ -356,6 +372,39 @@ export const POSTS: Post[] = [
           decimals: 2,
           desc: "Seperti P1 tapi memberi bobot lebih besar pada yang paling miskin — ukuran ketimpangan di antara penduduk miskin.",
         },
+      ],
+    },
+  },
+  {
+    slug: "belanja-ekonomi-daerah",
+    title: "Untuk Apa Ekonomi Daerah Dibelanjakan?",
+    subtitle: "Konsumsi, investasi, atau ekspor — sisi pengeluaran dari PDRB tiap daerah.",
+    tag: "Ekonomi",
+    source: "BPS",
+    intro: [
+      "PDRB bisa dibaca dari dua sisi. Sisi lapangan usaha menjawab \"apa yang memproduksi ekonomi\" (pertanian, industri, jasa). Sisi pengeluaran menjawab pertanyaan yang berbeda: \"untuk apa ekonomi itu dipakai\" — dikonsumsi rumah tangga, dibelanjakan pemerintah, diinvestasikan, atau diekspor.",
+      "Enam komponennya: Konsumsi Rumah Tangga, Konsumsi LNPRT, Konsumsi Pemerintah, Pembentukan Modal Tetap Bruto (investasi), Perubahan Inventori, dan Net Ekspor. Yang terakhir bisa negatif — banyak daerah kota mengimpor lebih banyak daripada yang diekspor, sehingga Net Ekspor-nya minus.",
+      "Data ini tersedia tahunan penuh 2010–2025 di tingkat kabupaten/kota (harga konstan 2010=100), jadi kita bisa melihat komposisi tahun penuh dan perkembangannya dari waktu ke waktu.",
+    ],
+    kind: "expenditure",
+    expenditure: {
+      variableId: "2194",
+      totalTurvarId: "1550",
+      unit: "Milyar Rupiah",
+      year: "2025",
+      note: "PDRB menurut pengeluaran, atas dasar harga konstan (2010=100), tahun penuh 2010–2025. Net Ekspor dapat bernilai negatif. Sumber: BPS.",
+      components: [
+        { id: "1544", label: "Konsumsi RT", color: "#2E5BDA" },
+        { id: "1545", label: "Konsumsi LNPRT", color: "#4E8CF0" },
+        { id: "1546", label: "Konsumsi Pemerintah", color: "#37A98C" },
+        { id: "1547", label: "PMTB (Investasi)", color: "#E0B93B" },
+        { id: "1548", label: "Perubahan Inventori", color: "#EE9A3A" },
+        { id: "1549", label: "Net Ekspor", color: "#8E5BD1" },
+      ],
+      groups: [
+        { label: "Konsumsi", color: "#37A98C", ids: ["1544", "1545", "1546"] },
+        { label: "Investasi", color: "#E0B93B", ids: ["1547", "1548"] },
+        { label: "Net Ekspor", color: "#8E5BD1", ids: ["1549"] },
       ],
     },
   },

@@ -4,6 +4,7 @@ import { getPost, POSTS } from "@/lib/posts";
 import { Badge } from "@/components/ui";
 import { CompositionPost } from "@/components/CompositionPost";
 import { PovertyPost } from "@/components/PovertyPost";
+import { ExpenditurePost } from "@/components/ExpenditurePost";
 import { HdiPost } from "@/components/HdiPost";
 import { DemographyPost } from "@/components/DemographyPost";
 import { GenderPost } from "@/components/GenderPost";
@@ -44,6 +45,7 @@ export default function PostPage({ params }: { params: { slug: string } }) {
       <div className="mt-8">
         {post.kind === "composition" && post.composition && <CompositionPost config={post.composition} />}
         {post.kind === "poverty" && post.poverty && <PovertyPost config={post.poverty} />}
+        {post.kind === "expenditure" && post.expenditure && <ExpenditurePost config={post.expenditure} />}
         {post.kind === "hdi" && post.hdi && <HdiPost config={post.hdi} />}
         {post.kind === "demography" && post.demography && <DemographyPost config={post.demography} />}
         {post.kind === "gender" && post.gender && <GenderPost config={post.gender} />}
