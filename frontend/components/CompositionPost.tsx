@@ -43,7 +43,7 @@ export function CompositionPost({ config }: { config: CompositionConfig }) {
   const [rows, setRows] = useState<RegionRow[]>([]);
   const [trend, setTrend] = useState<Trend | null>(null);
   const [xwalk, setXwalk] = useState<Map<string, RegencyCrosswalk>>(new Map());
-  const [level, setLevel] = useState<"regency" | "province">("regency");
+  const [level, setLevel] = useState<"regency" | "province" | "region">("regency");
   const [sel, setSel] = useState<string | null>(null);
   const [page, setPage] = useState(0);
   const [q, setQ] = useState("");
@@ -137,16 +137,27 @@ export function CompositionPost({ config }: { config: CompositionConfig }) {
     };
   }, [config.variableId, config.adminLevel, config.totalTurvarId, config.year, config.shortLabels, config.trend]);
 
-  // Province view aggregates the loaded kabupaten data by 2-digit code prefix.
+  // Aggregation keys: province (via crosswalk) or macro-region (province→region).
+  const provKey = (id: string) => provOf(id, xwalk);
+  const regionKey = (id: string) => regionOf(provOf(id, xwalk).code);
   const displayRows = useMemo(
-    () => (level === "province" ? aggregateRows(rows, xwalk) : rows),
+    () => (level === "province" ? aggregateRows(rows, provKey) : level === "region" ? aggregateRows(rows, regionKey) : rows),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [level, rows, xwalk]
   );
   const displayTrend = useMemo(
-    () => (level === "province" && trend ? aggregateTrend(trend, xwalk) : trend),
+    () =>
+      !trend
+        ? trend
+        : level === "province"
+        ? aggregateTrend(trend, (id) => provKey(id).code)
+        : level === "region"
+        ? aggregateTrend(trend, (id) => regionKey(id).code)
+        : trend,
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [level, trend, xwalk]
   );
-  const provinceRows = useMemo(() => aggregateRows(rows, xwalk), [rows, xwalk]);
+  const provinceRows = useMemo(() => aggregateRows(rows, provKey), [rows, xwalk]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const filtered = useMemo(
     () => (q ? displayRows.filter((r) => r.name.toLowerCase().includes(q.toLowerCase())) : displayRows),
@@ -177,12 +188,12 @@ export function CompositionPost({ config }: { config: CompositionConfig }) {
           <div className="text-sm font-semibold text-ink-text">
             Peringkat & komposisi PDRB
             <span className="ml-2 text-xs font-normal text-ink-muted">
-              {displayRows.length} {level === "province" ? "provinsi" : "kabupaten/kota"}
+              {displayRows.length} {level === "province" ? "provinsi" : level === "region" ? "wilayah" : "kabupaten/kota"}
             </span>
           </div>
           <div className="flex items-center gap-2">
             <div className="inline-flex rounded-lg border border-ink-border/80 bg-ink-panel2/50 p-0.5">
-              {(["regency", "province"] as const).map((lv) => (
+              {(["regency", "province", "region"] as const).map((lv) => (
                 <button
                   key={lv}
                   onClick={() => {
@@ -193,7 +204,7 @@ export function CompositionPost({ config }: { config: CompositionConfig }) {
                     level === lv ? "bg-brand-gradient text-white" : "text-ink-muted hover:text-ink-text"
                   }`}
                 >
-                  {lv === "regency" ? "Kab/Kota" : "Provinsi"}
+                  {lv === "regency" ? "Kab/Kota" : lv === "province" ? "Provinsi" : "Region"}
                 </button>
               ))}
             </div>
@@ -588,26 +599,41 @@ function provOf(domainId: string, xwalk: Map<string, RegencyCrosswalk>) {
   return { code: cw?.prov_code ?? domainId.slice(0, 2), name: cw?.prov_name ?? domainId.slice(0, 2) };
 }
 
-// Aggregate kabupaten rows up to province (modern 38 via crosswalk). Province
-// domain_id = the 2-digit Kemendagri province code. Sums total + every sector.
-function aggregateRows(rows: RegionRow[], xwalk: Map<string, RegencyCrosswalk>): RegionRow[] {
+// Macro-regions (kelompok pulau), keyed by 2-digit province code.
+const MACRO_REGIONS: [string, string[]][] = [
+  ["Sumatera", ["11", "12", "13", "14", "15", "16", "17", "18", "19", "21"]],
+  ["Jawa", ["31", "32", "33", "34", "35", "36"]],
+  ["Kepulauan Sunda Kecil", ["51", "52", "53"]], // Bali, NTB, NTT
+  ["Kalimantan", ["61", "62", "63", "64", "65"]],
+  ["Sulawesi", ["71", "72", "73", "74", "75", "76"]],
+  ["Maluku dan Papua", ["81", "82", "91", "92", "93", "94", "95", "96"]],
+];
+const REGION_BY_PROV = new Map<string, { code: string; name: string }>();
+MACRO_REGIONS.forEach(([name, ps]) => ps.forEach((p) => REGION_BY_PROV.set(p, { code: `reg:${name}`, name })));
+function regionOf(provCode: string) {
+  return REGION_BY_PROV.get(provCode) ?? { code: "reg:Lainnya", name: "Lainnya" };
+}
+
+// Aggregate rows by a key function (region_id -> {code, name}); sums total +
+// compTotal + every sector, re-sorted by total.
+function aggregateRows(rows: RegionRow[], keyOf: (id: string) => { code: string; name: string }): RegionRow[] {
   const g = new Map<string, RegionRow>();
   for (const r of rows) {
-    const p = provOf(r.domain_id, xwalk);
-    const cur = g.get(p.code) ?? { domain_id: p.code, name: p.name, total: 0, compTotal: 0, byId: {} };
+    const k = keyOf(r.domain_id);
+    const cur = g.get(k.code) ?? { domain_id: k.code, name: k.name, total: 0, compTotal: 0, byId: {} };
     cur.total += r.total;
     cur.compTotal += r.compTotal;
-    for (const [k, v] of Object.entries(r.byId)) cur.byId[k] = (cur.byId[k] ?? 0) + v;
-    g.set(p.code, cur);
+    for (const [id, v] of Object.entries(r.byId)) cur.byId[id] = (cur.byId[id] ?? 0) + v;
+    g.set(k.code, cur);
   }
   return [...g.values()].sort((a, b) => b.total - a.total);
 }
 
-// Aggregate the annual trend to province (sum per year), re-ranking provinces.
-function aggregateTrend(trend: Trend, xwalk: Map<string, RegencyCrosswalk>): Trend {
+// Aggregate the annual trend by a key function (sum per year), re-ranking.
+function aggregateTrend(trend: Trend, keyOf: (id: string) => string): Trend {
   const byProv = new Map<string, Map<number, number>>();
   trend.byRegion.forEach((arr, dom) => {
-    const cc = provOf(dom, xwalk).code;
+    const cc = keyOf(dom);
     const ym = byProv.get(cc) ?? new Map<number, number>();
     for (const { year, value } of arr) ym.set(year, (ym.get(year) ?? 0) + value);
     byProv.set(cc, ym);
