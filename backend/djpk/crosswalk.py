@@ -42,6 +42,7 @@ _NAME_ALIASES = {
     "OKUSELATAN": "OGANKOMERINGULUSELATAN",
     "SANGIHE": "KEPULAUANSANGIHE",
     "MALUKUTENGGARABARAT": "KEPULAUANTANIMBAR",  # renamed 2019
+    "MAMUJUUTARA": "PASANGKAYU",                 # renamed 2017 (DJPK keeps old label in older years)
 }
 
 
