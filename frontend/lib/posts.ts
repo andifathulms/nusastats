@@ -6,7 +6,7 @@
 // (e.g. PDRB by 17 lapangan-usaha categories). Reuses the existing BPS API —
 // `ranking` (turvar=total) for the region list, `series` for one region's parts.
 
-export type PostKind = "composition" | "poverty" | "hdi";
+export type PostKind = "composition" | "poverty" | "hdi" | "demography";
 
 export type CompositionConfig = {
   variableId: string;
@@ -83,6 +83,28 @@ export type HdiConfig = {
   note: string;
 };
 
+// `demography`: Dukcapil (Kemendagri) administrative population by age band —
+// the demographic-dividend / aging story. Not BPS: uses `dukcapilApi` and its
+// own region codes/geometry. Each metric is a derived ratio (dependency, %
+// productive/elderly/children, median age, sex ratio) plus the 16 age bands
+// (hardcoded in DemographyPost) for a per-region age-structure profile.
+export type DemographyMetric = {
+  field: string; // Dukcapil indicator field (e.g. "dependency_ratio")
+  label: string;
+  short: string;
+  unit: string; // "%", "th", "" (per-100 ratios)
+  decimals: number;
+  desc: string;
+};
+
+export type DemographyConfig = {
+  metrics: DemographyMetric[];
+  primaryField: string; // default ranked/mapped indicator
+  scatterX: string;
+  scatterY: string;
+  note: string;
+};
+
 export type Post = {
   slug: string;
   title: string;
@@ -94,9 +116,39 @@ export type Post = {
   composition?: CompositionConfig;
   poverty?: PovertyConfig;
   hdi?: HdiConfig;
+  demography?: DemographyConfig;
 };
 
 export const POSTS: Post[] = [
+  {
+    slug: "bonus-demografi-penuaan",
+    title: "Bonus Demografi & Penuaan",
+    subtitle: "Sebagian daerah dipenuhi anak muda; sebagian lain mulai menua. Siapa dapat 'bonus'?",
+    tag: "Sosial",
+    source: "Dukcapil (Kemendagri)",
+    intro: [
+      "Struktur usia sebuah daerah menentukan masa depannya. Ketika penduduk usia produktif (15–64) jauh lebih banyak daripada yang harus ditanggung (anak dan lansia), sebuah daerah menikmati 'bonus demografi' — peluang pertumbuhan yang tidak akan berlangsung selamanya.",
+      "Tapi Indonesia tidak menua secara merata. Di sebagian daerah usia median penduduk masih di bawah 25 tahun; di sebagian lain sudah mendekati 37 tahun dan proporsi lansia terus naik. Di sini kita telusuri rasio ketergantungan, usia median, dan komposisi umur tiap provinsi dan kabupaten/kota — dari data administrasi kependudukan Dukcapil.",
+      "Pilih sebuah wilayah untuk melihat piramida usianya dan di mana ia berada dalam transisi demografi.",
+    ],
+    kind: "demography",
+    demography: {
+      primaryField: "dependency_ratio",
+      scatterX: "median_age",
+      scatterY: "dependency_ratio",
+      note: "Struktur usia penduduk menurut provinsi & kabupaten/kota. Sumber: Dukcapil (Ditjen Dukcapil, Kemendagri) — data administrasi kependudukan, kode & cakupan wilayah berbeda dari BPS.",
+      metrics: [
+        { field: "dependency_ratio", label: "Rasio Ketergantungan", short: "Rasio Ketergantungan", unit: "", decimals: 1, desc: "Jumlah penduduk non-produktif (anak + lansia) per 100 penduduk usia produktif. Makin rendah, makin besar 'bonus demografi'." },
+        { field: "median_age", label: "Usia Median", short: "Usia Median", unit: "th", decimals: 1, desc: "Usia yang membagi penduduk menjadi dua bagian sama besar — ukuran seberapa muda/tua sebuah daerah." },
+        { field: "pct_productive", label: "% Usia Produktif (15–64)", short: "% Produktif", unit: "%", decimals: 1, desc: "Persentase penduduk usia kerja — inti dari bonus demografi." },
+        { field: "pct_elderly", label: "% Lansia (65+)", short: "% Lansia", unit: "%", decimals: 1, desc: "Persentase penduduk lanjut usia — penanda daerah yang mulai menua." },
+        { field: "pct_children", label: "% Anak (0–14)", short: "% Anak", unit: "%", decimals: 1, desc: "Persentase penduduk anak — tinggi di daerah dengan kelahiran masih tinggi." },
+        { field: "dependency_old", label: "Rasio Ketergantungan Lansia", short: "Tanggungan Lansia", unit: "", decimals: 1, desc: "Lansia (65+) per 100 penduduk produktif — beban yang cenderung naik seiring penuaan." },
+        { field: "dependency_young", label: "Rasio Ketergantungan Muda", short: "Tanggungan Muda", unit: "", decimals: 1, desc: "Anak (0–14) per 100 penduduk produktif — beban yang menurun saat fertilitas turun." },
+        { field: "sex_ratio", label: "Rasio Jenis Kelamin", short: "Rasio L/P", unit: "", decimals: 1, desc: "Jumlah laki-laki per 100 perempuan — tinggi di daerah tujuan migrasi kerja." },
+      ],
+    },
+  },
   {
     slug: "membedah-ipm-daerah",
     title: "Membedah Pembangunan Manusia",

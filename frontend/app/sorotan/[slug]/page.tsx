@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui";
 import { CompositionPost } from "@/components/CompositionPost";
 import { PovertyPost } from "@/components/PovertyPost";
 import { HdiPost } from "@/components/HdiPost";
+import { DemographyPost } from "@/components/DemographyPost";
 
 export function generateStaticParams() {
   return POSTS.map((p) => ({ slug: p.slug }));
@@ -42,6 +43,7 @@ export default function PostPage({ params }: { params: { slug: string } }) {
         {post.kind === "composition" && post.composition && <CompositionPost config={post.composition} />}
         {post.kind === "poverty" && post.poverty && <PovertyPost config={post.poverty} />}
         {post.kind === "hdi" && post.hdi && <HdiPost config={post.hdi} />}
+        {post.kind === "demography" && post.demography && <DemographyPost config={post.demography} />}
       </div>
     </div>
   );
