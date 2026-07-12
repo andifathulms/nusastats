@@ -27,15 +27,34 @@ _TYPE_TOKENS = {
     "PROV", "PROVINSI", "KAB", "KABUPATEN", "KOTA", "ADM", "ADMINISTRASI",
 }
 
+# Genuine renames / abbreviations where DJPK's label and the Kemendagri
+# (dukcapil) label differ enough that the normalized keys don't match. Keyed by
+# the *normalized* DJPK name -> normalized dukcapil name. Hand-verified against
+# the dukcapil catalog (same precedent as dukcapil_views._REGENCY_CROSSWALK).
+# Kept small: only the identities that don't resolve by plain normalization.
+_NAME_ALIASES = {
+    # provinces
+    "DIYOGYAKARTA": "DAERAHISTIMEWAYOGYAKARTA",
+    "BANGKABELITUNG": "KEPULAUANBANGKABELITUNG",
+    # regencies (DJPK abbreviations + Kemendagri renames)
+    "TOBASAMOSIR": "TOBA",                       # renamed 2020
+    "OKUTIMUR": "OGANKOMERINGULUTIMUR",          # OKU = Ogan Komering Ulu
+    "OKUSELATAN": "OGANKOMERINGULUSELATAN",
+    "SANGIHE": "KEPULAUANSANGIHE",
+    "MALUKUTENGGARABARAT": "KEPULAUANTANIMBAR",  # renamed 2019
+}
+
 
 def normalize_name(name):
     """Bare comparison key: uppercase, drop type tokens & punctuation, expand
-    KEP.->KEPULAUAN, collapse to alnum. 'Kab. Badung' -> 'BADUNG';
-    'Prov. Kepulauan Riau' -> 'KEPULAUANRIAU'; 'Kota Denpasar' -> 'DENPASAR'."""
+    KEP.->KEPULAUAN, apply the rename/abbreviation aliases, collapse to alnum.
+    'Kab. Badung' -> 'BADUNG'; 'Prov. Kepulauan Riau' -> 'KEPULAUANRIAU';
+    'Kota Denpasar' -> 'DENPASAR'; 'Prov. DI Yogyakarta' -> the dukcapil form."""
     s = (name or "").upper().replace(".", " ")
     s = re.sub(r"\bKEP\b", "KEPULAUAN", s)
     tokens = [t for t in re.split(r"[^A-Z0-9]+", s) if t and t not in _TYPE_TOKENS]
-    return "".join(tokens)
+    key = "".join(tokens)
+    return _NAME_ALIASES.get(key, key)
 
 
 def _dukcapil_index():
