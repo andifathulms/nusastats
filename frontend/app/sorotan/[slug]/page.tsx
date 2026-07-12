@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { getPost, POSTS } from "@/lib/posts";
 import { Badge } from "@/components/ui";
 import { CompositionPost } from "@/components/CompositionPost";
+import { PovertyPost } from "@/components/PovertyPost";
 
 export function generateStaticParams() {
   return POSTS.map((p) => ({ slug: p.slug }));
@@ -37,7 +38,8 @@ export default function PostPage({ params }: { params: { slug: string } }) {
       </div>
 
       <div className="mt-8">
-        {post.kind === "composition" && <CompositionPost config={post.composition} />}
+        {post.kind === "composition" && post.composition && <CompositionPost config={post.composition} />}
+        {post.kind === "poverty" && post.poverty && <PovertyPost config={post.poverty} />}
       </div>
     </div>
   );
