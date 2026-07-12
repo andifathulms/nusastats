@@ -143,16 +143,6 @@ export function ExpenditurePost({ config }: { config: ExpenditureConfig }) {
 
   return (
     <div className="space-y-4">
-      {/* Legend */}
-      <div className="flex flex-wrap gap-x-4 gap-y-1.5 rounded-xl border border-ink-border bg-ink-panel px-4 py-3">
-        {comps.map((c) => (
-          <span key={c.id} className="inline-flex items-center gap-1.5 text-xs text-ink-muted">
-            <span className="h-2.5 w-2.5 rounded-sm" style={{ background: c.color }} />
-            {c.label}
-          </span>
-        ))}
-      </div>
-
       {/* Ranking by total PDRB */}
       <Panel>
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
@@ -284,7 +274,17 @@ function Detail({
 
       {/* Diverging component bars — Net Ekspor can go negative (left, red). */}
       <Panel>
-        <div className="mb-3 text-xs font-medium uppercase tracking-wide text-ink-muted">Komponen pengeluaran (% dari PDRB)</div>
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+          <span className="text-xs font-medium uppercase tracking-wide text-ink-muted">Komponen pengeluaran (% dari PDRB)</span>
+          <span className="flex flex-wrap gap-x-3 gap-y-1">
+            {comps.map((c) => (
+              <span key={c.id} className="inline-flex items-center gap-1.5 text-[11px] text-ink-muted">
+                <span className="h-2.5 w-2.5 rounded-sm" style={{ background: c.color }} />
+                {c.label}
+              </span>
+            ))}
+          </span>
+        </div>
         <div className="space-y-2">
           {parts.map((p) => (
             <div key={p.id} className="flex items-center gap-3">
