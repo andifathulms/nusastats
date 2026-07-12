@@ -158,6 +158,12 @@ export function CompositionPost({ config }: { config: CompositionConfig }) {
     [level, trend, xwalk]
   );
   const provinceRows = useMemo(() => aggregateRows(rows, provKey), [rows, xwalk]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Always-available province trend, so a kabupaten can show its parent
+  // province's sector history (BPS has no kab-level 17-sector).
+  const provinceTrend = useMemo(
+    () => (trend ? aggregateTrend(trend, (id) => provOf(id, xwalk).code) : null),
+    [trend, xwalk] // eslint-disable-line react-hooks/exhaustive-deps
+  );
 
   const filtered = useMemo(
     () => (q ? displayRows.filter((r) => r.name.toLowerCase().includes(q.toLowerCase())) : displayRows),
@@ -278,6 +284,7 @@ export function CompositionPost({ config }: { config: CompositionConfig }) {
       {selected && (
         <Detail
           row={selected}
+          level={level}
           sectors={sectors}
           groups={config.groups}
           history={config.history}
@@ -285,6 +292,22 @@ export function CompositionPost({ config }: { config: CompositionConfig }) {
           trendRanks={displayTrend?.rankByRegion.get(selected.domain_id) ?? null}
           trendLabel={config.trend?.label}
           trendUnit={config.trend?.unit}
+          /* Province whose 17-sector history to show: self (province) / parent
+             (kabupaten) / none (region). */
+          sectorProv={
+            level === "province"
+              ? { code: selected.domain_id, name: selected.name }
+              : level === "regency"
+              ? provOf(selected.domain_id, xwalk)
+              : null
+          }
+          sectorProvRanks={
+            level === "province"
+              ? displayTrend?.rankByRegion.get(selected.domain_id) ?? {}
+              : level === "regency"
+              ? provinceTrend?.rankByRegion.get(provOf(selected.domain_id, xwalk).code) ?? {}
+              : {}
+          }
         />
       )}
 
@@ -660,6 +683,7 @@ function aggregateTrend(trend: Trend, keyOf: (id: string) => string): Trend {
 
 function Detail({
   row,
+  level,
   sectors,
   groups,
   history,
@@ -667,8 +691,11 @@ function Detail({
   trendRanks,
   trendLabel,
   trendUnit,
+  sectorProv,
+  sectorProvRanks,
 }: {
   row: RegionRow;
+  level: "regency" | "province" | "region";
   sectors: Sector[];
   groups?: { label: string; color: string; ids: string[] }[];
   history?: { variableId: string; totalTurvarId: string; unit: string; label: string; partialLastYear?: boolean };
@@ -676,8 +703,10 @@ function Detail({
   trendRanks?: Record<number, number> | null;
   trendLabel?: string;
   trendUnit?: string;
+  sectorProv?: { code: string; name: string } | null;
+  sectorProvRanks?: Record<number, number>;
 }) {
-  const isProvince = row.domain_id.length <= 2; // province rows are 2-digit
+  const isProvince = level === "province";
   // Shares from the composition quarter (compTotal); nominal is the full-year
   // estimate = share × full-year total.
   const parts = sectors
@@ -733,14 +762,26 @@ function Detail({
         </div>
       </Panel>
 
-      {/* Province: native 17-sector history w/ Total↔Komponen toggle (incl. 2026).
-          Kabupaten: total-only trend (no kab sector history exists at BPS). */}
-      {isProvince && history ? (
-        <HistoryPanel provCode={row.domain_id} sectors={sectors} cfg={history} ranks={trendRanks ?? {}} />
+      {/* Province: its own 17-sector history (Total/Per sektor/Peringkat).
+          Kabupaten: own total/rank trend + its PARENT province's sector history
+          (BPS has no kab-level 17-sector). Region: aggregated total/rank trend. */}
+      {isProvince && history && sectorProv ? (
+        <HistoryPanel provCode={sectorProv.code} sectors={sectors} cfg={history} ranks={sectorProvRanks ?? {}} />
       ) : (
-        trendSeries && trendSeries.length > 1 && (
-          <TrendPanel series={trendSeries} ranks={trendRanks ?? {}} label={trendLabel} unit={trendUnit} />
-        )
+        <>
+          {trendSeries && trendSeries.length > 1 && (
+            <TrendPanel series={trendSeries} ranks={trendRanks ?? {}} label={trendLabel} unit={trendUnit} />
+          )}
+          {level === "regency" && history && sectorProv && (
+            <HistoryPanel
+              provCode={sectorProv.code}
+              provName={sectorProv.name}
+              sectors={sectors}
+              cfg={history}
+              ranks={sectorProvRanks ?? {}}
+            />
+          )}
+        </>
       )}
     </div>
   );
@@ -748,11 +789,13 @@ function Detail({
 
 function HistoryPanel({
   provCode,
+  provName,
   sectors,
   cfg,
   ranks,
 }: {
   provCode: string;
+  provName?: string; // set when showing a kabupaten's PARENT province
   sectors: Sector[];
   cfg: { variableId: string; totalTurvarId: string; unit: string; label: string; partialLastYear?: boolean };
   ranks: Record<number, number>;
@@ -790,7 +833,8 @@ function HistoryPanel({
     <Panel>
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <div className="text-xs font-medium uppercase tracking-wide text-ink-muted">
-          {cfg.label} · {first?.year}–{endRow?.year}
+          {provName ? `Sektor · Provinsi ${provName}` : cfg.label} · {first?.year}–{endRow?.year}
+          {provName && <span className="ml-1 normal-case text-ink-muted/70">(rincian kab/kota tidak tersedia di BPS)</span>}
         </div>
         <div className="inline-flex rounded-lg border border-ink-border/80 bg-ink-panel2/50 p-0.5">
           {(["total", "components", "rank"] as const).map((m) => (
