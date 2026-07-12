@@ -6,7 +6,7 @@
 // (e.g. PDRB by 17 lapangan-usaha categories). Reuses the existing BPS API —
 // `ranking` (turvar=total) for the region list, `series` for one region's parts.
 
-export type PostKind = "composition" | "poverty" | "hdi" | "demography" | "gender";
+export type PostKind = "composition" | "poverty" | "hdi" | "demography" | "gender" | "prosperity";
 
 export type CompositionConfig = {
   variableId: string;
@@ -127,6 +127,19 @@ export type GenderConfig = {
   note: string;
 };
 
+// `prosperity`: PDRB per capita (reconstructed = PDRB total ÷ population) vs the
+// poverty rate, per kabupaten/kota — the "growth ≠ welfare" story. Population is
+// reconstructed single-source from BPS (poor count ÷ P0), so PDRB per capita is
+// an estimate (labelled as such). Regency-only (PDRB var 2193 is regency-level).
+export type ProsperityConfig = {
+  pdrbVariableId: string; // 2193 (PDRB harga berlaku, pengeluaran, kab)
+  pdrbTotalTurvar: string; // "1550" (grand-total PDRB)
+  poorCountVariableId: string; // 619 (jumlah penduduk miskin, ribu jiwa)
+  povertyRateVariableId: string; // 621 (P0, %)
+  latestYear: number;
+  note: string;
+};
+
 export type Post = {
   slug: string;
   title: string;
@@ -140,9 +153,31 @@ export type Post = {
   hdi?: HdiConfig;
   demography?: DemographyConfig;
   gender?: GenderConfig;
+  prosperity?: ProsperityConfig;
 };
 
 export const POSTS: Post[] = [
+  {
+    slug: "kaya-tapi-miskin",
+    title: "Kaya Tapi Miskin",
+    subtitle: "Beberapa daerah menghasilkan output ekonomi raksasa — tapi warganya tetap miskin.",
+    tag: "Ekonomi",
+    source: "BPS",
+    intro: [
+      "PDRB per kapita — nilai output ekonomi dibagi jumlah penduduk — sering dipakai sebagai ukuran 'kemakmuran' daerah. Tapi output yang dihasilkan di sebuah wilayah tidak selalu dinikmati oleh warganya. Tambang, kilang LNG, atau smelter bisa melambungkan PDRB per kapita sebuah kabupaten ke langit, sementara sebagian besar keuntungannya mengalir ke luar daerah.",
+      "Di sini kita sandingkan PDRB per kapita tiap kabupaten/kota dengan tingkat kemiskinannya. Hasilnya mengejutkan: sejumlah daerah dengan output per penduduk tertinggi di Indonesia justru punya angka kemiskinan yang tinggi pula — Teluk Bintuni, Mimika, dan tetangga-tetangga tambangnya. Kekayaan produksi ternyata bukan jaminan kesejahteraan.",
+      "Perhatikan kuadrant kanan-atas pada grafik: di situlah daerah 'kaya tapi timpang' berada.",
+    ],
+    kind: "prosperity",
+    prosperity: {
+      pdrbVariableId: "2193",
+      pdrbTotalTurvar: "1550",
+      poorCountVariableId: "619",
+      povertyRateVariableId: "621",
+      latestYear: 2024,
+      note: "PDRB per kapita = PDRB harga berlaku (var 2193) ÷ perkiraan penduduk (jumlah penduduk miskin 619 ÷ P0 621). Angka per kapita adalah PERKIRAAN dari data BPS, bukan angka resmi PDRB per kapita. Kemiskinan: P0 (621). Per kabupaten/kota, 2024. Sumber: BPS.",
+    },
+  },
   {
     slug: "kesenjangan-gender-pendidikan",
     title: "Anak Perempuan, Sekolah, dan Upah",
