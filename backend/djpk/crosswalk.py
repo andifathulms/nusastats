@@ -57,12 +57,28 @@ def normalize_name(name):
     return _NAME_ALIASES.get(key, key)
 
 
-def _dukcapil_index():
-    """Return (prov_by_norm, reg_by_prov_norm, latest_period) or None if the
-    dukcapil app / data is unavailable.
+def status_family(text):
+    """Collapse a Kota/Kabupaten label (a dukcapil `status` or a DJPK name like
+    'Kota Sorong' / 'Kab. Jayawijaya') to its family, so kota vs kabupaten can
+    disambiguate same-named regencies in the national fallback."""
+    s = (text or "").upper().lstrip()
+    if s.startswith("KOTA"):
+        return "kota"
+    if s.startswith("KAB"):
+        return "kabupaten"
+    return ""
 
-      prov_by_norm:      {normalized_prov_name: prov_code}       (2-digit)
-      reg_by_prov_norm:  {prov_code: {normalized_reg_name: reg_code}} (4-digit)
+
+def _dukcapil_index():
+    """Return (prov_by_norm, reg_by_prov, reg_national, latest_period) or None
+    if the dukcapil app / data is unavailable.
+
+      prov_by_norm:  {normalized_prov_name: prov_code}                (2-digit)
+      reg_by_prov:   {prov_code: {normalized_reg_name: reg_code}}     (4-digit)
+      reg_national:  {(status_family, normalized_reg_name): reg_code} — only
+                     names that are UNIQUE per family nationwide (ambiguous ones
+                     dropped), used as a province-independent fallback so
+                     regencies that moved provinces (the Papua reorg) still map.
     """
     try:
         from dukcapil.models import DukcapilRegion
@@ -85,12 +101,22 @@ def _dukcapil_index():
         prov_by_norm.setdefault(normalize_name(name), code)
 
     reg_by_prov = {}
-    for code, name, prov_code in DukcapilRegion.objects.filter(
+    reg_national = {}
+    ambiguous = set()
+    for code, name, status, prov_code in DukcapilRegion.objects.filter(
         level="regency", period=latest
-    ).values_list("code", "name", "prov_code"):
-        reg_by_prov.setdefault(prov_code, {}).setdefault(normalize_name(name), code)
+    ).values_list("code", "name", "status", "prov_code"):
+        norm = normalize_name(name)
+        reg_by_prov.setdefault(prov_code, {}).setdefault(norm, code)
+        nkey = (status_family(status), norm)
+        if nkey in reg_national and reg_national[nkey] != code:
+            ambiguous.add(nkey)
+        else:
+            reg_national.setdefault(nkey, code)
+    for nkey in ambiguous:
+        reg_national.pop(nkey, None)
 
-    return prov_by_norm, reg_by_prov, latest
+    return prov_by_norm, reg_by_prov, reg_national, latest
 
 
 def build_crosswalk():
@@ -113,7 +139,7 @@ def build_crosswalk():
             "note": "dukcapil regions not ingested; crosswalk skipped",
         }
 
-    prov_by_norm, reg_by_prov, period = idx
+    prov_by_norm, reg_by_prov, reg_national, period = idx
 
     # Pass 1: provinces. Build DJPK-prov -> kemendagri-prov code map as we go,
     # so regencies can be matched within the right province.
@@ -137,17 +163,24 @@ def build_crosswalk():
             unmatched_names.append(f"[prov] {r.djpk_code} {r.name}")
         updated.append(r)
 
-    # Pass 2: regencies, scoped to their province's kemendagri code.
+    # Pass 2: regencies. Try the province-scoped match first (unambiguous), then
+    # fall back to a national name+status match for regencies whose province
+    # differs between DJPK and Kemendagri — chiefly the Papua reorg, where old
+    # DJPK codes (prov 26/32) hold kabupaten that Kemendagri moved to the new
+    # Papua Tengah/Pegunungan/Selatan/Barat Daya provinces.
     for r in regions:
         if r.level != "regency":
             continue
+        norm = normalize_name(r.name)
         kemenprov = djpkprov_to_kemenprov.get(r.djpk_prov)
-        code = None
-        if kemenprov:
-            code = reg_by_prov.get(kemenprov, {}).get(normalize_name(r.name))
+        code = reg_by_prov.get(kemenprov, {}).get(norm) if kemenprov else None
+        method = "name-exact" if code else ""
+        if not code:
+            code = reg_national.get((status_family(r.name), norm))
+            method = "name-national" if code else ""
         if code:
             r.kemendagri_code = code
-            r.match_method = "name-exact"
+            r.match_method = method
             r.matched_name = r.name
         else:
             r.kemendagri_code = ""
