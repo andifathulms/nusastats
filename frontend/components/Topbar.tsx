@@ -60,6 +60,14 @@ const NAV: NavSection[] = [
       { href: "/dukcapil/analytics", label: "Analitik" },
     ],
   },
+  {
+    key: "keuangan",
+    label: "Keuangan",
+    icon: WalletIcon,
+    home: "/keuangan",
+    match: (p) => p === "/keuangan" || p.startsWith("/keuangan/"),
+    items: [],
+  },
 ];
 
 function isItemActive(href: string, pathname: string): boolean {
@@ -182,6 +190,16 @@ function MapPinIcon({ className }: { className?: string }) {
         strokeLinejoin="round"
       />
       <circle cx="12" cy="9.5" r="2.4" stroke="currentColor" strokeWidth="1.7" />
+    </svg>
+  );
+}
+
+function WalletIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" className={className}>
+      <path d="M3 7.5A2.5 2.5 0 0 1 5.5 5H17a2 2 0 0 1 2 2v0H5.5A2.5 2.5 0 0 1 3 4.5" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M3 6v11a2 2 0 0 0 2 2h14a1 1 0 0 0 1-1V9a1 1 0 0 0-1-1H5" stroke="currentColor" strokeWidth="1.7" strokeLinejoin="round" />
+      <circle cx="16.5" cy="13" r="1.3" fill="currentColor" />
     </svg>
   );
 }

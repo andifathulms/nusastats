@@ -488,9 +488,164 @@ export const dukcapilApi = {
   },
 };
 
+// --- DJPK / SIKD source (regional finance: APBD / PAD) --------------------
+//
+// Kept under its own `djpkApi` object and `/api/djpk/` paths, source-separated
+// from BPS and Dukcapil. DJPK numbers regions with its own codes (djpk_code);
+// `kemendagri_code` on each row bridges to the Dukcapil/BPS geography.
+
+export type DjpkMeasure = "realisasi" | "anggaran" | "persentase";
+export type DjpkReportType = "apbd" | "realisasi";
+export type DjpkRegionLevel = "province" | "regency";
+
+export const DJPK_LEVELS: { v: DjpkRegionLevel; label: string }[] = [
+  { v: "province", label: "Provinsi" },
+  { v: "regency", label: "Kabupaten/Kota" },
+];
+
+export type DjpkScope = { tahun: number; type: DjpkReportType; periode: number };
+
+export type DjpkSummary = {
+  source: string;
+  scope: DjpkScope;
+  years: number[];
+  types: DjpkReportType[];
+  scopes: { tahun: number; report_type: DjpkReportType; periode: number }[];
+  by_level: { level: DjpkRegionLevel; label: string; regions: number }[];
+  national_totals: Record<string, number>;
+  last_fetched_at: string | null;
+};
+
+export type DjpkAccount = {
+  akun_key: string;
+  label_id: string;
+  group: string;
+  parent_key: string;
+  sort?: number;
+};
+
+export type DjpkAccountGroups = {
+  count: number;
+  groups: { group: string; accounts: DjpkAccount[] }[];
+};
+
+export type DjpkRegionRow = {
+  djpk_code: string;
+  djpk_prov: string;
+  djpk_pemda: string;
+  level: DjpkRegionLevel;
+  name: string;
+  prov_name: string;
+  kemendagri_code: string;
+  match_method: string;
+};
+
+export type DjpkRankRow = {
+  domain_id: string;
+  domain_name: string;
+  kemendagri_code?: string;
+  value: number;
+  rank: number;
+};
+
+export type DjpkRank = {
+  account: DjpkAccount;
+  measure: DjpkMeasure;
+  level: DjpkRegionLevel;
+  prov: string | null;
+  scope: DjpkScope;
+  order: string;
+  unit: string;
+  stats: { count: number; min: number | null; max: number | null; mean: number | null; median: number | null };
+  total: number;
+  offset: number;
+  results: DjpkRankRow[];
+};
+
+export type DjpkGrowthRow = {
+  domain_id: string;
+  domain_name: string;
+  value_from: number;
+  value_to: number;
+  change: number;
+  change_pct: number | null;
+  rank: number;
+};
+
+export type DjpkGrowth = {
+  account: DjpkAccount;
+  measure: DjpkMeasure;
+  level: DjpkRegionLevel;
+  from: number;
+  to: number;
+  total: number;
+  results: DjpkGrowthRow[];
+};
+
+export type DjpkLine = {
+  line_index: number;
+  akun: string;
+  akun_key: string;
+  label_id: string;
+  parent_key: string;
+  anggaran: number | null;
+  realisasi: number | null;
+  persentase: number | null;
+  rank: number | null;
+  of: number | null;
+  percentile: number | null;
+};
+
+export type DjpkRegionDetail = {
+  region: DjpkRegionRow;
+  scope: DjpkScope;
+  peer_scope: string;
+  fetched_at: string;
+  groups: { group: string; lines: DjpkLine[] }[];
+};
+
+export const djpkApi = {
+  summary: (params: Record<string, string> = {}) => {
+    const q = new URLSearchParams(params).toString();
+    return get<DjpkSummary>(`/djpk/summary/${q ? `?${q}` : ""}`);
+  },
+  accounts: () => get<DjpkAccountGroups>("/djpk/accounts/"),
+  regions: (params: Record<string, string> = {}) => {
+    const q = new URLSearchParams(params).toString();
+    return get<DjpkRegionRow[]>(`/djpk/regions/${q ? `?${q}` : ""}`);
+  },
+  regionDetail: (code: string, params: Record<string, string> = {}) => {
+    const q = new URLSearchParams(params).toString();
+    return get<DjpkRegionDetail>(`/djpk/regions/${code}/${q ? `?${q}` : ""}`);
+  },
+  rank: (params: Record<string, string> = {}) => {
+    const q = new URLSearchParams(params).toString();
+    return get<DjpkRank>(`/djpk/rank/${q ? `?${q}` : ""}`);
+  },
+  correlate: (params: Record<string, string>) => {
+    const q = new URLSearchParams(params).toString();
+    return get<{ x: DjpkAccount; y: DjpkAccount; n: number; r: number | null; results: { domain_id: string; domain_name: string; x: number; y: number }[] }>(`/djpk/correlate/?${q}`);
+  },
+  growth: (params: Record<string, string> = {}) => {
+    const q = new URLSearchParams(params).toString();
+    return get<DjpkGrowth>(`/djpk/growth/${q ? `?${q}` : ""}`);
+  },
+};
+
 export function formatNumber(n: number | null | undefined): string {
   if (n === null || n === undefined) return "–";
   return n.toLocaleString("en-US");
+}
+
+// Compact rupiah for finance figures: triliun / miliar / juta. DJPK values are
+// in whole rupiah, so most regional totals land in the miliar–triliun range.
+export function formatRupiah(n: number | null | undefined): string {
+  if (n === null || n === undefined) return "–";
+  const abs = Math.abs(n);
+  if (abs >= 1e12) return `Rp ${(n / 1e12).toLocaleString("id-ID", { maximumFractionDigits: 2 })} T`;
+  if (abs >= 1e9) return `Rp ${(n / 1e9).toLocaleString("id-ID", { maximumFractionDigits: 2 })} M`;
+  if (abs >= 1e6) return `Rp ${(n / 1e6).toLocaleString("id-ID", { maximumFractionDigits: 1 })} jt`;
+  return `Rp ${n.toLocaleString("id-ID")}`;
 }
 
 // Categorical palette for chart series — royal-blue-led, CVD-safe adjacency on the white panel surface.
