@@ -34,6 +34,9 @@ function rp(milyar: number): string {
 }
 const pct = (p: number) => `${p.toLocaleString("id-ID", { maximumFractionDigits: 1 })}%`;
 const clean = (label: string) => label.replace(/^([A-Z](,[A-Z])*)\s+/, "");
+// Correlation axis value: percent or Triliun Rupiah.
+const fmtC = (v: number, unit: string) =>
+  unit === "%" ? `${v.toFixed(1)}%` : `Rp ${v.toLocaleString("id-ID", { maximumFractionDigits: 2 })} T`;
 
 export function CompositionPost({ config }: { config: CompositionConfig }) {
   const [sectors, setSectors] = useState<Sector[]>([]);
@@ -422,19 +425,24 @@ function CorrelationPanel({
   // Axis choices: the higher-level groups first, then the individual sectors.
   const dims = useMemo(
     () => [
-      ...(groups ?? []).map((g) => ({ key: `g:${g.label}`, label: `${g.label} (%)`, ids: g.ids })),
-      ...sectors.map((s) => ({ key: `s:${s.id}`, label: `${s.label} (%)`, ids: [s.id] })),
+      ...(groups ?? []).map((g) => ({ key: `g:${g.label}`, label: g.label, ids: g.ids })),
+      ...sectors.map((s) => ({ key: `s:${s.id}`, label: s.label, ids: [s.id] })),
     ],
     [groups, sectors]
   );
   const [xKey, setXKey] = useState("");
   const [yKey, setYKey] = useState("");
+  const [cMetric, setCMetric] = useState<"share" | "nominal">("share");
   const [selProvs, setSelProvs] = useState<Set<string>>(new Set());
   const xd = dims.find((d) => d.key === xKey) ?? dims[0];
   const yd = dims.find((d) => d.key === yKey) ?? dims[1] ?? dims[0];
+  const unit = cMetric === "share" ? "%" : "T";
 
-  const share = (row: RegionRow, ids: string[]) =>
-    row.compTotal ? (ids.reduce((a, id) => a + (row.byId[id] ?? 0), 0) / row.compTotal) * 100 : 0;
+  // Share (% of PDRB) or nominal (full-year estimate, Triliun) of a sector set.
+  const val = (row: RegionRow, ids: string[]) => {
+    const share = row.compTotal ? (ids.reduce((a, id) => a + (row.byId[id] ?? 0), 0) / row.compTotal) : 0;
+    return cMetric === "share" ? share * 100 : (share * row.total) / 1000;
+  };
 
   // Provinces present among the rows, for the legend/filter.
   const provs = useMemo(() => {
@@ -455,10 +463,10 @@ function CorrelationPanel({
   const points = useMemo(
     () =>
       xd && yd
-        ? visibleRows.map((r) => ({ x: share(r, xd.ids), y: share(r, yd.ids), name: r.name, fill: groupColor(prov(r).code) }))
+        ? visibleRows.map((r) => ({ x: val(r, xd.ids), y: val(r, yd.ids), name: r.name, fill: groupColor(prov(r).code) }))
         : [],
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [visibleRows, xd, yd, xwalk]
+    [visibleRows, xd, yd, xwalk, cMetric]
   );
   const r = useMemo(() => pearson(points.map((p) => p.x), points.map((p) => p.y)), [points]);
 
@@ -486,9 +494,24 @@ function CorrelationPanel({
     <Panel>
       <div className="mb-3 flex flex-wrap items-center gap-2">
         <span className="text-sm font-semibold text-ink-text">Korelasi antar-sektor</span>
-        <span className="ml-auto flex items-center gap-2 text-xs text-ink-muted">
-          <Select v={xd?.key ?? ""} on={setXKey} /> vs <Select v={yd?.key ?? ""} on={setYKey} />
-        </span>
+        <div className="ml-auto flex flex-wrap items-center gap-2">
+          <div className="inline-flex rounded-lg border border-ink-border/80 bg-ink-panel2/50 p-0.5">
+            {(["share", "nominal"] as const).map((mt) => (
+              <button
+                key={mt}
+                onClick={() => setCMetric(mt)}
+                className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
+                  cMetric === mt ? "bg-brand-gradient text-white" : "text-ink-muted hover:text-ink-text"
+                }`}
+              >
+                {mt === "share" ? "Persentase" : "Nominal"}
+              </button>
+            ))}
+          </div>
+          <span className="flex items-center gap-2 text-xs text-ink-muted">
+            <Select v={xd?.key ?? ""} on={setXKey} /> vs <Select v={yd?.key ?? ""} on={setYKey} />
+          </span>
+        </div>
       </div>
       <div className="mb-2 text-xs text-ink-muted">
         Korelasi (r) ={" "}
@@ -527,25 +550,22 @@ function CorrelationPanel({
           <CartesianGrid stroke={CHART.grid} />
           <XAxis
             type="number" dataKey="x" name={xd?.label} tick={{ fill: CHART.axisTick, fontSize: 12 }}
-            axisLine={{ stroke: CHART.axisLine }} tickLine={false} unit="%"
-            label={{ value: xd?.label, position: "insideBottom", offset: -12, fill: CHART.axisTick, fontSize: 12 }}
+            axisLine={{ stroke: CHART.axisLine }} tickLine={false} unit={unit}
+            label={{ value: `${xd?.label} (${unit})`, position: "insideBottom", offset: -12, fill: CHART.axisTick, fontSize: 12 }}
           />
           <YAxis
             type="number" dataKey="y" name={yd?.label} tick={{ fill: CHART.axisTick, fontSize: 12 }}
-            axisLine={{ stroke: CHART.axisLine }} tickLine={false} width={48} unit="%"
+            axisLine={{ stroke: CHART.axisLine }} tickLine={false} width={48} unit={unit}
           />
           <ZAxis range={[36, 36]} />
           <RTooltip
             cursor={{ strokeDasharray: "3 3" }}
-            contentStyle={{ background: CHART.tooltipBg, border: `1px solid ${CHART.tooltipBorder}`, borderRadius: 8 }}
-            formatter={(v: number, n: string) => [`${v.toFixed(1)}%`, n === "x" ? xd?.label : yd?.label]}
-            labelFormatter={() => ""}
             content={({ payload }) =>
               payload && payload.length ? (
                 <div className="rounded-lg border border-ink-border bg-ink-panel px-3 py-2 text-xs shadow-panel">
                   <div className="font-medium text-ink-text">{payload[0].payload.name}</div>
-                  <div className="mt-0.5 text-ink-muted">{xd?.label}: {payload[0].payload.x.toFixed(1)}%</div>
-                  <div className="text-ink-muted">{yd?.label}: {payload[0].payload.y.toFixed(1)}%</div>
+                  <div className="mt-0.5 text-ink-muted">{xd?.label}: {fmtC(payload[0].payload.x, unit)}</div>
+                  <div className="text-ink-muted">{yd?.label}: {fmtC(payload[0].payload.y, unit)}</div>
                 </div>
               ) : null
             }
@@ -831,14 +851,18 @@ function GroupPanel({ row, groups }: { row: RegionRow; groups: { label: string; 
 // Rank-over-time line — Y axis reversed so #1 sits at the top.
 function RankChart({ rows }: { rows: { year: number; rank: number }[] }) {
   if (rows.length < 2) return <div className="flex h-[280px] items-center justify-center text-sm text-ink-muted">Data peringkat tidak cukup.</div>;
-  const maxRank = Math.max(...rows.map((r) => r.rank));
+  // Zoom the axis to THIS region's own rank range (+ padding) so its movement is
+  // visible — not [1..maxRank], which would pin a #339 line to the bottom.
+  const rr = rows.map((r) => r.rank);
+  const minR = Math.min(...rr), maxR = Math.max(...rr);
+  const pad = Math.max(1, Math.round((maxR - minR) * 0.3));
   return (
     <ResponsiveContainer width="100%" height={300}>
       <LineChart data={rows} margin={{ top: 8, right: 16, bottom: 0, left: 8 }}>
         <CartesianGrid stroke={CHART.grid} vertical={false} />
         <XAxis dataKey="year" tick={{ fill: CHART.axisTick, fontSize: 12 }} axisLine={{ stroke: CHART.axisLine }} tickLine={false} />
         <YAxis
-          reversed domain={[1, maxRank]} allowDecimals={false} width={40}
+          reversed domain={[Math.max(1, minR - pad), maxR + pad]} allowDecimals={false} width={40}
           tick={{ fill: CHART.axisTick, fontSize: 12 }} axisLine={{ stroke: CHART.axisLine }} tickLine={false}
           tickFormatter={(v) => `#${v}`}
         />
