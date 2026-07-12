@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { CartesianGrid, Cell, Legend, Line, LineChart, Scatter, ScatterChart, Tooltip as RTooltip, XAxis, YAxis, ZAxis, ResponsiveContainer } from "recharts";
 import { api, bpsRegionLabel, CHART, dukcapilApi, groupColor, type RegencyCrosswalk } from "@/lib/api";
 import { type CompositionConfig } from "@/lib/posts";
@@ -342,6 +342,7 @@ function MapPanel({
   const [dimKey, setDimKey] = useState("");
   const [mapLevel, setMapLevel] = useState<"province" | "regency">("province");
   const [metric, setMetric] = useState<"share" | "nominal">("share");
+  const [selProvs, setSelProvs] = useState<Set<string>>(new Set());
   const dim = dims.find((d) => d.key === dimKey) ?? dims[0];
   const isTotal = !dim || dim.ids.length === 0;
   const effMetric = isTotal ? "nominal" : metric; // total has no meaningful %
@@ -413,6 +414,7 @@ function MapPanel({
               </button>
             ))}
           </div>
+          <ProvFilter options={provinceRows} selected={selProvs} onChange={setSelProvs} />
           <select
             value={dim?.key ?? ""}
             onChange={(e) => setDimKey(e.target.value)}
@@ -424,8 +426,69 @@ function MapPanel({
           </select>
         </div>
       </div>
-      <ChoroplethMap key={mapLevel} values={values} min={min} max={max} unit={unit} geojsonUrls={geojsonUrls} />
+      <ChoroplethMap
+        key={mapLevel}
+        values={values}
+        min={min}
+        max={max}
+        unit={unit}
+        geojsonUrls={geojsonUrls}
+        provFilter={selProvs.size ? [...selProvs] : undefined}
+      />
     </Panel>
+  );
+}
+
+// Compact province multiselect (2-digit code + name) shared by the map filter.
+function ProvFilter({
+  options,
+  selected,
+  onChange,
+}: {
+  options: { domain_id: string; name: string }[];
+  selected: Set<string>;
+  onChange: (s: Set<string>) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [q, setQ] = useState("");
+  const box = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const on = (e: MouseEvent) => !box.current?.contains(e.target as Node) && setOpen(false);
+    document.addEventListener("mousedown", on);
+    return () => document.removeEventListener("mousedown", on);
+  }, []);
+  const opts = [...options].sort((a, b) => a.name.localeCompare(b.name));
+  const shown = q ? opts.filter((o) => o.name.toLowerCase().includes(q.toLowerCase())) : opts;
+  const toggle = (code: string) => {
+    const n = new Set(selected);
+    n.has(code) ? n.delete(code) : n.add(code);
+    onChange(n);
+  };
+  return (
+    <div ref={box} className="relative">
+      <button
+        onClick={() => setOpen((o) => !o)}
+        className="rounded-lg border border-ink-border bg-ink-panel2 px-2.5 py-1.5 text-sm text-ink-text hover:border-ink-accent/60"
+      >
+        {selected.size ? `${selected.size} provinsi` : "Semua provinsi"} ▾
+      </button>
+      {open && (
+        <div className="absolute right-0 z-30 mt-1 w-60 rounded-lg border border-ink-border bg-ink-panel shadow-xl shadow-black/40">
+          <div className="flex items-center gap-2 border-b border-ink-border p-2">
+            <input autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder="Cari provinsi…" className="w-full rounded-md border border-ink-border bg-ink-panel2 px-2 py-1 text-sm text-ink-text outline-none" />
+            {selected.size > 0 && <button onClick={() => onChange(new Set())} className="shrink-0 text-xs text-ink-accent hover:underline">Bersihkan</button>}
+          </div>
+          <div className="max-h-64 overflow-y-auto scroll-thin py-1">
+            {shown.map((o) => (
+              <label key={o.domain_id} className="flex cursor-pointer items-center gap-2 px-3 py-1.5 text-sm hover:bg-ink-panel2">
+                <input type="checkbox" checked={selected.has(o.domain_id)} onChange={() => toggle(o.domain_id)} className="accent-ink-accent" />
+                <span className="truncate text-ink-text">{o.name}</span>
+              </label>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
 
