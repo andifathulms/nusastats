@@ -6,7 +6,7 @@
 // (e.g. PDRB by 17 lapangan-usaha categories). Reuses the existing BPS API —
 // `ranking` (turvar=total) for the region list, `series` for one region's parts.
 
-export type PostKind = "composition" | "poverty" | "hdi" | "demography";
+export type PostKind = "composition" | "poverty" | "hdi" | "demography" | "gender";
 
 export type CompositionConfig = {
   variableId: string;
@@ -105,6 +105,28 @@ export type DemographyConfig = {
   note: string;
 };
 
+// `gender`: one BPS variable broken down by jenis-kelamin turvar (211 male /
+// 212 female), for several such variables. The story is the male–female gap per
+// region and how it flips across indicators (girls ahead in schooling, men
+// ahead in income). Ranking uses diverging gap bars; the signature viz is a
+// male-vs-female scatter with a 45° parity line.
+export type GenderMetric = {
+  key: string;
+  variableId: string;
+  label: string;
+  short: string;
+  unit: string; // "Tahun", "Ribu Rupiah/Orang/Tahun"
+  decimals: number;
+  desc: string;
+};
+
+export type GenderConfig = {
+  metrics: GenderMetric[];
+  primaryKey: string;
+  latestYear: number;
+  note: string;
+};
+
 export type Post = {
   slug: string;
   title: string;
@@ -117,9 +139,33 @@ export type Post = {
   poverty?: PovertyConfig;
   hdi?: HdiConfig;
   demography?: DemographyConfig;
+  gender?: GenderConfig;
 };
 
 export const POSTS: Post[] = [
+  {
+    slug: "kesenjangan-gender-pendidikan",
+    title: "Anak Perempuan, Sekolah, dan Upah",
+    subtitle: "Anak perempuan kini unggul di bangku sekolah — tapi ketimpangan upah masih menganga.",
+    tag: "Sosial",
+    source: "BPS",
+    intro: [
+      "Selama puluhan tahun, sekolah adalah wilayah laki-laki. Hari ini gambarnya berbalik: secara nasional, anak perempuan justru punya Harapan Lama Sekolah lebih tinggi daripada anak laki-laki. Tapi capaian itu belum merata, dan belum tentu berujung pada kesetaraan ekonomi.",
+      "Di sini kita bandingkan tiga ukuran menurut jenis kelamin di tiap daerah: Harapan Lama Sekolah (yang akan dijalani anak sekarang), Rata-rata Lama Sekolah (yang sudah ditamatkan penduduk dewasa), dan Pengeluaran per Kapita (proksi kemampuan ekonomi). Ketiganya bercerita berbeda: perempuan memimpin di harapan sekolah, masih tertinggal di rata-rata lama sekolah penduduk dewasa, dan tertinggal jauh di sisi ekonomi.",
+      "Pilih indikator dan wilayah untuk melihat di mana kesenjangan gender paling lebar — dan di mana ia justru berbalik.",
+    ],
+    kind: "gender",
+    gender: {
+      primaryKey: "hls",
+      latestYear: 2025,
+      note: "Harapan Lama Sekolah (457), Rata-rata Lama Sekolah (459), dan Pengeluaran per Kapita Disesuaikan (461) menurut jenis kelamin, per kabupaten/kota, 2025. Selisih = nilai perempuan − laki-laki. Sumber: BPS.",
+      metrics: [
+        { key: "hls", variableId: "457", label: "Harapan Lama Sekolah", short: "Harapan Sekolah", unit: "Tahun", decimals: 2, desc: "Perkiraan lama sekolah anak usia 7 tahun ke depan. Secara nasional perempuan sudah unggul — tanda pembalikan akses pendidikan." },
+        { key: "rls", variableId: "459", label: "Rata-rata Lama Sekolah", short: "Rata-rata Sekolah", unit: "Tahun", decimals: 2, desc: "Tahun sekolah yang sudah ditamatkan penduduk 25+. Masih menyimpan warisan ketimpangan lama: laki-laki dewasa umumnya lebih tinggi." },
+        { key: "income", variableId: "461", label: "Pengeluaran per Kapita", short: "Pengeluaran/Kapita", unit: "Ribu Rupiah/Orang/Tahun", decimals: 0, desc: "Proksi kemampuan ekonomi. Di sinilah kesenjangan gender paling lebar dan konsisten memihak laki-laki." },
+      ],
+    },
+  },
   {
     slug: "bonus-demografi-penuaan",
     title: "Bonus Demografi & Penuaan",
