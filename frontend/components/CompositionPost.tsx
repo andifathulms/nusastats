@@ -158,12 +158,6 @@ export function CompositionPost({ config }: { config: CompositionConfig }) {
     [level, trend, xwalk]
   );
   const provinceRows = useMemo(() => aggregateRows(rows, provKey), [rows, xwalk]); // eslint-disable-line react-hooks/exhaustive-deps
-  // Always-available province trend, so a kabupaten can show its parent
-  // province's sector history (BPS has no kab-level 17-sector).
-  const provinceTrend = useMemo(
-    () => (trend ? aggregateTrend(trend, (id) => provOf(id, xwalk).code) : null),
-    [trend, xwalk] // eslint-disable-line react-hooks/exhaustive-deps
-  );
 
   const filtered = useMemo(
     () => (q ? displayRows.filter((r) => r.name.toLowerCase().includes(q.toLowerCase())) : displayRows),
@@ -292,21 +286,14 @@ export function CompositionPost({ config }: { config: CompositionConfig }) {
           trendRanks={displayTrend?.rankByRegion.get(selected.domain_id) ?? null}
           trendLabel={config.trend?.label}
           trendUnit={config.trend?.unit}
-          /* Province whose 17-sector history to show: self (province) / parent
-             (kabupaten) / none (region). */
-          sectorProv={
+          /* Sector history is province-level only: self for a province, the
+             region's provinces for a region, none for a kabupaten. */
+          sectorProvCodes={
             level === "province"
-              ? { code: selected.domain_id, name: selected.name }
-              : level === "regency"
-              ? provOf(selected.domain_id, xwalk)
-              : null
-          }
-          sectorProvRanks={
-            level === "province"
-              ? displayTrend?.rankByRegion.get(selected.domain_id) ?? {}
-              : level === "regency"
-              ? provinceTrend?.rankByRegion.get(provOf(selected.domain_id, xwalk).code) ?? {}
-              : {}
+              ? [selected.domain_id]
+              : level === "region"
+              ? PROVS_OF_REGION.get(selected.domain_id) ?? []
+              : []
           }
         />
       )}
@@ -781,6 +768,7 @@ const MACRO_REGIONS: [string, string[]][] = [
 ];
 const REGION_BY_PROV = new Map<string, { code: string; name: string }>();
 MACRO_REGIONS.forEach(([name, ps]) => ps.forEach((p) => REGION_BY_PROV.set(p, { code: `reg:${name}`, name })));
+const PROVS_OF_REGION = new Map<string, string[]>(MACRO_REGIONS.map(([name, ps]) => [`reg:${name}`, ps]));
 function regionOf(provCode: string) {
   return REGION_BY_PROV.get(provCode) ?? { code: "reg:Lainnya", name: "Lainnya" };
 }
@@ -839,8 +827,7 @@ function Detail({
   trendRanks,
   trendLabel,
   trendUnit,
-  sectorProv,
-  sectorProvRanks,
+  sectorProvCodes,
 }: {
   row: RegionRow;
   level: "regency" | "province" | "region";
@@ -851,10 +838,10 @@ function Detail({
   trendRanks?: Record<number, number> | null;
   trendLabel?: string;
   trendUnit?: string;
-  sectorProv?: { code: string; name: string } | null;
-  sectorProvRanks?: Record<number, number>;
+  // Province codes whose 17-sector history to show (self for a province, the
+  // region's provinces for a region, empty for a kabupaten).
+  sectorProvCodes?: string[];
 }) {
-  const isProvince = level === "province";
   // Shares from the composition quarter (compTotal); nominal is the full-year
   // estimate = share × full-year total.
   const parts = sectors
@@ -910,59 +897,50 @@ function Detail({
         </div>
       </Panel>
 
-      {/* Province: its own 17-sector history (Total/Per sektor/Peringkat).
-          Kabupaten: own total/rank trend + its PARENT province's sector history
-          (BPS has no kab-level 17-sector). Region: aggregated total/rank trend. */}
-      {isProvince && history && sectorProv ? (
-        <HistoryPanel provCode={sectorProv.code} sectors={sectors} cfg={history} ranks={sectorProvRanks ?? {}} />
+      {/* One chart. Province/Region: 17-sector history with Total/Per sektor/
+          Peringkat (a region sums its provinces). Kab/Kota: total/rank trend only
+          — BPS has no kab-level 17-sector history. */}
+      {history && sectorProvCodes && sectorProvCodes.length > 0 ? (
+        <HistoryPanel provCodes={sectorProvCodes} sectors={sectors} cfg={history} ranks={trendRanks ?? {}} />
       ) : (
-        <>
-          {trendSeries && trendSeries.length > 1 && (
-            <TrendPanel series={trendSeries} ranks={trendRanks ?? {}} label={trendLabel} unit={trendUnit} />
-          )}
-          {level === "regency" && history && sectorProv && (
-            <HistoryPanel
-              provCode={sectorProv.code}
-              provName={sectorProv.name}
-              sectors={sectors}
-              cfg={history}
-              ranks={sectorProvRanks ?? {}}
-            />
-          )}
-        </>
+        trendSeries && trendSeries.length > 1 && (
+          <TrendPanel series={trendSeries} ranks={trendRanks ?? {}} label={trendLabel} unit={trendUnit} />
+        )
       )}
     </div>
   );
 }
 
 function HistoryPanel({
-  provCode,
-  provName,
+  provCodes,
   sectors,
   cfg,
   ranks,
 }: {
-  provCode: string;
-  provName?: string; // set when showing a kabupaten's PARENT province
+  provCodes: string[]; // one province (self) or all provinces of a region (summed)
   sectors: Sector[];
   cfg: { variableId: string; totalTurvarId: string; unit: string; label: string; partialLastYear?: boolean };
   ranks: Record<number, number>;
 }) {
   const [rows, setRows] = useState<Record<string, number>[] | null>(null);
   const [mode, setMode] = useState<"total" | "components" | "rank">("total");
+  const key = provCodes.join(",");
 
   useEffect(() => {
     let cancelled = false;
     setRows(null);
-    api.series(cfg.variableId, { vervar_id: provCode }).then((s) => {
+    // Sum every province's series per (year, turvar) — one province, or a whole
+    // region's provinces.
+    Promise.all(provCodes.map((pc) => api.series(cfg.variableId, { vervar_id: pc }))).then((results) => {
       if (cancelled) return;
       const byYear = new Map<number, Record<string, number>>();
-      for (const d of s.results) {
-        if (d.year == null) continue;
-        const y = byYear.get(d.year) ?? { year: d.year };
-        y[d.turvar_id] = d.value;
-        byYear.set(d.year, y);
-      }
+      for (const s of results)
+        for (const d of s.results) {
+          if (d.year == null) continue;
+          const y = byYear.get(d.year) ?? { year: d.year };
+          y[d.turvar_id] = (y[d.turvar_id] ?? 0) + d.value;
+          byYear.set(d.year, y);
+        }
       const ordered = [...byYear.values()].sort((a, b) => a.year - b.year);
       // Drop the partial current year (BPS reports it as one quarter).
       setRows(cfg.partialLastYear ? ordered.slice(0, -1) : ordered);
@@ -970,7 +948,7 @@ function HistoryPanel({
     return () => {
       cancelled = true;
     };
-  }, [provCode, cfg.variableId]);
+  }, [key, cfg.variableId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!rows) return <Panel><div className="flex h-40 items-center justify-center text-sm text-ink-muted">Memuat…</div></Panel>;
   const first = rows[0], last = rows[rows.length - 1];
@@ -981,8 +959,7 @@ function HistoryPanel({
     <Panel>
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <div className="text-xs font-medium uppercase tracking-wide text-ink-muted">
-          {provName ? `Sektor · Provinsi ${provName}` : cfg.label} · {first?.year}–{endRow?.year}
-          {provName && <span className="ml-1 normal-case text-ink-muted/70">(rincian kab/kota tidak tersedia di BPS)</span>}
+          {cfg.label} · {first?.year}–{endRow?.year}
         </div>
         <div className="inline-flex rounded-lg border border-ink-border/80 bg-ink-panel2/50 p-0.5">
           {(["total", "components", "rank"] as const).map((m) => (
