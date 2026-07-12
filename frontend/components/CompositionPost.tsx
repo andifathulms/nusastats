@@ -311,6 +311,7 @@ export function CompositionPost({ config }: { config: CompositionConfig }) {
         />
       )}
 
+      <TopSectorPanel rows={rows} provinceRows={provinceRows} sectors={sectors} groups={config.groups} />
       <MapPanel rows={rows} provinceRows={provinceRows} sectors={sectors} groups={config.groups} xwalk={xwalk} />
       <CorrelationPanel rows={displayRows} sectors={sectors} groups={config.groups} xwalk={xwalk} />
     </div>
@@ -435,6 +436,90 @@ function MapPanel({
         geojsonUrls={geojsonUrls}
         provFilter={selProvs.size ? [...selProvs] : undefined}
       />
+    </Panel>
+  );
+}
+
+// Top-N regions for one chosen sector/group, by nominal (full-year est.) or
+// share, at kab/kota or province level.
+function TopSectorPanel({
+  rows,
+  provinceRows,
+  sectors,
+  groups,
+}: {
+  rows: RegionRow[];
+  provinceRows: RegionRow[];
+  sectors: Sector[];
+  groups?: { label: string; color: string; ids: string[] }[];
+}) {
+  const dims = useMemo(
+    () => [
+      ...(groups ?? []).map((g) => ({ key: `g:${g.label}`, label: g.label, ids: g.ids, color: g.color })),
+      ...sectors.map((s) => ({ key: `s:${s.id}`, label: s.label, ids: [s.id], color: s.color })),
+    ],
+    [groups, sectors]
+  );
+  const [dimKey, setDimKey] = useState("");
+  const [tLevel, setTLevel] = useState<"regency" | "province">("regency");
+  const [metric, setMetric] = useState<"nominal" | "share">("nominal");
+  const dim = dims.find((d) => d.key === dimKey) ?? dims[0];
+
+  const list = useMemo(() => {
+    const src = tLevel === "province" ? provinceRows : rows;
+    return src
+      .map((r) => {
+        const share = r.compTotal && dim ? dim.ids.reduce((a, id) => a + (r.byId[id] ?? 0), 0) / r.compTotal : 0;
+        const nominal = share * r.total; // full-year estimate, Milyar
+        return { name: r.name, share: share * 100, nominal, value: metric === "nominal" ? nominal : share * 100 };
+      })
+      .sort((a, b) => b.value - a.value)
+      .slice(0, 10);
+  }, [rows, provinceRows, tLevel, dim, metric]);
+  const maxVal = list[0]?.value || 1;
+  if (!dim) return null;
+
+  const Toggle = <T extends string>({ opts, v, on }: { opts: [T, string][]; v: T; on: (x: T) => void }) => (
+    <div className="inline-flex rounded-lg border border-ink-border/80 bg-ink-panel2/50 p-0.5">
+      {opts.map(([val, lbl]) => (
+        <button key={val} onClick={() => on(val)} className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${v === val ? "bg-brand-gradient text-white" : "text-ink-muted hover:text-ink-text"}`}>
+          {lbl}
+        </button>
+      ))}
+    </div>
+  );
+
+  return (
+    <Panel>
+      <div className="mb-3 flex flex-wrap items-center gap-2">
+        <span className="text-sm font-semibold text-ink-text">Top 10 per sektor</span>
+        <div className="ml-auto flex flex-wrap items-center gap-2">
+          <Toggle opts={[["nominal", "Nominal"], ["share", "Persentase"]]} v={metric} on={setMetric} />
+          <Toggle opts={[["regency", "Kab/Kota"], ["province", "Provinsi"]]} v={tLevel} on={setTLevel} />
+          <select value={dim.key} onChange={(e) => setDimKey(e.target.value)} className="rounded-lg border border-ink-border bg-ink-panel2 px-2 py-1.5 text-sm text-ink-text outline-none focus:border-ink-accent/60">
+            {dims.map((d) => (
+              <option key={d.key} value={d.key}>{d.label}</option>
+            ))}
+          </select>
+        </div>
+      </div>
+      <div className="space-y-1">
+        {list.map((r, i) => (
+          <div key={r.name} className="flex items-center gap-3">
+            <span className="w-5 shrink-0 text-right text-xs tabular-nums text-ink-muted">{i + 1}</span>
+            <span className="w-44 shrink-0 truncate text-sm text-ink-text" title={r.name}>{r.name}</span>
+            <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-ink-panel2">
+              <div className="h-full rounded-full" style={{ width: `${(r.value / maxVal) * 100}%`, background: dim.color }} />
+            </div>
+            <span className="w-24 shrink-0 text-right text-sm tabular-nums text-ink-text">
+              {metric === "nominal" ? `≈ ${rp(r.nominal)}` : pct(r.share)}
+            </span>
+            <span className="hidden w-16 shrink-0 text-right text-xs tabular-nums text-ink-muted sm:block">
+              {metric === "nominal" ? pct(r.share) : rp(r.nominal)}
+            </span>
+          </div>
+        ))}
+      </div>
     </Panel>
   );
 }
