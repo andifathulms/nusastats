@@ -28,6 +28,7 @@ INSTALLED_APPS = [
     "api",
     "stats",
     "dukcapil",
+    "djpk",
 ]
 
 MIDDLEWARE = [
