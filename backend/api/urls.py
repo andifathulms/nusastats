@@ -1,7 +1,7 @@
 from django.urls import include, path
 from rest_framework.routers import DefaultRouter
 
-from . import dukcapil_views
+from . import djpk_views, dukcapil_views
 from .stats_views import CorrelateView, RegionViewSet, SummaryView, VariableDataViewSet
 from .views import CoverageExportView, SimdasiTableViewSet, VariableViewSet
 
@@ -28,4 +28,12 @@ urlpatterns = [
     path("dukcapil/correlate/", dukcapil_views.correlate, name="dukcapil-correlate"),
     path("dukcapil/regency-crosswalk/", dukcapil_views.regency_crosswalk, name="dukcapil-regency-crosswalk"),
     path("dukcapil/regency-bridge/<str:domain_id>/", dukcapil_views.regency_bridge, name="dukcapil-regency-bridge"),
+    # DJPK/SIKD regional finance (APBD/PAD) — separate again from BPS & dukcapil.
+    path("djpk/summary/", djpk_views.summary, name="djpk-summary"),
+    path("djpk/accounts/", djpk_views.accounts, name="djpk-accounts"),
+    path("djpk/regions/", djpk_views.regions, name="djpk-regions"),
+    path("djpk/regions/<str:code>/", djpk_views.region_detail, name="djpk-region-detail"),
+    path("djpk/rank/", djpk_views.rank, name="djpk-rank"),
+    path("djpk/correlate/", djpk_views.correlate, name="djpk-correlate"),
+    path("djpk/growth/", djpk_views.growth, name="djpk-growth"),
 ]
