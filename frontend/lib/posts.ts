@@ -6,7 +6,7 @@
 // (e.g. PDRB by 17 lapangan-usaha categories). Reuses the existing BPS API —
 // `ranking` (turvar=total) for the region list, `series` for one region's parts.
 
-export type PostKind = "composition" | "poverty";
+export type PostKind = "composition" | "poverty" | "hdi";
 
 export type CompositionConfig = {
   variableId: string;
@@ -56,6 +56,33 @@ export type PovertyConfig = {
   note: string;
 };
 
+// `hdi`: one published composite index (IPM) plus the dimensions it is built
+// from (health/education/living-standard), all measured over the same regions
+// & years. Higher = better. Like `poverty` it's a multi-metric profile, but it
+// adds an official composite + category classes, and the story is which
+// *dimension* drags a region's index down. Reuses ranking/series per admin level.
+export type HdiMetric = {
+  key: string; // "ipm" (composite) then dimension keys
+  variableId: string;
+  label: string; // full name
+  short: string; // chip / column label
+  unit: string; // "", "Tahun", "Ribu Rupiah/Orang/Tahun"
+  decimals: number;
+  desc: string;
+  dimension?: "Kesehatan" | "Pendidikan" | "Pengeluaran"; // absent on the composite
+};
+
+export type HdiConfig = {
+  compositeKey: string; // which metric is the published composite (e.g. "ipm")
+  metrics: HdiMetric[]; // composite first, then the dimensions
+  latestYear: number;
+  firstYear: number;
+  // IPM classes (BPS): Rendah <60, Sedang 60–70, Tinggi 70–80, Sangat Tinggi ≥80.
+  categories: { label: string; min: number; color: string }[];
+  povertyVariableId?: string; // for the index-vs-poverty scatter (P0)
+  note: string;
+};
+
 export type Post = {
   slug: string;
   title: string;
@@ -66,9 +93,43 @@ export type Post = {
   kind: PostKind;
   composition?: CompositionConfig;
   poverty?: PovertyConfig;
+  hdi?: HdiConfig;
 };
 
 export const POSTS: Post[] = [
+  {
+    slug: "membedah-ipm-daerah",
+    title: "Membedah Pembangunan Manusia",
+    subtitle: "Satu angka IPM menyembunyikan tiga cerita: umur, sekolah, dan daya beli.",
+    tag: "Sosial",
+    source: "BPS",
+    intro: [
+      "Indeks Pembangunan Manusia (IPM) meringkas kemajuan sebuah daerah dalam satu angka 0–100. Tapi angka itu adalah gabungan dari tiga dimensi yang sangat berbeda: umur panjang dan sehat, pengetahuan, dan standar hidup layak. Dua daerah dengan IPM sama bisa tertinggal di dimensi yang berbeda — yang satu di pendidikan, yang lain di daya beli.",
+      "BPS menghitung IPM (metode baru) dari empat indikator: Umur Harapan Hidup (kesehatan), Harapan Lama Sekolah dan Rata-rata Lama Sekolah (pendidikan), serta Pengeluaran per Kapita Disesuaikan (standar hidup). Di sini kita bongkar IPM tiap kabupaten/kota menjadi dimensi-dimensinya, 2010–2024.",
+      "Pilih sebuah wilayah untuk melihat di dimensi mana ia unggul dan di mana ia tertinggal — dan lihat bagaimana pembangunan manusia berjalan beriringan dengan kemiskinan.",
+    ],
+    kind: "hdi",
+    hdi: {
+      compositeKey: "ipm",
+      latestYear: 2024,
+      firstYear: 2010,
+      povertyVariableId: "621",
+      note: "IPM metode baru dan komponennya (Umur Harapan Hidup, Harapan Lama Sekolah, Rata-rata Lama Sekolah, Pengeluaran per Kapita Disesuaikan) menurut kabupaten/kota, 2010–2024. Nilai lebih tinggi = lebih baik. Sumber: BPS.",
+      categories: [
+        { label: "Sangat Tinggi", min: 80, color: "#15803D" },
+        { label: "Tinggi", min: 70, color: "#5FBF6A" },
+        { label: "Sedang", min: 60, color: "#E0B93B" },
+        { label: "Rendah", min: 0, color: "#C0392B" },
+      ],
+      metrics: [
+        { key: "ipm", variableId: "413", label: "Indeks Pembangunan Manusia (IPM)", short: "IPM", unit: "", decimals: 2, desc: "Angka gabungan 0–100 dari tiga dimensi: kesehatan, pendidikan, dan standar hidup." },
+        { key: "uhh", variableId: "414", label: "Umur Harapan Hidup (UHH)", short: "Umur Harapan Hidup", unit: "Tahun", decimals: 2, desc: "Rata-rata perkiraan umur bayi yang baru lahir — dimensi kesehatan.", dimension: "Kesehatan" },
+        { key: "hls", variableId: "417", label: "Harapan Lama Sekolah (HLS)", short: "Harapan Lama Sekolah", unit: "Tahun", decimals: 2, desc: "Perkiraan lama sekolah yang akan dijalani anak usia 7 tahun ke depan — dimensi pendidikan.", dimension: "Pendidikan" },
+        { key: "rls", variableId: "415", label: "Rata-rata Lama Sekolah (RLS)", short: "Rata-rata Lama Sekolah", unit: "Tahun", decimals: 2, desc: "Rata-rata jumlah tahun sekolah yang telah ditamatkan penduduk 25+ — dimensi pendidikan.", dimension: "Pendidikan" },
+        { key: "income", variableId: "416", label: "Pengeluaran per Kapita Disesuaikan", short: "Pengeluaran/Kapita", unit: "Ribu Rupiah/Orang/Tahun", decimals: 0, desc: "Kemampuan daya beli riil penduduk — dimensi standar hidup.", dimension: "Pengeluaran" },
+      ],
+    },
+  },
   {
     slug: "struktur-ekonomi-daerah",
     title: "Struktur Ekonomi Daerah",
