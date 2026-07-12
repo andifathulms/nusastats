@@ -37,6 +37,12 @@ BASE = "https://djpk.kemenkeu.go.id/portal"
 # the same-origin referer its own XHRs send.
 UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko)"
 
+# NOTE: at full-year (periode=12) the `apbd` and `realisasi` types return a
+# BYTE-IDENTICAL export — verified across all 2,640 region-years crawled
+# (0 differences). Each report already carries BOTH an `anggaran` (budget) and
+# a `realisasi` (actual) column, so budget-vs-realisasi needs only the
+# `realisasi` type. The `type` param only plausibly diverges for in-year
+# periodes; don't crawl `apbd` at periode=12 (it just duplicates realisasi).
 REPORT_TYPES = ("apbd", "realisasi")
 
 DEFAULT_DELAY = 0.6          # seconds between successful calls
