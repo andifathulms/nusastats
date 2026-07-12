@@ -712,7 +712,7 @@ function HistoryPanel({
   ranks: Record<number, number>;
 }) {
   const [rows, setRows] = useState<Record<string, number>[] | null>(null);
-  const [mode, setMode] = useState<"total" | "components">("total");
+  const [mode, setMode] = useState<"total" | "components" | "rank">("total");
 
   useEffect(() => {
     let cancelled = false;
@@ -747,7 +747,7 @@ function HistoryPanel({
           {cfg.label} · {first?.year}–{endRow?.year}
         </div>
         <div className="inline-flex rounded-lg border border-ink-border/80 bg-ink-panel2/50 p-0.5">
-          {(["total", "components"] as const).map((m) => (
+          {(["total", "components", "rank"] as const).map((m) => (
             <button
               key={m}
               onClick={() => setMode(m)}
@@ -755,33 +755,37 @@ function HistoryPanel({
                 mode === m ? "bg-brand-gradient text-white" : "text-ink-muted hover:text-ink-text"
               }`}
             >
-              {m === "total" ? "Total" : "Per sektor"}
+              {m === "total" ? "Total" : m === "components" ? "Per sektor" : "Peringkat"}
             </button>
           ))}
         </div>
       </div>
-      <ResponsiveContainer width="100%" height={mode === "components" ? 380 : 300}>
-        <LineChart data={rows} margin={{ top: 8, right: 16, bottom: 0, left: 8 }}>
-          <CartesianGrid stroke={CHART.grid} vertical={false} />
-          <XAxis dataKey="year" tick={{ fill: CHART.axisTick, fontSize: 12 }} axisLine={{ stroke: CHART.axisLine }} tickLine={false} />
-          <YAxis
-            tick={{ fill: CHART.axisTick, fontSize: 12 }} axisLine={{ stroke: CHART.axisLine }} tickLine={false} width={56}
-            tickFormatter={(v) => (Math.abs(v) >= 1000 ? `${(v / 1000).toLocaleString("id-ID")}k` : `${v}`)}
-          />
-          <RTooltip
-            contentStyle={{ background: CHART.tooltipBg, border: `1px solid ${CHART.tooltipBorder}`, borderRadius: 8 }}
-            formatter={(v: number, n: string) => [`${v?.toLocaleString?.("id-ID") ?? v} M`, n]}
-          />
-          {mode === "components" && <Legend wrapperStyle={{ fontSize: 11 }} />}
-          {mode === "total" ? (
-            <Line type="monotone" dataKey={cfg.totalTurvarId} name="PDRB" stroke={CHART.accent} strokeWidth={2} dot={false} />
-          ) : (
-            sectors.map((s) => (
-              <Line key={s.id} type="monotone" dataKey={s.id} name={s.label} stroke={s.color} strokeWidth={1.6} dot={false} />
-            ))
-          )}
-        </LineChart>
-      </ResponsiveContainer>
+      {mode === "rank" ? (
+        <RankChart rows={rows.map((r) => ({ year: r.year, rank: ranks[r.year] })).filter((r) => r.rank != null)} />
+      ) : (
+        <ResponsiveContainer width="100%" height={mode === "components" ? 380 : 300}>
+          <LineChart data={rows} margin={{ top: 8, right: 16, bottom: 0, left: 8 }}>
+            <CartesianGrid stroke={CHART.grid} vertical={false} />
+            <XAxis dataKey="year" tick={{ fill: CHART.axisTick, fontSize: 12 }} axisLine={{ stroke: CHART.axisLine }} tickLine={false} />
+            <YAxis
+              tick={{ fill: CHART.axisTick, fontSize: 12 }} axisLine={{ stroke: CHART.axisLine }} tickLine={false} width={56}
+              tickFormatter={(v) => (Math.abs(v) >= 1000 ? `${(v / 1000).toLocaleString("id-ID")}k` : `${v}`)}
+            />
+            <RTooltip
+              contentStyle={{ background: CHART.tooltipBg, border: `1px solid ${CHART.tooltipBorder}`, borderRadius: 8 }}
+              formatter={(v: number, n: string) => [`${v?.toLocaleString?.("id-ID") ?? v} M`, n]}
+            />
+            {mode === "components" && <Legend wrapperStyle={{ fontSize: 11 }} />}
+            {mode === "total" ? (
+              <Line type="monotone" dataKey={cfg.totalTurvarId} name="PDRB" stroke={CHART.accent} strokeWidth={2} dot={false} />
+            ) : (
+              sectors.map((s) => (
+                <Line key={s.id} type="monotone" dataKey={s.id} name={s.label} stroke={s.color} strokeWidth={1.6} dot={false} />
+              ))
+            )}
+          </LineChart>
+        </ResponsiveContainer>
+      )}
       <div className="mt-2 text-xs text-ink-muted">
         Pertumbuhan {first?.year}→{endRow?.year}: <span className="font-semibold text-ink-text">{growth >= 0 ? "+" : ""}{growth.toLocaleString("id-ID", { maximumFractionDigits: 0 })}%</span>
         {ranks[endRow?.year] != null && <> · Peringkat {endRow?.year}: #{ranks[endRow?.year]} nasional</>}
@@ -824,6 +828,30 @@ function GroupPanel({ row, groups }: { row: RegionRow; groups: { label: string; 
   );
 }
 
+// Rank-over-time line — Y axis reversed so #1 sits at the top.
+function RankChart({ rows }: { rows: { year: number; rank: number }[] }) {
+  if (rows.length < 2) return <div className="flex h-[280px] items-center justify-center text-sm text-ink-muted">Data peringkat tidak cukup.</div>;
+  const maxRank = Math.max(...rows.map((r) => r.rank));
+  return (
+    <ResponsiveContainer width="100%" height={300}>
+      <LineChart data={rows} margin={{ top: 8, right: 16, bottom: 0, left: 8 }}>
+        <CartesianGrid stroke={CHART.grid} vertical={false} />
+        <XAxis dataKey="year" tick={{ fill: CHART.axisTick, fontSize: 12 }} axisLine={{ stroke: CHART.axisLine }} tickLine={false} />
+        <YAxis
+          reversed domain={[1, maxRank]} allowDecimals={false} width={40}
+          tick={{ fill: CHART.axisTick, fontSize: 12 }} axisLine={{ stroke: CHART.axisLine }} tickLine={false}
+          tickFormatter={(v) => `#${v}`}
+        />
+        <RTooltip
+          contentStyle={{ background: CHART.tooltipBg, border: `1px solid ${CHART.tooltipBorder}`, borderRadius: 8 }}
+          formatter={(v: number) => [`#${v}`, "Peringkat nasional"]}
+        />
+        <Line type="monotone" dataKey="rank" name="Peringkat" stroke={CHART.accent} strokeWidth={2} dot={{ r: 2 }} />
+      </LineChart>
+    </ResponsiveContainer>
+  );
+}
+
 function TrendPanel({
   series,
   ranks,
@@ -835,6 +863,7 @@ function TrendPanel({
   label?: string;
   unit?: string;
 }) {
+  const [mode, setMode] = useState<"pdrb" | "rank">("pdrb");
   const first = series[0];
   const last = series[series.length - 1];
   const growth = first.value ? (last.value / first.value - 1) * 100 : 0;
@@ -842,20 +871,40 @@ function TrendPanel({
   const rankThen = ranks[first.year];
   const rankDelta = rankThen != null && rankNow != null ? rankThen - rankNow : null; // + = moved up
   const chartRows = series.map((s) => ({ year: s.year, pdrb: s.value }));
+  const rankRows = series.map((s) => ({ year: s.year, rank: ranks[s.year] })).filter((r) => r.rank != null) as { year: number; rank: number }[];
   const deltaText =
     rankDelta == null ? "–" : rankDelta === 0 ? "tetap" : rankDelta > 0 ? `naik ${rankDelta}` : `turun ${-rankDelta}`;
 
   return (
     <Panel>
-      <div className="mb-2 text-xs font-medium uppercase tracking-wide text-ink-muted">
-        {label ?? "PDRB tahunan"} · {first.year}–{last.year}
+      <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+        <div className="text-xs font-medium uppercase tracking-wide text-ink-muted">
+          {label ?? "PDRB tahunan"} · {first.year}–{last.year}
+        </div>
+        <div className="inline-flex rounded-lg border border-ink-border/80 bg-ink-panel2/50 p-0.5">
+          {(["pdrb", "rank"] as const).map((m) => (
+            <button
+              key={m}
+              onClick={() => setMode(m)}
+              className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
+                mode === m ? "bg-brand-gradient text-white" : "text-ink-muted hover:text-ink-text"
+              }`}
+            >
+              {m === "pdrb" ? "PDRB" : "Peringkat"}
+            </button>
+          ))}
+        </div>
       </div>
       <div className="mb-3 grid grid-cols-3 gap-3">
-        <Stat label={`Pertumbuhan ${first.year}→${last.year}`} value={`${growth >= 0 ? "+" : ""}${growth.toLocaleString("id-ID", { maximumFractionDigits: 0 })}%`} sub="nominal (harga berlaku)" />
+        <Stat label={`Pertumbuhan ${first.year}→${last.year}`} value={`${growth >= 0 ? "+" : ""}${growth.toLocaleString("id-ID", { maximumFractionDigits: 0 })}%`} sub="riil (harga konstan)" />
         <Stat label={`Peringkat ${last.year}`} value={rankNow != null ? `#${rankNow}` : "–"} sub="nasional" />
         <Stat label={`Peringkat sejak ${first.year}`} value={deltaText} sub={rankThen != null ? `dari #${rankThen}` : undefined} />
       </div>
-      <SeriesChart rows={chartRows} entities={[{ key: "pdrb", label: label ?? "PDRB" }]} unit={unit} />
+      {mode === "pdrb" ? (
+        <SeriesChart rows={chartRows} entities={[{ key: "pdrb", label: label ?? "PDRB" }]} unit={unit} />
+      ) : (
+        <RankChart rows={rankRows} />
+      )}
     </Panel>
   );
 }
