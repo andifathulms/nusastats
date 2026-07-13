@@ -14,8 +14,13 @@ import {
 } from "@/lib/api";
 import { Panel, SectionTitle } from "@/components/ui";
 import { Field, Segmented, GROUP_LABEL, MEASURES } from "@/components/keuangan/controls";
+import { KeuanganMap } from "@/components/keuangan/KeuanganMap";
 
-type Tab = "rank";
+type Tab = "rank" | "map";
+const TABS: { v: Tab; label: string }[] = [
+  { v: "rank", label: "Peringkat" },
+  { v: "map", label: "Peta" },
+];
 
 export default function KeuanganAnalyticsPage() {
   const [summary, setSummary] = useState<DjpkSummary | null>(null);
@@ -27,7 +32,10 @@ export default function KeuanganAnalyticsPage() {
   const [level, setLevel] = useState<DjpkRegionLevel>("province");
   const [measure, setMeasure] = useState<DjpkMeasure>("realisasi");
   const [akun, setAkun] = useState("pad");
-  const [tab] = useState<Tab>("rank");
+  const [tab, setTab] = useState<Tab>("rank");
+
+  const akunLabel =
+    catalog?.groups.flatMap((g) => g.accounts).find((a) => a.akun_key === akun)?.label_id ?? akun;
 
   useEffect(() => {
     djpkApi.summary().then((s) => {
@@ -90,8 +98,26 @@ export default function KeuanganAnalyticsPage() {
         </div>
       </Panel>
 
-      {tab === "rank" && tahun !== null && (
+      {/* Tabs */}
+      <div className="flex flex-wrap gap-1 border-b border-ink-border">
+        {TABS.map((t) => (
+          <button
+            key={t.v}
+            onClick={() => setTab(t.v)}
+            className={`-mb-px border-b-2 px-4 py-2 text-sm font-medium transition-colors ${
+              tab === t.v ? "border-ink-accent text-ink-accent" : "border-transparent text-ink-muted hover:text-ink-text"
+            }`}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      {tahun !== null && tab === "rank" && (
         <RankView akun={akun} level={level} measure={measure} tahun={tahun} />
+      )}
+      {tahun !== null && tab === "map" && (
+        <KeuanganMap akun={akun} label={akunLabel} level={level} measure={measure} tahun={tahun} />
       )}
     </div>
   );
