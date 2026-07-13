@@ -18,6 +18,8 @@ from django.db.models import Count
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 
+from djpk.derived import DERIVED, DERIVED_BY_KEY
+from djpk.derived import meta as derived_meta
 from djpk.models import ApbdAccount, ApbdLine, ApbdRegion, ApbdReport, RegionLevel
 
 from .analytics import distribution, growth_rows, pearson, percentile_rank, rank_rows
@@ -98,6 +100,53 @@ def _line_values(tahun, rtype, periode, level, akun_key, measure, prov=None):
     return out
 
 
+def _derived_values(tahun, rtype, periode, level, spec, measure, prov=None):
+    """{djpk_code: (name, ratio, kemendagri_code)} for a derived ratio. Ratios
+    are computed on one basis — realisasi unless `measure=anggaran` is asked —
+    from the required accounts pulled in a single query. A region missing any
+    required account (or with a zero denominator) is dropped, never faked."""
+    field = "anggaran" if measure == "anggaran" else "realisasi"
+    qs = ApbdLine.objects.filter(
+        report__tahun=tahun,
+        report__report_type=rtype,
+        report__periode=periode,
+        report__region__level=level,
+        akun_key__in=spec["requires"],
+    )
+    if prov:
+        qs = qs.filter(report__region__djpk_prov=prov)
+    qs = qs.order_by("report__region__djpk_code", "line_index").values_list(
+        "report__region__djpk_code",
+        "report__region__name",
+        "report__region__kemendagri_code",
+        "akun_key",
+        field,
+    )
+    acc = {}
+    for code, name, kemen, akun_key, val in qs:
+        name0, kemen0, vals = acc.setdefault(code, (name, kemen or "", {}))
+        if val is not None and akun_key not in vals:
+            vals[akun_key] = val
+    out = {}
+    for code, (name, kemen, vals) in acc.items():
+        v = spec["fn"](vals)
+        if v is not None:
+            out[code] = (name, v, kemen)
+    return out
+
+
+def _metric_values(tahun, rtype, periode, level, akun_key, measure, prov=None):
+    """Values for either a raw account or a derived ratio (dispatched by key).
+    Returns (value_map, unit, account_meta)."""
+    spec = DERIVED_BY_KEY.get(akun_key)
+    if spec:
+        return _derived_values(tahun, rtype, periode, level, spec, measure, prov), spec["unit"], derived_meta(spec)
+    account = ApbdAccount.objects.filter(akun_key=akun_key).first()
+    unit = "%" if measure == "persentase" else "Rp"
+    meta = ApbdAccountSerializer(account).data if account else {"akun_key": akun_key}
+    return _line_values(tahun, rtype, periode, level, akun_key, measure, prov), unit, meta
+
+
 # --- endpoints -----------------------------------------------------------
 
 @api_view(["GET"])
@@ -143,10 +192,15 @@ def accounts(request):
     rows = list(ApbdAccount.objects.all())
     by_group = {}
     for r in rows:
-        by_group.setdefault(r.group, []).append(ApbdAccountSerializer(r).data)
-    order = ["pendapatan", "belanja", "pembiayaan"]
+        d = ApbdAccountSerializer(r).data
+        d["derived"] = False
+        by_group.setdefault(r.group, []).append(d)
+    # Derived ratios (kemandirian fiskal, rasio belanja pegawai, …) as their own
+    # group, so the picker lists them alongside the raw accounts.
+    by_group["rasio"] = [derived_meta(spec) for spec in DERIVED]
+    order = ["pendapatan", "belanja", "pembiayaan", "rasio"]
     groups = [{"group": g, "accounts": by_group[g]} for g in order if g in by_group]
-    return Response({"count": len(rows), "groups": groups})
+    return Response({"count": len(rows) + len(DERIVED), "groups": groups})
 
 
 @api_view(["GET"])
@@ -173,15 +227,14 @@ def rank(request):
     """`/api/djpk/rank/?akun=&measure=&level=&prov=&tahun=&type=&periode=&order=`
     — rank regions at a level by one account+measure, plus distribution stats."""
     akun_key = request.query_params.get("akun", "pad")
-    account = ApbdAccount.objects.filter(akun_key=akun_key).first()
     measure = _measure(request)
     level = request.query_params.get("level", RegionLevel.PROVINCE)
     prov = request.query_params.get("prov")
     order = request.query_params.get("order", "desc")
     tahun, rtype, periode = _resolve_scope(request)
 
-    vals = _line_values(tahun, rtype, periode, level, akun_key, measure,
-                        prov=str(prov).zfill(2) if prov else None)
+    vals, unit, account = _metric_values(tahun, rtype, periode, level, akun_key, measure,
+                                         prov=str(prov).zfill(2) if prov else None)
     rows = [
         {"domain_id": code, "domain_name": name, "kemendagri_code": kemen, "value": v}
         for code, (name, v, kemen) in vals.items()
@@ -194,13 +247,13 @@ def rank(request):
     page = full[offset : offset + int(limit)] if limit else full[offset:]
 
     return Response({
-        "account": ApbdAccountSerializer(account).data if account else {"akun_key": akun_key},
+        "account": account,
         "measure": measure,
         "level": level,
         "prov": prov,
         "scope": {"tahun": tahun, "type": rtype, "periode": periode},
         "order": order,
-        "unit": "%" if measure == "persentase" else "Rp",
+        "unit": unit,
         "stats": stats,
         "total": len(full),
         "offset": offset,
@@ -220,8 +273,8 @@ def correlate(request):
     level = request.query_params.get("level", RegionLevel.PROVINCE)
     tahun, rtype, periode = _resolve_scope(request)
 
-    x_by = _line_values(tahun, rtype, periode, level, x_key, measure)
-    y_by = _line_values(tahun, rtype, periode, level, y_key, measure)
+    x_by, x_unit, x_meta = _metric_values(tahun, rtype, periode, level, x_key, measure)
+    y_by, y_unit, y_meta = _metric_values(tahun, rtype, periode, level, y_key, measure)
     results = [
         {"domain_id": c, "domain_name": x_by[c][0], "x": x_by[c][1], "y": y_by[c][1]}
         for c in x_by if c in y_by
@@ -229,12 +282,9 @@ def correlate(request):
     results.sort(key=lambda p: p["x"])
     r = pearson([p["x"] for p in results], [p["y"] for p in results])
 
-    def meta(k):
-        a = ApbdAccount.objects.filter(akun_key=k).first()
-        return ApbdAccountSerializer(a).data if a else {"akun_key": k}
-
     return Response({
-        "x": meta(x_key), "y": meta(y_key), "measure": measure, "level": level,
+        "x": x_meta, "y": y_meta, "x_unit": x_unit, "y_unit": y_unit,
+        "measure": measure, "level": level,
         "scope": {"tahun": tahun, "type": rtype, "periode": periode},
         "n": len(results), "r": r, "results": results,
     })
@@ -245,7 +295,6 @@ def growth(request):
     """`/api/djpk/growth/?akun=&measure=&level=&from=&to=&type=&periode=` —
     per-region change of one account+measure between two years."""
     akun_key = request.query_params.get("akun", "pad")
-    account = ApbdAccount.objects.filter(akun_key=akun_key).first()
     measure = _measure(request)
     level = request.query_params.get("level", RegionLevel.PROVINCE)
     rtype = request.query_params.get("type", "realisasi")
@@ -261,14 +310,14 @@ def growth(request):
     if y_from is None or y_to is None:
         return Response({"detail": "no data to compare."}, status=404)
 
-    from_by = {c: (n, v) for c, (n, v, _) in
-               _line_values(y_from, rtype, periode, level, akun_key, measure).items()}
-    to_by = {c: (n, v) for c, (n, v, _) in
-             _line_values(y_to, rtype, periode, level, akun_key, measure).items()}
+    from_vals, unit, account = _metric_values(y_from, rtype, periode, level, akun_key, measure)
+    to_vals, _u, _m = _metric_values(y_to, rtype, periode, level, akun_key, measure)
+    from_by = {c: (n, v) for c, (n, v, _) in from_vals.items()}
+    to_by = {c: (n, v) for c, (n, v, _) in to_vals.items()}
     rows = growth_rows(from_by, to_by, order=order)
 
     return Response({
-        "account": ApbdAccountSerializer(account).data if account else {"akun_key": akun_key},
+        "account": account, "unit": unit,
         "measure": measure, "level": level, "type": rtype, "periode": periode,
         "from": y_from, "to": y_to, "total": len(rows), "results": rows,
     })
@@ -340,10 +389,33 @@ def region_detail(request, code):
         if g not in order:
             groups.append({"group": g, "lines": items})
 
+    # Derived ratios for this region (kemandirian fiskal, rasio belanja pegawai,
+    # …), each ranked among the same peers. Reuses _derived_values over the peer
+    # set, which includes this region.
+    ratios = []
+    for spec in DERIVED:
+        peer_map = _derived_values(tahun, rtype, periode, region.level, spec, "realisasi", prov=peer_prov)
+        mine = peer_map.get(region.djpk_code)
+        if not mine:
+            continue
+        value = mine[1]
+        rk, of, pct = percentile_rank(value, [v for _, v, _ in peer_map.values()])
+        ratios.append({
+            "akun_key": spec["akun_key"],
+            "label_id": spec["label_id"],
+            "unit": spec["unit"],
+            "desc": spec["desc"],
+            "value": value,
+            "rank": rk,
+            "of": of,
+            "percentile": pct,
+        })
+
     return Response({
         "region": ApbdRegionSerializer(region).data,
         "scope": {"tahun": tahun, "type": rtype, "periode": periode},
         "peer_scope": peer_scope,
         "fetched_at": report.fetched_at,
         "groups": groups,
+        "ratios": ratios,
     })
