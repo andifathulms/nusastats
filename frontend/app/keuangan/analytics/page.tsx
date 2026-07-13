@@ -15,11 +15,16 @@ import {
 import { Panel, SectionTitle } from "@/components/ui";
 import { Field, Segmented, GROUP_LABEL, MEASURES } from "@/components/keuangan/controls";
 import { KeuanganMap } from "@/components/keuangan/KeuanganMap";
+import { KeuanganCorrelation } from "@/components/keuangan/KeuanganCorrelation";
+import { KeuanganGrowth } from "@/components/keuangan/KeuanganGrowth";
+import { KeuanganRegionProfile } from "@/components/keuangan/KeuanganRegionProfile";
 
-type Tab = "rank" | "map";
+type Tab = "rank" | "map" | "correlate" | "growth";
 const TABS: { v: Tab; label: string }[] = [
   { v: "rank", label: "Peringkat" },
   { v: "map", label: "Peta" },
+  { v: "correlate", label: "Korelasi" },
+  { v: "growth", label: "Pertumbuhan" },
 ];
 
 export default function KeuanganAnalyticsPage() {
@@ -119,6 +124,12 @@ export default function KeuanganAnalyticsPage() {
       {tahun !== null && tab === "map" && (
         <KeuanganMap akun={akun} label={akunLabel} level={level} measure={measure} tahun={tahun} />
       )}
+      {tahun !== null && tab === "correlate" && (
+        <KeuanganCorrelation xKey={akun} xLabel={akunLabel} level={level} measure={measure} tahun={tahun} catalog={catalog} />
+      )}
+      {tab === "growth" && (
+        <KeuanganGrowth akun={akun} label={akunLabel} level={level} measure={measure} years={summary.years} />
+      )}
     </div>
   );
 }
@@ -126,6 +137,7 @@ export default function KeuanganAnalyticsPage() {
 function RankView({ akun, level, measure, tahun }: { akun: string; level: DjpkRegionLevel; measure: DjpkMeasure; tahun: number }) {
   const [data, setData] = useState<DjpkRank | null>(null);
   const [loading, setLoading] = useState(false);
+  const [openCode, setOpenCode] = useState<string | null>(null);
 
   useEffect(() => {
     setLoading(true);
@@ -141,7 +153,7 @@ function RankView({ akun, level, measure, tahun }: { akun: string; level: DjpkRe
 
   return (
     <Panel>
-      <SectionTitle hint={data ? `${data.total} wilayah · ${data.account.label_id}` : ""}>
+      <SectionTitle hint={data ? `${data.total} wilayah · ${data.account.label_id} · klik untuk rincian` : ""}>
         Peringkat {level === "province" ? "provinsi" : "kabupaten/kota"}
       </SectionTitle>
       {loading && <div className="text-sm text-ink-muted">Memuat…</div>}
@@ -150,19 +162,24 @@ function RankView({ akun, level, measure, tahun }: { akun: string; level: DjpkRe
           {data.results.map((r) => {
             const w = Math.round((Math.abs(r.value) / maxVal) * 100);
             return (
-              <div key={r.domain_id} className="flex items-center gap-3">
+              <button
+                key={r.domain_id}
+                onClick={() => setOpenCode(r.domain_id)}
+                className="flex w-full items-center gap-3 rounded-md px-1 py-0.5 text-left transition-colors hover:bg-ink-panel2/60"
+              >
                 <div className="w-6 shrink-0 text-right text-xs tabular-nums text-ink-muted">{r.rank}</div>
                 <div className="w-44 shrink-0 truncate text-sm text-ink-text" title={r.domain_name}>{r.domain_name}</div>
                 <div className="relative h-5 flex-1 overflow-hidden rounded bg-ink-panel2">
                   <div className="h-full rounded" style={{ width: `${w}%`, background: isPct ? PCT_COLOR(Math.min(100, r.value)) : "#1E4585" }} />
                 </div>
                 <div className="w-28 shrink-0 text-right text-sm tabular-nums text-ink-text">{fmt(r.value)}</div>
-              </div>
+              </button>
             );
           })}
           {data.results.length === 0 && <div className="text-sm text-ink-muted">Tidak ada data untuk akun/tahun ini.</div>}
         </div>
       )}
+      {openCode && <KeuanganRegionProfile code={openCode} tahun={tahun} onClose={() => setOpenCode(null)} />}
     </Panel>
   );
 }
