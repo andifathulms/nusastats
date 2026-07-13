@@ -66,13 +66,16 @@ const NAV: NavSection[] = [
     icon: WalletIcon,
     home: "/keuangan",
     match: (p) => p === "/keuangan" || p.startsWith("/keuangan/"),
-    items: [],
+    items: [
+      { href: "/keuangan", label: "Ringkasan" },
+      { href: "/keuangan/analytics", label: "Analitik" },
+    ],
   },
 ];
 
 function isItemActive(href: string, pathname: string): boolean {
   // Section-root items (exact match) vs deeper items (prefix match).
-  if (href === "/dukcapil" || href === "/variables" || href === "/analytics") {
+  if (href === "/dukcapil" || href === "/keuangan" || href === "/variables" || href === "/analytics") {
     return pathname === href;
   }
   return pathname === href || pathname.startsWith(href + "/");

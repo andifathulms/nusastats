@@ -1,76 +1,29 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import {
-  djpkApi,
-  formatRupiah,
-  DJPK_LEVELS,
-  PCT_COLOR,
-  type DjpkAccountGroups,
-  type DjpkMeasure,
-  type DjpkRank,
-  type DjpkRegionLevel,
-  type DjpkSummary,
-} from "@/lib/api";
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import { djpkApi, formatRupiah, type DjpkRank, type DjpkSummary } from "@/lib/api";
 import { Badge, Panel, SectionTitle, StatTile } from "@/components/ui";
 
-const MEASURES: { v: DjpkMeasure; label: string }[] = [
-  { v: "realisasi", label: "Realisasi" },
-  { v: "anggaran", label: "Anggaran" },
-  { v: "persentase", label: "% Serapan" },
-];
-
-const GROUP_LABEL: Record<string, string> = {
-  pendapatan: "Pendapatan",
-  belanja: "Belanja",
-  pembiayaan: "Pembiayaan",
-};
-
-export default function KeuanganDaerahPage() {
+export default function KeuanganOverviewPage() {
   const [summary, setSummary] = useState<DjpkSummary | null>(null);
-  const [catalog, setCatalog] = useState<DjpkAccountGroups | null>(null);
+  const [topPad, setTopPad] = useState<DjpkRank | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  // Controls.
-  const [tahun, setTahun] = useState<number | null>(null);
-  const [level, setLevel] = useState<DjpkRegionLevel>("province");
-  const [measure, setMeasure] = useState<DjpkMeasure>("realisasi");
-  const [akun, setAkun] = useState("pad");
-
-  const [rankData, setRankData] = useState<DjpkRank | null>(null);
-  const [loadingRank, setLoadingRank] = useState(false);
-
-  // Bootstrap: summary (years, national totals) + account catalog.
   useEffect(() => {
-    djpkApi.summary().then((s) => {
-      setSummary(s);
-      setTahun(s.scope.tahun);
-    }).catch((e) => setError(String(e)));
-    djpkApi.accounts().then(setCatalog).catch((e) => setError(String(e)));
-  }, []);
-
-  // Fetch ranking whenever a control changes.
-  useEffect(() => {
-    if (tahun === null) return;
-    setLoadingRank(true);
+    djpkApi.summary().then(setSummary).catch((e) => setError(String(e)));
     djpkApi
-      .rank({ akun, measure, level, tahun: String(tahun), limit: "40" })
-      .then(setRankData)
-      .catch((e) => setError(String(e)))
-      .finally(() => setLoadingRank(false));
-  }, [akun, measure, level, tahun]);
-
-  const totals = summary?.national_totals ?? {};
-  const maxVal = useMemo(
-    () => Math.max(1, ...(rankData?.results ?? []).map((r) => Math.abs(r.value))),
-    [rankData],
-  );
+      .rank({ akun: "pad", level: "province", measure: "realisasi", limit: "10" })
+      .then(setTopPad)
+      .catch(() => {});
+  }, []);
 
   if (error) return <div className="text-ink-muted">Gagal memuat: {error}</div>;
   if (!summary) return <div className="text-ink-muted">Memuat…</div>;
 
-  const isPct = measure === "persentase";
-  const fmt = (v: number) => (isPct ? `${v.toLocaleString("id-ID", { maximumFractionDigits: 1 })}%` : formatRupiah(v));
+  const totals = summary.national_totals ?? {};
+  const maxRegions = Math.max(1, ...summary.by_level.map((l) => l.regions));
+  const maxPad = Math.max(1, ...(topPad?.results ?? []).map((r) => r.value));
 
   return (
     <div className="space-y-10">
@@ -86,9 +39,17 @@ export default function KeuanganDaerahPage() {
             belanja, dan pembiayaan. Setiap angka berasal dari ekspor resmi portal SIKD DJPK,
             terpisah dari data BPS dan Dukcapil.
           </p>
+          <div className="mt-6 flex flex-wrap gap-3">
+            <Link
+              href="/keuangan/analytics"
+              className="rounded-xl bg-brand-gradient px-5 py-2.5 text-sm font-medium text-white shadow-glow transition-transform hover:scale-[1.02]"
+            >
+              Buka analitik →
+            </Link>
+          </div>
           <div className="mt-5 text-xs text-ink-muted">
             Tahun anggaran <span className="font-medium text-ink-text">{summary.scope.tahun}</span>
-            {" · "}realisasi s/d bulan {summary.scope.periode}
+            {summary.years.length > 1 && <span> · {summary.years.length} tahun</span>}
             {summary.last_fetched_at && (
               <span> · direkam {new Date(summary.last_fetched_at).toLocaleDateString("id-ID")}</span>
             )}
@@ -104,128 +65,55 @@ export default function KeuanganDaerahPage() {
         <StatTile label="Pembiayaan" value={formatRupiah(totals.pembiayaan_daerah)} sub="netto" accent="warn" />
       </div>
 
-      {/* Controls */}
-      <Panel>
-        <div className="flex flex-wrap items-end gap-4">
-          <Field label="Akun">
-            <select
-              value={akun}
-              onChange={(e) => setAkun(e.target.value)}
-              className="min-w-[16rem] rounded-lg border border-ink-border bg-ink-panel px-3 py-2 text-sm text-ink-text"
-            >
-              {catalog?.groups.map((g) => (
-                <optgroup key={g.group} label={GROUP_LABEL[g.group] ?? g.group}>
-                  {g.accounts.map((a) => (
-                    <option key={a.akun_key} value={a.akun_key}>
-                      {a.parent_key ? "— " : ""}
-                      {a.label_id}
-                    </option>
-                  ))}
-                </optgroup>
-              ))}
-            </select>
-          </Field>
+      <div className="grid gap-6 lg:grid-cols-2">
+        <Panel>
+          <SectionTitle hint="jumlah wilayah dengan data APBD">Cakupan wilayah</SectionTitle>
+          <div className="space-y-3">
+            {summary.by_level.map((l) => (
+              <div key={l.level}>
+                <div className="flex items-baseline justify-between text-sm">
+                  <span className="text-ink-text">{l.label}</span>
+                  <span className="tabular-nums text-ink-muted">{l.regions}</span>
+                </div>
+                <div className="mt-1 h-2 w-full overflow-hidden rounded-full bg-ink-panel2">
+                  <div
+                    className="h-full rounded-full bg-brand-gradient transition-all"
+                    style={{ width: `${Math.round((l.regions / maxRegions) * 100)}%` }}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+        </Panel>
 
-          <Field label="Tingkat">
-            <Segmented
-              options={DJPK_LEVELS.map((l) => ({ v: l.v, label: l.label }))}
-              value={level}
-              onChange={(v) => setLevel(v as DjpkRegionLevel)}
-            />
-          </Field>
-
-          <Field label="Ukuran">
-            <Segmented
-              options={MEASURES.map((m) => ({ v: m.v, label: m.label }))}
-              value={measure}
-              onChange={(v) => setMeasure(v as DjpkMeasure)}
-            />
-          </Field>
-
-          <Field label="Tahun">
-            <select
-              value={tahun ?? ""}
-              onChange={(e) => setTahun(Number(e.target.value))}
-              className="rounded-lg border border-ink-border bg-ink-panel px-3 py-2 text-sm text-ink-text"
-            >
-              {summary.years.map((y) => (
-                <option key={y} value={y}>{y}</option>
-              ))}
-            </select>
-          </Field>
-        </div>
-      </Panel>
-
-      {/* Ranked list */}
-      <Panel>
-        <SectionTitle hint={rankData ? `${rankData.total} wilayah · ${rankData.account.label_id}` : ""}>
-          Peringkat {level === "province" ? "provinsi" : "kabupaten/kota"}
-        </SectionTitle>
-        {loadingRank && <div className="text-sm text-ink-muted">Memuat peringkat…</div>}
-        {!loadingRank && rankData && (
-          <div className="space-y-1.5">
-            {rankData.results.map((r) => {
-              const w = Math.round((Math.abs(r.value) / maxVal) * 100);
-              return (
+        <Panel className="flex flex-col justify-between gap-4">
+          <div>
+            <SectionTitle hint={`PAD realisasi ${summary.scope.tahun} · provinsi teratas`}>
+              10 provinsi PAD tertinggi
+            </SectionTitle>
+            <div className="space-y-1.5">
+              {(topPad?.results ?? []).map((r) => (
                 <div key={r.domain_id} className="flex items-center gap-3">
-                  <div className="w-6 shrink-0 text-right text-xs tabular-nums text-ink-muted">{r.rank}</div>
-                  <div className="w-44 shrink-0 truncate text-sm text-ink-text" title={r.domain_name}>
+                  <div className="w-5 shrink-0 text-right text-xs tabular-nums text-ink-muted">{r.rank}</div>
+                  <div className="w-40 shrink-0 truncate text-sm text-ink-text" title={r.domain_name}>
                     {r.domain_name}
                   </div>
-                  <div className="relative h-5 flex-1 overflow-hidden rounded bg-ink-panel2">
-                    <div
-                      className="h-full rounded"
-                      style={{
-                        width: `${w}%`,
-                        background: isPct ? PCT_COLOR(Math.min(100, r.value)) : "#1E4585",
-                      }}
-                    />
+                  <div className="relative h-4 flex-1 overflow-hidden rounded bg-ink-panel2">
+                    <div className="h-full rounded bg-brand-gradient" style={{ width: `${Math.round((r.value / maxPad) * 100)}%` }} />
                   </div>
-                  <div className="w-28 shrink-0 text-right text-sm tabular-nums text-ink-text">{fmt(r.value)}</div>
+                  <div className="w-20 shrink-0 text-right text-sm tabular-nums text-ink-text">{formatRupiah(r.value)}</div>
                 </div>
-              );
-            })}
-            {rankData.results.length === 0 && (
-              <div className="text-sm text-ink-muted">Tidak ada data untuk akun/tahun ini.</div>
-            )}
+              ))}
+            </div>
           </div>
-        )}
-      </Panel>
-    </div>
-  );
-}
-
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <label className="flex flex-col gap-1.5">
-      <span className="text-[11px] font-medium uppercase tracking-wider text-ink-muted">{label}</span>
-      {children}
-    </label>
-  );
-}
-
-function Segmented({
-  options,
-  value,
-  onChange,
-}: {
-  options: { v: string; label: string }[];
-  value: string;
-  onChange: (v: string) => void;
-}) {
-  return (
-    <div className="inline-flex rounded-lg border border-ink-border bg-ink-panel2/50 p-0.5">
-      {options.map((o) => (
-        <button
-          key={o.v}
-          onClick={() => onChange(o.v)}
-          className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
-            value === o.v ? "bg-brand-gradient text-white shadow-glow" : "text-ink-muted hover:text-ink-text"
-          }`}
-        >
-          {o.label}
-        </button>
-      ))}
+          <Link
+            href="/keuangan/analytics"
+            className="rounded-lg bg-brand-gradient px-4 py-2 text-center text-sm font-medium text-white shadow-glow hover:opacity-90"
+          >
+            Peringkat, korelasi, peta &amp; pertumbuhan →
+          </Link>
+        </Panel>
+      </div>
     </div>
   );
 }
