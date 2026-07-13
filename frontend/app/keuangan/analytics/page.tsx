@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   djpkApi,
   formatByUnit,
@@ -143,28 +143,60 @@ export default function KeuanganAnalyticsPage() {
   );
 }
 
+const PER_PAGE = 20;
+
 function RankView({ akun, level, measure, tahun }: { akun: string; level: DjpkRegionLevel; measure: DjpkMeasure; tahun: number }) {
   const [data, setData] = useState<DjpkRank | null>(null);
   const [loading, setLoading] = useState(false);
   const [openCode, setOpenCode] = useState<string | null>(null);
+  const [page, setPage] = useState(0);
+  const [order, setOrder] = useState<"desc" | "asc">("desc");
+
+  // Reset to the first page whenever the query (not the page) changes.
+  useEffect(() => { setPage(0); }, [akun, level, measure, tahun, order]);
 
   useEffect(() => {
     setLoading(true);
     djpkApi
-      .rank({ akun, measure, level, tahun: String(tahun), limit: "60" })
+      .rank({ akun, measure, level, tahun: String(tahun), order, limit: String(PER_PAGE), offset: String(page * PER_PAGE) })
       .then(setData)
       .finally(() => setLoading(false));
-  }, [akun, measure, level, tahun]);
+  }, [akun, measure, level, tahun, order, page]);
 
   const isPct = data?.unit === "%";
-  const maxVal = useMemo(() => Math.max(1, ...(data?.results ?? []).map((r) => Math.abs(r.value))), [data]);
+  // Scale bars by the GLOBAL max/min (from stats) so widths stay comparable
+  // across pages — not by the current page's own max.
+  const maxVal = Math.max(1, Math.abs(data?.stats?.max ?? 0), Math.abs(data?.stats?.min ?? 0));
   const fmt = (v: number) => formatByUnit(v, data?.unit);
+  const total = data?.total ?? 0;
+  const shown = data?.results.length ?? 0;
+  const offset = data?.offset ?? 0;
 
   return (
     <Panel>
-      <SectionTitle hint={data ? `${data.total} wilayah · ${data.account.label_id} · klik untuk rincian` : ""}>
-        Peringkat {level === "province" ? "provinsi" : "kabupaten/kota"}
-      </SectionTitle>
+      <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+        <SectionTitle hint={data ? `${total} wilayah · klik baris untuk rincian` : ""}>
+          Peringkat {level === "province" ? "provinsi" : "kabupaten/kota"}
+        </SectionTitle>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setOrder((o) => (o === "desc" ? "asc" : "desc"))}
+            className="rounded-md border border-ink-border px-2 py-1 text-xs text-ink-text hover:border-ink-accent/60"
+            title="Balik urutan"
+          >
+            {order === "desc" ? "Tertinggi ↓" : "Terendah ↑"}
+          </button>
+          {data && total > 0 && (
+            <Pager
+              offset={offset}
+              shown={shown}
+              total={total}
+              onPrev={() => setPage((p) => Math.max(0, p - 1))}
+              onNext={() => setPage((p) => p + 1)}
+            />
+          )}
+        </div>
+      </div>
       {loading && <div className="text-sm text-ink-muted">Memuat…</div>}
       {!loading && data && (
         <div className="space-y-1.5">
@@ -176,7 +208,7 @@ function RankView({ akun, level, measure, tahun }: { akun: string; level: DjpkRe
                 onClick={() => setOpenCode(r.domain_id)}
                 className="flex w-full items-center gap-3 rounded-md px-1 py-0.5 text-left transition-colors hover:bg-ink-panel2/60"
               >
-                <div className="w-6 shrink-0 text-right text-xs tabular-nums text-ink-muted">{r.rank}</div>
+                <div className="w-8 shrink-0 text-right text-xs tabular-nums text-ink-muted">{r.rank}</div>
                 <div className="w-44 shrink-0 truncate text-sm text-ink-text" title={r.domain_name}>{r.domain_name}</div>
                 <div className="relative h-5 flex-1 overflow-hidden rounded bg-ink-panel2">
                   <div className="h-full rounded" style={{ width: `${w}%`, background: isPct ? PCT_COLOR(Math.min(100, r.value)) : "#1E4585" }} />
@@ -190,5 +222,18 @@ function RankView({ akun, level, measure, tahun }: { akun: string; level: DjpkRe
       )}
       {openCode && <KeuanganRegionProfile code={openCode} tahun={tahun} onClose={() => setOpenCode(null)} />}
     </Panel>
+  );
+}
+
+function Pager({ offset, shown, total, onPrev, onNext }: { offset: number; shown: number; total: number; onPrev: () => void; onNext: () => void }) {
+  const from = total ? offset + 1 : 0;
+  const to = offset + shown;
+  const btn = "rounded-md border border-ink-border px-2 py-0.5 text-ink-text hover:border-ink-accent/60 disabled:opacity-30";
+  return (
+    <div className="flex items-center gap-2 text-xs text-ink-muted">
+      <span className="tabular-nums">{from}–{to} dari {total.toLocaleString("id-ID")}</span>
+      <button onClick={onPrev} disabled={offset === 0} className={btn} title="Sebelumnya">‹</button>
+      <button onClick={onNext} disabled={to >= total} className={btn} title="Berikutnya">›</button>
+    </div>
   );
 }
