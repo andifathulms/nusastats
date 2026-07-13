@@ -157,9 +157,16 @@ def summary(request):
     years = sorted({s["tahun"] for s in _scopes()}, reverse=True)
     types = sorted({s["report_type"] for s in _scopes()})
 
+    # Count regions that actually have data in the resolved scope — NOT all-time
+    # region rows. The two differ because the Papua reorg left ~26 kab/kota under
+    # old province codes (26/32) whose data stops after 2022 (superseded by the
+    # new 35–38 codes), so an all-time count over-reports the current coverage.
     counts = {
-        row["level"]: row["c"]
-        for row in ApbdRegion.objects.order_by().values("level").annotate(c=Count("id"))
+        row["region__level"]: row["c"]
+        for row in ApbdReport.objects.filter(tahun=tahun, report_type=rtype, periode=periode)
+        .order_by()
+        .values("region__level")
+        .annotate(c=Count("region_id", distinct=True))
     }
     by_level = [
         {"level": lv, "label": lb, "regions": counts.get(lv, 0)}

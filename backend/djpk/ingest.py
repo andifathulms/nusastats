@@ -113,11 +113,18 @@ def ingest(
         prov_map = {k: v for k, v in prov_map.items() if k in want}
 
     # Enumerate all target (province, pemda) pairs first, so `total` is known
-    # and the covered set is explicit.
+    # and the covered set is explicit. A transient failure enumerating one
+    # province (the container's DNS is intermittently flaky) is recorded and
+    # skipped — never allowed to abort the whole crawl. Re-running fills the gap.
     targets = []  # (djpk_prov, prov_name, pemda_code, pemda_name)
+    errors = []
     for pcode, pname in prov_map.items():
         client.sleep()
-        pemda_map = client.list_pemda(pcode, tahun)
+        try:
+            pemda_map = client.list_pemda(pcode, tahun)
+        except Exception as exc:
+            errors.append({"region": f"{pcode}**", "name": f"{pname} (enumerasi pemda)", "error": str(exc)})
+            continue
         for dcode, dname in pemda_map.items():
             if dcode in _AGGREGATE_PEMDA:
                 continue
@@ -125,7 +132,6 @@ def ingest(
 
     total = len(targets)
     reports = 0
-    errors = []
     for i, (pcode, pname, dcode, dname) in enumerate(targets, 1):
         region = upsert_region(pcode, pname, dcode, dname)
         try:
