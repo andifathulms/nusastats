@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { djpkApi, formatRupiah, type DjpkGrowth, type DjpkMeasure, type DjpkRegionLevel, type DjpkSummary } from "@/lib/api";
+import { djpkApi, formatByUnit, type DjpkGrowth, type DjpkMeasure, type DjpkRegionLevel, type DjpkSummary } from "@/lib/api";
 import { Panel, SectionTitle } from "@/components/ui";
 import { Field } from "@/components/keuangan/controls";
 
@@ -34,10 +34,9 @@ export function KeuanganGrowth({
       .finally(() => setLoading(false));
   }, [akun, measure, level, from, to]);
 
-  const isPct = measure === "persentase";
   const rows = data?.results ?? [];
   const maxAbsPct = Math.max(1, ...rows.map((r) => Math.abs(r.change_pct ?? 0)));
-  const fmt = (v: number) => (isPct ? `${v.toLocaleString("id-ID", { maximumFractionDigits: 1 })}%` : formatRupiah(v));
+  const fmt = (v: number) => formatByUnit(v, data?.unit);
 
   return (
     <div className="space-y-4">

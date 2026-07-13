@@ -522,6 +522,9 @@ export type DjpkAccount = {
   group: string;
   parent_key: string;
   sort?: number;
+  unit?: string;
+  desc?: string;
+  derived?: boolean;
 };
 
 export type DjpkAccountGroups = {
@@ -576,10 +579,22 @@ export type DjpkGrowth = {
   account: DjpkAccount;
   measure: DjpkMeasure;
   level: DjpkRegionLevel;
+  unit?: string;
   from: number;
   to: number;
   total: number;
   results: DjpkGrowthRow[];
+};
+
+export type DjpkRatio = {
+  akun_key: string;
+  label_id: string;
+  unit: string;
+  desc: string;
+  value: number;
+  rank: number | null;
+  of: number | null;
+  percentile: number | null;
 };
 
 export type DjpkLine = {
@@ -602,6 +617,7 @@ export type DjpkRegionDetail = {
   peer_scope: string;
   fetched_at: string;
   groups: { group: string; lines: DjpkLine[] }[];
+  ratios: DjpkRatio[];
 };
 
 export const djpkApi = {
@@ -624,7 +640,7 @@ export const djpkApi = {
   },
   correlate: (params: Record<string, string>) => {
     const q = new URLSearchParams(params).toString();
-    return get<{ x: DjpkAccount; y: DjpkAccount; n: number; r: number | null; results: { domain_id: string; domain_name: string; x: number; y: number }[] }>(`/djpk/correlate/?${q}`);
+    return get<{ x: DjpkAccount; y: DjpkAccount; x_unit: string; y_unit: string; n: number; r: number | null; results: { domain_id: string; domain_name: string; x: number; y: number }[] }>(`/djpk/correlate/?${q}`);
   },
   growth: (params: Record<string, string> = {}) => {
     const q = new URLSearchParams(params).toString();
@@ -646,6 +662,15 @@ export function formatRupiah(n: number | null | undefined): string {
   if (abs >= 1e9) return `Rp ${(n / 1e9).toLocaleString("id-ID", { maximumFractionDigits: 2 })} M`;
   if (abs >= 1e6) return `Rp ${(n / 1e6).toLocaleString("id-ID", { maximumFractionDigits: 1 })} jt`;
   return `Rp ${n.toLocaleString("id-ID")}`;
+}
+
+// Format a DJPK value by its response unit: "%" for ratios / % serapan, else
+// compact rupiah. Keeps derived ratios and rupiah accounts rendering correctly
+// from a single source of truth (the endpoint's `unit`).
+export function formatByUnit(n: number | null | undefined, unit: string | undefined): string {
+  if (n === null || n === undefined) return "–";
+  if (unit === "%") return `${n.toLocaleString("id-ID", { maximumFractionDigits: 1 })}%`;
+  return formatRupiah(n);
 }
 
 // Categorical palette for chart series — royal-blue-led, CVD-safe adjacency on the white panel surface.

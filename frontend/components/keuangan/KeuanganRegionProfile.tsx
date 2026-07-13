@@ -50,6 +50,31 @@ export function KeuanganRegionProfile({
 
           {detail && (
             <div className="space-y-5">
+              {detail.ratios.length > 0 && (
+                <div className="rounded-xl border border-ink-border/70 bg-ink-panel2/40 p-3">
+                  <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-ink-accent">Rasio &amp; Kinerja</div>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    {detail.ratios.map((x) => (
+                      <div key={x.akun_key} title={x.desc}>
+                        <div className="flex items-baseline justify-between gap-2">
+                          <span className="truncate text-sm text-ink-text">{x.label_id}</span>
+                          <span className="shrink-0 text-sm font-semibold tabular-nums text-ink-text">
+                            {x.value.toLocaleString("id-ID", { maximumFractionDigits: 1 })}%
+                          </span>
+                        </div>
+                        {x.percentile != null && (
+                          <div className="mt-1 flex items-center gap-2">
+                            <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-ink-panel2">
+                              <div className="h-full bg-brand-gradient" style={{ width: `${x.percentile}%` }} />
+                            </div>
+                            <span className="w-14 shrink-0 text-right text-[10px] text-ink-muted">#{x.rank}/{x.of}</span>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
               {detail.groups.map((g) => (
                 <div key={g.group}>
                   <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-ink-accent">{GROUP_LABEL[g.group] ?? g.group}</div>

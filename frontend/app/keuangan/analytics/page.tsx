@@ -3,9 +3,10 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   djpkApi,
-  formatRupiah,
+  formatByUnit,
   DJPK_LEVELS,
   PCT_COLOR,
+  type DjpkAccount,
   type DjpkAccountGroups,
   type DjpkMeasure,
   type DjpkRank,
@@ -39,8 +40,9 @@ export default function KeuanganAnalyticsPage() {
   const [akun, setAkun] = useState("pad");
   const [tab, setTab] = useState<Tab>("rank");
 
-  const akunLabel =
-    catalog?.groups.flatMap((g) => g.accounts).find((a) => a.akun_key === akun)?.label_id ?? akun;
+  const selAcc: DjpkAccount | undefined = catalog?.groups.flatMap((g) => g.accounts).find((a) => a.akun_key === akun);
+  const akunLabel = selAcc?.label_id ?? akun;
+  const isDerived = !!selAcc?.derived;
 
   useEffect(() => {
     djpkApi.summary().then((s) => {
@@ -86,9 +88,11 @@ export default function KeuanganAnalyticsPage() {
           <Field label="Tingkat">
             <Segmented options={DJPK_LEVELS.map((l) => ({ v: l.v, label: l.label }))} value={level} onChange={(v) => setLevel(v as DjpkRegionLevel)} />
           </Field>
-          <Field label="Ukuran">
-            <Segmented options={MEASURES.map((m) => ({ v: m.v, label: m.label }))} value={measure} onChange={(v) => setMeasure(v as DjpkMeasure)} />
-          </Field>
+          {!isDerived && (
+            <Field label="Ukuran">
+              <Segmented options={MEASURES.map((m) => ({ v: m.v, label: m.label }))} value={measure} onChange={(v) => setMeasure(v as DjpkMeasure)} />
+            </Field>
+          )}
           <Field label="Tahun">
             <select
               value={tahun ?? ""}
@@ -101,6 +105,11 @@ export default function KeuanganAnalyticsPage() {
             </select>
           </Field>
         </div>
+        {isDerived && selAcc?.desc && (
+          <p className="mt-3 rounded-lg border border-ink-border/70 bg-ink-panel2/40 px-3 py-2 text-xs leading-relaxed text-ink-muted">
+            <span className="font-medium text-ink-text">Rasio.</span> {selAcc.desc}
+          </p>
+        )}
       </Panel>
 
       {/* Tabs */}
@@ -147,9 +156,9 @@ function RankView({ akun, level, measure, tahun }: { akun: string; level: DjpkRe
       .finally(() => setLoading(false));
   }, [akun, measure, level, tahun]);
 
-  const isPct = measure === "persentase";
+  const isPct = data?.unit === "%";
   const maxVal = useMemo(() => Math.max(1, ...(data?.results ?? []).map((r) => Math.abs(r.value))), [data]);
-  const fmt = (v: number) => (isPct ? `${v.toLocaleString("id-ID", { maximumFractionDigits: 1 })}%` : formatRupiah(v));
+  const fmt = (v: number) => formatByUnit(v, data?.unit);
 
   return (
     <Panel>

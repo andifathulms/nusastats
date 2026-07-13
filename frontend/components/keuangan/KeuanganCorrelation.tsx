@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { CartesianGrid, ResponsiveContainer, Scatter, ScatterChart, Tooltip, XAxis, YAxis, ZAxis } from "recharts";
-import { CHART, djpkApi, formatRupiah, type DjpkAccountGroups, type DjpkMeasure, type DjpkRegionLevel } from "@/lib/api";
+import { CHART, djpkApi, formatByUnit, type DjpkAccountGroups, type DjpkMeasure, type DjpkRegionLevel } from "@/lib/api";
 import { Panel, SectionTitle } from "@/components/ui";
 import { GROUP_LABEL } from "@/components/keuangan/controls";
 
@@ -50,15 +50,19 @@ export function KeuanganCorrelation({
       .finally(() => setLoading(false));
   }, [xKey, yKey, measure, level, tahun]);
 
-  const isPct = measure === "persentase";
-  const div = isPct ? 1 : 1e9;
-  const unit = isPct ? "%" : "miliar Rp";
+  // Each axis carries its own unit (e.g. PAD in rupiah vs a % ratio), so scale
+  // and label them independently. Rupiah axes shown in miliar (linear scale).
+  const xPct = data?.x_unit === "%";
+  const yPct = data?.y_unit === "%";
+  const xDiv = xPct ? 1 : 1e9;
+  const yDiv = yPct ? 1 : 1e9;
+  const xUnit = xPct ? "%" : "miliar Rp";
+  const yUnit = yPct ? "%" : "miliar Rp";
   const points = useMemo(
-    () => (data?.results ?? []).map((p) => ({ ...p, x: p.x / div, y: p.y / div })),
-    [data, div],
+    () => (data?.results ?? []).map((p) => ({ ...p, x: p.x / xDiv, y: p.y / yDiv })),
+    [data, xDiv, yDiv],
   );
   const rDesc = describeR(data?.r ?? null);
-  const fmt = (v: number) => (isPct ? `${v.toLocaleString("id-ID", { maximumFractionDigits: 1 })}%` : formatRupiah(v));
 
   return (
     <div className="space-y-4">
@@ -99,15 +103,15 @@ export function KeuanganCorrelation({
 
           <Panel>
             <SectionTitle hint={loading ? "memuat…" : "tiap titik = satu wilayah"}>
-              {data.x.label_id} vs {data.y.label_id} <span className="font-normal text-ink-muted">({unit})</span>
+              {data.x.label_id} vs {data.y.label_id}
             </SectionTitle>
             <ResponsiveContainer width="100%" height={420}>
               <ScatterChart margin={{ top: 12, right: 24, bottom: 24, left: 12 }}>
                 <CartesianGrid stroke={CHART.grid} />
                 <XAxis type="number" dataKey="x" tick={{ fill: CHART.axisTick, fontSize: 11 }} axisLine={{ stroke: CHART.axisLine }} tickLine={false}
-                  label={{ value: `${data.x.label_id} (${unit})`, position: "insideBottom", offset: -12, fill: CHART.axisTick, fontSize: 11 }} />
+                  label={{ value: `${data.x.label_id} (${xUnit})`, position: "insideBottom", offset: -12, fill: CHART.axisTick, fontSize: 11 }} />
                 <YAxis type="number" dataKey="y" tick={{ fill: CHART.axisTick, fontSize: 11 }} axisLine={{ stroke: CHART.axisLine }} tickLine={false} width={72}
-                  label={{ value: unit, angle: -90, position: "insideLeft", fill: CHART.axisTick, fontSize: 11 }} />
+                  label={{ value: yUnit, angle: -90, position: "insideLeft", fill: CHART.axisTick, fontSize: 11 }} />
                 <ZAxis range={[50, 50]} />
                 <Tooltip
                   cursor={{ strokeDasharray: "3 3", stroke: CHART.axisLine }}
@@ -117,8 +121,8 @@ export function KeuanganCorrelation({
                     return (
                       <div className="rounded-lg border border-ink-border bg-ink-panel px-3 py-2 text-xs">
                         <div className="font-medium text-ink-text">{p.domain_name}</div>
-                        <div className="text-ink-muted">{data.x.label_id.slice(0, 28)}: {fmt(p.x * div)}</div>
-                        <div className="text-ink-muted">{data.y.label_id.slice(0, 28)}: {fmt(p.y * div)}</div>
+                        <div className="text-ink-muted">{data.x.label_id.slice(0, 28)}: {formatByUnit(p.x * xDiv, data.x_unit)}</div>
+                        <div className="text-ink-muted">{data.y.label_id.slice(0, 28)}: {formatByUnit(p.y * yDiv, data.y_unit)}</div>
                       </div>
                     );
                   }}

@@ -39,10 +39,10 @@ export function KeuanganMap({
       .finally(() => setLoading(false));
   }, [akun, measure, level, tahun]);
 
-  const isPct = measure === "persentase";
-  // Rupiah measures: scale to miliar so the legend/tooltip stay readable
-  // (linear scaling leaves the colour ramp unchanged). Keep the exact figure in
-  // the tooltip `sub` via formatRupiah. Percentage measures pass through as-is.
+  // Read the unit from the response so derived ratios (%) and % serapan render
+  // as percentages, and rupiah accounts scale to miliar (linear scaling leaves
+  // the colour ramp unchanged; exact figure kept in the tooltip `sub`).
+  const isPct = data?.unit === "%";
   const div = isPct ? 1 : 1e9;
   const unit = isPct ? "%" : "miliar Rp";
 
