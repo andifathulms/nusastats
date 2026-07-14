@@ -87,11 +87,26 @@ export function DemographyPost({ config }: { config: DemographyConfig }) {
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-        <Stat label="Termuda (usia median)" value={youngest ? youngest.name : "–"} sub={youngest ? `${youngest.by.median_age.value.toFixed(1)} th` : undefined} />
-        <Stat label="Tertua (usia median)" value={oldest ? oldest.name : "–"} sub={oldest ? `${oldest.by.median_age.value.toFixed(1)} th` : undefined} />
-        <Stat label={`Beban tanggungan terendah`} value={lowest(rows, "dependency_ratio")?.name ?? "–"} sub={lowest(rows, "dependency_ratio") ? `rasio ${lowest(rows, "dependency_ratio")!.by.dependency_ratio.value.toFixed(1)}` : undefined} />
-      </div>
+      {config.ageProfile !== false ? (
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <Stat label="Termuda (usia median)" value={youngest ? youngest.name : "–"} sub={youngest ? `${youngest.by.median_age.value.toFixed(1)} th` : undefined} />
+          <Stat label="Tertua (usia median)" value={oldest ? oldest.name : "–"} sub={oldest ? `${oldest.by.median_age.value.toFixed(1)} th` : undefined} />
+          <Stat label={`Beban tanggungan terendah`} value={lowest(rows, "dependency_ratio")?.name ?? "–"} sub={lowest(rows, "dependency_ratio") ? `rasio ${lowest(rows, "dependency_ratio")!.by.dependency_ratio.value.toFixed(1)}` : undefined} />
+        </div>
+      ) : (
+        (() => {
+          const pm = metricByField[config.primaryField];
+          const bys = [...rows].filter((r) => r.by[config.primaryField]).sort((a, b) => b.by[config.primaryField].value - a.by[config.primaryField].value);
+          const med = bys.length ? bys[Math.floor(bys.length / 2)].by[config.primaryField].value : 0;
+          return (
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+              <Stat label={`${pm.short} tertinggi`} value={bys[0]?.name ?? "–"} sub={bys[0] ? fmtVal(pm, bys[0].by[config.primaryField].value) : undefined} />
+              <Stat label={`${pm.short} terendah`} value={bys[bys.length - 1]?.name ?? "–"} sub={bys.length ? fmtVal(pm, bys[bys.length - 1].by[config.primaryField].value) : undefined} />
+              <Stat label={`${pm.short} median`} value={fmtVal(pm, med)} sub={`${level === "province" ? "provinsi" : "kab/kota"}`} />
+            </div>
+          );
+        })()
+      )}
 
       {/* Metric chips */}
       <div className="rounded-xl border border-ink-border bg-ink-panel px-4 py-3">
@@ -147,7 +162,7 @@ export function DemographyPost({ config }: { config: DemographyConfig }) {
         </div>
       </Panel>
 
-      {selected && <Detail row={selected} metrics={config.metrics} level={level} totalRegions={rows.length} />}
+      {selected && <Detail row={selected} metrics={config.metrics} level={level} totalRegions={rows.length} ageProfile={config.ageProfile !== false} />}
       <ScatterPanel rows={rows} metrics={config.metrics} xField={config.scatterX} yField={config.scatterY} level={level} />
       <MapPanel rows={rows} metrics={config.metrics} field={field} level={level} />
     </div>
@@ -158,9 +173,10 @@ function lowest(rows: Row[], f: string) {
   return [...rows].filter((r) => r.by[f]).sort((a, b) => a.by[f].value - b.by[f].value)[0];
 }
 
-function Detail({ row, metrics, level, totalRegions }: { row: Row; metrics: DemographyMetric[]; level: Level; totalRegions: number }) {
+function Detail({ row, metrics, level, totalRegions, ageProfile }: { row: Row; metrics: DemographyMetric[]; level: Level; totalRegions: number; ageProfile: boolean }) {
   const [bands, setBands] = useState<Record<string, number> | null>(null);
   useEffect(() => {
+    if (!ageProfile) return;
     let cancelled = false;
     setBands(null);
     dukcapilApi.regionDetail(row.code).then((d) => {
@@ -170,7 +186,7 @@ function Detail({ row, metrics, level, totalRegions }: { row: Row; metrics: Demo
       setBands(m);
     });
     return () => { cancelled = true; };
-  }, [row.code]);
+  }, [row.code, ageProfile]);
 
   const total = bands ? AGE_BANDS.reduce((a, b) => a + (bands[b.field] ?? 0), 0) : 0;
   const stageShare = (stage: string) => (bands && total ? (AGE_BANDS.filter((b) => b.stage === stage).reduce((a, b) => a + (bands[b.field] ?? 0), 0) / total) * 100 : 0);
@@ -186,7 +202,7 @@ function Detail({ row, metrics, level, totalRegions }: { row: Row; metrics: Demo
       </div>
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-        {metrics.slice(0, 4).map((mm) => {
+        {metrics.slice(0, ageProfile ? 4 : 8).map((mm) => {
           const c = row.by[mm.field];
           const p = pct(c);
           return (
@@ -199,7 +215,8 @@ function Detail({ row, metrics, level, totalRegions }: { row: Row; metrics: Demo
         })}
       </div>
 
-      {/* Age-structure profile */}
+      {/* Age-structure profile (only for the age-focused post) */}
+      {ageProfile && (
       <Panel>
         <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
           <span className="text-xs font-medium uppercase tracking-wide text-ink-muted">Struktur usia · {row.name}</span>
@@ -232,6 +249,7 @@ function Detail({ row, metrics, level, totalRegions }: { row: Row; metrics: Demo
           </div>
         )}
       </Panel>
+      )}
     </div>
   );
 }

@@ -118,6 +118,9 @@ export type DemographyConfig = {
   scatterX: string;
   scatterY: string;
   note: string;
+  // Show the 16-band age-structure profile in the region detail (true for the
+  // age-focused post; false when the metrics aren't about age, e.g. mobility).
+  ageProfile?: boolean;
 };
 
 // `gender`: one BPS variable broken down by jenis-kelamin turvar (211 male /
@@ -261,6 +264,34 @@ export const POSTS: Post[] = [
         { key: "hls", variableId: "457", label: "Harapan Lama Sekolah", short: "Harapan Sekolah", unit: "Tahun", decimals: 2, desc: "Perkiraan lama sekolah anak usia 7 tahun ke depan. Secara nasional perempuan sudah unggul — tanda pembalikan akses pendidikan." },
         { key: "rls", variableId: "459", label: "Rata-rata Lama Sekolah", short: "Rata-rata Sekolah", unit: "Tahun", decimals: 2, desc: "Tahun sekolah yang sudah ditamatkan penduduk 25+. Masih menyimpan warisan ketimpangan lama: laki-laki dewasa umumnya lebih tinggi." },
         { key: "income", variableId: "461", label: "Pengeluaran per Kapita", short: "Pengeluaran/Kapita", unit: "Ribu Rupiah/Orang/Tahun", decimals: 0, desc: "Proksi kemampuan ekonomi. Di sinilah kesenjangan gender paling lebar dan konsisten memihak laki-laki." },
+      ],
+    },
+  },
+  {
+    slug: "mobilitas-penduduk",
+    title: "Ke Mana Penduduk Bergerak?",
+    subtitle: "Frontier tambang dan industri mencatat perpindahan penduduk tertinggi di Indonesia.",
+    tag: "Sosial",
+    source: "Dukcapil (Kemendagri)",
+    intro: [
+      "Penduduk Indonesia terus bergerak — mencari kerja, mengikuti keluarga, atau menuju pusat-pusat pertumbuhan baru. Data administrasi kependudukan Dukcapil mencatat perpindahan penduduk tiap daerah, yang bisa dijadikan ukuran mobilitas: berapa banyak perpindahan per 1.000 penduduk.",
+      "Angka tertinggi muncul di frontier sumber daya dan industri — Halmahera Tengah (kawasan nikel), dan daerah-daerah tambang lain — tempat pekerja berdatangan. Di sini kita telusuri mobilitas, kepadatan, fertilitas (rasio anak per wanita), dan angka kematian kasar untuk memahami dinamika penduduk tiap provinsi dan kabupaten/kota.",
+      "Catatan: 'perpindahan per 1.000' mengukur peristiwa perpindahan yang tercatat (mobilitas/churn), bukan migrasi neto (masuk dikurangi keluar).",
+    ],
+    kind: "demography",
+    demography: {
+      primaryField: "net_migration_rate",
+      scatterX: "pop_density",
+      scatterY: "net_migration_rate",
+      ageProfile: false,
+      note: "Dinamika penduduk menurut provinsi & kabupaten/kota. 'Perpindahan per 1.000' = peristiwa perpindahan tercatat per 1.000 penduduk (mobilitas, bukan migrasi neto). Sumber: Dukcapil (Ditjen Dukcapil, Kemendagri).",
+      metrics: [
+        { field: "net_migration_rate", label: "Perpindahan per 1.000", short: "Mobilitas", unit: "", decimals: 1, desc: "Jumlah peristiwa perpindahan penduduk tercatat per 1.000 penduduk — ukuran seberapa 'bergerak' sebuah daerah. Tinggi di frontier tambang/industri." },
+        { field: "child_woman_ratio", label: "Rasio Anak per 1.000 Wanita", short: "Fertilitas", unit: "", decimals: 0, desc: "Jumlah anak (0–4) per 1.000 wanita usia subur — proksi tingkat kelahiran." },
+        { field: "crude_death_rate", label: "Angka Kematian Kasar", short: "Kematian", unit: "", decimals: 1, desc: "Jumlah kematian tercatat per 1.000 penduduk." },
+        { field: "pop_density", label: "Kepadatan Penduduk", short: "Kepadatan", unit: "jiwa/km²", decimals: 0, desc: "Jumlah penduduk per kilometer persegi — daerah padat cenderung jadi tujuan perpindahan." },
+        { field: "avg_household", label: "Rata-rata Jiwa per KK", short: "Jiwa/KK", unit: "", decimals: 2, desc: "Rata-rata anggota per kepala keluarga — ukuran besar rumah tangga." },
+        { field: "median_age", label: "Usia Median", short: "Usia Median", unit: "th", decimals: 1, desc: "Usia median penduduk — konteks: daerah tujuan perpindahan kerja cenderung lebih muda." },
       ],
     },
   },
