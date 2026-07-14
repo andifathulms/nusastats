@@ -9,6 +9,7 @@ import { HdiPost } from "@/components/HdiPost";
 import { DemographyPost } from "@/components/DemographyPost";
 import { GenderPost } from "@/components/GenderPost";
 import { ProsperityPost } from "@/components/ProsperityPost";
+import { FiscalPost } from "@/components/FiscalPost";
 
 export function generateStaticParams() {
   return POSTS.map((p) => ({ slug: p.slug }));
@@ -50,6 +51,7 @@ export default function PostPage({ params }: { params: { slug: string } }) {
         {post.kind === "demography" && post.demography && <DemographyPost config={post.demography} />}
         {post.kind === "gender" && post.gender && <GenderPost config={post.gender} />}
         {post.kind === "prosperity" && post.prosperity && <ProsperityPost config={post.prosperity} />}
+        {post.kind === "fiscal" && post.fiscal && <FiscalPost config={post.fiscal} />}
       </div>
     </div>
   );

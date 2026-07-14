@@ -6,7 +6,7 @@
 // (e.g. PDRB by 17 lapangan-usaha categories). Reuses the existing BPS API —
 // `ranking` (turvar=total) for the region list, `series` for one region's parts.
 
-export type PostKind = "composition" | "poverty" | "expenditure" | "hdi" | "demography" | "gender" | "prosperity";
+export type PostKind = "composition" | "poverty" | "expenditure" | "hdi" | "demography" | "gender" | "prosperity" | "fiscal";
 
 export type CompositionConfig = {
   variableId: string;
@@ -155,6 +155,27 @@ export type ProsperityConfig = {
   note: string;
 };
 
+// `fiscal`: DJPK/APBD regional-finance ratios (`djpkApi`, Kemenkeu SIKD — not
+// BPS). Fiscal independence (PAD ÷ pendapatan), transfer-dependence, ASN salary
+// burden, capital spending, per province & kabupaten/kota, time series. Ratios
+// are served by the rank endpoint's `akun=rasio_*` (param is `akun`, NOT
+// `account`); absolute rupiah via `akun=pad|pendapatan_daerah|…&measure=realisasi`.
+export type FiscalRatio = {
+  akun: string; // "rasio_kemandirian" etc.
+  label: string;
+  short: string;
+  desc: string;
+  color: string;
+};
+
+export type FiscalConfig = {
+  ratios: FiscalRatio[];
+  primaryAkun: string;
+  years: number[]; // for the median trend + selected-region trend
+  latestYear: number;
+  note: string;
+};
+
 export type Post = {
   slug: string;
   title: string;
@@ -170,9 +191,35 @@ export type Post = {
   demography?: DemographyConfig;
   gender?: GenderConfig;
   prosperity?: ProsperityConfig;
+  fiscal?: FiscalConfig;
 };
 
 export const POSTS: Post[] = [
+  {
+    slug: "kemandirian-fiskal-daerah",
+    title: "Siapa Membiayai Daerahnya Sendiri?",
+    subtitle: "Sebagian besar kabupaten hanya menghasilkan sepersepuluh pendapatannya — sisanya dari Jakarta.",
+    tag: "Ekonomi",
+    source: "DJPK / Kemenkeu",
+    intro: [
+      "Otonomi daerah menjanjikan pemerintahan yang mandiri. Kenyataannya, sebagian besar pendapatan daerah tidak berasal dari daerah itu sendiri, melainkan dari transfer pemerintah pusat (dana bagi hasil, DAU, DAK). Ukuran seberapa mandiri sebuah daerah disebut kemandirian fiskal: Pendapatan Asli Daerah (PAD) dibagi total pendapatan.",
+      "Angkanya mengejutkan: median kabupaten/kota hanya membiayai sekitar 10% belanjanya dari sumber sendiri — sisanya bergantung pada Jakarta. Hanya segelintir daerah (Badung dengan pariwisata Bali, kota-kota besar, daerah tambang) yang benar-benar mandiri. Di sisi lain, di banyak daerah, sebagian besar belanja habis untuk gaji ASN — menyisakan sedikit untuk pembangunan.",
+      "Di sini kita telusuri empat rasio kunci APBD tiap provinsi dan kabupaten/kota: kemandirian, ketergantungan, belanja pegawai, dan belanja modal. Pilih sebuah daerah untuk membedah struktur keuangannya.",
+    ],
+    kind: "fiscal",
+    fiscal: {
+      primaryAkun: "rasio_kemandirian",
+      years: [2019, 2020, 2021, 2022, 2023, 2024],
+      latestYear: 2024,
+      note: "Rasio APBD (realisasi) dari DJPK/Kemenkeu SIKD: kemandirian (PAD÷Pendapatan), ketergantungan (Transfer÷Pendapatan), belanja pegawai & belanja modal (÷Belanja). Per provinsi & kabupaten/kota, 2019–2024. Kode wilayah DJPK dipetakan ke Kemendagri. Sumber: DJPK.",
+      ratios: [
+        { akun: "rasio_kemandirian", label: "Kemandirian Fiskal", short: "Kemandirian", desc: "Bagian pendapatan dari sumber sendiri (PAD ÷ total pendapatan). Makin tinggi = makin mandiri, makin sedikit bergantung pada transfer pusat.", color: "#15803D" },
+        { akun: "rasio_ketergantungan", label: "Ketergantungan pada Pusat", short: "Ketergantungan", desc: "Bagian pendapatan dari transfer pemerintah pusat (TKDD ÷ pendapatan). Kebalikan dari kemandirian.", color: "#C0392B" },
+        { akun: "rasio_belanja_pegawai", label: "Belanja Pegawai", short: "Belanja Pegawai", desc: "Bagian belanja yang habis untuk gaji & tunjangan ASN. Makin tinggi = makin sedikit ruang untuk pembangunan.", color: "#E0803A" },
+        { akun: "rasio_belanja_modal", label: "Belanja Modal", short: "Belanja Modal", desc: "Bagian belanja untuk aset/investasi jangka panjang (infrastruktur dll). Makin tinggi = makin berorientasi pembangunan.", color: "#1E4585" },
+      ],
+    },
+  },
   {
     slug: "kaya-tapi-miskin",
     title: "Kaya Tapi Miskin",
