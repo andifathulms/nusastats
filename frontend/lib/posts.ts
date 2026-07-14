@@ -6,7 +6,7 @@
 // (e.g. PDRB by 17 lapangan-usaha categories). Reuses the existing BPS API —
 // `ranking` (turvar=total) for the region list, `series` for one region's parts.
 
-export type PostKind = "composition" | "poverty" | "expenditure" | "hdi" | "demography" | "gender" | "prosperity" | "fiscal";
+export type PostKind = "composition" | "poverty" | "expenditure" | "hdi" | "demography" | "gender" | "prosperity" | "fiscal" | "diversity";
 
 export type CompositionConfig = {
   variableId: string;
@@ -179,6 +179,15 @@ export type FiscalConfig = {
   note: string;
 };
 
+// `diversity`: religious composition (Dukcapil counts per faith) as parts of a
+// whole, plus a per-region diversity index — the "how plural is each region"
+// lens. Composition bars in the ranking, keyed by the diversity index.
+export type DiversityConfig = {
+  religions: { field: string; label: string; color: string }[];
+  diversityField: string; // "religion_diversity" (0–100 index)
+  note: string;
+};
+
 export type Post = {
   slug: string;
   title: string;
@@ -195,6 +204,7 @@ export type Post = {
   gender?: GenderConfig;
   prosperity?: ProsperityConfig;
   fiscal?: FiscalConfig;
+  diversity?: DiversityConfig;
 };
 
 export const POSTS: Post[] = [
@@ -264,6 +274,32 @@ export const POSTS: Post[] = [
         { key: "hls", variableId: "457", label: "Harapan Lama Sekolah", short: "Harapan Sekolah", unit: "Tahun", decimals: 2, desc: "Perkiraan lama sekolah anak usia 7 tahun ke depan. Secara nasional perempuan sudah unggul — tanda pembalikan akses pendidikan." },
         { key: "rls", variableId: "459", label: "Rata-rata Lama Sekolah", short: "Rata-rata Sekolah", unit: "Tahun", decimals: 2, desc: "Tahun sekolah yang sudah ditamatkan penduduk 25+. Masih menyimpan warisan ketimpangan lama: laki-laki dewasa umumnya lebih tinggi." },
         { key: "income", variableId: "461", label: "Pengeluaran per Kapita", short: "Pengeluaran/Kapita", unit: "Ribu Rupiah/Orang/Tahun", decimals: 0, desc: "Proksi kemampuan ekonomi. Di sinilah kesenjangan gender paling lebar dan konsisten memihak laki-laki." },
+      ],
+    },
+  },
+  {
+    slug: "keberagaman-agama-daerah",
+    title: "Seberapa Beragam Daerahmu?",
+    subtitle: "Dari Bengkayang yang nyaris seimbang tiga agama, hingga daerah yang hampir seragam.",
+    tag: "Sosial",
+    source: "Dukcapil (Kemendagri)",
+    intro: [
+      "Indonesia dikenal majemuk, tapi kemajemukan itu terdistribusi sangat tidak merata. Sebagian kabupaten nyaris homogen — satu agama menaungi hampir seluruh penduduk — sementara sebagian lain begitu berimbang hingga tak ada satu pun agama yang benar-benar mayoritas.",
+      "Menggunakan data administrasi kependudukan Dukcapil, kita ukur komposisi agama tiap daerah dan meringkasnya dalam indeks keberagaman (0 = seragam, 100 = paling beragam). Yang paling beragam justru bukan kota besar, melainkan daerah seperti Bengkayang dan Sintang di Kalimantan Barat, tempat Islam, Kristen, dan Katolik hidup nyaris seimbang.",
+      "Pilih sebuah daerah untuk melihat komposisi agamanya secara utuh. Data ini berasal dari pencatatan administrasi, disajikan apa adanya tanpa penilaian.",
+    ],
+    kind: "diversity",
+    diversity: {
+      diversityField: "religion_diversity",
+      note: "Komposisi agama menurut data administrasi kependudukan Dukcapil (Kemendagri), per provinsi & kabupaten/kota. Indeks keberagaman 0–100 (makin tinggi makin beragam). Disajikan apa adanya dari pencatatan adminduk.",
+      religions: [
+        { field: "islam", label: "Islam", color: "#15803D" },
+        { field: "kristen", label: "Kristen", color: "#3F6FD6" },
+        { field: "katholik", label: "Katolik", color: "#1E4585" },
+        { field: "hindu", label: "Hindu", color: "#E0803A" },
+        { field: "budha", label: "Buddha", color: "#C49A48" },
+        { field: "konghucu", label: "Konghucu", color: "#C0392B" },
+        { field: "kepercayaan", label: "Kepercayaan", color: "#94A3B8" },
       ],
     },
   },
