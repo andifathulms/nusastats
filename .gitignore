@@ -54,3 +54,6 @@ htmlcov/
 
 # TypeScript incremental build info
 *.tsbuildinfo
+
+# Local-only port remap (machine-specific; see the file header)
+docker-compose.override.yml
