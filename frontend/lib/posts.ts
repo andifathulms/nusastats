@@ -6,7 +6,7 @@
 // (e.g. PDRB by 17 lapangan-usaha categories). Reuses the existing BPS API —
 // `ranking` (turvar=total) for the region list, `series` for one region's parts.
 
-export type PostKind = "composition" | "poverty" | "expenditure" | "hdi" | "demography" | "gender" | "prosperity" | "fiscal" | "diversity";
+export type PostKind = "composition" | "poverty" | "expenditure" | "hdi" | "demography" | "gender" | "prosperity" | "fiscal" | "diversity" | "inequality";
 
 export type CompositionConfig = {
   variableId: string;
@@ -188,6 +188,17 @@ export type DiversityConfig = {
   note: string;
 };
 
+// `inequality`: BPS Gini ratio (var 98) by province — PROVINCE-ONLY (no
+// regency data). Urban/rural/total via turvar; the story is that inequality is
+// distinct from poverty, so it plots Gini against poverty (P0) and IPM.
+export type InequalityConfig = {
+  variableId: string; // "98"
+  turvars: { total: string; urban: string; rural: string }; // 191 / 189 / 190
+  compare: { key: string; variableId: string; label: string; short: string; unit: string; decimals: number }[];
+  latestYear: number;
+  note: string;
+};
+
 export type Post = {
   slug: string;
   title: string;
@@ -205,6 +216,7 @@ export type Post = {
   prosperity?: ProsperityConfig;
   fiscal?: FiscalConfig;
   diversity?: DiversityConfig;
+  inequality?: InequalityConfig;
 };
 
 export const POSTS: Post[] = [
@@ -274,6 +286,29 @@ export const POSTS: Post[] = [
         { key: "hls", variableId: "457", label: "Harapan Lama Sekolah", short: "Harapan Sekolah", unit: "Tahun", decimals: 2, desc: "Perkiraan lama sekolah anak usia 7 tahun ke depan. Secara nasional perempuan sudah unggul — tanda pembalikan akses pendidikan." },
         { key: "rls", variableId: "459", label: "Rata-rata Lama Sekolah", short: "Rata-rata Sekolah", unit: "Tahun", decimals: 2, desc: "Tahun sekolah yang sudah ditamatkan penduduk 25+. Masih menyimpan warisan ketimpangan lama: laki-laki dewasa umumnya lebih tinggi." },
         { key: "income", variableId: "461", label: "Pengeluaran per Kapita", short: "Pengeluaran/Kapita", unit: "Ribu Rupiah/Orang/Tahun", decimals: 0, desc: "Proksi kemampuan ekonomi. Di sinilah kesenjangan gender paling lebar dan konsisten memihak laki-laki." },
+      ],
+    },
+  },
+  {
+    slug: "ketimpangan-bukan-kemiskinan",
+    title: "Ketimpangan Bukan Kemiskinan",
+    subtitle: "Provinsi paling timpang belum tentu paling miskin — dua hal yang sering tertukar.",
+    tag: "Sosial",
+    source: "BPS",
+    intro: [
+      "Kemiskinan dan ketimpangan sering dianggap sama, padahal berbeda. Kemiskinan mengukur berapa banyak yang hidup di bawah garis; ketimpangan (Gini Ratio) mengukur seberapa jauh jarak antara yang kaya dan yang miskin. Sebuah daerah bisa punya sedikit orang miskin tapi sangat timpang — banyak orang sangat kaya berdampingan dengan banyak yang pas-pasan.",
+      "Gini Ratio bernilai 0 (semua orang persis sama) hingga 1 (satu orang menguasai segalanya). Ketimpangan perkotaan hampir selalu lebih tinggi daripada perdesaan. Di sini kita bandingkan Gini tiap provinsi — total, perkotaan, dan perdesaan, 2002–2025 — lalu menyandingkannya dengan kemiskinan dan IPM.",
+      "Perhatikan grafik sebar: hubungan Gini dengan kemiskinan ternyata lemah. Yogyakarta dan DKI Jakarta termasuk paling timpang justru karena banyak penduduk makmurnya, bukan karena paling miskin.",
+    ],
+    kind: "inequality",
+    inequality: {
+      variableId: "98",
+      turvars: { total: "191", urban: "189", rural: "190" },
+      latestYear: 2025,
+      note: "Gini Ratio menurut provinsi & daerah (var 98), 2002–2025. Hanya tersedia di tingkat provinsi (BPS tidak merilis Gini kabupaten/kota). Dibandingkan dengan Persentase Penduduk Miskin/P0 (621) dan IPM (413). Sumber: BPS.",
+      compare: [
+        { key: "p0", variableId: "621", label: "Persentase Penduduk Miskin (P0)", short: "Kemiskinan (P0)", unit: "%", decimals: 2 },
+        { key: "ipm", variableId: "413", label: "Indeks Pembangunan Manusia", short: "IPM", unit: "", decimals: 2 },
       ],
     },
   },
