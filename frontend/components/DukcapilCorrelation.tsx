@@ -264,7 +264,8 @@ export function DukcapilCorrelation({ groups }: { groups: DukcapilIndicatorGroup
             <SectionTitle hint={loading ? "memuat…" : "tiap titik = satu wilayah"}>
               {data.x.label_id} vs {data.y.label_id}
             </SectionTitle>
-            <ResponsiveContainer width="100%" height={420}>
+            <div className="mx-auto w-full max-w-2xl">
+            <ResponsiveContainer width="100%" aspect={1}>
               <ScatterChart margin={{ top: 12, right: 24, bottom: 24, left: 12 }}>
                 <CartesianGrid stroke={CHART.grid} />
                 <XAxis
@@ -315,6 +316,7 @@ export function DukcapilCorrelation({ groups }: { groups: DukcapilIndicatorGroup
                 </Scatter>
               </ScatterChart>
             </ResponsiveContainer>
+            </div>
             {legend.length > 0 && (
               <div className="mt-3 flex flex-wrap gap-x-3 gap-y-1 text-[11px]">
                 {legend.map((g) => (

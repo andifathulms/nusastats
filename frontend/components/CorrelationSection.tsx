@@ -144,7 +144,8 @@ export function CorrelationSection() {
             <SectionTitle hint={loading ? "memuat…" : `setiap titik mewakili satu wilayah`}>
               {data.x.name} vs {data.y.name}
             </SectionTitle>
-            <ResponsiveContainer width="100%" height={420}>
+            <div className="mx-auto w-full max-w-2xl">
+            <ResponsiveContainer width="100%" aspect={1}>
               <ScatterChart margin={{ top: 12, right: 24, bottom: 24, left: 12 }}>
                 <CartesianGrid stroke={CHART.grid} />
                 <XAxis
@@ -189,6 +190,7 @@ export function CorrelationSection() {
                 <Scatter data={data.results} fill={CHART.accent} fillOpacity={0.8} />
               </ScatterChart>
             </ResponsiveContainer>
+            </div>
           </Panel>
         </>
       )}

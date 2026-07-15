@@ -48,3 +48,35 @@ export function Segmented({
     </div>
   );
 }
+
+// Shared "X–Y dari N" pager for the finance ranking/growth lists.
+export function Pager({
+  offset,
+  shown,
+  total,
+  onPrev,
+  onNext,
+}: {
+  offset: number;
+  shown: number;
+  total: number;
+  onPrev: () => void;
+  onNext: () => void;
+}) {
+  const from = total ? offset + 1 : 0;
+  const to = offset + shown;
+  const btn = "rounded-md border border-ink-border px-2 py-0.5 text-ink-text hover:border-ink-accent/60 disabled:opacity-30";
+  return (
+    <div className="flex items-center gap-2 text-xs text-ink-muted">
+      <span className="tabular-nums">
+        {from}–{to} dari {total.toLocaleString("id-ID")}
+      </span>
+      <button onClick={onPrev} disabled={offset === 0} className={btn} title="Sebelumnya">
+        ‹
+      </button>
+      <button onClick={onNext} disabled={to >= total} className={btn} title="Berikutnya">
+        ›
+      </button>
+    </div>
+  );
+}

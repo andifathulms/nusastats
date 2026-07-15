@@ -14,7 +14,7 @@ import {
   type DjpkSummary,
 } from "@/lib/api";
 import { Panel, SectionTitle } from "@/components/ui";
-import { Field, Segmented, GROUP_LABEL, MEASURES } from "@/components/keuangan/controls";
+import { Field, Segmented, Pager, GROUP_LABEL, MEASURES } from "@/components/keuangan/controls";
 import { KeuanganMap } from "@/components/keuangan/KeuanganMap";
 import { KeuanganCorrelation } from "@/components/keuangan/KeuanganCorrelation";
 import { KeuanganGrowth } from "@/components/keuangan/KeuanganGrowth";
@@ -222,18 +222,5 @@ function RankView({ akun, level, measure, tahun }: { akun: string; level: DjpkRe
       )}
       {openCode && <KeuanganRegionProfile code={openCode} tahun={tahun} onClose={() => setOpenCode(null)} />}
     </Panel>
-  );
-}
-
-function Pager({ offset, shown, total, onPrev, onNext }: { offset: number; shown: number; total: number; onPrev: () => void; onNext: () => void }) {
-  const from = total ? offset + 1 : 0;
-  const to = offset + shown;
-  const btn = "rounded-md border border-ink-border px-2 py-0.5 text-ink-text hover:border-ink-accent/60 disabled:opacity-30";
-  return (
-    <div className="flex items-center gap-2 text-xs text-ink-muted">
-      <span className="tabular-nums">{from}–{to} dari {total.toLocaleString("id-ID")}</span>
-      <button onClick={onPrev} disabled={offset === 0} className={btn} title="Sebelumnya">‹</button>
-      <button onClick={onNext} disabled={to >= total} className={btn} title="Berikutnya">›</button>
-    </div>
   );
 }

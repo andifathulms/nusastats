@@ -3,7 +3,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { djpkApi, formatByUnit, type DjpkGrowth, type DjpkMeasure, type DjpkRegionLevel, type DjpkSummary } from "@/lib/api";
 import { Panel, SectionTitle } from "@/components/ui";
-import { Field } from "@/components/keuangan/controls";
+import { Field, Pager } from "@/components/keuangan/controls";
+
+const PER_PAGE = 20;
 
 export function KeuanganGrowth({
   akun,
@@ -23,6 +25,10 @@ export function KeuanganGrowth({
   const [to, setTo] = useState<number>(sorted[sorted.length - 1]);
   const [data, setData] = useState<DjpkGrowth | null>(null);
   const [loading, setLoading] = useState(false);
+  const [page, setPage] = useState(0);
+
+  // Reset to the first page whenever the query changes.
+  useEffect(() => { setPage(0); }, [akun, measure, level, from, to]);
 
   useEffect(() => {
     if (from == null || to == null) return;
@@ -34,8 +40,12 @@ export function KeuanganGrowth({
       .finally(() => setLoading(false));
   }, [akun, measure, level, from, to]);
 
-  const rows = data?.results ?? [];
-  const maxAbsPct = Math.max(1, ...rows.map((r) => Math.abs(r.change_pct ?? 0)));
+  const allRows = data?.results ?? [];
+  // Scale bars by the GLOBAL max so widths stay comparable across pages.
+  const maxAbsPct = Math.max(1, ...allRows.map((r) => Math.abs(r.change_pct ?? 0)));
+  const total = allRows.length;
+  const offset = page * PER_PAGE;
+  const rows = allRows.slice(offset, offset + PER_PAGE);
   const fmt = (v: number) => formatByUnit(v, data?.unit);
 
   return (
@@ -56,9 +66,20 @@ export function KeuanganGrowth({
       </Panel>
 
       <Panel>
-        <SectionTitle hint={loading ? "memuat…" : data ? `${data.total} wilayah · ${from}→${to}` : ""}>
-          Pertumbuhan {label}
-        </SectionTitle>
+        <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+          <SectionTitle hint={loading ? "memuat…" : data ? `${data.total} wilayah · ${from}→${to}` : ""}>
+            Pertumbuhan {label}
+          </SectionTitle>
+          {!loading && total > 0 && (
+            <Pager
+              offset={offset}
+              shown={rows.length}
+              total={total}
+              onPrev={() => setPage((p) => Math.max(0, p - 1))}
+              onNext={() => setPage((p) => p + 1)}
+            />
+          )}
+        </div>
         {!loading && (
           <div className="space-y-1.5">
             {rows.map((r) => {
