@@ -52,6 +52,9 @@ htmlcov/
 # never commit a placeholder/scaffold-run report as if it were real.
 /backend/reports/
 
+# Local data exports (generated output, not source)
+/exports/
+
 # TypeScript incremental build info
 *.tsbuildinfo
 
