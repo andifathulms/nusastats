@@ -6,7 +6,7 @@
 // (e.g. PDRB by 17 lapangan-usaha categories). Reuses the existing BPS API —
 // `ranking` (turvar=total) for the region list, `series` for one region's parts.
 
-export type PostKind = "composition" | "poverty" | "expenditure" | "hdi" | "demography" | "gender" | "prosperity" | "fiscal" | "diversity" | "inequality" | "spending";
+export type PostKind = "composition" | "poverty" | "expenditure" | "hdi" | "demography" | "gender" | "prosperity" | "fiscal" | "diversity" | "inequality" | "spending" | "labor";
 
 export type CompositionConfig = {
   variableId: string;
@@ -212,6 +212,22 @@ export type SpendingConfig = {
   note: string;
 };
 
+// `labor`: BPS employment at PROVINCE level — open unemployment (TPT, var 543,
+// single value) + labour-force participation (TPAK, var 2200, by jenis-kelamin
+// turvar). The counterintuitive angle: unemployment is high in industrial
+// provinces yet low in agrarian ones (informal farm work), so TPT correlates
+// weakly with poverty. TPT has a long series (COVID spike in 2020).
+export type LaborConfig = {
+  tptVar: string; // "543"
+  tpakVar: string; // "2200"
+  tpakMaleT: string; // "211"
+  tpakFemaleT: string; // "212"
+  povertyVar: string; // "621" (for the scatter)
+  latestYear: number;
+  trendFrom: number; // series start for the TPT trend
+  note: string;
+};
+
 export type Post = {
   slug: string;
   title: string;
@@ -231,9 +247,33 @@ export type Post = {
   diversity?: DiversityConfig;
   inequality?: InequalityConfig;
   spending?: SpendingConfig;
+  labor?: LaborConfig;
 };
 
 export const POSTS: Post[] = [
+  {
+    slug: "pengangguran-bukan-selalu-kemiskinan",
+    title: "Menganggur di Tanah Kaya",
+    subtitle: "Provinsi industri justru punya pengangguran tertinggi — sementara daerah miskin nyaris tanpa pengangguran resmi.",
+    tag: "Ekonomi",
+    source: "BPS",
+    intro: [
+      "Secara intuitif, kita menduga pengangguran tertinggi ada di daerah termiskin. Datanya justru sebaliknya. Tingkat Pengangguran Terbuka (TPT) tertinggi ada di provinsi-provinsi industri Jawa — Jawa Barat, Banten — sementara provinsi agraris seperti Sulawesi Barat atau Bali punya angka pengangguran resmi yang jauh lebih rendah.",
+      "Kuncinya: di daerah agraris, hampir semua orang 'bekerja' — di sawah, kebun, atau usaha informal keluarga — meski dengan produktivitas dan upah rendah. Pengangguran terbuka justru menjadi 'kemewahan' daerah yang lebih maju, tempat orang mampu menunggu pekerjaan formal yang layak.",
+      "Di sini kita telusuri pengangguran dan partisipasi angkatan kerja tiap provinsi (2005–2024, termasuk lonjakan pandemi 2020), lalu menyandingkannya dengan kemiskinan — dan melihat betapa lemahnya hubungan keduanya. Perhatikan pula kesenjangan partisipasi kerja antara laki-laki dan perempuan.",
+    ],
+    kind: "labor",
+    labor: {
+      tptVar: "543",
+      tpakVar: "2200",
+      tpakMaleT: "211",
+      tpakFemaleT: "212",
+      povertyVar: "621",
+      latestYear: 2024,
+      trendFrom: 2005,
+      note: "Tingkat Pengangguran Terbuka/TPT (var 543) dan Tingkat Partisipasi Angkatan Kerja/TPAK menurut jenis kelamin (var 2200), tingkat provinsi. Dibandingkan dengan kemiskinan P0 (621). Ketenagakerjaan tidak tersedia di tingkat kabupaten/kota. Sumber: BPS.",
+    },
+  },
   {
     slug: "kemana-uang-daerah-mengalir",
     title: "Ke Mana Uang Daerah Mengalir?",
