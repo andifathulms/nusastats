@@ -6,7 +6,7 @@
 // (e.g. PDRB by 17 lapangan-usaha categories). Reuses the existing BPS API —
 // `ranking` (turvar=total) for the region list, `series` for one region's parts.
 
-export type PostKind = "composition" | "poverty" | "expenditure" | "hdi" | "demography" | "gender" | "prosperity" | "fiscal" | "diversity" | "inequality";
+export type PostKind = "composition" | "poverty" | "expenditure" | "hdi" | "demography" | "gender" | "prosperity" | "fiscal" | "diversity" | "inequality" | "spending";
 
 export type CompositionConfig = {
   variableId: string;
@@ -199,6 +199,19 @@ export type InequalityConfig = {
   note: string;
 };
 
+// `spending`: DJPK/APBD belanja decomposed into its economic components as
+// parts of a whole (pegawai, barang/jasa, modal, hibah, bansos, transfer, …) —
+// "where regional money goes". The 10 components sum exactly to belanja_daerah
+// (verified); `belanja_lainnya` is EXCLUDED (it double-counts), and
+// `belanja_barang_dan_jasa` is the live nomenclature (barang_jasa is empty).
+export type SpendingConfig = {
+  totalAkun: string; // "belanja_daerah"
+  components: { akun: string; label: string; short: string; color: string }[];
+  groups: { label: string; color: string; akuns: string[] }[]; // Operasi / Modal / Transfer / Tak Terduga
+  latestYear: number;
+  note: string;
+};
+
 export type Post = {
   slug: string;
   title: string;
@@ -217,9 +230,46 @@ export type Post = {
   fiscal?: FiscalConfig;
   diversity?: DiversityConfig;
   inequality?: InequalityConfig;
+  spending?: SpendingConfig;
 };
 
 export const POSTS: Post[] = [
+  {
+    slug: "kemana-uang-daerah-mengalir",
+    title: "Ke Mana Uang Daerah Mengalir?",
+    subtitle: "Gaji, barang, atau pembangunan? Struktur belanja tiap daerah bercerita banyak.",
+    tag: "Ekonomi",
+    source: "DJPK / Kemenkeu",
+    intro: [
+      "Setiap tahun pemerintah daerah membelanjakan ratusan triliun rupiah. Tapi ke mana uang itu sebenarnya mengalir? Belanja daerah terbagi ke dalam beberapa komponen: gaji pegawai, barang & jasa operasional, belanja modal (aset & infrastruktur), hibah, bantuan sosial, hingga transfer ke desa.",
+      "Komposisinya sangat bervariasi. Sebagian daerah menghabiskan porsi besar untuk gaji dan operasional, menyisakan sedikit untuk belanja modal — investasi yang membangun jalan, jembatan, dan gedung. Di sini kita bedah struktur belanja tiap provinsi dan kabupaten/kota (realisasi APBD), sehingga terlihat mana yang berorientasi pembangunan dan mana yang tersedot untuk rutinitas.",
+      "Pilih sebuah daerah untuk melihat rincian belanjanya secara utuh.",
+    ],
+    kind: "spending",
+    spending: {
+      totalAkun: "belanja_daerah",
+      latestYear: 2024,
+      note: "Komposisi realisasi Belanja Daerah (APBD) dari DJPK/Kemenkeu SIKD, per provinsi & kabupaten/kota, 2024. Sepuluh komponen yang dijumlahkan tepat sama dengan Belanja Daerah (belanja_lainnya sengaja tidak disertakan karena tumpang tindih). Sumber: DJPK.",
+      components: [
+        { akun: "belanja_pegawai", label: "Belanja Pegawai (gaji ASN)", short: "Pegawai", color: "#E0803A" },
+        { akun: "belanja_barang_dan_jasa", label: "Belanja Barang & Jasa", short: "Barang & Jasa", color: "#37A98C" },
+        { akun: "belanja_modal", label: "Belanja Modal (aset/infrastruktur)", short: "Modal", color: "#1E4585" },
+        { akun: "belanja_hibah", label: "Belanja Hibah", short: "Hibah", color: "#9BCB4A" },
+        { akun: "belanja_bantuan_sosial", label: "Belanja Bantuan Sosial", short: "Bansos", color: "#D9455E" },
+        { akun: "belanja_bantuan_keuangan", label: "Belanja Bantuan Keuangan", short: "Bantuan Keuangan", color: "#6C6FE0" },
+        { akun: "belanja_bagi_hasil", label: "Belanja Bagi Hasil", short: "Bagi Hasil", color: "#8E5BD1" },
+        { akun: "belanja_subsidi", label: "Belanja Subsidi", short: "Subsidi", color: "#C49A48" },
+        { akun: "belanja_bunga", label: "Belanja Bunga (utang)", short: "Bunga", color: "#C0392B" },
+        { akun: "belanja_tidak_terduga", label: "Belanja Tidak Terduga", short: "Tak Terduga", color: "#94A3B8" },
+      ],
+      groups: [
+        { label: "Operasi", color: "#37A98C", akuns: ["belanja_pegawai", "belanja_barang_dan_jasa", "belanja_hibah", "belanja_bantuan_sosial", "belanja_subsidi", "belanja_bunga"] },
+        { label: "Modal", color: "#1E4585", akuns: ["belanja_modal"] },
+        { label: "Transfer", color: "#6C6FE0", akuns: ["belanja_bantuan_keuangan", "belanja_bagi_hasil"] },
+        { label: "Tak Terduga", color: "#94A3B8", akuns: ["belanja_tidak_terduga"] },
+      ],
+    },
+  },
   {
     slug: "kemandirian-fiskal-daerah",
     title: "Siapa Membiayai Daerahnya Sendiri?",
