@@ -6,7 +6,7 @@
 // (e.g. PDRB by 17 lapangan-usaha categories). Reuses the existing BPS API —
 // `ranking` (turvar=total) for the region list, `series` for one region's parts.
 
-export type PostKind = "composition" | "poverty" | "expenditure" | "hdi" | "demography" | "gender" | "prosperity" | "fiscal" | "diversity" | "inequality" | "spending" | "labor";
+export type PostKind = "composition" | "poverty" | "expenditure" | "hdi" | "demography" | "gender" | "prosperity" | "fiscal" | "diversity" | "inequality" | "spending" | "labor" | "crossdev";
 
 export type CompositionConfig = {
   variableId: string;
@@ -228,6 +228,18 @@ export type LaborConfig = {
   note: string;
 };
 
+// `crossdev`: cross-source join — DJPK fiscal independence (kemandirian) vs BPS
+// human development (IPM) & poverty (P0), per regency/province. Joined via the
+// BPS→Kemendagri regency crosswalk (province by 2-digit prefix). The scatter is
+// the centrepiece; corr(kemandirian,IPM)≈+0.64, corr(kemandirian,P0)≈−0.39.
+export type CrossDevConfig = {
+  djpkAkun: string; // "rasio_kemandirian"
+  ipmVar: string; // "413"
+  povertyVar: string; // "621"
+  latestYear: number;
+  note: string;
+};
+
 export type Post = {
   slug: string;
   title: string;
@@ -248,9 +260,30 @@ export type Post = {
   inequality?: InequalityConfig;
   spending?: SpendingConfig;
   labor?: LaborConfig;
+  crossdev?: CrossDevConfig;
 };
 
 export const POSTS: Post[] = [
+  {
+    slug: "mandiri-lalu-maju",
+    title: "Mandiri, Lalu Maju?",
+    subtitle: "Daerah yang membiayai dirinya sendiri cenderung lebih maju — tapi kekayaan tambang tak selalu jadi jaminan.",
+    tag: "Ekonomi",
+    source: "DJPK + BPS",
+    intro: [
+      "Apakah kemandirian fiskal — kemampuan sebuah daerah membiayai dirinya sendiri dari Pendapatan Asli Daerah — berujung pada pembangunan manusia yang lebih baik? Untuk menjawabnya, kita gabungkan dua sumber yang jarang disandingkan: rasio kemandirian fiskal dari DJPK/Kemenkeu dengan Indeks Pembangunan Manusia dan angka kemiskinan dari BPS.",
+      "Hasilnya cukup jelas: keduanya berjalan beriringan. Daerah dengan kemandirian tinggi — Badung, kota-kota besar — umumnya juga ber-IPM tinggi dan berkemiskinan rendah (korelasi ~0,64 dengan IPM). Tapi hubungan itu tidak sempurna: sejumlah daerah kaya tambang punya PAD besar namun IPM yang biasa saja, menandakan kekayaan yang belum sepenuhnya diterjemahkan menjadi kesejahteraan.",
+      "Geser grafik antara IPM dan kemiskinan, dan cari pencilan — daerah yang mandiri secara fiskal tapi tertinggal secara pembangunan (atau sebaliknya).",
+    ],
+    kind: "crossdev",
+    crossdev: {
+      djpkAkun: "rasio_kemandirian",
+      ipmVar: "413",
+      povertyVar: "621",
+      latestYear: 2024,
+      note: "Gabungan lintas-sumber: rasio kemandirian fiskal (DJPK/Kemenkeu, PAD÷Pendapatan) × IPM (BPS var 413) & kemiskinan P0 (BPS var 621), 2024. Dijoin lewat crosswalk BPS→Kemendagri (provinsi via prefiks 2-digit). Dua sumber & metodologi berbeda — lensa hubungan, bukan angka gabungan.",
+    },
+  },
   {
     slug: "pengangguran-bukan-selalu-kemiskinan",
     title: "Menganggur di Tanah Kaya",

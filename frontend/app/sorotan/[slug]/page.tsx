@@ -14,6 +14,7 @@ import { DiversityPost } from "@/components/DiversityPost";
 import { GiniPost } from "@/components/GiniPost";
 import { BelanjaPost } from "@/components/BelanjaPost";
 import { LaborPost } from "@/components/LaborPost";
+import { CrossDevPost } from "@/components/CrossDevPost";
 
 export function generateStaticParams() {
   return POSTS.map((p) => ({ slug: p.slug }));
@@ -60,6 +61,7 @@ export default function PostPage({ params }: { params: { slug: string } }) {
         {post.kind === "inequality" && post.inequality && <GiniPost config={post.inequality} />}
         {post.kind === "spending" && post.spending && <BelanjaPost config={post.spending} />}
         {post.kind === "labor" && post.labor && <LaborPost config={post.labor} />}
+        {post.kind === "crossdev" && post.crossdev && <CrossDevPost config={post.crossdev} />}
       </div>
     </div>
   );
