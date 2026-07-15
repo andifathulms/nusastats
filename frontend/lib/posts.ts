@@ -436,6 +436,32 @@ export const POSTS: Post[] = [
     },
   },
   {
+    slug: "identitas-digital-ktp",
+    title: "Peta Buta Identitas Digital",
+    subtitle: "Hampir semua orang Indonesia punya KTP-el — kecuali di pegunungan Papua.",
+    tag: "Sosial",
+    source: "Dukcapil (Kemendagri)",
+    intro: [
+      "KTP elektronik adalah gerbang menuju hampir semua layanan negara: bantuan sosial, BPJS, rekening bank, hak pilih. Secara nasional, cakupan perekaman KTP-el sudah luar biasa tinggi — median kabupaten/kota mencapai 99%.",
+      "Tapi rata-rata yang tinggi menyembunyikan sebuah jurang. Di sejumlah kabupaten pegunungan Papua — Yahukimo, Puncak, Nduga, Intan Jaya — cakupan perekaman hanya 8–14%. Di sanalah negara secara administratif paling sulit menjangkau warganya: medan terjal, akses terbatas, dan infrastruktur adminduk yang belum sampai.",
+      "Di sini kita petakan cakupan KTP-el tiap daerah, beserta kepadatan penduduk dan struktur demografinya — untuk melihat di mana identitas digital masih menjadi 'peta buta'.",
+    ],
+    kind: "demography",
+    demography: {
+      primaryField: "ktp_coverage",
+      scatterX: "pop_density",
+      scatterY: "ktp_coverage",
+      ageProfile: false,
+      note: "Cakupan perekaman KTP-elektronik (persentase penduduk wajib KTP yang sudah merekam) menurut provinsi & kabupaten/kota. Sumber: Dukcapil (Ditjen Dukcapil, Kemendagri).",
+      metrics: [
+        { field: "ktp_coverage", label: "Cakupan Perekaman KTP-el", short: "Cakupan KTP-el", unit: "%", decimals: 1, desc: "Persentase penduduk wajib KTP yang sudah merekam KTP-elektronik — ukuran jangkauan administrasi & identitas digital. Terendah di pegunungan Papua yang terpencil." },
+        { field: "pop_density", label: "Kepadatan Penduduk", short: "Kepadatan", unit: "jiwa/km²", decimals: 0, desc: "Jumlah penduduk per kilometer persegi — daerah terpencil berkepadatan rendah cenderung paling sulit dijangkau perekaman." },
+        { field: "median_age", label: "Usia Median", short: "Usia Median", unit: "th", decimals: 1, desc: "Usia median penduduk — konteks demografi daerah." },
+        { field: "avg_household", label: "Rata-rata Jiwa per KK", short: "Jiwa/KK", unit: "", decimals: 2, desc: "Rata-rata anggota per kepala keluarga." },
+      ],
+    },
+  },
+  {
     slug: "keberagaman-agama-daerah",
     title: "Seberapa Beragam Daerahmu?",
     subtitle: "Dari Bengkayang yang nyaris seimbang tiga agama, hingga daerah yang hampir seragam.",
