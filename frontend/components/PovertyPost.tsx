@@ -82,41 +82,38 @@ export function PovertyPost({ config }: { config: PovertyConfig }) {
   const [q, setQ] = useState("");
   const [loading, setLoading] = useState(true);
 
-  // National trend + crosswalk — level-independent, fetched once. National
-  // totals are only valid once every province reports (fullCoverageYear).
+  // National trend + crosswalk — level-independent, fetched once.
+  //
+  // BPS publishes the national figures directly, so read them rather than
+  // re-deriving them from the province rows: summing counts and dividing by a
+  // population back-computed as count/P0 drifts (it put 2017 at 10,64% against
+  // BPS's 10,12%). The published series also reaches back to 1996, covering the
+  // 1998 krismon spike that a province-sum cannot show.
   useEffect(() => {
     let cancelled = false;
-    const countVar = config.metrics.find((m) => m.key === "count")!.variableId;
-    const rateVar = config.metrics.find((m) => m.key === "p0")!.variableId;
+    const N = config.national;
     Promise.all([
       dukcapilApi.regencyCrosswalk(),
-      api.series(countVar, { admin_level: "province" }),
-      api.series(rateVar, { admin_level: "province" }),
-    ]).then(([cw, cs, rs]) => {
+      api.series(N.rateVariableId, { admin_level: "national", vervar_id: N.totalVervarId }),
+      api.series(N.countVariableId, { admin_level: "national", vervar_id: N.totalVervarId }),
+    ]).then(([cw, rs, cs]) => {
       if (cancelled) return;
       setXwalk(new Map(cw.results.map((x) => [x.bps_domain_id, x])));
-      const count = new Map<number, Map<string, number>>();
-      const rate = new Map<number, Map<string, number>>();
-      for (const d of cs.results) if (d.year != null) (count.get(d.year) ?? count.set(d.year, new Map()).get(d.year)!).set(d.domain_id, d.value);
-      for (const d of rs.results) if (d.year != null) (rate.get(d.year) ?? rate.set(d.year, new Map()).get(d.year)!).set(d.domain_id, d.value);
+      // var 183 is in juta jiwa; the panel works in ribu jiwa like the metrics.
+      const poorByYear = new Map<number, number>();
+      for (const d of cs.results) if (d.year != null) poorByYear.set(d.year, d.value * 1000);
       const nat: { year: number; poor: number; rate: number }[] = [];
-      for (const [year, cm] of count) {
-        if (year < config.fullCoverageYear) continue;
-        const rm = rate.get(year);
-        if (!rm) continue;
-        let poor = 0, pop = 0;
-        for (const [dom, poorK] of cm) {
-          poor += poorK; // ribu jiwa
-          const r = rm.get(dom);
-          if (r) pop += (poorK / r) * 100; // reconstructed population (ribu jiwa)
-        }
-        nat.push({ year, poor, rate: pop ? (poor / pop) * 100 : 0 });
+      for (const d of rs.results) {
+        if (d.year == null) continue;
+        const poor = poorByYear.get(d.year);
+        if (poor == null) continue;
+        nat.push({ year: d.year, poor, rate: d.value });
       }
       nat.sort((a, b) => a.year - b.year);
       setNational(nat);
     });
     return () => { cancelled = true; };
-  }, [config.metrics, config.fullCoverageYear]);
+  }, [config.national]);
 
   // Regency cross-section (latest year): P0 + count joined, for the panels that
   // are always kab/kota level (disparity, concentration, Dukcapil correlation).
@@ -347,7 +344,7 @@ export function PovertyPost({ config }: { config: PovertyConfig }) {
       <LeaderboardPanel primary={metricByKey[config.primaryKey]} startYear={2015} latestYear={config.latestYear} firstYear={config.firstYear} xwalk={xwalk} />
       <DukcapilCorrelationPanel regLatest={regLatest} xwalk={xwalk} />
       <MapPanel rows={rows} metrics={config.metrics} level={level} xwalk={xwalk} />
-      <NationalTrend national={national} primary={metricByKey[config.primaryKey]} />
+      <NationalTrend national={national} />
     </div>
   );
 }
@@ -671,7 +668,7 @@ function MapPanel({ rows, metrics, level, xwalk }: { rows: Row[]; metrics: Pover
   );
 }
 
-function NationalTrend({ national, primary }: { national: { year: number; poor: number; rate: number }[]; primary: PovertyMetric }) {
+function NationalTrend({ national }: { national: { year: number; poor: number; rate: number }[] }) {
   const [mode, setMode] = useState<"rate" | "count">("rate");
   if (national.length < 2) return null;
   const rows = national.map((n) => ({ year: n.year, rate: Math.round(n.rate * 100) / 100, poor: Math.round((n.poor / 1000) * 100) / 100 }));
@@ -702,8 +699,7 @@ function NationalTrend({ national, primary }: { national: { year: number; poor: 
         </LineChart>
       </ResponsiveContainer>
       <div className="mt-2 text-xs text-ink-muted">
-        Agregat nasional dihitung dari penjumlahan seluruh provinsi; dibatasi sejak {first.year} saat seluruh 34 provinsi melapor lengkap.
-        {primary.unit === "%" && " Tingkat nasional = total penduduk miskin ÷ total penduduk."}
+        Angka nasional diambil langsung dari seri nasional BPS (Kota+Desa), bukan dijumlahkan dari provinsi.
       </div>
     </Panel>
   );

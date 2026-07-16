@@ -52,7 +52,17 @@ export type PovertyConfig = {
   countKey: "count"; // the summable absolute metric (for the scatter x / national total)
   latestYear: number;
   firstYear: number;
-  fullCoverageYear: number; // first year all 34 provinces report (national sums valid from here)
+  // BPS's own national series, so the headline is a published figure rather
+  // than one re-derived from the province rows (summing counts and dividing by
+  // a population back-computed from count/P0 drifts by ~0.5pp). Both are
+  // national-level with a Kota/Desa/Kota+Desa `vervar`.
+  national: {
+    rateVariableId: string; // 184, P0 % — 1996..2025
+    countVariableId: string; // 183, Juta Jiwa — 1996..2025
+    totalVervarId: string; // "3" = Kota+Desa
+    urbanVervarId: string; // "1" = Kota
+    ruralVervarId: string; // "2" = Desa
+  };
   note: string;
 };
 
@@ -635,8 +645,14 @@ export const POSTS: Post[] = [
       countKey: "count",
       latestYear: 2025,
       firstYear: 2004,
-      fullCoverageYear: 2017,
-      note: "Persentase Penduduk Miskin (P0), Indeks Kedalaman (P1), Indeks Keparahan (P2), dan Jumlah Penduduk Miskin menurut provinsi & kabupaten/kota, 2004–2025. Ukuran tingkat (P0/P1/P2) tidak dijumlahkan antar-wilayah — tiap level diambil langsung dari BPS. Sumber: BPS.",
+      national: {
+        rateVariableId: "184",
+        countVariableId: "183",
+        totalVervarId: "3",
+        urbanVervarId: "1",
+        ruralVervarId: "2",
+      },
+      note: "Persentase Penduduk Miskin (P0), Indeks Kedalaman (P1), Indeks Keparahan (P2), dan Jumlah Penduduk Miskin menurut provinsi & kabupaten/kota, 2004–2025. Ukuran tingkat (P0/P1/P2) tidak dijumlahkan antar-wilayah — tiap level diambil langsung dari BPS. Tren nasional memakai seri nasional BPS (P0 var 184, jumlah var 183; Kota+Desa), 1996–2025 — bukan hasil penjumlahan provinsi. Sumber: BPS.",
       metrics: [
         {
           key: "count",
