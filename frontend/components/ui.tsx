@@ -46,8 +46,13 @@ export function StatTile({
         <span className={`h-1.5 w-1.5 rounded-full ${dot[accent]}`} />
         {label}
       </div>
-      {/* Proportional figures on the big value — tabular-nums makes "121" look loose at display sizes. */}
-      <div className="mt-2.5 text-[28px] font-semibold leading-none text-ink-text">
+      {/* Proportional figures on the big value — tabular-nums makes "121" look loose at display sizes.
+          whitespace-nowrap: a year range ("1971–2035") is a break opportunity at the
+          en-dash, so it split across two lines in a narrow tile. Numbers have no break
+          opportunity at all, so this only ever helps.
+          The step down at mobile keeps a long figure ("284,973,643") inside a
+          half-width tile instead of running to its edges. */}
+      <div className="mt-2.5 whitespace-nowrap text-[22px] font-semibold leading-none text-ink-text sm:text-[28px]">
         {typeof value === "number" ? formatNumber(value) : value}
       </div>
       {sub && <div className="mt-1.5 text-xs text-ink-muted">{sub}</div>}
