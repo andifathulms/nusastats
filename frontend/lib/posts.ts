@@ -233,6 +233,12 @@ export type LaborConfig = {
   tpakMaleT: string; // "211"
   tpakFemaleT: string; // "212"
   povertyVar: string; // "621" (for the scatter)
+  // The two measures that carry the post's actual argument. Open unemployment
+  // barely moves with poverty (r=-0.18); informality (+0.63) and
+  // underemployment (+0.66) do. Without these the "everyone works, informally"
+  // thesis is prose with a null-result chart under it.
+  informalVar: string; // "2153" — Proporsi Lapangan Kerja Informal, province
+  underemployedVar: string; // "1181" — Tingkat Setengah Pengangguran, province
   latestYear: number;
   trendFrom: number; // series start for the TPT trend
   note: string;
@@ -312,9 +318,11 @@ export const POSTS: Post[] = [
       tpakMaleT: "211",
       tpakFemaleT: "212",
       povertyVar: "621",
+      informalVar: "2153",
+      underemployedVar: "1181",
       latestYear: 2024,
       trendFrom: 2005,
-      note: "Tingkat Pengangguran Terbuka/TPT (var 543) dan Tingkat Partisipasi Angkatan Kerja/TPAK menurut jenis kelamin (var 2200), tingkat provinsi. Dibandingkan dengan kemiskinan P0 (621). Ketenagakerjaan tidak tersedia di tingkat kabupaten/kota. Sumber: BPS.",
+      note: "Tingkat Pengangguran Terbuka/TPT (var 543) dan Tingkat Partisipasi Angkatan Kerja/TPAK menurut jenis kelamin (var 2200), ditambah Proporsi Lapangan Kerja Informal (var 2153) dan Tingkat Setengah Pengangguran (var 1181) — semuanya tingkat provinsi. Dibandingkan dengan kemiskinan P0 (621). TPT hanya tersedia sampai tingkat provinsi. Sumber: BPS.",
     },
   },
   {

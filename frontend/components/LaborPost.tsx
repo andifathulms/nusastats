@@ -9,11 +9,13 @@ import { ChoroplethMap, type MapValue } from "@/components/ChoroplethMap";
 import { Stat, PageBtn, PillToggle, pearson } from "@/components/sorotan-ui";
 
 const PAGE = 12;
-type Metric = "tpt" | "tpakL" | "tpakP" | "gap";
-type Row = { domain_id: string; name: string; tpt?: number; tpakL?: number; tpakP?: number; p0?: number };
+type Metric = "tpt" | "informal" | "under" | "tpakL" | "tpakP" | "gap";
+type Row = { domain_id: string; name: string; tpt?: number; informal?: number; under?: number; tpakL?: number; tpakP?: number; p0?: number };
 const MALE = "#2A5AA0", FEMALE = "#D55181";
 const METRICS: { k: Metric; short: string; desc: string; fmt: (r: Row) => number | undefined }[] = [
   { k: "tpt", short: "Pengangguran (TPT)", desc: "Tingkat Pengangguran Terbuka: persen angkatan kerja yang menganggur & mencari kerja. Justru tinggi di provinsi industri (Jawa), rendah di provinsi agraris — pertanian menyerap tenaga kerja secara informal.", fmt: (r) => r.tpt },
+  { k: "informal", short: "Kerja Informal", desc: "Proporsi pekerja di lapangan kerja informal — pertanian keluarga, usaha sendiri, pekerja tak dibayar: bekerja, tapi tanpa kontrak, jaminan, atau upah tetap. Inilah yang menampung orang di daerah yang pengangguran resminya rendah.", fmt: (r) => r.informal },
+  { k: "under", short: "Setengah Pengangguran", desc: "Tingkat Setengah Pengangguran: bekerja di bawah 35 jam seminggu dan masih ingin/siap menambah jam kerja — bekerja, tapi tidak cukup. Ukuran 'kekurangan kerja' yang tak terlihat pada angka pengangguran terbuka.", fmt: (r) => r.under },
   { k: "tpakL", short: "Partisipasi Laki-laki", desc: "Tingkat Partisipasi Angkatan Kerja laki-laki: persen penduduk usia kerja laki-laki yang bekerja atau mencari kerja.", fmt: (r) => r.tpakL },
   { k: "tpakP", short: "Partisipasi Perempuan", desc: "Tingkat Partisipasi Angkatan Kerja perempuan — hampir selalu jauh di bawah laki-laki.", fmt: (r) => r.tpakP },
   { k: "gap", short: "Selisih Partisipasi L−P", desc: "Selisih partisipasi angkatan kerja laki-laki dikurangi perempuan — ukuran kesenjangan gender di pasar kerja.", fmt: (r) => (r.tpakL != null && r.tpakP != null ? r.tpakL - r.tpakP : undefined) },
@@ -37,6 +39,8 @@ export function LaborPost({ config }: { config: LaborConfig }) {
       api.ranking(config.tpakVar, { admin_level: "province", year: y, turvar_id: config.tpakMaleT }).then((d) => ({ k: "tpakL", d })),
       api.ranking(config.tpakVar, { admin_level: "province", year: y, turvar_id: config.tpakFemaleT }).then((d) => ({ k: "tpakP", d })),
       api.ranking(config.povertyVar, { admin_level: "province", year: y }).then((d) => ({ k: "p0", d })),
+      api.ranking(config.informalVar, { admin_level: "province", year: y }).then((d) => ({ k: "informal", d })),
+      api.ranking(config.underemployedVar, { admin_level: "province", year: y }).then((d) => ({ k: "under", d })),
       api.series(config.tptVar, { admin_level: "province", year_min: String(config.trendFrom) }).then((d) => ({ k: "series", d })),
     ]).then((res) => {
       if (cancelled) return;
@@ -46,7 +50,12 @@ export function LaborPost({ config }: { config: LaborConfig }) {
         if (k === "series") continue;
         for (const x of (d as { results: { domain_id: string; domain_name: string; value: number }[] }).results) {
           const r = ensure(x.domain_id, x.domain_name);
-          if (k === "tpt") r.tpt = x.value; else if (k === "tpakL") r.tpakL = x.value; else if (k === "tpakP") r.tpakP = x.value; else if (k === "p0") r.p0 = x.value;
+          if (k === "tpt") r.tpt = x.value;
+          else if (k === "informal") r.informal = x.value;
+          else if (k === "under") r.under = x.value;
+          else if (k === "tpakL") r.tpakL = x.value;
+          else if (k === "tpakP") r.tpakP = x.value;
+          else if (k === "p0") r.p0 = x.value;
         }
       }
       setRows([...by.values()]);
@@ -138,8 +147,10 @@ function Detail({ row, series, nat }: { row: Row; series: { year: number; value:
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-2 pt-2"><div className="h-px flex-1 bg-ink-border" /><div className="text-xs font-medium uppercase tracking-wide text-ink-muted">Rincian · {row.name}</div><div className="h-px flex-1 bg-ink-border" /></div>
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
         <Stat label="Pengangguran (TPT)" value={row.tpt != null ? `${row.tpt.toFixed(2)}%` : "–"} />
+        <Stat label="Kerja informal" value={row.informal != null ? `${row.informal.toFixed(1)}%` : "–"} sub="tanpa kontrak/jaminan" />
+        <Stat label="Setengah nganggur" value={row.under != null ? `${row.under.toFixed(2)}%` : "–"} sub="kerja <35 jam, ingin tambah" />
         <Stat label="Partisipasi ♂" value={row.tpakL != null ? `${row.tpakL.toFixed(1)}%` : "–"} />
         <Stat label="Partisipasi ♀" value={row.tpakP != null ? `${row.tpakP.toFixed(1)}%` : "–"} sub={gap != null ? `selisih ${gap.toFixed(1)} poin` : undefined} />
         <Stat label="Kemiskinan (P0)" value={row.p0 != null ? `${row.p0.toFixed(2)}%` : "–"} sub="konteks" />
@@ -163,23 +174,49 @@ function Detail({ row, series, nat }: { row: Row; series: { year: number; value:
   );
 }
 
-// The counterintuitive cut: TPT vs poverty. Industrial provinces have high open
-// unemployment yet low poverty; agrarian ones the reverse.
+// The post's argument, as a chart you can flip. All three x-measures are plotted
+// against the SAME poverty axis, so switching between them isolates the claim:
+// open unemployment hardly tracks poverty at all, while informality and
+// underemployment — "working, but badly" — track it strongly. Previously only
+// the first (a near-null r) was shown, under prose asserting the rest.
+const SCATTER_X: { k: "tpt" | "informal" | "under"; label: string; axis: string; get: (r: Row) => number | undefined; blurb: string }[] = [
+  { k: "tpt", label: "Pengangguran (TPT)", axis: "Pengangguran (TPT)", get: (r) => r.tpt, blurb: "Nyaris tak ada hubungan: provinsi dengan pengangguran resmi tinggi bukan provinsi termiskin. Angka pengangguran terbuka saja tidak menjelaskan kemiskinan." },
+  { k: "informal", label: "Kerja Informal", axis: "Proporsi kerja informal", get: (r) => r.informal, blurb: "Di sinilah hubungannya muncul. Provinsi yang pekerjanya paling banyak informal adalah provinsi termiskin — orangnya bekerja, tapi tanpa jaminan dan upah tetap." },
+  { k: "under", label: "Setengah Pengangguran", axis: "Tingkat setengah pengangguran", get: (r) => r.under, blurb: "Hubungan terkuat di halaman ini. Bukan 'tidak ada kerja', melainkan tidak cukup kerja — bekerja di bawah 35 jam dan masih ingin menambah." },
+];
+
 function ScatterPanel({ rows }: { rows: Row[] }) {
-  const points = useMemo(() => rows.filter((r) => r.tpt != null && r.p0 != null).map((r) => ({ x: r.tpt!, y: r.p0!, name: r.name, fill: groupColor(r.domain_id.slice(0, 2)) })), [rows]);
+  const [xk, setXk] = useState<"tpt" | "informal" | "under">("tpt");
+  const cfg = SCATTER_X.find((s) => s.k === xk)!;
+  const points = useMemo(
+    () => rows.filter((r) => cfg.get(r) != null && r.p0 != null).map((r) => ({ x: cfg.get(r)!, y: r.p0!, name: r.name, fill: groupColor(r.domain_id.slice(0, 2)) })),
+    [rows, xk]
+  );
   const r = useMemo(() => pearson(points.map((p) => p.x), points.map((p) => p.y)), [points]);
   return (
     <Panel>
-      <div className="mb-1 text-sm font-semibold text-ink-text">Pengangguran vs Kemiskinan</div>
-      <div className="mb-3 text-xs text-ink-muted">Korelasi (r) = <span className={`font-semibold ${Math.abs(r) >= 0.5 ? "text-ink-text" : "text-ink-muted"}`}>{isNaN(r) ? "–" : r.toFixed(2)}</span> · {points.length} provinsi · sumbu X: TPT, Y: kemiskinan (P0). Korelasi lemah/negatif: provinsi industri bisa punya pengangguran tinggi tapi kemiskinan rendah.</div>
+      <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+        <div className="text-sm font-semibold text-ink-text">{cfg.label} vs Kemiskinan</div>
+        <div className="inline-flex gap-0.5 rounded-lg border border-ink-border/80 bg-ink-panel2/50 p-0.5">
+          {SCATTER_X.map((s) => (
+            <button key={s.k} onClick={() => setXk(s.k)}
+              className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${xk === s.k ? "bg-brand-gradient text-white" : "text-ink-muted hover:text-ink-text"}`}>
+              {s.label}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div className="mb-3 text-xs leading-relaxed text-ink-muted">
+        Korelasi (r) = <span className={`font-semibold ${Math.abs(r) >= 0.5 ? "text-ink-text" : "text-ink-muted"}`}>{isNaN(r) ? "–" : r.toFixed(2)}</span> · {points.length} provinsi · sumbu X: {cfg.axis}, Y: kemiskinan (P0). {cfg.blurb}
+      </div>
       <ResponsiveContainer width="100%" aspect={1.4} className="mx-auto max-w-[600px]">
         <ScatterChart margin={{ top: 8, right: 16, bottom: 24, left: 8 }}>
           <CartesianGrid stroke={CHART.grid} />
-          <XAxis type="number" dataKey="x" name="TPT" unit="%" tick={{ fill: CHART.axisTick, fontSize: 12 }} axisLine={{ stroke: CHART.axisLine }} tickLine={false} label={{ value: "Pengangguran (TPT)", position: "insideBottom", offset: -12, fill: CHART.axisTick, fontSize: 11 }} />
+          <XAxis type="number" dataKey="x" name={cfg.label} unit="%" tick={{ fill: CHART.axisTick, fontSize: 12 }} axisLine={{ stroke: CHART.axisLine }} tickLine={false} label={{ value: cfg.axis, position: "insideBottom", offset: -12, fill: CHART.axisTick, fontSize: 11 }} />
           <YAxis type="number" dataKey="y" name="P0" unit="%" tick={{ fill: CHART.axisTick, fontSize: 12 }} axisLine={{ stroke: CHART.axisLine }} tickLine={false} width={44} />
           <ZAxis range={[36, 36]} />
           <RTooltip cursor={{ strokeDasharray: "3 3" }} content={({ payload }) => payload && payload.length ? (
-            <div className="rounded-lg border border-ink-border bg-ink-panel px-3 py-2 text-xs shadow-panel"><div className="font-medium text-ink-text">{payload[0].payload.name}</div><div className="mt-0.5 text-ink-muted">TPT: {payload[0].payload.x.toFixed(2)}%</div><div className="text-ink-muted">Kemiskinan: {payload[0].payload.y.toFixed(2)}%</div></div>
+            <div className="rounded-lg border border-ink-border bg-ink-panel px-3 py-2 text-xs shadow-panel"><div className="font-medium text-ink-text">{payload[0].payload.name}</div><div className="mt-0.5 text-ink-muted">{cfg.label}: {payload[0].payload.x.toFixed(2)}%</div><div className="text-ink-muted">Kemiskinan: {payload[0].payload.y.toFixed(2)}%</div></div>
           ) : null} />
           <Scatter data={points} fillOpacity={0.75}>{points.map((p, i) => <Cell key={i} fill={p.fill} />)}</Scatter>
         </ScatterChart>
