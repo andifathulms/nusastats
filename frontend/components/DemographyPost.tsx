@@ -30,6 +30,36 @@ const STAGE_LABEL = { children: "Anak (0–14)", productive: "Produktif (15–64
 
 const fmtVal = (m: DemographyMetric, v: number | undefined) =>
   v == null ? "–" : `${v.toLocaleString("id-ID", { minimumFractionDigits: m.decimals, maximumFractionDigits: m.decimals })}${m.unit === "%" ? "%" : m.unit ? ` ${m.unit}` : ""}`;
+
+// Registers whose age structure is not demographically possible.
+//
+// Dukcapil is a registry, not a census: where registration lags, adults get
+// recorded and their children largely don't. That inflates the working-age
+// share, which drags `dependency_ratio` DOWN — so the worst-covered regions
+// surface at the top of a "lowest dependency burden" ranking, reading as the
+// biggest demographic-dividend winners. It is the same distortion that puts
+// them at the bottom of KTP-el coverage (the two correlate at r≈0.71, which no
+// real demography explains).
+//
+// Flag rather than drop: the rule is relative (a register reporting less than
+// half the national median share of children cannot be a real age structure) so
+// it adapts to the data instead of hardcoding a cutoff, and flagged regions
+// stay visible and labelled. Today this catches 8 kabupaten in the Papua
+// highlands, at 8–12% children against a national median of ~25%, where the
+// next-lowest region jumps to 14,9%.
+const PLAUSIBILITY_FIELD = "pct_children";
+function implausibleRegisters(rows: Row[]): Set<string> {
+  const vals = rows.map((r) => r.by[PLAUSIBILITY_FIELD]?.value).filter((v): v is number => v != null).sort((a, b) => a - b);
+  if (vals.length < 10) return new Set(); // not enough to establish a median
+  const median = vals[Math.floor(vals.length / 2)];
+  const floor = median / 2;
+  return new Set(
+    rows.filter((r) => {
+      const v = r.by[PLAUSIBILITY_FIELD]?.value;
+      return v != null && v < floor;
+    }).map((r) => r.code)
+  );
+}
 const provOf = (row: DukcapilRankRow, level: Level) =>
   level === "province" ? { code: row.domain_id, name: titleCase(row.domain_name) } : { code: row.domain_id.slice(0, 2), name: row.nama_prop ? titleCase(row.nama_prop) : row.domain_id.slice(0, 2) };
 
@@ -83,16 +113,41 @@ export function DemographyPost({ config }: { config: DemographyConfig }) {
   const youngest = useMemo(() => [...rows].filter((r) => r.by.median_age).sort((a, b) => a.by.median_age.value - b.by.median_age.value)[0], [rows]);
   const oldest = useMemo(() => [...rows].filter((r) => r.by.median_age).sort((a, b) => b.by.median_age.value - a.by.median_age.value)[0], [rows]);
 
+  // Only the age-structure post carries the fields that make a register's
+  // plausibility checkable; elsewhere this is empty and nothing is flagged.
+  const flaggedCodes = useMemo(() => implausibleRegisters(rows), [rows]);
+
   if (loading && !rows.length) return <div className="flex h-64 items-center justify-center text-sm text-ink-muted">Memuat…</div>;
 
   return (
     <div className="space-y-4">
       {config.ageProfile !== false ? (
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-          <Stat label="Termuda (usia median)" value={youngest ? youngest.name : "–"} sub={youngest ? `${youngest.by.median_age.value.toFixed(1)} th` : undefined} />
-          <Stat label="Tertua (usia median)" value={oldest ? oldest.name : "–"} sub={oldest ? `${oldest.by.median_age.value.toFixed(1)} th` : undefined} />
-          <Stat label={`Beban tanggungan terendah`} value={lowest(rows, "dependency_ratio")?.name ?? "–"} sub={lowest(rows, "dependency_ratio") ? `rasio ${lowest(rows, "dependency_ratio")!.by.dependency_ratio.value.toFixed(1)}` : undefined} />
-        </div>
+        (() => {
+          // The lowest dependency ratio is only a "bonus demografi" if the age
+          // structure behind it is real — see implausibleRegisters().
+          const flagged = implausibleRegisters(rows);
+          const plausible = rows.filter((r) => !flagged.has(r.code));
+          const low = lowest(plausible, "dependency_ratio");
+          return (
+            <>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                <Stat label="Termuda (usia median)" value={youngest ? youngest.name : "–"} sub={youngest ? `${youngest.by.median_age.value.toFixed(1)} th` : undefined} />
+                <Stat label="Tertua (usia median)" value={oldest ? oldest.name : "–"} sub={oldest ? `${oldest.by.median_age.value.toFixed(1)} th` : undefined} />
+                <Stat label="Beban tanggungan terendah" value={low?.name ?? "–"} sub={low ? `rasio ${low.by.dependency_ratio.value.toFixed(1)}` : undefined} />
+              </div>
+              {flagged.size > 0 && (
+                <p className="text-xs leading-relaxed text-ink-muted">
+                  <span className="font-medium text-ink-text">Catatan:</span> {flagged.size}{" "}
+                  {level === "province" ? "provinsi" : "kabupaten/kota"} dikecualikan dari kartu “beban tanggungan
+                  terendah” karena struktur usianya tidak mungkin secara demografis — anak (0–14) tercatat kurang dari
+                  separuh median nasional, sehingga rasio ketergantungannya rendah karena pencatatan, bukan karena bonus
+                  demografi. Wilayahnya tetap ditampilkan di peringkat dan peta, ditandai{" "}
+                  <span className="rounded bg-ink-warn/12 px-1 font-medium text-ink-warn">!</span>.
+                </p>
+              )}
+            </>
+          );
+        })()
       ) : (
         (() => {
           const pm = metricByField[config.primaryField];
@@ -139,11 +194,22 @@ export function DemographyPost({ config }: { config: DemographyConfig }) {
             const rank = filtered.indexOf(r) + 1;
             const v = r.by[field]?.value;
             const on = r.code === selected?.code;
+            const flagged = flaggedCodes.has(r.code);
             return (
               <button key={r.code} onClick={() => setSel(r.code)}
                 className={`flex w-full items-center gap-3 rounded-lg px-2 py-2 text-left transition-colors ${on ? "bg-ink-panel2 ring-1 ring-ink-accent/50" : "hover:bg-ink-panel2/60"}`}>
                 <span className="w-6 shrink-0 text-right text-xs tabular-nums text-ink-muted">{rank}</span>
-                <span className="w-40 shrink-0 truncate text-sm text-ink-text" title={r.name}>{r.name}</span>
+                <span className="flex w-40 shrink-0 items-center gap-1.5 truncate text-sm text-ink-text" title={r.name}>
+                  <span className="truncate">{r.name}</span>
+                  {flagged && (
+                    <span
+                      title="Struktur usia register tidak mungkin secara demografis (anak 0–14 kurang dari separuh median nasional) — angka ini mencerminkan cakupan pencatatan."
+                      className="shrink-0 rounded bg-ink-warn/12 px-1 text-[10px] font-semibold text-ink-warn"
+                    >
+                      !
+                    </span>
+                  )}
+                </span>
                 <span className="h-3 flex-1 overflow-hidden rounded-full bg-ink-panel2 ring-1 ring-ink-border/60">
                   <span className="block h-full rounded-full" style={{ width: `${v != null ? Math.max(2, ((v - floor) / span) * 100) : 0}%`, background: CHART.accent }} />
                 </span>
