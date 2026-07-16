@@ -127,7 +127,12 @@ export function Topbar() {
       {/* Row 2 — light strip: sub-nav for the active section (hidden when none) */}
       {active.items.length > 0 && (
         <div className="border-b border-ink-border bg-ink-panel/95 backdrop-blur">
-          <div className="mx-auto flex max-w-7xl items-center gap-1 overflow-x-auto scroll-thin px-5 lg:px-8">
+          {/* No overflow-x-auto here. Setting one axis to a non-visible value makes
+              the other compute to `auto`, and the tabs' -mb-px (which laps the
+              active underline over the divider) leaves the content 1px taller than
+              the box — so the row grew a vertical scrollbar. This strip only ever
+              holds two short items, so it never needs to scroll anyway. */}
+          <div className="mx-auto flex max-w-7xl items-center gap-1 px-5 lg:px-8">
             {active.items.map((item) => {
               const on = isItemActive(item.href, pathname);
               return (
