@@ -176,15 +176,23 @@ export type GenderConfig = {
   note: string;
 };
 
-// `prosperity`: PDRB per capita (reconstructed = PDRB total ÷ population) vs the
-// poverty rate, per kabupaten/kota — the "growth ≠ welfare" story. Population is
-// reconstructed single-source from BPS (poor count ÷ P0), so PDRB per capita is
-// an estimate (labelled as such). Regency-only (PDRB var 2193 is regency-level).
+// `prosperity`: PDRB per capita (PDRB total ÷ population) vs the poverty rate,
+// per kabupaten/kota — the "growth ≠ welfare" story. Regency-only (PDRB var 2193
+// is regency-level).
+//
+// The denominator is Dukcapil's registered population, joined via the regency
+// crosswalk. It replaced a single-source BPS reconstruction (poor count ÷ P0)
+// that was both less accurate — tested against BPS's own published per-capita
+// (var 288), median error 3,2% vs 1,7%, up to 56% off for individual kabupaten
+// — and circular, since it put P0 on both axes of the scatter. Dukcapil is a
+// registry and BPS a survey estimate, so neither is ground truth; the note says
+// so, and the two-source caveat is the honest cost of removing the circularity.
 export type ProsperityConfig = {
   pdrbVariableId: string; // 2193 (PDRB harga berlaku, pengeluaran, kab)
   pdrbTotalTurvar: string; // "1550" (grand-total PDRB)
   poorCountVariableId: string; // 619 (jumlah penduduk miskin, ribu jiwa)
   povertyRateVariableId: string; // 621 (P0, %)
+  populationIndicator: string; // Dukcapil field for the denominator ("jumlah_penduduk")
   latestYear: number;
   note: string;
 };
@@ -424,8 +432,9 @@ export const POSTS: Post[] = [
       pdrbTotalTurvar: "1550",
       poorCountVariableId: "619",
       povertyRateVariableId: "621",
+      populationIndicator: "jumlah_penduduk",
       latestYear: 2024,
-      note: "PDRB per kapita = PDRB harga berlaku (var 2193) ÷ perkiraan penduduk (jumlah penduduk miskin 619 ÷ P0 621). Angka per kapita adalah PERKIRAAN dari data BPS, bukan angka resmi PDRB per kapita. Kemiskinan: P0 (621). Per kabupaten/kota, 2024. Sumber: BPS.",
+      note: "PDRB per kapita = PDRB harga berlaku (BPS var 2193) ÷ jumlah penduduk tercatat (Dukcapil/Kemendagri), dijoin lewat crosswalk BPS→Kemendagri. Bukan angka resmi PDRB per kapita BPS: penyebutnya data registrasi Dukcapil, sedangkan BPS memakai proyeksi penduduk — di tingkat provinsi hasilnya meleset ~1,7% dari PDRB per kapita resmi BPS (var 288). Kemiskinan: P0 (621). Per kabupaten/kota, 2024. Sumber: BPS + Dukcapil.",
     },
   },
   {

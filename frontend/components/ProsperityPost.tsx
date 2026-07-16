@@ -13,7 +13,7 @@ import { Stat, PageBtn, PillToggle, pearson } from "@/components/sorotan-ui";
 const PAGE = 10;
 type Row = {
   domain_id: string; name: string; provCode: string; provName: string;
-  perkap: number; // PDRB per capita, Juta Rp/orang (reconstructed)
+  perkap: number; // PDRB per capita, Juta Rp/orang
   p0: number; // poverty headcount %
   pdrb: number; // PDRB total, Milyar Rupiah
   poor: number; // poor count, ribu jiwa
@@ -54,18 +54,30 @@ export function ProsperityPost({ config }: { config: ProsperityConfig }) {
       api.ranking(config.poorCountVariableId, { admin_level: "regency", year: y }),
       api.ranking(config.povertyRateVariableId, { admin_level: "regency", year: y }),
       dukcapilApi.regencyCrosswalk(),
-    ]).then(([pdrb, poor, p0, cw]) => {
+      dukcapilApi.rank({ indicator: config.populationIndicator, level: "regency", limit: "600" }),
+    ]).then(([pdrb, poor, p0, cw, pop]) => {
       if (cancelled) return;
       const xw = new Map(cw.results.map((x) => [x.bps_domain_id, x]));
       setXwalk(xw);
       const poorMap = new Map(poor.results.map((d) => [d.domain_id, d.value]));
       const p0Map = new Map(p0.results.map((d) => [d.domain_id, d.value]));
+      // Registered population, keyed to BPS ids via the crosswalk. This used to
+      // be reconstructed as poor/P0, which was both inaccurate (median 3,2% off
+      // BPS's own published per-capita at province level vs 1,7% for this, and
+      // up to 56% off per kabupaten) and circular: with pop = poor/P0, per
+      // capita = PDRB x P0 / (100 x poor), so P0 sat in the numerator of the x
+      // axis while BEING the y axis — higher poverty mechanically inflated
+      // estimated per-capita, precisely in the "kaya tapi timpang" quadrant the
+      // post is built to showcase.
+      const popMap = new Map(pop.results.map((d) => [d.domain_id, d.value]));
       const list: Row[] = [];
       for (const d of pdrb.results) {
         const pv = p0Map.get(d.domain_id), pc = poorMap.get(d.domain_id);
         if (pv == null || pc == null || pv <= 0) continue;
-        const pop = (pc / pv) * 100; // ribu jiwa (reconstructed, BPS-consistent)
-        if (pop <= 0) continue;
+        const kemen = xw.get(d.domain_id)?.kemendagri_code;
+        const headcount = kemen ? popMap.get(kemen) : undefined;
+        if (headcount == null || headcount <= 0) continue;
+        const pop = headcount / 1000; // jiwa -> ribu jiwa, matching PDRB's scale
         list.push({
           domain_id: d.domain_id,
           name: bpsRegionLabel(d.domain_name, d.domain_id),
