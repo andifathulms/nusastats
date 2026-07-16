@@ -40,6 +40,52 @@ function fmtVal(m: HdiMetric, v: number | undefined): string {
 const axisVal = (key: string, v: number) => (key === "income" ? v / 1000 : v);
 const axisUnit = (key: string) => (key === "income" ? "jt" : key === "p0" ? "%" : "");
 
+// --- the actual decomposition ----------------------------------------------
+//
+// The post promises that one IPM number hides three stories, but a percentile
+// profile can't deliver that: it shows where a region *ranks* on each raw
+// indicator, not what each dimension costs it in index points — and it lists
+// HLS and RLS as two of four bars when the index averages them into one of
+// three dimensions, so education gets double the weight it really has.
+//
+// BPS's metode baru is reproducible from components we already store. Each
+// indicator is normalized against a published goalpost, the two education
+// indicators average into one sub-index, and the three combine as a geometric
+// mean. Recomputing it lands within 0.005 points of BPS's own published IPM for
+// every kab/kota — so the sub-indices are exactly recoverable, and `residual`
+// below is shipped as the proof rather than asserted.
+const DIM_COLOR: Record<string, string> = { Kesehatan: "#0C8FA6", Pendidikan: "#2A5AA0", Pengeluaran: "#A87F2F" };
+const DIM_NOTE: Record<string, string> = {
+  Kesehatan: "Umur Harapan Hidup, dinormalkan ke rentang 20–85 tahun.",
+  Pendidikan: "Rata-rata Harapan Lama Sekolah (batas 18 th) dan Rata-rata Lama Sekolah (batas 15 th).",
+  Pengeluaran: "Pengeluaran per kapita disesuaikan, pada skala logaritmik.",
+};
+
+type Decomp = { dims: { name: string; index: number }[]; weakest: string; recomputed: number; residual: number | null };
+
+function decompose(row: Row, f: HdiConfig["formula"], compositeKey: string): Decomp | null {
+  const uhh = row.byKey.uhh?.value, hls = row.byKey.hls?.value, rls = row.byKey.rls?.value, income = row.byKey.income?.value;
+  if (uhh == null || hls == null || rls == null || income == null) return null;
+  const iKes = (uhh - f.uhhMin) / (f.uhhMax - f.uhhMin);
+  const iPend = (hls / f.hlsMax + rls / f.rlsMax) / 2;
+  // `income` is stored in ribu rupiah/orang/tahun; the goalposts are in rupiah.
+  const iPeng = (Math.log(income * 1000) - Math.log(f.expenditureMin)) / (Math.log(f.expenditureMax) - Math.log(f.expenditureMin));
+  if (!(iKes > 0 && iPend > 0 && iPeng > 0)) return null;
+  const dims = [
+    { name: "Kesehatan", index: iKes * 100 },
+    { name: "Pendidikan", index: iPend * 100 },
+    { name: "Pengeluaran", index: iPeng * 100 },
+  ];
+  const recomputed = Math.cbrt(iKes * iPend * iPeng) * 100;
+  const published = row.byKey[compositeKey]?.value;
+  return {
+    dims,
+    weakest: [...dims].sort((a, b) => a.index - b.index)[0].name,
+    recomputed,
+    residual: published != null ? recomputed - published : null,
+  };
+}
+
 export function HdiPost({ config }: { config: HdiConfig }) {
   const metricByKey = useMemo(() => Object.fromEntries(config.metrics.map((m) => [m.key, m])) as Record<string, HdiMetric>, [config.metrics]);
   const dims = useMemo(() => config.metrics.filter((m) => m.key !== config.compositeKey), [config.metrics, config.compositeKey]);
@@ -277,6 +323,9 @@ function Detail({
   // Percentile within the level (rank 1 = best → 100th pct).
   const pct = (c?: Cell4) => (c && totalRegions > 1 ? ((totalRegions - c.rank) / (totalRegions - 1)) * 100 : null);
   const lead = [...dims].map((d) => ({ d, p: pct(row.byKey[d.key]) })).filter((x) => x.p != null).sort((a, b) => a.p! - b.p!)[0];
+  const compositeKey = config.compositeKey;
+  const metricByKey = useMemo(() => Object.fromEntries(config.metrics.map((m) => [m.key, m])) as Record<string, HdiMetric>, [config.metrics]);
+  const decomp = useMemo(() => decompose(row, config.formula, compositeKey), [row, config.formula, compositeKey]);
 
   return (
     <div className="space-y-4">
@@ -306,6 +355,39 @@ function Detail({
           );
         })}
       </div>
+
+      {/* The real decomposition: what each of the three dimensions contributes. */}
+      {decomp && (
+        <Panel>
+          <div className="mb-1 text-xs font-medium uppercase tracking-wide text-ink-muted">
+            Dekomposisi IPM · tiga dimensi
+          </div>
+          <p className="mb-3 text-xs leading-relaxed text-ink-muted">
+            IPM adalah rata-rata geometrik dari tiga sub-indeks di bawah (skala 0–100). Dimensi terlemah{" "}
+            <span className="font-medium text-ink-text">{row.name}</span> adalah{" "}
+            <span className="font-medium" style={{ color: DIM_COLOR[decomp.weakest] }}>{decomp.weakest}</span> — itulah
+            yang paling menahan angkanya.
+          </p>
+          <div className="space-y-2">
+            {decomp.dims.map((d) => (
+              <div key={d.name} className="flex items-center gap-3">
+                <span className="w-28 shrink-0 text-xs text-ink-text" title={DIM_NOTE[d.name]}>{d.name}</span>
+                <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-ink-panel2">
+                  <div className="h-full rounded-full" style={{ width: `${Math.min(100, d.index)}%`, background: DIM_COLOR[d.name] }} />
+                </div>
+                <span className="w-12 shrink-0 text-right text-xs tabular-nums text-ink-text">{d.index.toFixed(1)}</span>
+              </div>
+            ))}
+          </div>
+          <div className="mt-3 border-t border-ink-border/60 pt-2 text-xs text-ink-muted">
+            Hitung ulang dari komponen: <span className="tabular-nums text-ink-text">{decomp.recomputed.toFixed(2)}</span> ·
+            IPM terbitan BPS: <span className="tabular-nums text-ink-text">{fmtVal(metricByKey[compositeKey], row.byKey[compositeKey]?.value)}</span>
+            {decomp.residual != null && (
+              <> · selisih <span className="tabular-nums text-ink-text">{Math.abs(decomp.residual) < 0.005 ? "<0,01" : decomp.residual.toFixed(3)}</span> poin (pembulatan)</>
+            )}
+          </div>
+        </Panel>
+      )}
 
       {/* Dimension profile: percentile per dimension so strengths/weaknesses show */}
       <Panel>

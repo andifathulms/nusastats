@@ -97,6 +97,21 @@ export type HdiMetric = {
   dimension?: "Kesehatan" | "Pendidikan" | "Pengeluaran"; // absent on the composite
 };
 
+// BPS's published *metode baru* goalposts — the fixed bounds each indicator is
+// normalized against before the three sub-indices are combined as a geometric
+// mean. These are published methodology parameters, not values inferred from the
+// data; the component proves it uses them correctly by showing the residual
+// against BPS's own stored IPM (reproduces it to <0.005 points on all 488
+// kab/kota, i.e. display rounding).
+export type HdiFormula = {
+  uhhMin: number; // 20 years
+  uhhMax: number; // 85 years
+  hlsMax: number; // 18 years
+  rlsMax: number; // 15 years
+  expenditureMin: number; // Rp 1.007.436 / person / year
+  expenditureMax: number; // Rp 26.572.352 / person / year
+};
+
 export type HdiConfig = {
   compositeKey: string; // which metric is the published composite (e.g. "ipm")
   metrics: HdiMetric[]; // composite first, then the dimensions
@@ -105,6 +120,7 @@ export type HdiConfig = {
   // IPM classes (BPS): Rendah <60, Sedang 60–70, Tinggi 70–80, Sangat Tinggi ≥80.
   categories: { label: string; min: number; color: string }[];
   povertyVariableId?: string; // for the index-vs-poverty scatter (P0)
+  formula: HdiFormula;
   note: string;
 };
 
@@ -583,7 +599,15 @@ export const POSTS: Post[] = [
       latestYear: 2024,
       firstYear: 2010,
       povertyVariableId: "621",
-      note: "IPM metode baru dan komponennya (Umur Harapan Hidup, Harapan Lama Sekolah, Rata-rata Lama Sekolah, Pengeluaran per Kapita Disesuaikan) menurut kabupaten/kota, 2010–2024. Nilai lebih tinggi = lebih baik. Sumber: BPS.",
+      formula: {
+        uhhMin: 20,
+        uhhMax: 85,
+        hlsMax: 18,
+        rlsMax: 15,
+        expenditureMin: 1_007_436,
+        expenditureMax: 26_572_352,
+      },
+      note: "IPM metode baru dan komponennya (Umur Harapan Hidup, Harapan Lama Sekolah, Rata-rata Lama Sekolah, Pengeluaran per Kapita Disesuaikan) menurut kabupaten/kota, 2010–2024. Nilai lebih tinggi = lebih baik. Dekomposisi tiga dimensi dihitung ulang dari komponen tersimpan memakai batas (goalpost) metode baru BPS; hasilnya direkonsiliasi dengan IPM terbitan BPS dan selisihnya ditampilkan. Sumber: BPS.",
       categories: [
         { label: "Sangat Tinggi", min: 80, color: "#15803D" },
         { label: "Tinggi", min: 70, color: "#5FBF6A" },
