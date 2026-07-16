@@ -99,6 +99,7 @@ function BpsBrowser({ level }: { level: Level }) {
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Cari nama wilayah…"
+          aria-label="Cari nama wilayah"
           className="w-full rounded-lg border border-ink-border bg-ink-panel px-4 py-2 text-sm text-ink-text placeholder:text-ink-muted focus:border-ink-accent focus:outline-none"
         />
       )}

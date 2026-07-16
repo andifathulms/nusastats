@@ -61,7 +61,7 @@ export function MapSection() {
         {hasProvince && (
           <div className="flex flex-wrap gap-2">
             {dims && dims.turvars.length > 1 && (
-              <select value={turvarId} onChange={(e) => setTurvarId(e.target.value)} className={selectClass}>
+              <select value={turvarId} onChange={(e) => setTurvarId(e.target.value)} className={selectClass} aria-label="Pilih rincian (turvar)">
                 {dims.turvars.map((t) => (
                   <option key={t.turvar_id} value={t.turvar_id}>
                     {t.turvar_label || `turvar ${t.turvar_id}`}
@@ -69,7 +69,7 @@ export function MapSection() {
                 ))}
               </select>
             )}
-            <select value={year ?? ""} onChange={(e) => setYear(Number(e.target.value))} className={selectClass}>
+            <select value={year ?? ""} onChange={(e) => setYear(Number(e.target.value))} className={selectClass} aria-label="Pilih tahun">
               {dims?.years.map((y) => (
                 <option key={y} value={y}>
                   {y}

@@ -64,7 +64,7 @@ export function TrendSection() {
       <Panel className="space-y-4">
         <IndicatorPicker value={variable} onPick={setVariable} />
         {dims && dims.turvars.length > 1 && (
-          <select value={turvarId} onChange={(e) => setTurvarId(e.target.value)} className={selectClass}>
+          <select value={turvarId} onChange={(e) => setTurvarId(e.target.value)} className={selectClass} aria-label="Pilih rincian (turvar)">
             {dims.turvars.map((t) => (
               <option key={t.turvar_id} value={t.turvar_id}>
                 {t.turvar_label || `turvar ${t.turvar_id}`}

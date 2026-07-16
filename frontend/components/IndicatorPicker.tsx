@@ -84,6 +84,7 @@ export function IndicatorPicker({
               value={q}
               onChange={(e) => setQ(e.target.value)}
               placeholder="Cari indikator…"
+              aria-label="Cari indikator"
               className="w-full rounded-t-lg border-b border-ink-border bg-ink-panel2 px-3 py-2 text-sm text-ink-text placeholder:text-ink-muted focus:outline-none"
             />
             <div className="max-h-72 overflow-y-auto scroll-thin">

@@ -21,9 +21,19 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="id" className={`${inter.variable} ${display.variable}`}>
       <body className="min-h-screen bg-noise font-sans antialiased">
+        {/* Offscreen until focused: otherwise every page costs a keyboard user
+            8+ tabs through the nav before reaching the content. */}
+        <a
+          href="#main"
+          className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-lg focus:bg-ink-accent focus:px-4 focus:py-2 focus:text-sm focus:font-medium focus:text-white"
+        >
+          Lewati ke konten
+        </a>
         <div className="flex min-h-screen flex-col">
           <Topbar />
-          <main className="mx-auto w-full max-w-7xl flex-1 px-5 py-8 lg:px-8">{children}</main>
+          <main id="main" className="mx-auto w-full max-w-7xl flex-1 px-5 py-8 lg:px-8">
+            {children}
+          </main>
         </div>
       </body>
     </html>

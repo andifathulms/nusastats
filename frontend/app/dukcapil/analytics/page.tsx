@@ -176,6 +176,7 @@ export default function DukcapilAnalyticsPage() {
       <label className="mb-1.5 block text-xs uppercase tracking-wide text-ink-muted">Indikator</label>
       <select
         value={indicator}
+        aria-label="Pilih indikator Dukcapil"
         onChange={(e) => setIndicator(e.target.value)}
         className="w-full rounded-lg border border-ink-border bg-ink-panel px-3 py-2 text-sm text-ink-text focus:border-ink-accent/60 focus:outline-none"
       >

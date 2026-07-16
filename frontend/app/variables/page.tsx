@@ -91,9 +91,10 @@ export default function VariablesPage() {
           value={keyword}
           onChange={(e) => setKeyword(e.target.value)}
           placeholder="Cari (mis. harapan hidup, kemiskinan, inflasi)…"
+          aria-label="Cari indikator BPS"
           className="flex-1 rounded-lg border border-ink-border bg-ink-panel px-4 py-2.5 text-sm text-ink-text transition-colors placeholder:text-ink-faint focus:border-ink-accent focus:outline-none focus:ring-2 focus:ring-ink-accent/15"
         />
-        <select value={category} onChange={(e) => setCategory(e.target.value)} className={selectClass}>
+        <select value={category} onChange={(e) => setCategory(e.target.value)} className={selectClass} aria-label="Saring menurut kategori">
           <option value="">Semua kategori</option>
           {categories.map((c) => (
             <option key={c} value={c}>
@@ -101,7 +102,7 @@ export default function VariablesPage() {
             </option>
           ))}
         </select>
-        <select value={adminLevel} onChange={(e) => setAdminLevel(e.target.value)} className={selectClass}>
+        <select value={adminLevel} onChange={(e) => setAdminLevel(e.target.value)} className={selectClass} aria-label="Saring menurut tingkat wilayah">
           {LEVELS.map((l) => (
             <option key={l.v} value={l.v}>
               {l.label}
