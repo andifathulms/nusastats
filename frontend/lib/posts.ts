@@ -428,10 +428,14 @@ export const POSTS: Post[] = [
       variableId: "98",
       turvars: { total: "191", urban: "189", rural: "190" },
       latestYear: 2025,
-      note: "Gini Ratio menurut provinsi & daerah (var 98), 2002–2025. Hanya tersedia di tingkat provinsi (BPS tidak merilis Gini kabupaten/kota). Dibandingkan dengan Persentase Penduduk Miskin/P0 (621) dan IPM (413). Sumber: BPS.",
+      note: "Gini Ratio menurut provinsi & daerah (var 98), 2002–2025. Hanya tersedia di tingkat provinsi (BPS tidak merilis Gini kabupaten/kota). Dibandingkan dengan Persentase Penduduk Miskin/P0 (621) dan IPM provinsi (var 2207, basis UHH Long Form SP2020 — seri yang terbit sampai 2025; angkanya sedikit berbeda dari IPM var 413 yang dipakai di Sorotan IPM dan berhenti di 2024). Sumber: BPS.",
       compare: [
         { key: "p0", variableId: "621", label: "Persentase Penduduk Miskin (P0)", short: "Kemiskinan (P0)", unit: "%", decimals: 2 },
-        { key: "ipm", variableId: "413", label: "Indeks Pembangunan Manusia", short: "IPM", unit: "", decimals: 2 },
+        // var 413 stops at 2024, so at latestYear 2025 it returned zero rows and
+        // the scatter rendered empty. 2207 is the province IPM series that BPS
+        // still publishes (UHH from the SP2020 long form), so it matches the
+        // Gini year rather than silently pairing 2025 Gini with 2024 IPM.
+        { key: "ipm", variableId: "2207", label: "Indeks Pembangunan Manusia", short: "IPM", unit: "", decimals: 2 },
       ],
     },
   },
