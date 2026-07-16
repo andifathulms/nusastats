@@ -45,7 +45,7 @@ export function LaborPost({ config }: { config: LaborConfig }) {
     ]).then((res) => {
       if (cancelled) return;
       const by = new Map<string, Row>();
-      const ensure = (id: string, name: string) => by.get(id) ?? (() => { const r: Row = { domain_id: id, name: fixName(name) }; by.set(id, r); return r; })();
+      const ensure = (id: string, name: string) => by.get(id) ?? (() => { const r: Row = { domain_id: id, name: titleCase(name) }; by.set(id, r); return r; })();
       for (const { k, d } of res) {
         if (k === "series") continue;
         for (const x of (d as { results: { domain_id: string; domain_name: string; value: number }[] }).results) {
@@ -139,7 +139,7 @@ export function LaborPost({ config }: { config: LaborConfig }) {
   );
 }
 
-function fixName(n: string) { return titleCase(n).replace(/\bDki\b/, "DKI").replace(/\bDi\b/, "DI"); }
+
 
 function Detail({ row, series, nat }: { row: Row; series: { year: number; value: number }[] | null; nat: { year: number; value: number }[] }) {
   const merged = useMemo(() => { if (!series) return []; const nm = new Map(nat.map((n) => [n.year, n.value])); return series.map((s) => ({ year: s.year, prov: s.value, nat: nm.get(s.year) })); }, [series, nat]);

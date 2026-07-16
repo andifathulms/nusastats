@@ -45,7 +45,7 @@ export function GiniPost({ config }: { config: InequalityConfig }) {
     ]).then((res) => {
       if (cancelled) return;
       const by = new Map<string, Row>();
-      const ensure = (id: string, name: string) => by.get(id) ?? (() => { const r: Row = { domain_id: id, name: fixName(name), gini: { total: undefined, urban: undefined, rural: undefined }, cmp: {} }; by.set(id, r); return r; })();
+      const ensure = (id: string, name: string) => by.get(id) ?? (() => { const r: Row = { domain_id: id, name: titleCase(name), gini: { total: undefined, urban: undefined, rural: undefined }, cmp: {} }; by.set(id, r); return r; })();
       for (const { k, d } of res) {
         if (k === "series" || k === "trend") continue;
         for (const x of (d as { results: { domain_id: string; domain_name: string; value: number }[] }).results) {
@@ -152,9 +152,7 @@ export function GiniPost({ config }: { config: InequalityConfig }) {
   );
 }
 
-function fixName(n: string) {
-  return titleCase(n).replace(/\bDki\b/, "DKI").replace(/\bDi\b/, "DI");
-}
+
 
 function Detail({ row, series, natTrend, config }: { row: Row; series: { year: number; value: number }[] | null; natTrend: { year: number; value: number }[]; config: InequalityConfig }) {
   const merged = useMemo(() => {

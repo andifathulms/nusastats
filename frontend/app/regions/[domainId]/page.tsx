@@ -99,6 +99,8 @@ function BpsRegion({ domainId, kind }: { domainId: string; kind: Kind }) {
   if (!data) return <div className="text-ink-muted">Memuat…</div>;
 
   const { region } = data;
+  // BPS ships "Dki Jakarta" / "Di Yogyakarta"; titleCase restores the acronyms.
+  const regionName = titleCase(region.domain_name);
   const badge =
     kind === "regency" ? bpsRegencyStatus(region.domain_id) || "Kabupaten/Kota" : KIND_LABEL[kind];
 
@@ -119,7 +121,7 @@ function BpsRegion({ domainId, kind }: { domainId: string; kind: Kind }) {
         </Link>
         <div className="mt-2 flex flex-wrap items-center gap-3">
           <h1 className="font-display text-3xl font-medium tracking-tight text-ink-text sm:text-4xl">
-            {region.domain_name}
+            {regionName}
           </h1>
           <Badge tone="accent">{badge}</Badge>
           {region.parent_province_name && (
@@ -127,7 +129,7 @@ function BpsRegion({ domainId, kind }: { domainId: string; kind: Kind }) {
               href={`/regions/${region.parent_province_id}`}
               className="text-sm text-ink-muted transition-colors hover:text-ink-accent"
             >
-              di {region.parent_province_name}
+              di {titleCase(region.parent_province_name)}
             </Link>
           )}
           <span className="text-xs text-ink-faint">kode {region.domain_id}</span>
@@ -161,9 +163,9 @@ function BpsRegion({ domainId, kind }: { domainId: string; kind: Kind }) {
       )}
 
       {tab === "insight" && kind === "province" ? (
-        <ProvinceInsight domainId={domainId} regionName={region.domain_name} />
+        <ProvinceInsight domainId={domainId} regionName={regionName} />
       ) : tab === "insight" && kind === "regency" ? (
-        <RegencyInsight domainId={domainId} regionName={region.domain_name} />
+        <RegencyInsight domainId={domainId} regionName={regionName} />
       ) : tab === "wilayah" && kind === "regency" ? (
         <DukcapilDrilldown domainId={domainId} />
       ) : tab === "demografi" ? (

@@ -463,8 +463,8 @@ function MetricSection({
           {rows.length > 0 && (
             <Narrative rows={rows} metric={metric} childLabel={childLabel} parentName={parentName} />
           )}
-          <div className="mt-4 grid gap-6 lg:grid-cols-[3fr_2fr]">
-            <Panel>
+          <div className="mt-4 grid gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
+            <Panel className="min-w-0">
               <ChoroplethMap
                 values={values}
                 min={min}
@@ -475,7 +475,7 @@ function MetricSection({
                 provFilter={mapFilter}
               />
             </Panel>
-            <Panel className="flex flex-col gap-4">
+            <Panel className="flex min-w-0 flex-col gap-4">
               <RankedList rows={rows} metric={metric} childLabel={childLabel} />
             </Panel>
           </div>
@@ -549,7 +549,7 @@ function RankedList({ rows, metric, childLabel }: { rows: MetricRow[]; metric: M
           <span className="text-ink-text">{r.name}</span>
         )}
       </span>
-      <span className="relative h-2 flex-1 overflow-hidden rounded-full bg-ink-panel2">
+      <span className="relative h-2 min-w-0 flex-1 overflow-hidden rounded-full bg-ink-panel2">
         <span
           className="absolute inset-y-0 left-0 rounded-full"
           style={{ width: `${Math.max(2, ((r.value - lo) / span) * 100)}%`, background: CHART.accent }}

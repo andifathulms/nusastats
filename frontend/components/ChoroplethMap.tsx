@@ -262,7 +262,10 @@ export function ChoroplethMap({
       </div>
 
       {/* Legend */}
-      <div className="mt-3 flex items-center gap-3 text-xs text-ink-muted">
+      {/* flex-wrap: without it the legend's min-content width (a 160px ramp plus
+          two formatted bounds) sets a floor that pushes its whole panel — and
+          the page — wider than a phone viewport. */}
+      <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2 text-xs text-ink-muted">
         <span className="tabular-nums">{fmt(min)}</span>
         <div
           className="h-2 w-40 rounded-full"

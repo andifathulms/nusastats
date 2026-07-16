@@ -7,6 +7,7 @@ import {
   bpsRegencyStatus,
   dukcapilApi,
   regionLabel,
+  titleCase,
   type Region,
   type DukcapilRegionRow,
 } from "@/lib/api";
@@ -127,9 +128,11 @@ function BpsBrowser({ level }: { level: Level }) {
 }
 
 function cardLabel(r: Region): string {
+  // titleCase, not the raw name: BPS ships "Dki Jakarta" / "Di Yogyakarta", and
+  // titleCase restores the acronyms.
   return r.admin_level === "regency"
-    ? regionLabel(r.domain_name, bpsRegencyStatus(r.domain_id))
-    : r.domain_name;
+    ? regionLabel(titleCase(r.domain_name), bpsRegencyStatus(r.domain_id))
+    : titleCase(r.domain_name);
 }
 
 // --- Dukcapil-only levels: kecamatan / desa --------------------------------
