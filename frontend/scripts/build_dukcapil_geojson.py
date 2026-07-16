@@ -161,6 +161,19 @@ def desa_code(p):
     return str(int(k)) if k is not None else ""
 
 
+def build_districts(out_dir, eps, only=None):
+    """One geojson per province, mirroring build_villages. A single nationwide
+    file is ~32MB: browsers refuse to cache a response that big (the fetch is
+    aborted outright), and no view needs more than one province of kecamatan at
+    a time — every consumer already scopes to a province before drawing."""
+    provs = only or distinct_provs("AGR_VISUAL_KEC_FIX", 2)
+    for p in provs:
+        build("AGR_VISUAL_KEC_FIX", 2, "no_prop,no_kab,no_kec,nama_kec", 0.008, eps or 0.003,
+              kec_code, "nama_kec", f"{out_dir}/dukcapil-districts-{int(p):02d}.geojson",
+              wheres=[f"no_prop={p}"], page=1000)
+        sys.stderr.write(f"province {p} done\n")
+
+
 def build_villages(out_dir, eps, only=None):
     """One geojson per province (83k villages nationwide is too much for a
     single file/request). nd=4 keeps small village polygons from collapsing."""
@@ -180,12 +193,9 @@ if __name__ == "__main__":
         build("AGR_VISUAL_PROP_FIX", 1, "no_prop,nama_prop", 0.02, eps or 0.008,
               prov_code, "nama_prop", f"{out_dir}/dukcapil-provinces.geojson")
     elif which == "kec":
-        # 7,285 kecamatan is too much geometry for one query — fetch per province.
-        provs = distinct_provs("AGR_VISUAL_KEC_FIX", 2)
-        sys.stderr.write(f"kecamatan across {len(provs)} provinces\n")
-        build("AGR_VISUAL_KEC_FIX", 2, "no_prop,no_kab,no_kec,nama_kec", 0.008, eps or 0.003,
-              kec_code, "nama_kec", f"{out_dir}/dukcapil-districts.geojson",
-              wheres=[f"no_prop={p}" for p in provs], page=1000)
+        # One file per province. Optional 4th+ args = specific province numbers.
+        only = [int(x) for x in sys.argv[4:]] or None
+        build_districts(out_dir, eps, only=only)
     elif which == "desa":
         # One file per province. Optional 4th+ args = specific province numbers.
         only = [int(x) for x in sys.argv[4:]] or None

@@ -17,10 +17,12 @@ import { Panel, SectionTitle } from "@/components/ui";
 // `domain_id` is exactly the Dukcapil region code (prov=2 / kab=4 / kec=6 /
 // desa=10 digits) — the ranking's domain_id matches directly, and an ancestor
 // code is a prefix of its descendants' codes (used by the filter).
-const SINGLE_GEOJSON: Record<"province" | "regency" | "district", string> = {
+// Province/kabupaten fit in one nationwide file each. Kecamatan and desa are
+// chunked per province — both levels already require a province selection
+// before they draw, and their nationwide payloads are too big to fetch.
+const SINGLE_GEOJSON: Record<"province" | "regency", string> = {
   province: "/dukcapil-provinces.geojson",
   regency: "/dukcapil-regencies.geojson",
-  district: "/dukcapil-districts.geojson",
 };
 type MapLevel = "province" | "regency" | "district" | "village";
 const MAP_LEVELS: [MapLevel, string][] = [
@@ -140,7 +142,9 @@ export function DukcapilMap({
   const geojsonUrls =
     mapLevel === "village"
       ? loadProvs.map((p) => `/dukcapil-villages-${p}.geojson`)
-      : [SINGLE_GEOJSON[mapLevel]];
+      : mapLevel === "district"
+        ? loadProvs.map((p) => `/dukcapil-districts-${p}.geojson`)
+        : [SINGLE_GEOJSON[mapLevel]];
 
   return (
     <Panel>

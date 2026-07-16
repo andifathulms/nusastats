@@ -13,7 +13,10 @@ export type MapValue = { value: number; name: string; sub?: string; extra?: stri
 
 // Sequential low->high scale — single-hue royal blue ramp.
 const STOPS = ["#EAF0FD", "#B7CBF3", "#7CA0E8", "#3F6FD6", "#14264F"];
-const NO_DATA_FILL = "#EEF2FB";
+// "No data" is a NEUTRAL gray, deliberately off the blue ramp: a blue-tinted
+// fill here is unreadable against the ramp's lightest step and would let a gap
+// pass as "lowest value" — the one thing this project must never do.
+const NO_DATA_FILL = "#E3E3DF";
 
 function lerpHex(a: string, b: string, t: number): string {
   const pa = [1, 3, 5].map((i) => parseInt(a.slice(i, i + 2), 16));
@@ -32,6 +35,7 @@ export function ChoroplethMap({
   min,
   max,
   unit,
+  format,
   geojsonUrls = ["/indonesia-provinces.geojson"],
   provFilter,
 }: {
@@ -39,6 +43,10 @@ export function ChoroplethMap({
   min: number;
   max: number;
   unit?: string;
+  // Renders legend bounds and tooltip values. Defaults to a plain thousands
+  // separator; pass one for scales that need it (e.g. compact rupiah), where
+  // the raw digits would be unreadable.
+  format?: (v: number) => string;
   // One or more geojson files to fetch and merge (villages load one per
   // selected province).
   geojsonUrls?: string[];
@@ -48,18 +56,29 @@ export function ChoroplethMap({
   provFilter?: string[];
 }) {
   const [fc, setFc] = useState<FC | null>(null);
+  const [failed, setFailed] = useState(false);
   const [hover, setHover] = useState<{ id: string; x: number; y: number } | null>(null);
 
   const urlKey = geojsonUrls.join(",");
   useEffect(() => {
     setFc(null);
+    setFailed(false);
     if (!geojsonUrls.length) return;
     let cancelled = false;
-    Promise.all(geojsonUrls.map((u) => fetch(u).then((r) => r.json())))
+    Promise.all(
+      geojsonUrls.map((u) =>
+        fetch(u).then((r) => {
+          if (!r.ok) throw new Error(`${u} -> ${r.status}`);
+          return r.json();
+        })
+      )
+    )
       .then((fcs) => {
         if (!cancelled) setFc({ features: fcs.flatMap((f: FC) => f.features) });
       })
-      .catch(() => !cancelled && setFc(null));
+      // Without this the map sits on "Memuat peta…" forever and reads as a slow
+      // load rather than a failure.
+      .catch(() => !cancelled && setFailed(true));
     return () => {
       cancelled = true;
     };
@@ -182,8 +201,15 @@ export function ChoroplethMap({
     else wrapRef.current?.requestFullscreen();
   };
 
+  if (failed)
+    return (
+      <div className="flex h-80 items-center justify-center px-6 text-center text-sm text-ink-muted">
+        Gagal memuat batas wilayah peta. Muat ulang halaman untuk mencoba lagi.
+      </div>
+    );
   if (!fc) return <div className="flex h-80 items-center justify-center text-sm text-ink-muted">Memuat peta…</div>;
   const span = max - min || 1;
+  const fmt = format ?? ((v: number) => v.toLocaleString());
   const btn =
     "grid h-8 w-8 place-items-center rounded-md border border-ink-border bg-ink-panel text-ink-text shadow-sm hover:border-ink-accent/60";
 
@@ -237,13 +263,13 @@ export function ChoroplethMap({
 
       {/* Legend */}
       <div className="mt-3 flex items-center gap-3 text-xs text-ink-muted">
-        <span className="tabular-nums">{min.toLocaleString()}</span>
+        <span className="tabular-nums">{fmt(min)}</span>
         <div
           className="h-2 w-40 rounded-full"
           style={{ background: `linear-gradient(90deg, ${STOPS.join(",")})` }}
         />
         <span className="tabular-nums">
-          {max.toLocaleString()} {unit}
+          {fmt(max)} {unit}
         </span>
         <span className="ml-3 inline-flex items-center gap-1">
           <span className="inline-block h-2 w-2 rounded-sm" style={{ background: NO_DATA_FILL }} /> tanpa data
@@ -260,7 +286,7 @@ export function ChoroplethMap({
             <div className="mt-0.5 text-ink-muted">{values.get(hover.id)!.sub}</div>
           )}
           <div className="mt-1 tabular-nums text-ink-text">
-            {values.has(hover.id) ? `${values.get(hover.id)!.value.toLocaleString()} ${unit ?? ""}` : "tanpa data"}
+            {values.has(hover.id) ? `${fmt(values.get(hover.id)!.value)} ${unit ?? ""}` : "tanpa data"}
           </div>
           {values.get(hover.id)?.extra && (
             <div className="mt-0.5 tabular-nums text-ink-muted">{values.get(hover.id)!.extra}</div>

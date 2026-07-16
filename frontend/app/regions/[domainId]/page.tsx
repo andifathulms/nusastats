@@ -16,6 +16,7 @@ import {
 import { Badge, Panel, SectionTitle, StatTile } from "@/components/ui";
 import { DukcapilDrilldown } from "@/components/DukcapilDrilldown";
 import { DukcapilRegionProfile } from "@/components/DukcapilRegionProfile";
+import { ProvinceInsight, RegencyInsight } from "@/components/RegionInsight";
 
 type Kind = "national" | "province" | "regency" | "district" | "village";
 
@@ -51,13 +52,15 @@ export default function RegionDetailPage({ params }: { params: { domainId: strin
 
 // --- Nasional / Provinsi / Kab-Kota: BPS-backed + Dukcapil demographics -----
 
-type Tab = "indicators" | "profile" | "demografi" | "wilayah";
+type Tab = "insight" | "indicators" | "profile" | "demografi" | "wilayah";
 
 function BpsRegion({ domainId, kind }: { domainId: string; kind: Kind }) {
   const [data, setData] = useState<RegionVariables | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
-  const [tab, setTab] = useState<Tab>("indicators");
+  // The insight tab (what's inside this region) leads for province/regency —
+  // it's the most telling view; nasional falls back to the variable catalog.
+  const [tab, setTab] = useState<Tab>(kind === "province" || kind === "regency" ? "insight" : "indicators");
   const [profile, setProfile] = useState<RegionProfile | null>(null);
   const [duk, setDuk] = useState<DukcapilRegionDetail | null>(null);
   const [dukState, setDukState] = useState<"idle" | "loading" | "empty">("idle");
@@ -100,6 +103,8 @@ function BpsRegion({ domainId, kind }: { domainId: string; kind: Kind }) {
     kind === "regency" ? bpsRegencyStatus(region.domain_id) || "Kabupaten/Kota" : KIND_LABEL[kind];
 
   const tabs: [Tab, string][] = [
+    ...(kind === "province" ? ([["insight", "Kabupaten/Kota"]] as [Tab, string][]) : []),
+    ...(kind === "regency" ? ([["insight", "Kecamatan"]] as [Tab, string][]) : []),
     ["indicators", "Variabel BPS"],
     ...(kind !== "national" ? ([["profile", "Peringkat BPS"]] as [Tab, string][]) : []),
     ...(kind === "province" || kind === "regency" ? ([["demografi", "Demografi (Dukcapil)"]] as [Tab, string][]) : []),
@@ -155,7 +160,11 @@ function BpsRegion({ domainId, kind }: { domainId: string; kind: Kind }) {
         </div>
       )}
 
-      {tab === "wilayah" && kind === "regency" ? (
+      {tab === "insight" && kind === "province" ? (
+        <ProvinceInsight domainId={domainId} regionName={region.domain_name} />
+      ) : tab === "insight" && kind === "regency" ? (
+        <RegencyInsight domainId={domainId} regionName={region.domain_name} />
+      ) : tab === "wilayah" && kind === "regency" ? (
         <DukcapilDrilldown domainId={domainId} />
       ) : tab === "demografi" ? (
         <DemografiView state={dukState} detail={duk} />
