@@ -136,9 +136,12 @@ def summary(request):
     ]
 
     provinces = scope.filter(level=DukcapilLevel.PROVINCE)
-    totals = {}
-    for field in _SUMMARY_FIELDS:
-        totals[field] = round(sum(v for _, v in _value_map(provinces, field).values()))
+    # All summary fields in one annotated query instead of one scan per field.
+    per_region = _extract(provinces, _SUMMARY_FIELDS)
+    totals = {
+        field: round(sum(vals.get(field, 0) for _, vals in per_region.values()))
+        for field in _SUMMARY_FIELDS
+    }
 
     last = DukcapilFetchLog.objects.filter(period=period).order_by("-fetched_at").first()
     return Response(

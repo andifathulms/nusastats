@@ -62,6 +62,9 @@ class DataPoint(models.Model):
             # variables-page admin_level filter) — a DISTINCT variable scan
             # that otherwise reads ~1.9M regency rows (~2s -> ~0.1s).
             models.Index(fields=["admin_level", "variable"]),
+            # The hot analytics path: ranking/series/trend/growth all filter
+            # (variable, admin_level[, year]) over the ~2.7M-row table.
+            models.Index(fields=["variable", "admin_level", "year"]),
         ]
         ordering = ["variable_id", "domain_id", "period_id", "vervar_id", "turvar_id"]
 

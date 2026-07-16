@@ -31,7 +31,9 @@ def region_values(variable, admin_level, year, turvar_id=None):
         qs = qs.filter(turvar_id=turvar_id)
     return {
         p["domain__domain_id"]: (p["domain__domain_name"], p["value"])
-        for p in qs.values("domain__domain_id", "domain__domain_name", "value")
+        # .order_by() drops the model's 5-column default ordering — the rows
+        # land in a dict, so the sort is pure waste.
+        for p in qs.order_by().values("domain__domain_id", "domain__domain_name", "value")
     }
 
 
@@ -558,6 +560,7 @@ class CorrelateView(APIView):
             return set(
                 DataPoint.objects.filter(variable=v, admin_level=admin_level)
                 .exclude(year__isnull=True)
+                .order_by()  # result feeds a set — drop the default sort
                 .values_list("year", flat=True)
             )
 

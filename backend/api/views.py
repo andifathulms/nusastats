@@ -12,10 +12,17 @@ class VariableViewSet(viewsets.ReadOnlyModelViewSet):
     """`/api/coverage/variables/` and `/api/coverage/variables/{id}/`
     (PRD §5.7). Filters: admin_level, subject, status, keyword."""
 
-    queryset = Variable.objects.select_related("subject", "subject__subject_category").prefetch_related(
-        "coverage_records__domain", "coverage_records__status_changes"
-    )
+    queryset = Variable.objects.select_related("subject", "subject__subject_category")
     filterset_class = VariableFilter
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        # Only the detail serializer renders coverage records; prefetching them
+        # on the list action materializes every record + status change for the
+        # whole page without ever serializing them.
+        if self.action == "retrieve":
+            qs = qs.prefetch_related("coverage_records__domain", "coverage_records__status_changes")
+        return qs
 
     def get_serializer_class(self):
         if self.action == "retrieve":

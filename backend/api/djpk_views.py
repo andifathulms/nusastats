@@ -173,10 +173,26 @@ def summary(request):
         for lv, lb in RegionLevel.choices
     ]
 
-    totals = {}
-    for key in _HEADLINE:
-        vals = _line_values(tahun, rtype, periode, RegionLevel.PROVINCE, key, "realisasi")
-        totals[key] = round(sum(v for _, v, _ in vals.values()))
+    # All headline accounts in one scan of the province lines instead of one
+    # query per key. First line per (region, akun) wins, matching _line_values.
+    seen = set()
+    totals = {key: 0 for key in _HEADLINE}
+    rows = (
+        ApbdLine.objects.filter(
+            report__tahun=tahun,
+            report__report_type=rtype,
+            report__periode=periode,
+            report__region__level=RegionLevel.PROVINCE,
+            akun_key__in=_HEADLINE,
+        )
+        .order_by("report__region__djpk_code", "line_index")
+        .values_list("report__region__djpk_code", "akun_key", "realisasi")
+    )
+    for code, akun_key, val in rows:
+        if val is not None and (code, akun_key) not in seen:
+            seen.add((code, akun_key))
+            totals[akun_key] += val
+    totals = {k: round(v) for k, v in totals.items()}
 
     last = ApbdReport.objects.order_by("-fetched_at").first()
     return Response({
@@ -365,9 +381,23 @@ def region_detail(request, code):
     )
     if peer_prov:
         peer_qs = peer_qs.filter(report__region__djpk_prov=peer_prov)
-    for akun_key, realisasi in peer_qs.values_list("akun_key", "realisasi"):
-        if realisasi is not None:
-            peer_lists.setdefault(akun_key, []).append(realisasi)
+    # One scan of the peer lines feeds both the per-akun rank lists and the
+    # per-region operand values the derived ratios need (previously each of the
+    # DERIVED specs re-scanned the whole peer set). First line per (region,
+    # akun) wins for the operands, matching _derived_values.
+    _derived_requires = {k for spec in DERIVED for k in spec["requires"]}
+    region_akun = {}
+    peer_rows = peer_qs.order_by("report__region__djpk_code", "line_index").values_list(
+        "report__region__djpk_code", "akun_key", "realisasi"
+    )
+    for code, akun_key, realisasi in peer_rows:
+        if realisasi is None:
+            continue
+        peer_lists.setdefault(akun_key, []).append(realisasi)
+        if akun_key in _derived_requires:
+            vals = region_akun.setdefault(code, {})
+            if akun_key not in vals:
+                vals[akun_key] = realisasi
 
     by_group = {}
     for line in report.lines.all():
@@ -397,16 +427,24 @@ def region_detail(request, code):
             groups.append({"group": g, "lines": items})
 
     # Derived ratios for this region (kemandirian fiskal, rasio belanja pegawai,
-    # …), each ranked among the same peers. Reuses _derived_values over the peer
-    # set, which includes this region.
+    # …), each ranked among the same peers — computed from the operand values
+    # already collected in the single peer scan above (no extra queries). A
+    # region missing an operand (or with a zero denominator) is dropped, same
+    # as _derived_values.
     ratios = []
     for spec in DERIVED:
-        peer_map = _derived_values(tahun, rtype, periode, region.level, spec, "realisasi", prov=peer_prov)
-        mine = peer_map.get(region.djpk_code)
-        if not mine:
+        peer_values = []
+        value = None
+        for code, vals in region_akun.items():
+            v = spec["fn"](vals)
+            if v is None:
+                continue
+            peer_values.append(v)
+            if code == region.djpk_code:
+                value = v
+        if value is None:
             continue
-        value = mine[1]
-        rk, of, pct = percentile_rank(value, [v for _, v, _ in peer_map.values()])
+        rk, of, pct = percentile_rank(value, peer_values)
         ratios.append({
             "akun_key": spec["akun_key"],
             "label_id": spec["label_id"],
