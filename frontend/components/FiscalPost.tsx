@@ -38,10 +38,10 @@ export function FiscalPost({ config }: { config: FiscalConfig }) {
     setLoading(true);
     const y = String(config.latestYear);
     Promise.all([
-      ...config.ratios.map((r) => djpkApi.rank({ level, akun: r.akun, year: y }).then((d) => ({ kind: "ratio" as const, akun: r.akun, d }))),
-      ...ABS_AKUNS.map((a) => djpkApi.rank({ level, akun: a, year: y, measure: "realisasi" }).then((d) => ({ kind: "abs" as const, akun: a, d }))),
-      djpkApi.rank({ level: "province", akun: config.primaryAkun, year: y }).then((d) => ({ kind: "prov" as const, akun: "", d })),
-      ...config.years.map((yr) => djpkApi.rank({ level, akun: config.primaryAkun, year: String(yr) }).then((d) => ({ kind: "yr" as const, akun: String(yr), d }))),
+      ...config.ratios.map((r) => djpkApi.rank({ level, akun: r.akun, tahun: y }).then((d) => ({ kind: "ratio" as const, akun: r.akun, d }))),
+      ...ABS_AKUNS.map((a) => djpkApi.rank({ level, akun: a, tahun: y, measure: "realisasi" }).then((d) => ({ kind: "abs" as const, akun: a, d }))),
+      djpkApi.rank({ level: "province", akun: config.primaryAkun, tahun: y }).then((d) => ({ kind: "prov" as const, akun: "", d })),
+      ...config.years.map((yr) => djpkApi.rank({ level, akun: config.primaryAkun, tahun: String(yr) }).then((d) => ({ kind: "yr" as const, akun: String(yr), d }))),
     ]).then((res) => {
       if (cancelled) return;
       const provName = new Map<string, string>();

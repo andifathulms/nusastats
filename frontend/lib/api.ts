@@ -620,6 +620,24 @@ export type DjpkRegionDetail = {
   ratios: DjpkRatio[];
 };
 
+// Typed rather than Record<string,string>: the scope param is `tahun`, and an
+// unrecognized key (e.g. `year`) is silently DROPPED by the endpoint, which
+// falls back to the latest scope. That failure is invisible — it returns a
+// full, plausible payload for the wrong year — so the param names are pinned
+// here to make a typo a compile error instead.
+export type DjpkRankParams = {
+  akun: string;
+  level?: DjpkRegionLevel;
+  measure?: DjpkMeasure;
+  prov?: string;
+  tahun?: string;
+  type?: DjpkReportType;
+  periode?: string;
+  order?: "asc" | "desc";
+  limit?: string;
+  offset?: string;
+};
+
 export const djpkApi = {
   summary: (params: Record<string, string> = {}) => {
     const q = new URLSearchParams(params).toString();
@@ -634,8 +652,8 @@ export const djpkApi = {
     const q = new URLSearchParams(params).toString();
     return get<DjpkRegionDetail>(`/djpk/regions/${code}/${q ? `?${q}` : ""}`);
   },
-  rank: (params: Record<string, string> = {}) => {
-    const q = new URLSearchParams(params).toString();
+  rank: (params: DjpkRankParams) => {
+    const q = new URLSearchParams(params as Record<string, string>).toString();
     return get<DjpkRank>(`/djpk/rank/${q ? `?${q}` : ""}`);
   },
   correlate: (params: Record<string, string>) => {

@@ -25,8 +25,8 @@ export function BelanjaPost({ config }: { config: SpendingConfig }) {
     setLoading(true);
     const y = String(config.latestYear);
     Promise.all([
-      ...config.components.map((c) => djpkApi.rank({ level, akun: c.akun, year: y, measure: "realisasi" }).then((d) => ({ akun: c.akun, d }))),
-      djpkApi.rank({ level, akun: config.totalAkun, year: y, measure: "realisasi" }).then((d) => ({ akun: "__total", d })),
+      ...config.components.map((c) => djpkApi.rank({ level, akun: c.akun, tahun: y, measure: "realisasi" }).then((d) => ({ akun: c.akun, d }))),
+      djpkApi.rank({ level, akun: config.totalAkun, tahun: y, measure: "realisasi" }).then((d) => ({ akun: "__total", d })),
     ]).then((res) => {
       if (cancelled) return;
       const by = new Map<string, Row>();

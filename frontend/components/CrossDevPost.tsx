@@ -28,11 +28,11 @@ export function CrossDevPost({ config }: { config: CrossDevConfig }) {
     setLoading(true);
     const y = String(config.latestYear);
     Promise.all([
-      djpkApi.rank({ level, akun: config.djpkAkun, year: y }),
+      djpkApi.rank({ level, akun: config.djpkAkun, tahun: y }),
       api.ranking(config.ipmVar, { admin_level: level, year: y }),
       api.ranking(config.povertyVar, { admin_level: level, year: y }),
       level === "regency" ? dukcapilApi.regencyCrosswalk() : Promise.resolve(null),
-      djpkApi.rank({ level: "province", akun: config.djpkAkun, year: y }), // 2-digit -> prov name
+      djpkApi.rank({ level: "province", akun: config.djpkAkun, tahun: y }), // 2-digit -> prov name
     ]).then(([kemR, ipmR, p0R, cw, provR]) => {
       if (cancelled) return;
       const provName = new Map<string, string>();
