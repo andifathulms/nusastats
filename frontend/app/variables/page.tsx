@@ -69,19 +69,21 @@ export default function VariablesPage() {
           Badan Pusat Statistik
         </div>
         <h1 className="mt-2 font-display text-3xl font-medium tracking-tight text-ink-text sm:text-4xl">Variabel</h1>
-        <p className="mt-2 flex flex-wrap items-center gap-x-1 text-sm text-ink-muted">
+        {/* A div, not a p: Skeleton renders a div, and a div inside a p is invalid
+            HTML — the browser reparents it and hydration then mismatches. */}
+        <div className="mt-2 flex flex-wrap items-center gap-x-1 text-sm text-ink-muted">
           {data ? (
             <span>
               <span className="font-medium text-ink-text">{formatNumber(data.count)}</span> indikator
             </span>
           ) : (
-            <Skeleton className="inline-block h-4 w-24 align-middle" />
+            <Skeleton className="h-4 w-24" />
           )}
           <span>
             {(category || adminLevel) && " yang cocok dengan saringan Anda"} — klik salah satu untuk melihat grafik
             deret waktunya.
           </span>
-        </p>
+        </div>
       </header>
 
       <div className="flex flex-col gap-3 sm:flex-row">
