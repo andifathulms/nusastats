@@ -11,7 +11,7 @@ import {
   type Region,
   type DukcapilRegionRow,
 } from "@/lib/api";
-import { Panel } from "@/components/ui";
+import { EmptyState, Panel, Skeleton } from "@/components/ui";
 
 // Five levels across both sources. Nasional/Provinsi/Kab-Kota come from BPS
 // (canonical domain_id, keeps ?region= links working); Kecamatan/Desa are
@@ -90,7 +90,7 @@ function BpsBrowser({ level }: { level: Level }) {
     return [...byProv.entries()].sort((a, b) => a[0].localeCompare(b[0]));
   }, [filtered, level]);
 
-  if (loading) return <div className="text-ink-muted">Memuat…</div>;
+  if (loading) return <RegionCardsSkeleton />;
 
   return (
     <div className="space-y-4">
@@ -220,13 +220,17 @@ function DukcapilBrowser({ level }: { level: "district" | "village" }) {
           menampilkan daftar.
         </p>
       ) : loading ? (
-        <div className="text-ink-muted">Memuat…</div>
+        <RegionCardsSkeleton />
+      ) : filtered.length === 0 ? (
+        <EmptyState
+          title="Tidak ada wilayah yang cocok"
+          hint={search ? `Tidak ada nama yang mengandung “${search}”.` : "Wilayah ini belum punya data tercatat."}
+        />
       ) : (
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
           {filtered.map((r) => (
             <RegionCard key={r.code} code={r.code} label={regionLabel(r.name, r.status)} small />
           ))}
-          {filtered.length === 0 && <div className="text-sm text-ink-muted">Tidak ada wilayah.</div>}
         </div>
       )}
     </div>
@@ -276,5 +280,19 @@ function RegionCard({ code, label, sub, small }: { code: string; label: string; 
         {sub && <div className="mt-0.5 text-xs text-ink-muted">{sub}</div>}
       </Panel>
     </Link>
+  );
+}
+
+/** A grid of card-shaped placeholders — the region list is always a card grid. */
+function RegionCardsSkeleton() {
+  return (
+    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+      {Array.from({ length: 12 }).map((_, i) => (
+        <div key={i} className="rounded-2xl border border-ink-border bg-ink-panel p-5 shadow-panel">
+          <Skeleton className="h-4 w-28" />
+          <Skeleton className="mt-2 h-3 w-16" />
+        </div>
+      ))}
+    </div>
   );
 }

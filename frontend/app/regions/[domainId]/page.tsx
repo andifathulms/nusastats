@@ -13,7 +13,7 @@ import {
   type RegionProfile,
   type RegionVariables,
 } from "@/lib/api";
-import { Badge, Panel, SectionTitle, StatTile } from "@/components/ui";
+import { Badge, ErrorState, Panel, SectionTitle, Skeleton, SkeletonRows, SkeletonTile, StatTile } from "@/components/ui";
 import { DukcapilDrilldown } from "@/components/DukcapilDrilldown";
 import { DukcapilRegionProfile } from "@/components/DukcapilRegionProfile";
 import { ProvinceInsight, RegencyInsight } from "@/components/RegionInsight";
@@ -95,8 +95,8 @@ function BpsRegion({ domainId, kind }: { domainId: string; kind: Kind }) {
     return data.results.filter((v) => !search || v.name.toLowerCase().includes(search.toLowerCase()));
   }, [data, search]);
 
-  if (error) return <div className="text-ink-muted">Gagal memuat: {error}</div>;
-  if (!data) return <div className="text-ink-muted">Memuat…</div>;
+  if (error) return <ErrorState message={error} />;
+  if (!data) return <RegionSkeleton />;
 
   const { region } = data;
   // BPS ships "Dki Jakarta" / "Di Yogyakarta"; titleCase restores the acronyms.
@@ -321,8 +321,8 @@ function DukcapilRegion({ code, kind }: { code: string; kind: Kind }) {
     dukcapilApi.regionDetail(code).then(setDetail).catch((e) => setError(String(e)));
   }, [code]);
 
-  if (error) return <div className="text-ink-muted">Gagal memuat: {error}</div>;
-  if (!detail) return <div className="text-ink-muted">Memuat…</div>;
+  if (error) return <ErrorState message={error} />;
+  if (!detail) return <RegionSkeleton />;
 
   const r = detail.region;
   const scope = [r.nama_kec, r.nama_kab, r.nama_prop].filter(Boolean).map(titleCase).join(", ");
@@ -347,6 +347,23 @@ function DukcapilRegion({ code, kind }: { code: string; kind: Kind }) {
       <Panel>
         <DukcapilRegionProfile detail={detail} bare />
       </Panel>
+    </div>
+  );
+}
+
+/** Header + tiles + tab bar + body, at the real page's proportions. */
+function RegionSkeleton() {
+  return (
+    <div className="space-y-6">
+      <header className="border-b border-ink-border pb-5">
+        <Skeleton className="h-4 w-24" />
+        <Skeleton className="mt-3 h-9 w-72" />
+      </header>
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-3">
+        {[0, 1, 2].map((i) => <SkeletonTile key={i} />)}
+      </div>
+      <Skeleton className="h-10 w-full max-w-lg rounded-xl" />
+      <Panel><Skeleton className="h-3 w-48" /><SkeletonRows rows={8} className="mt-4" /></Panel>
     </div>
   );
 }

@@ -11,7 +11,7 @@ import {
   type DukcapilSummary,
   type Summary,
 } from "@/lib/api";
-import { Badge, Panel, SectionTitle, StatTile } from "@/components/ui";
+import { Badge, ErrorState, Panel, SectionTitle, Skeleton, SkeletonChart, SkeletonTile, StatTile } from "@/components/ui";
 
 export default function OverviewPage() {
   const [summary, setSummary] = useState<Summary | null>(null);
@@ -27,8 +27,8 @@ export default function OverviewPage() {
       .catch((e) => setError(String(e)));
   }, []);
 
-  if (error) return <div className="text-ink-muted">Gagal memuat: {error}</div>;
-  if (!summary || !duk) return <div className="text-ink-muted">Memuat…</div>;
+  if (error) return <ErrorState message={error} />;
+  if (!summary || !duk) return <HomeSkeleton />;
 
   const levelData = summary.by_admin_level.map((r) => ({
     name: r.label.replace("Regency/Kabupaten-Kota", "Kab/Kota"),
@@ -168,6 +168,49 @@ export default function OverviewPage() {
             })}
           </div>
         </Panel>
+      </div>
+    </div>
+  );
+}
+
+/** Mirrors the loaded layout (hero, two source cards, two panels) so the page
+ *  fills in rather than snapping from one line of text to full height. */
+function HomeSkeleton() {
+  return (
+    <div className="space-y-10">
+      <section className="relative overflow-hidden rounded-3xl border border-ink-border/70 bg-ink-panel/60 p-8 shadow-panel sm:p-12">
+        <div className="pointer-events-none absolute inset-0 bg-brand-radial" />
+        <div className="relative">
+          <Skeleton className="h-5 w-52" />
+          <Skeleton className="mt-4 h-10 w-full max-w-2xl" />
+          <Skeleton className="mt-2 h-10 w-2/3 max-w-md" />
+          <Skeleton className="mt-4 h-4 w-full max-w-2xl" />
+          <Skeleton className="mt-2 h-4 w-4/5 max-w-xl" />
+          <div className="mt-6 flex gap-3">
+            <Skeleton className="h-10 w-40 rounded-xl" />
+            <Skeleton className="h-10 w-44 rounded-xl" />
+          </div>
+        </div>
+      </section>
+      <div className="grid items-stretch gap-6 lg:grid-cols-2">
+        {[0, 1].map((i) => (
+          <Panel key={i} className="flex flex-col gap-4">
+            <Skeleton className="h-6 w-48" />
+            <div className="grid grid-cols-2 gap-3">
+              {[0, 1, 2, 3].map((j) => (
+                <SkeletonTile key={j} />
+              ))}
+            </div>
+            <div className="flex gap-2">
+              <Skeleton className="h-9 w-28 rounded-lg" />
+              <Skeleton className="h-9 w-28 rounded-lg" />
+            </div>
+          </Panel>
+        ))}
+      </div>
+      <div className="grid gap-6 lg:grid-cols-2">
+        <SkeletonChart height={240} />
+        <SkeletonChart height={240} />
       </div>
     </div>
   );

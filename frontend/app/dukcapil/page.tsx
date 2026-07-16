@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { dukcapilApi, formatNumber, type DukcapilSummary } from "@/lib/api";
-import { Badge, Panel, SectionTitle, StatTile } from "@/components/ui";
+import { Badge, ErrorState, Panel, SectionTitle, Skeleton, SkeletonRows, SkeletonTile, StatTile } from "@/components/ui";
 
 export default function DukcapilOverviewPage() {
   const [summary, setSummary] = useState<DukcapilSummary | null>(null);
@@ -13,8 +13,8 @@ export default function DukcapilOverviewPage() {
     dukcapilApi.summary().then(setSummary).catch((e) => setError(String(e)));
   }, []);
 
-  if (error) return <div className="text-ink-muted">Gagal memuat: {error}</div>;
-  if (!summary) return <div className="text-ink-muted">Memuat…</div>;
+  if (error) return <ErrorState message={error} />;
+  if (!summary) return <OverviewSkeleton />;
 
   const totals = summary.national_totals ?? {};
   const maxRegions = Math.max(1, ...summary.by_level.map((l) => l.regions));
@@ -113,6 +113,33 @@ export default function DukcapilOverviewPage() {
             Bandingkan antar-wilayah →
           </Link>
         </Panel>
+      </div>
+    </div>
+  );
+}
+
+/** Same shape as the loaded page (hero, four tiles, two panels) so arrival
+ *  fills the layout instead of snapping it into place. */
+function OverviewSkeleton() {
+  return (
+    <div className="space-y-10">
+      <section className="relative overflow-hidden rounded-3xl border border-ink-border/70 bg-ink-panel/60 p-8 shadow-panel sm:p-12">
+        <div className="pointer-events-none absolute inset-0 bg-brand-radial" />
+        <div className="relative">
+          <Skeleton className="h-5 w-64" />
+          <Skeleton className="mt-4 h-10 w-full max-w-2xl" />
+          <Skeleton className="mt-2 h-10 w-1/2 max-w-sm" />
+          <Skeleton className="mt-4 h-4 w-full max-w-xl" />
+          <Skeleton className="mt-2 h-4 w-3/4 max-w-lg" />
+          <Skeleton className="mt-6 h-10 w-40 rounded-xl" />
+        </div>
+      </section>
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        {[0, 1, 2, 3].map((i) => <SkeletonTile key={i} />)}
+      </div>
+      <div className="grid gap-6 lg:grid-cols-2">
+        <Panel><Skeleton className="h-3 w-40" /><SkeletonRows rows={4} className="mt-4" /></Panel>
+        <Panel><Skeleton className="h-3 w-40" /><SkeletonRows rows={4} className="mt-4" /></Panel>
       </div>
     </div>
   );

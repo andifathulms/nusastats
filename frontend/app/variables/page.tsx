@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { api, formatNumber, type Paginated, type Summary, type VariableRow } from "@/lib/api";
-import { Badge, Panel, VariableLink } from "@/components/ui";
+import { EmptyState, Loadable, Panel, Skeleton, SkeletonRows, VariableLink } from "@/components/ui";
 
 const LEVELS = [
   { v: "", label: "Semua tingkat" },
@@ -10,6 +10,14 @@ const LEVELS = [
   { v: "province", label: "Provinsi" },
   { v: "regency", label: "Kabupaten/Kota" },
 ];
+
+// The Tingkat column renders one initial per level. Alone those read as
+// mystery letters, so map them to real words for the tooltip and the legend.
+const LEVEL_TITLE: Record<string, string> = {
+  national: "Nasional",
+  province: "Provinsi",
+  regency: "Kabupaten/Kota",
+};
 
 export default function VariablesPage() {
   const [keyword, setKeyword] = useState("");
@@ -61,15 +69,18 @@ export default function VariablesPage() {
           Badan Pusat Statistik
         </div>
         <h1 className="mt-2 font-display text-3xl font-medium tracking-tight text-ink-text sm:text-4xl">Variabel</h1>
-        <p className="mt-2 text-sm text-ink-muted">
+        <p className="mt-2 flex flex-wrap items-center gap-x-1 text-sm text-ink-muted">
           {data ? (
-            <>
+            <span>
               <span className="font-medium text-ink-text">{formatNumber(data.count)}</span> indikator
-            </>
+            </span>
           ) : (
-            "Memuat…"
+            <Skeleton className="inline-block h-4 w-24 align-middle" />
           )}
-          {(category || adminLevel) && " yang cocok dengan saringan Anda"} — klik salah satu untuk melihat grafik deret waktunya.
+          <span>
+            {(category || adminLevel) && " yang cocok dengan saringan Anda"} — klik salah satu untuk melihat grafik
+            deret waktunya.
+          </span>
         </p>
       </header>
 
@@ -97,6 +108,15 @@ export default function VariablesPage() {
         </select>
       </div>
 
+      <Loadable
+        first={!data}
+        loading={loading}
+        fallback={
+          <Panel className="p-5">
+            <SkeletonRows rows={10} />
+          </Panel>
+        }
+      >
       <Panel className="overflow-hidden p-0">
         <div className="overflow-x-auto scroll-thin">
           <table className="w-full text-sm">
@@ -104,9 +124,14 @@ export default function VariablesPage() {
               <tr className="border-b border-ink-border bg-ink-panel2/50 text-left text-[11px] uppercase tracking-wider text-ink-muted">
                 <th className="px-5 py-3 font-semibold">Indikator</th>
                 <th className="px-5 py-3 font-semibold">Kategori</th>
-                <th className="px-5 py-3 font-semibold">Tingkat</th>
-                <th className="px-5 py-3 text-right font-semibold">Tahun</th>
-                <th className="px-5 py-3 text-right font-semibold">Titik data</th>
+                <th className="whitespace-nowrap px-5 py-3 font-semibold">
+                  Tingkat
+                  <span className="ml-1.5 font-normal normal-case text-ink-faint" title="N = Nasional · P = Provinsi · K = Kabupaten/Kota">
+                    (N/P/K)
+                  </span>
+                </th>
+                <th className="whitespace-nowrap px-5 py-3 text-right font-semibold">Tahun</th>
+                <th className="whitespace-nowrap px-5 py-3 text-right font-semibold">Titik data</th>
               </tr>
             </thead>
             <tbody>
@@ -117,22 +142,24 @@ export default function VariablesPage() {
                     {v.unit && <span className="ml-2 text-xs text-ink-faint">({v.unit})</span>}
                   </td>
                   <td className="px-5 py-3">
-                    <Badge>{v.subject_category}</Badge>
+                    <span className="inline-flex whitespace-nowrap rounded-md border border-ink-border bg-ink-panel2 px-2 py-0.5 text-xs font-medium text-ink-muted">
+                      {v.subject_category}
+                    </span>
                   </td>
                   <td className="px-5 py-3">
                     <div className="flex gap-1">
                       {(v.admin_levels ?? []).map((l) => (
                         <span
                           key={l}
-                          title={l}
-                          className="grid h-5 w-5 place-items-center rounded border border-ink-border bg-ink-panel2 text-[10px] font-semibold text-ink-muted"
+                          title={LEVEL_TITLE[l] ?? l}
+                          className="grid h-5 w-5 shrink-0 place-items-center rounded border border-ink-border bg-ink-panel2 text-[10px] font-semibold text-ink-muted"
                         >
-                          {l[0].toUpperCase()}
+                          {(LEVEL_TITLE[l] ?? l)[0].toUpperCase()}
                         </span>
                       ))}
                     </div>
                   </td>
-                  <td className="px-5 py-3 text-right tabular-nums text-ink-muted">
+                  <td className="whitespace-nowrap px-5 py-3 text-right tabular-nums text-ink-muted">
                     {v.year_min && v.year_max ? `${v.year_min}–${v.year_max}` : "–"}
                   </td>
                   <td className="px-5 py-3 text-right font-medium tabular-nums text-ink-text">
@@ -142,8 +169,11 @@ export default function VariablesPage() {
               ))}
               {data && data.results.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="px-4 py-10 text-center text-ink-muted">
-                    Tidak ada indikator yang cocok dengan saringan Anda.
+                  <td colSpan={5} className="px-5 py-10">
+                    <EmptyState
+                      title="Tidak ada indikator yang cocok"
+                      hint="Coba kata kunci lain, atau longgarkan saringan kategori/tingkat."
+                    />
                   </td>
                 </tr>
               )}
@@ -151,9 +181,10 @@ export default function VariablesPage() {
           </table>
         </div>
       </Panel>
+      </Loadable>
 
       <div className="flex items-center justify-between text-sm text-ink-muted">
-        <span>{loading ? "Memuat…" : `Halaman ${page} dari ${formatNumber(totalPages)}`}</span>
+        <span aria-live="polite">{loading ? "Memuat…" : `Halaman ${page} dari ${formatNumber(totalPages)}`}</span>
         <div className="flex gap-2">
           <button
             disabled={page <= 1}
