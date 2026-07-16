@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import {
   CartesianGrid, Cell, Legend, Line, LineChart, Scatter, ScatterChart, Tooltip as RTooltip, XAxis, YAxis, ZAxis, ResponsiveContainer,
 } from "recharts";
-import { api, CHART, groupColor, titleCase } from "@/lib/api";
+import { api, CHART, groupColor, titleCase, type Trend } from "@/lib/api";
 import { type InequalityConfig } from "@/lib/posts";
 import { Panel } from "@/components/ui";
 import { ChoroplethMap, type MapValue } from "@/components/ChoroplethMap";
@@ -36,14 +36,18 @@ export function GiniPost({ config }: { config: InequalityConfig }) {
       api.ranking(config.variableId, { admin_level: "province", year: y, turvar_id: T.urban }).then((d) => ({ k: "urban", d })),
       api.ranking(config.variableId, { admin_level: "province", year: y, turvar_id: T.rural }).then((d) => ({ k: "rural", d })),
       ...config.compare.map((c) => api.ranking(c.variableId, { admin_level: "province", year: y }).then((d) => ({ k: `cmp:${c.key}`, d }))),
-      // total-Gini series for the trend (per province + national mean)
+      // total-Gini series for the per-province trend lines
       api.series(config.variableId, { admin_level: "province", turvar_id: T.total }).then((d) => ({ k: "series", d })),
+      // BPS's own national Gini. A Gini cannot be averaged out of province
+      // Ginis — doing so discards between-province inequality and lands ~0.04
+      // low — so take the published national series rather than deriving one.
+      api.trend(config.variableId, { turvar_id: T.total }).then((d) => ({ k: "trend", d })),
     ]).then((res) => {
       if (cancelled) return;
       const by = new Map<string, Row>();
       const ensure = (id: string, name: string) => by.get(id) ?? (() => { const r: Row = { domain_id: id, name: fixName(name), gini: { total: undefined, urban: undefined, rural: undefined }, cmp: {} }; by.set(id, r); return r; })();
       for (const { k, d } of res) {
-        if (k === "series") continue;
+        if (k === "series" || k === "trend") continue;
         for (const x of (d as { results: { domain_id: string; domain_name: string; value: number }[] }).results) {
           const r = ensure(x.domain_id, x.domain_name);
           if (k === "total" || k === "urban" || k === "rural") r.gini[k as Daerah] = x.value;
@@ -56,16 +60,21 @@ export function GiniPost({ config }: { config: InequalityConfig }) {
 
       const series = (res.find((x) => x.k === "series")!.d as { results: { domain_id: string; domain_name: string; year: number | null; value: number }[] }).results;
       const perProv = new Map<string, { year: number; value: number }[]>();
-      const natByYear = new Map<number, number[]>();
       const tmp = new Map<string, Map<number, number>>();
       for (const d of series) {
         if (d.year == null) continue;
         (tmp.get(d.domain_id) ?? tmp.set(d.domain_id, new Map()).get(d.domain_id)!).set(d.year, d.value);
-        (natByYear.get(d.year) ?? natByYear.set(d.year, []).get(d.year)!).push(d.value);
       }
       tmp.forEach((m, dom) => perProv.set(dom, [...m.entries()].map(([year, value]) => ({ year, value })).sort((a, b) => a.year - b.year)));
       setProvTrend(perProv);
-      setNatTrend([...natByYear.entries()].map(([year, vs]) => ({ year, value: vs.reduce((a, v) => a + v, 0) / vs.length })).sort((a, b) => a.year - b.year));
+
+      const trend = res.find((x) => x.k === "trend")!.d as Trend;
+      setNatTrend(
+        trend.results
+          .filter((r) => r.national != null)
+          .map((r) => ({ year: r.year, value: r.national as number }))
+          .sort((a, b) => a.year - b.year)
+      );
       setLoading(false);
     });
     return () => { cancelled = true; };
@@ -84,7 +93,7 @@ export function GiniPost({ config }: { config: InequalityConfig }) {
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-        <Stat label={`Gini nasional (rata-rata provinsi) ${config.latestYear}`} value={natNow != null ? natNow.toFixed(3) : "–"} sub="0 = merata, 1 = paling timpang" />
+        <Stat label={`Gini nasional ${config.latestYear}`} value={natNow != null ? natNow.toFixed(3) : "–"} sub="0 = merata, 1 = paling timpang · BPS" />
         <Stat label="Paling timpang" value={sorted[0]?.name ?? "–"} sub={sorted[0] ? `Gini ${sorted[0].gini[daerah]!.toFixed(3)} (${DAERAH_LABEL[daerah]})` : undefined} />
         <Stat label="Paling merata" value={sorted[sorted.length - 1]?.name ?? "–"} sub={sorted.length ? `Gini ${sorted[sorted.length - 1].gini[daerah]!.toFixed(3)}` : undefined} />
       </div>
@@ -181,7 +190,7 @@ function Detail({ row, series, natTrend, config }: { row: Row; series: { year: n
               <CartesianGrid stroke={CHART.grid} vertical={false} />
               <XAxis dataKey="year" tick={{ fill: CHART.axisTick, fontSize: 12 }} axisLine={{ stroke: CHART.axisLine }} tickLine={false} />
               <YAxis domain={["auto", "auto"]} tick={{ fill: CHART.axisTick, fontSize: 12 }} axisLine={{ stroke: CHART.axisLine }} tickLine={false} width={44} tickFormatter={(v) => v.toFixed(2)} />
-              <RTooltip contentStyle={{ background: CHART.tooltipBg, border: `1px solid ${CHART.tooltipBorder}`, borderRadius: 8 }} formatter={(v: number, n: string) => [v?.toFixed(3), n === "prov" ? row.name : "Nasional (rata-rata)"]} />
+              <RTooltip contentStyle={{ background: CHART.tooltipBg, border: `1px solid ${CHART.tooltipBorder}`, borderRadius: 8 }} formatter={(v: number, n: string) => [v?.toFixed(3), n === "prov" ? row.name : "Nasional"]} />
               <Legend wrapperStyle={{ fontSize: 11 }} formatter={(v) => (v === "prov" ? row.name : "Nasional")} />
               <Line type="monotone" dataKey="prov" stroke={CHART.accent} strokeWidth={2} dot={false} />
               <Line type="monotone" dataKey="nat" stroke="#94A3B8" strokeWidth={1.5} strokeDasharray="4 4" dot={false} />
