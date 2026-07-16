@@ -37,7 +37,12 @@ export type CompositionConfig = {
 // regions, so province and regency levels are fetched natively from BPS rather
 // than aggregated client-side.
 export type PovertyMetric = {
-  key: "count" | "p0" | "p1" | "p2";
+  // `garis` is the poverty LINE itself (rupiah/kapita/month), not an outcome:
+  // it is the threshold each region's P0/P1/P2 is measured against, and BPS
+  // sets it per region from local prices. It varies 3,6x across kab/kota and is
+  // uncorrelated with P0 (r=-0.08), so the headline ranking is comparing
+  // regions against different yardsticks — worth showing, not hiding.
+  key: "count" | "p0" | "p1" | "p2" | "garis";
   variableId: string;
   label: string; // full name (headline / axis)
   short: string; // chip / column label
@@ -721,6 +726,15 @@ export const POSTS: Post[] = [
           unit: "",
           decimals: 2,
           desc: "Seperti P1 tapi memberi bobot lebih besar pada yang paling miskin — ukuran ketimpangan di antara penduduk miskin.",
+        },
+        {
+          key: "garis",
+          variableId: "624",
+          label: "Garis Kemiskinan",
+          short: "Garis Kemiskinan",
+          unit: "Rupiah/kapita/bulan",
+          decimals: 0,
+          desc: "Ambang yang dipakai BPS untuk memutuskan siapa miskin — disusun dari harga lokal, jadi berbeda di tiap daerah. Rentangnya 3,6× (Mamuju Tengah ~Rp344 rb, Jayapura ~Rp1,25 jt per orang per bulan), dan nyaris tak berhubungan dengan angka kemiskinannya sendiri (r≈−0,08). Artinya: 'miskin' di satu daerah bukan 'miskin' yang sama di daerah lain.",
         },
       ],
     },

@@ -11,7 +11,7 @@ import { Panel } from "@/components/ui";
 import { ChoroplethMap, type MapValue } from "@/components/ChoroplethMap";
 
 const PAGE = 10;
-type MetricKey = "count" | "p0" | "p1" | "p2";
+type MetricKey = "count" | "p0" | "p1" | "p2" | "garis";
 type Level = "province" | "regency";
 
 // Fixed colour per metric so a metric reads the same in every chart/bar.
@@ -34,6 +34,7 @@ const METRIC_COLOR: Record<MetricKey, string> = {
   p0: "#C0392B", // red — headcount (how wide)
   p1: "#D9722C", // orange — depth
   p2: "#7C3AED", // purple — severity
+  garis: "#15803D", // green — the threshold, not an outcome
 };
 
 // A region with every metric's latest value + national rank (1 = highest).
@@ -58,6 +59,12 @@ function fmtVal(m: PovertyMetric, v: number | undefined): string {
     return v >= 1000
       ? `${(v / 1000).toLocaleString("id-ID", { maximumFractionDigits: 2 })} jt`
       : `${v.toLocaleString("id-ID", { maximumFractionDigits: 0 })} rb`;
+  }
+  // The line is rupiah/person/month; raw digits are unreadable in a bar row.
+  if (m.key === "garis") {
+    return v >= 1_000_000
+      ? `Rp ${(v / 1_000_000).toLocaleString("id-ID", { maximumFractionDigits: 2 })} jt`
+      : `Rp ${Math.round(v / 1000).toLocaleString("id-ID")} rb`;
   }
   const s = v.toLocaleString("id-ID", { minimumFractionDigits: m.decimals, maximumFractionDigits: m.decimals });
   return m.unit === "%" ? `${s}%` : s;
