@@ -312,12 +312,13 @@ export const POSTS: Post[] = [
   {
     slug: "mandiri-lalu-maju",
     title: "Mandiri, Lalu Maju?",
-    subtitle: "Daerah yang membiayai dirinya sendiri cenderung lebih maju — tapi kekayaan tambang tak selalu jadi jaminan.",
+    subtitle: "Daerah yang membiayai dirinya sendiri cenderung lebih maju — tapi 'mandiri' tidak berarti kaya.",
     tag: "Ekonomi",
     source: "DJPK + BPS",
     intro: [
       "Apakah kemandirian fiskal — kemampuan sebuah daerah membiayai dirinya sendiri dari Pendapatan Asli Daerah — berujung pada pembangunan manusia yang lebih baik? Untuk menjawabnya, kita gabungkan dua sumber yang jarang disandingkan: rasio kemandirian fiskal dari DJPK/Kemenkeu dengan Indeks Pembangunan Manusia dan angka kemiskinan dari BPS.",
-      "Hasilnya cukup jelas: keduanya berjalan beriringan. Daerah dengan kemandirian tinggi — Badung, kota-kota besar — umumnya juga ber-IPM tinggi dan berkemiskinan rendah (korelasi ~0,64 dengan IPM). Tapi hubungan itu tidak sempurna: sejumlah daerah kaya tambang punya PAD besar namun IPM yang biasa saja, menandakan kekayaan yang belum sepenuhnya diterjemahkan menjadi kesejahteraan.",
+      "Hasilnya cukup jelas: keduanya berjalan beriringan. Daerah dengan kemandirian tinggi — Badung, kota-kota besar — umumnya juga ber-IPM tinggi dan berkemiskinan rendah (korelasi ~0,66 dengan IPM, −0,41 dengan kemiskinan di tingkat kabupaten/kota).",
+      "Tapi hati-hati membaca rasio ini: ia mengukur dari mana uang datang, bukan berapa banyak. Uang tambang sebagian besar mengalir sebagai Dana Bagi Hasil — secara teknis transfer dari pusat — sehingga justru menekan angka kemandirian. Kutai Timur (5,98%), Berau (6,60%), dan Kutai Kartanegara (6,82%) tampak sangat 'bergantung', padahal IPM-nya di atas median nasional (75,5–76,7 vs median 71,8). Yang benar-benar tertinggal adalah Teluk Bintuni: kemandirian 3,72% dan IPM 66,75, meski output ekonominya ratusan juta rupiah per penduduk.",
       "Geser grafik antara IPM dan kemiskinan, dan cari pencilan — daerah yang mandiri secara fiskal tapi tertinggal secara pembangunan (atau sebaliknya).",
     ],
     kind: "crossdev",
@@ -336,9 +337,10 @@ export const POSTS: Post[] = [
     tag: "Ekonomi",
     source: "BPS",
     intro: [
-      "Secara intuitif, kita menduga pengangguran tertinggi ada di daerah termiskin. Datanya justru sebaliknya. Tingkat Pengangguran Terbuka (TPT) tertinggi ada di provinsi-provinsi industri Jawa — Jawa Barat, Banten — sementara provinsi agraris seperti Sulawesi Barat atau Bali punya angka pengangguran resmi yang jauh lebih rendah.",
+      "Secara intuitif, kita menduga pengangguran tertinggi ada di daerah termiskin. Datanya justru sebaliknya. Tingkat Pengangguran Terbuka (TPT) tertinggi ada di provinsi berekonomi padat — Jawa Barat, Banten, tapi juga Kepulauan Riau dan DKI Jakarta — sementara provinsi agraris seperti Sulawesi Barat, NTB, atau NTT punya angka pengangguran resmi yang jauh lebih rendah.",
       "Kuncinya: di daerah agraris, hampir semua orang 'bekerja' — di sawah, kebun, atau usaha informal keluarga — meski dengan produktivitas dan upah rendah. Pengangguran terbuka justru menjadi 'kemewahan' daerah yang lebih maju, tempat orang mampu menunggu pekerjaan formal yang layak.",
-      "Di sini kita telusuri pengangguran dan partisipasi angkatan kerja tiap provinsi (2005–2024, termasuk lonjakan pandemi 2020), lalu menyandingkannya dengan kemiskinan — dan melihat betapa lemahnya hubungan keduanya. Perhatikan pula kesenjangan partisipasi kerja antara laki-laki dan perempuan.",
+      "Dan itu bukan sekadar dugaan: datanya ada. Pengangguran terbuka nyaris tak berhubungan dengan kemiskinan (korelasi −0,18). Tapi begitu kita ganti ukurannya menjadi proporsi kerja informal, hubungannya muncul kuat (+0,63) — dan lebih kuat lagi untuk setengah pengangguran (+0,66). NTT (73% informal), Sulawesi Barat (72%), dan NTB (71%) adalah provinsi paling informal sekaligus paling miskin; Kepulauan Riau (32%) dan DKI (36%) paling formal. Masalahnya bukan 'tidak ada pekerjaan', melainkan pekerjaan yang tidak menghidupi.",
+      "Di sini kita telusuri kelima ukuran itu tiap provinsi (TPT 2005–2024, termasuk lonjakan pandemi 2020), lalu menyandingkannya dengan kemiskinan. Perhatikan pula kesenjangan partisipasi kerja antara laki-laki dan perempuan.",
     ],
     kind: "labor",
     labor: {
@@ -398,7 +400,7 @@ export const POSTS: Post[] = [
     source: "DJPK / Kemenkeu",
     intro: [
       "Otonomi daerah menjanjikan pemerintahan yang mandiri. Kenyataannya, sebagian besar pendapatan daerah tidak berasal dari daerah itu sendiri, melainkan dari transfer pemerintah pusat (dana bagi hasil, DAU, DAK). Ukuran seberapa mandiri sebuah daerah disebut kemandirian fiskal: Pendapatan Asli Daerah (PAD) dibagi total pendapatan.",
-      "Angkanya mengejutkan: median kabupaten/kota hanya membiayai sekitar 10% belanjanya dari sumber sendiri — sisanya bergantung pada Jakarta. Hanya segelintir daerah (Badung dengan pariwisata Bali, kota-kota besar, daerah tambang) yang benar-benar mandiri. Di sisi lain, di banyak daerah, sebagian besar belanja habis untuk gaji ASN — menyisakan sedikit untuk pembangunan.",
+      "Angkanya mengejutkan: median kabupaten/kota hanya menghasilkan sekitar 10% pendapatannya dari sumber sendiri — sisanya transfer dari pusat. Hanya segelintir daerah yang benar-benar mandiri: Badung dengan pariwisata Bali (87%), lalu kota-kota besar seperti Surabaya (61%) dan Denpasar (53%). Di sisi lain, gaji ASN menyedot lebih dari sepertiga belanja daerah (median 37%) — dan di 11 kabupaten/kota lebih dari separuhnya, menyisakan sedikit untuk pembangunan.",
       "Di sini kita telusuri empat rasio kunci APBD tiap provinsi dan kabupaten/kota: kemandirian, ketergantungan, belanja pegawai, dan belanja modal. Pilih sebuah daerah untuk membedah struktur keuangannya.",
     ],
     kind: "fiscal",
@@ -423,8 +425,9 @@ export const POSTS: Post[] = [
     source: "BPS",
     intro: [
       "PDRB per kapita — nilai output ekonomi dibagi jumlah penduduk — sering dipakai sebagai ukuran 'kemakmuran' daerah. Tapi output yang dihasilkan di sebuah wilayah tidak selalu dinikmati oleh warganya. Tambang, kilang LNG, atau smelter bisa melambungkan PDRB per kapita sebuah kabupaten ke langit, sementara sebagian besar keuntungannya mengalir ke luar daerah.",
-      "Di sini kita sandingkan PDRB per kapita tiap kabupaten/kota dengan tingkat kemiskinannya. Hasilnya mengejutkan: sejumlah daerah dengan output per penduduk tertinggi di Indonesia justru punya angka kemiskinan yang tinggi pula — Teluk Bintuni, Mimika, dan tetangga-tetangga tambangnya. Kekayaan produksi ternyata bukan jaminan kesejahteraan.",
+      "Di sini kita sandingkan PDRB per kapita tiap kabupaten/kota dengan tingkat kemiskinannya. Hasilnya mengejutkan: sejumlah daerah dengan output per penduduk tertinggi di Indonesia justru punya angka kemiskinan yang tinggi pula. Morowali — pusat smelter nikel — mencatat output per penduduk tertinggi di Indonesia, sekitar Rp 874 juta per orang per tahun, dengan 11,6% warganya masih miskin. Teluk Bintuni, tetangga kilang LNG-nya, menghasilkan Rp 622 juta per orang dengan kemiskinan 27% — hampir tiga kali lipat rata-rata nasional.",
       "Perhatikan kuadrant kanan-atas pada grafik: di situlah daerah 'kaya tapi timpang' berada.",
+      "Satu catatan penting: BPS belum menerbitkan seri ini untuk 26 kabupaten/kota di empat provinsi Papua baru (Papua Tengah, Papua Selatan, Papua Pegunungan, Papua Barat Daya) — termasuk Mimika, rumah tambang Grasberg. Halaman ini memuat 488 dari 514 kabupaten/kota, dan wilayah yang hilang itu justru sebagian dari kasus paling ekstremnya.",
     ],
     kind: "prosperity",
     prosperity: {
@@ -434,29 +437,30 @@ export const POSTS: Post[] = [
       povertyRateVariableId: "621",
       populationIndicator: "jumlah_penduduk",
       latestYear: 2024,
-      note: "PDRB per kapita = PDRB harga berlaku (BPS var 2193) ÷ jumlah penduduk tercatat (Dukcapil/Kemendagri), dijoin lewat crosswalk BPS→Kemendagri. Bukan angka resmi PDRB per kapita BPS: penyebutnya data registrasi Dukcapil, sedangkan BPS memakai proyeksi penduduk — di tingkat provinsi hasilnya meleset ~1,7% dari PDRB per kapita resmi BPS (var 288). Kemiskinan: P0 (621). Per kabupaten/kota, 2024. Sumber: BPS + Dukcapil.",
+      note: "PDRB per kapita = PDRB harga berlaku (BPS var 2193) ÷ jumlah penduduk tercatat (Dukcapil/Kemendagri), dijoin lewat crosswalk BPS→Kemendagri. Bukan angka resmi PDRB per kapita BPS: penyebutnya data registrasi Dukcapil, sedangkan BPS memakai proyeksi penduduk — di tingkat provinsi hasilnya meleset ~1,7% dari PDRB per kapita resmi BPS (var 288). Kemiskinan: P0 (621). Per kabupaten/kota, 2024. Cakupan: 488 dari 514 kabupaten/kota — BPS belum menerbitkan seri ini untuk 26 kab/kota di empat provinsi Papua baru (Papua Tengah, Papua Selatan, Papua Pegunungan, Papua Barat Daya). Sumber: BPS + Dukcapil.",
     },
   },
   {
     slug: "kesenjangan-gender-pendidikan",
-    title: "Anak Perempuan, Sekolah, dan Upah",
-    subtitle: "Anak perempuan kini unggul di bangku sekolah — tapi ketimpangan upah masih menganga.",
+    title: "Anak Perempuan, Sekolah, dan Ekonomi",
+    subtitle: "Anak perempuan unggul di bangku sekolah — dan justru makin unggul. Kesenjangan ekonominya tidak ikut menutup.",
     tag: "Sosial",
     source: "BPS",
     intro: [
-      "Selama puluhan tahun, sekolah adalah wilayah laki-laki. Hari ini gambarnya berbalik: secara nasional, anak perempuan justru punya Harapan Lama Sekolah lebih tinggi daripada anak laki-laki. Tapi capaian itu belum merata, dan belum tentu berujung pada kesetaraan ekonomi.",
-      "Di sini kita bandingkan tiga ukuran menurut jenis kelamin di tiap daerah: Harapan Lama Sekolah (yang akan dijalani anak sekarang), Rata-rata Lama Sekolah (yang sudah ditamatkan penduduk dewasa), dan Pengeluaran per Kapita (proksi kemampuan ekonomi). Ketiganya bercerita berbeda: perempuan memimpin di harapan sekolah, masih tertinggal di rata-rata lama sekolah penduduk dewasa, dan tertinggal jauh di sisi ekonomi.",
+      "Anak perempuan Indonesia bukan baru saja menyusul di bangku sekolah — mereka sudah di depan sejak awal seri ini. Harapan Lama Sekolah perempuan lebih tinggi daripada laki-laki di setiap tahun sejak 2010, tanpa terkecuali. Yang berubah adalah jaraknya: sempat nyaris menutup pada 2014 (+0,03 tahun), lalu melebar terus hingga +0,40 tahun pada 2024 — terlebar sepanjang pencatatan.",
+      "Tapi keunggulan di sekolah tidak berpindah ke ekonomi. Di sini kita bandingkan tiga ukuran menurut jenis kelamin di tiap daerah: Harapan Lama Sekolah (yang akan dijalani anak sekarang), Rata-rata Lama Sekolah (yang sudah ditamatkan penduduk dewasa — masih memihak laki-laki, warisan ketimpangan lama), dan Pengeluaran per Kapita. Yang terakhir timpang jauh: hanya 2 dari 488 kabupaten/kota yang angka perempuannya menyamai laki-laki.",
+      "Satu catatan penting: Pengeluaran per Kapita menurut jenis kelamin bukan upah terukur. Dalam metodologi IPG/IPM, BPS mengimputasinya dari perkiraan bagian upah perempuan — jadi bacalah sebagai proksi kemampuan ekonomi, bukan bukti selisih gaji. (Upah per jam terukur — BPS var 1174 — menunjukkan selisih yang jauh lebih kecil: perempuan ~88% dari laki-laki pada 2024.)",
       "Pilih indikator dan wilayah untuk melihat di mana kesenjangan gender paling lebar — dan di mana ia justru berbalik.",
     ],
     kind: "gender",
     gender: {
       primaryKey: "hls",
       latestYear: 2025,
-      note: "Harapan Lama Sekolah (457), Rata-rata Lama Sekolah (459), dan Pengeluaran per Kapita Disesuaikan (461) menurut jenis kelamin, per kabupaten/kota, 2025. Selisih = nilai perempuan − laki-laki. Sumber: BPS.",
+      note: "Harapan Lama Sekolah (457), Rata-rata Lama Sekolah (459), dan Pengeluaran per Kapita Disesuaikan (461) menurut jenis kelamin, per kabupaten/kota, 2025. Selisih = nilai perempuan − laki-laki. Cakupan: 488 dari 514 kabupaten/kota — BPS belum menerbitkan seri ini untuk 26 kab/kota di empat provinsi Papua baru (Papua Tengah, Papua Selatan, Papua Pegunungan, Papua Barat Daya). Sumber: BPS.",
       metrics: [
         { key: "hls", variableId: "457", label: "Harapan Lama Sekolah", short: "Harapan Sekolah", unit: "Tahun", decimals: 2, desc: "Perkiraan lama sekolah anak usia 7 tahun ke depan. Secara nasional perempuan sudah unggul — tanda pembalikan akses pendidikan." },
         { key: "rls", variableId: "459", label: "Rata-rata Lama Sekolah", short: "Rata-rata Sekolah", unit: "Tahun", decimals: 2, desc: "Tahun sekolah yang sudah ditamatkan penduduk 25+. Masih menyimpan warisan ketimpangan lama: laki-laki dewasa umumnya lebih tinggi." },
-        { key: "income", variableId: "461", label: "Pengeluaran per Kapita", short: "Pengeluaran/Kapita", unit: "Ribu Rupiah/Orang/Tahun", decimals: 0, desc: "Proksi kemampuan ekonomi. Di sinilah kesenjangan gender paling lebar dan konsisten memihak laki-laki." },
+        { key: "income", variableId: "461", label: "Pengeluaran per Kapita", short: "Pengeluaran/Kapita", unit: "Ribu Rupiah/Orang/Tahun", decimals: 0, desc: "Proksi kemampuan ekonomi — bukan upah terukur: BPS mengimputasinya dari perkiraan bagian upah perempuan untuk keperluan IPG/IPM. Di sinilah kesenjangan gender paling lebar dan konsisten memihak laki-laki (hanya 2 dari 488 kab/kota yang perempuannya menyamai)." },
       ],
     },
   },
@@ -468,8 +472,8 @@ export const POSTS: Post[] = [
     source: "BPS",
     intro: [
       "Kemiskinan dan ketimpangan sering dianggap sama, padahal berbeda. Kemiskinan mengukur berapa banyak yang hidup di bawah garis; ketimpangan (Gini Ratio) mengukur seberapa jauh jarak antara yang kaya dan yang miskin. Sebuah daerah bisa punya sedikit orang miskin tapi sangat timpang — banyak orang sangat kaya berdampingan dengan banyak yang pas-pasan.",
-      "Gini Ratio bernilai 0 (semua orang persis sama) hingga 1 (satu orang menguasai segalanya). Ketimpangan perkotaan hampir selalu lebih tinggi daripada perdesaan. Di sini kita bandingkan Gini tiap provinsi — total, perkotaan, dan perdesaan, 2002–2025 — lalu menyandingkannya dengan kemiskinan dan IPM.",
-      "Perhatikan grafik sebar: hubungan Gini dengan kemiskinan ternyata lemah. Yogyakarta dan DKI Jakarta termasuk paling timpang justru karena banyak penduduk makmurnya, bukan karena paling miskin.",
+      "Gini Ratio bernilai 0 (semua orang persis sama) hingga 1 (satu orang menguasai segalanya). Ketimpangan perkotaan biasanya lebih tinggi daripada perdesaan — pada 2025 berlaku di 28 dari 33 provinsi. Tapi lima pengecualiannya justru yang paling menarik: di Papua, Gini perdesaan (0,479) jauh melampaui perkotaannya (0,318) — dan itu angka ketimpangan tertinggi di seluruh data 2025, di atas DKI Jakarta sekalipun. Hal serupa terjadi di Papua Barat, NTT, Kalimantan Timur, dan Sulawesi Utara.",
+      "Perhatikan grafik sebar: hubungan Gini dengan kemiskinan ternyata lemah (r ≈ 0,28). Yogyakarta dan DKI Jakarta termasuk paling timpang justru karena banyak penduduk makmurnya, bukan karena paling miskin.",
     ],
     kind: "inequality",
     inequality: {
@@ -495,7 +499,8 @@ export const POSTS: Post[] = [
     source: "Dukcapil (Kemendagri)",
     intro: [
       "KTP elektronik adalah gerbang menuju hampir semua layanan negara: bantuan sosial, BPJS, rekening bank, hak pilih. Secara nasional, cakupan perekaman KTP-el sudah luar biasa tinggi — median kabupaten/kota mencapai 99%.",
-      "Tapi rata-rata yang tinggi menyembunyikan sebuah jurang. Di sejumlah kabupaten pegunungan Papua — Yahukimo, Puncak, Nduga, Intan Jaya — cakupan perekaman hanya 8–14%. Di sanalah negara secara administratif paling sulit menjangkau warganya: medan terjal, akses terbatas, dan infrastruktur adminduk yang belum sampai.",
+      "Tapi rata-rata yang tinggi menyembunyikan sebuah jurang. Di sejumlah kabupaten pegunungan Papua — Yahukimo (8%), Puncak (11%), Nduga (12%), Intan Jaya (13%) — cakupan perekaman hanya 8–14%. Godaannya adalah menjelaskannya dengan medan terjal dan jarak. Datanya tidak mendukung itu: keterpencilan tidak memprediksi cakupan sama sekali (korelasi kepadatan penduduk dengan cakupan KTP-el hanya 0,11) — ini bukan gradien, melainkan tujuh-delapan kabupaten yang sangat spesifik.",
+      "Ada petunjuk yang lebih tajam, dan ia datang dari register itu sendiri. Di kabupaten-kabupaten itu, penduduk 17 tahun ke atas tercatat 86–90% dari total penduduk, jauh di atas median nasional 71%; anak 0–4 tahun di Puncak hanya 2.477 jiwa berbanding 20.881 orang berusia 25–29. Struktur seperti itu mustahil secara demografis. Artinya penyebut 'wajib KTP'-nya sendiri menggelembung: kita tidak bisa memisahkan berapa banyak warga yang benar-benar belum terjangkau dari berapa banyak yang sebenarnya tidak ada di sana. Ketidakpastian itulah ceritanya.",
       "Di sini kita petakan cakupan KTP-el tiap daerah, beserta kepadatan penduduk dan struktur demografinya — untuk melihat di mana identitas digital masih menjadi 'peta buta'.",
     ],
     kind: "demography",
@@ -506,8 +511,8 @@ export const POSTS: Post[] = [
       ageProfile: false,
       note: "Cakupan perekaman KTP-elektronik (persentase penduduk wajib KTP yang sudah merekam) menurut provinsi & kabupaten/kota. Sumber: Dukcapil (Ditjen Dukcapil, Kemendagri).",
       metrics: [
-        { field: "ktp_coverage", label: "Cakupan Perekaman KTP-el", short: "Cakupan KTP-el", unit: "%", decimals: 1, desc: "Persentase penduduk wajib KTP yang sudah merekam KTP-elektronik — ukuran jangkauan administrasi & identitas digital. Terendah di pegunungan Papua yang terpencil." },
-        { field: "pop_density", label: "Kepadatan Penduduk", short: "Kepadatan", unit: "jiwa/km²", decimals: 0, desc: "Jumlah penduduk per kilometer persegi — daerah terpencil berkepadatan rendah cenderung paling sulit dijangkau perekaman." },
+        { field: "ktp_coverage", label: "Cakupan Perekaman KTP-el", short: "Cakupan KTP-el", unit: "%", decimals: 1, desc: "Persentase penduduk wajib KTP yang sudah merekam KTP-elektronik — ukuran jangkauan administrasi & identitas digital. Terendah di segelintir kabupaten pegunungan Papua, yang penyebut 'wajib KTP'-nya sendiri diragukan (lihat % anak)." },
+        { field: "pop_density", label: "Kepadatan Penduduk", short: "Kepadatan", unit: "jiwa/km²", decimals: 0, desc: "Jumlah penduduk per kilometer persegi. Perhatikan: kepadatan hampir tidak berhubungan dengan cakupan perekaman (r ≈ 0,11) — keterpencilan bukan penjelasnya." },
         { field: "median_age", label: "Usia Median", short: "Usia Median", unit: "th", decimals: 1, desc: "Usia median penduduk — konteks demografi daerah." },
         { field: "avg_household", label: "Rata-rata Jiwa per KK", short: "Jiwa/KK", unit: "", decimals: 2, desc: "Rata-rata anggota per kepala keluarga." },
       ],
@@ -521,7 +526,8 @@ export const POSTS: Post[] = [
     source: "Dukcapil (Kemendagri)",
     intro: [
       "Indonesia dikenal majemuk, tapi kemajemukan itu terdistribusi sangat tidak merata. Sebagian kabupaten nyaris homogen — satu agama menaungi hampir seluruh penduduk — sementara sebagian lain begitu berimbang hingga tak ada satu pun agama yang benar-benar mayoritas.",
-      "Menggunakan data administrasi kependudukan Dukcapil, kita ukur komposisi agama tiap daerah dan meringkasnya dalam indeks keberagaman (0 = seragam, 100 = paling beragam). Yang paling beragam justru bukan kota besar, melainkan daerah seperti Bengkayang dan Sintang di Kalimantan Barat, tempat Islam, Kristen, dan Katolik hidup nyaris seimbang.",
+      "Menggunakan data administrasi kependudukan Dukcapil, kita ukur komposisi agama tiap daerah dan meringkasnya dalam indeks keberagaman (0 = seragam, makin tinggi makin beragam). Yang paling beragam justru bukan kota besar, melainkan daerah seperti Bengkayang (70,0) dan Sintang di Kalimantan Barat, tempat Islam, Kristen, dan Katolik hidup nyaris seimbang. Skalanya perlu dibaca dengan benar: karena hanya ada tujuh kategori agama, nilai maksimum yang mungkin secara matematis adalah 85,7 — bukan 100. Angka 70 milik Bengkayang jauh lebih dekat ke puncak daripada kelihatannya.",
+      "Satu hal yang perlu diketahui pembaca: agama di sini berasal dari kolom KTP, yang secara historis hanya menampung enam agama resmi (kolom 'Kepercayaan' baru dimungkinkan setelah putusan Mahkamah Konstitusi 2017). Penganut agama leluhur banyak yang tercatat ke dalam salah satu dari enam itu — sehingga keberagaman justru cenderung tercatat lebih rendah dari kenyataannya, persis di daerah Kalimantan, Papua, dan Mentawai yang menempati puncak peringkat ini.",
       "Pilih sebuah daerah untuk melihat komposisi agamanya secara utuh. Data ini berasal dari pencatatan administrasi, disajikan apa adanya tanpa penilaian.",
     ],
     kind: "diversity",
@@ -542,13 +548,14 @@ export const POSTS: Post[] = [
   {
     slug: "mobilitas-penduduk",
     title: "Ke Mana Penduduk Bergerak?",
-    subtitle: "Frontier tambang dan industri mencatat perpindahan penduduk tertinggi di Indonesia.",
+    subtitle: "Kawasan nikel dan kabupaten termiskin sama-sama mencatat perpindahan tertinggi — arah tak terbaca dari angkanya.",
     tag: "Sosial",
     source: "Dukcapil (Kemendagri)",
     intro: [
       "Penduduk Indonesia terus bergerak — mencari kerja, mengikuti keluarga, atau menuju pusat-pusat pertumbuhan baru. Data administrasi kependudukan Dukcapil mencatat perpindahan penduduk tiap daerah, yang bisa dijadikan ukuran mobilitas: berapa banyak perpindahan per 1.000 penduduk.",
-      "Angka tertinggi muncul di frontier sumber daya dan industri — Halmahera Tengah (kawasan nikel), dan daerah-daerah tambang lain — tempat pekerja berdatangan. Di sini kita telusuri mobilitas, kepadatan, fertilitas (rasio anak per wanita), dan angka kematian kasar untuk memahami dinamika penduduk tiap provinsi dan kabupaten/kota.",
-      "Catatan: 'perpindahan per 1.000' mengukur peristiwa perpindahan yang tercatat (mobilitas/churn), bukan migrasi neto (masuk dikurangi keluar).",
+      "Dua nama teratas menjelaskan mengapa angka ini harus dibaca hati-hati. Halmahera Tengah — kawasan smelter nikel — memuncaki daftar dengan 26 perpindahan per 1.000 penduduk, persis seperti dugaan kita tentang frontier industri. Tapi peringkat kedua adalah Nias Barat (19,5), salah satu kabupaten termiskin di Indonesia dan daerah asal perantau klasik. Keduanya bergerak sama derasnya; yang satu orang berdatangan, yang satu orang pergi.",
+      "Itulah batas ukuran ini: 'perpindahan per 1.000' menghitung peristiwa perpindahan yang tercatat (mobilitas/churn), bukan migrasi neto (masuk dikurangi keluar). Ia memberi tahu seberapa deras sebuah daerah bergerak, bukan ke arah mana. Untuk petunjuk arah, lihat rasio jenis kelamin — daerah tujuan kerja cenderung condong ke laki-laki.",
+      "Di sini kita telusuri mobilitas, kepadatan, fertilitas (rasio anak per wanita), dan angka kematian kasar untuk memahami dinamika penduduk tiap provinsi dan kabupaten/kota.",
     ],
     kind: "demography",
     demography: {
@@ -558,10 +565,11 @@ export const POSTS: Post[] = [
       ageProfile: false,
       note: "Dinamika penduduk menurut provinsi & kabupaten/kota. 'Perpindahan per 1.000' = peristiwa perpindahan tercatat per 1.000 penduduk (mobilitas, bukan migrasi neto). Sumber: Dukcapil (Ditjen Dukcapil, Kemendagri).",
       metrics: [
-        { field: "net_migration_rate", label: "Perpindahan per 1.000", short: "Mobilitas", unit: "", decimals: 1, desc: "Jumlah peristiwa perpindahan penduduk tercatat per 1.000 penduduk — ukuran seberapa 'bergerak' sebuah daerah. Tinggi di frontier tambang/industri." },
+        { field: "net_migration_rate", label: "Perpindahan per 1.000", short: "Mobilitas", unit: "", decimals: 1, desc: "Jumlah peristiwa perpindahan penduduk tercatat per 1.000 penduduk — ukuran seberapa 'bergerak' sebuah daerah, bukan ke arah mana. Tertinggi di kawasan nikel Halmahera Tengah (orang datang) sekaligus di Nias Barat (orang pergi)." },
+        { field: "sex_ratio", label: "Rasio Jenis Kelamin", short: "Rasio L/P", unit: "", decimals: 1, desc: "Jumlah laki-laki per 100 perempuan (median nasional ~102). Condong ke laki-laki adalah penanda klasik daerah tujuan migrasi kerja — satu-satunya petunjuk arah yang tersedia di sini. Hati-hati di pegunungan Papua: registernya sendiri diragukan." },
         { field: "child_woman_ratio", label: "Rasio Anak per 1.000 Wanita", short: "Fertilitas", unit: "", decimals: 0, desc: "Jumlah anak (0–4) per 1.000 wanita usia subur — proksi tingkat kelahiran." },
         { field: "crude_death_rate", label: "Angka Kematian Kasar", short: "Kematian", unit: "", decimals: 1, desc: "Jumlah kematian tercatat per 1.000 penduduk." },
-        { field: "pop_density", label: "Kepadatan Penduduk", short: "Kepadatan", unit: "jiwa/km²", decimals: 0, desc: "Jumlah penduduk per kilometer persegi — daerah padat cenderung jadi tujuan perpindahan." },
+        { field: "pop_density", label: "Kepadatan Penduduk", short: "Kepadatan", unit: "jiwa/km²", decimals: 0, desc: "Jumlah penduduk per kilometer persegi. Perhatikan: kepadatan praktis tak berhubungan dengan mobilitas (r ≈ −0,02) — daerah padat bukan berarti lebih banyak perpindahan tercatat." },
         { field: "avg_household", label: "Rata-rata Jiwa per KK", short: "Jiwa/KK", unit: "", decimals: 2, desc: "Rata-rata anggota per kepala keluarga — ukuran besar rumah tangga." },
         { field: "median_age", label: "Usia Median", short: "Usia Median", unit: "th", decimals: 1, desc: "Usia median penduduk — konteks: daerah tujuan perpindahan kerja cenderung lebih muda." },
       ],
@@ -575,8 +583,9 @@ export const POSTS: Post[] = [
     source: "Dukcapil (Kemendagri)",
     intro: [
       "Struktur usia sebuah daerah menentukan masa depannya. Ketika penduduk usia produktif (15–64) jauh lebih banyak daripada yang harus ditanggung (anak dan lansia), sebuah daerah menikmati 'bonus demografi' — peluang pertumbuhan yang tidak akan berlangsung selamanya.",
-      "Tapi Indonesia tidak menua secara merata. Di sebagian daerah usia median penduduk masih di bawah 25 tahun; di sebagian lain sudah mendekati 37 tahun dan proporsi lansia terus naik. Di sini kita telusuri rasio ketergantungan, usia median, dan komposisi umur tiap provinsi dan kabupaten/kota — dari data administrasi kependudukan Dukcapil.",
+      "Tapi Indonesia tidak menua secara merata. Jaraknya lebih dari dua dekade: usia median di Asmat baru 18,8 tahun, sementara Ponorogo sudah 39,9 tahun — disusul Tabanan, Gunungkidul, dan Pacitan yang semuanya mendekati 40. Di tingkat provinsi rentangnya lebih rapat, dengan DI Yogyakarta tertua di 36,9 tahun. Di sini kita telusuri rasio ketergantungan, usia median, dan komposisi umur tiap provinsi dan kabupaten/kota — dari data administrasi kependudukan Dukcapil.",
       "Pilih sebuah wilayah untuk melihat piramida usianya dan di mana ia berada dalam transisi demografi.",
+      "Catatan: rasio ketergantungan sangat rendah tidak selalu berarti bonus demografi. Di beberapa kabupaten pegunungan Papua, anak justru nyaris tak tercatat dalam register — sehingga penduduk usia produktif tampak mendominasi. Wilayah seperti itu ditandai pada peringkat, dan dikecualikan dari kartu 'beban tanggungan terendah'.",
     ],
     kind: "demography",
     demography: {
@@ -621,7 +630,7 @@ export const POSTS: Post[] = [
         expenditureMin: 1_007_436,
         expenditureMax: 26_572_352,
       },
-      note: "IPM metode baru dan komponennya (Umur Harapan Hidup, Harapan Lama Sekolah, Rata-rata Lama Sekolah, Pengeluaran per Kapita Disesuaikan) menurut kabupaten/kota, 2010–2024. Nilai lebih tinggi = lebih baik. Dekomposisi tiga dimensi dihitung ulang dari komponen tersimpan memakai batas (goalpost) metode baru BPS; hasilnya direkonsiliasi dengan IPM terbitan BPS dan selisihnya ditampilkan. Sumber: BPS.",
+      note: "IPM metode baru dan komponennya (Umur Harapan Hidup, Harapan Lama Sekolah, Rata-rata Lama Sekolah, Pengeluaran per Kapita Disesuaikan) menurut kabupaten/kota, 2010–2024. Nilai lebih tinggi = lebih baik. Dekomposisi tiga dimensi Cakupan: 488 dari 514 kabupaten/kota — BPS belum menerbitkan seri ini untuk 26 kab/kota di empat provinsi Papua baru (Papua Tengah, Papua Selatan, Papua Pegunungan, Papua Barat Daya). dihitung ulang dari komponen tersimpan memakai batas (goalpost) metode baru BPS; hasilnya direkonsiliasi dengan IPM terbitan BPS dan selisihnya ditampilkan. Sumber: BPS.",
       categories: [
         { label: "Sangat Tinggi", min: 80, color: "#15803D" },
         { label: "Tinggi", min: 70, color: "#5FBF6A" },
@@ -654,7 +663,7 @@ export const POSTS: Post[] = [
       unit: "Milyar Rupiah",
       adminLevel: "regency",
       year: "2026",
-      note: "Komposisi sektor: PDRB triwulanan harga berlaku menurut 17 kategori lapangan usaha (triwulan terkini). Peringkat & besaran: PDRB tahunan harga konstan (2010=100) tahun penuh terakhir. Sumber: BPS.",
+      note: "Komposisi sektor: PDRB triwulanan harga berlaku menurut 17 kategori lapangan usaha (triwulan terkini). Peringkat & besaran: PDRB tahunan harga konstan (2010=100) tahun penuh terakhir. Cakupan: 488 dari 514 kabupaten/kota — BPS belum menerbitkan seri ini untuk 26 kab/kota di empat provinsi Papua baru (Papua Tengah, Papua Selatan, Papua Pegunungan, Papua Barat Daya). Sumber: BPS.",
       // Total/magnitude + trend + ranking-movement use harga konstan (real
       // growth), full years only. Composition shares come from the (latest-
       // quarter) 17-sector variable above — there is no full-year kab 17-sector.
@@ -698,7 +707,7 @@ export const POSTS: Post[] = [
         urbanVervarId: "1",
         ruralVervarId: "2",
       },
-      note: "Persentase Penduduk Miskin (P0), Indeks Kedalaman (P1), Indeks Keparahan (P2), dan Jumlah Penduduk Miskin menurut provinsi & kabupaten/kota, 2004–2025. Ukuran tingkat (P0/P1/P2) tidak dijumlahkan antar-wilayah — tiap level diambil langsung dari BPS. Tren nasional memakai seri nasional BPS (P0 var 184, jumlah var 183; Kota+Desa), 1996–2025 — bukan hasil penjumlahan provinsi. Sumber: BPS.",
+      note: "Persentase Penduduk Miskin (P0), Indeks Kedalaman (P1), Indeks Keparahan (P2), dan Jumlah Penduduk Miskin menurut provinsi & kabupaten/kota, 2004–2025. Ukuran tingkat (P0/P1/P2) tidak dijumlahkan antar-wilayah — tiap level diambil langsung dari BPS. Cakupan: 488 dari 514 kabupaten/kota — BPS belum menerbitkan seri ini untuk 26 kab/kota di empat provinsi Papua baru (Papua Tengah, Papua Selatan, Papua Pegunungan, Papua Barat Daya). Tren nasional memakai seri nasional BPS (P0 var 184, jumlah var 183; Kota+Desa), 1996–2025 — bukan hasil penjumlahan provinsi. Sumber: BPS.",
       metrics: [
         {
           key: "count",
@@ -765,7 +774,7 @@ export const POSTS: Post[] = [
       totalTurvarId: "1550",
       unit: "Milyar Rupiah",
       year: "2025",
-      note: "PDRB menurut pengeluaran, atas dasar harga konstan (2010=100), tahun penuh 2010–2025. Net Ekspor dapat bernilai negatif. Sumber: BPS.",
+      note: "PDRB menurut pengeluaran, atas dasar harga konstan (2010=100), tahun penuh 2010–2025. Net Ekspor dapat bernilai negatif. Cakupan: 488 dari 514 kabupaten/kota — BPS belum menerbitkan seri ini untuk 26 kab/kota di empat provinsi Papua baru (Papua Tengah, Papua Selatan, Papua Pegunungan, Papua Barat Daya). Sumber: BPS.",
       components: [
         { id: "1544", label: "Konsumsi RT", color: "#2E5BDA" },
         { id: "1545", label: "Konsumsi LNPRT", color: "#4E8CF0" },
