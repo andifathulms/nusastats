@@ -29,6 +29,13 @@ h3 {
   color: #0d1b36;
 }
 
+/* Visible keyboard-focus ring, without flashing on mouse clicks. */
+:focus-visible {
+  outline: 2px solid #2a5aa0;
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
 /* Refined, themed page scrollbar — thin and subtle so it reads intentional,
    not like a default grey gutter. */
 * {

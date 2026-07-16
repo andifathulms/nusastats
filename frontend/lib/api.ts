@@ -673,15 +673,18 @@ export function formatByUnit(n: number | null | undefined, unit: string | undefi
   return formatRupiah(n);
 }
 
-// Categorical palette for chart series — royal-blue-led, CVD-safe adjacency on the white panel surface.
+// Categorical palette for chart series — royal-blue-led, validated on the white
+// panel surface (lightness band, chroma floor, CVD ΔE ≥ 8, normal-vision ΔE ≥ 15,
+// contrast ≥ 3:1 all PASS). Fixed slot order is the CVD-safety mechanism: assign
+// in sequence, never cycle past 8 — fold extra series into "Lainnya" instead.
 export const SERIES_COLORS = [
-  "#1E4585", // royal navy blue (brand)
-  "#C49A48", // royal gold
-  "#0E8F9C", // teal
+  "#2A5AA0", // royal blue (brand)
+  "#A87F2F", // royal gold (deepened to clear 3:1 on white)
+  "#0C8FA6", // teal
   "#C0392B", // red
   "#7C3AED", // purple
   "#15803D", // green
-  "#5B8DEF", // light royal blue (pair with a label/legend)
+  "#5B8DEF", // light royal blue
   "#92400E", // brown
 ];
 
@@ -695,7 +698,8 @@ export const CHART = {
   tooltipBg: "#FFFFFF", // ink.panel
   tooltipBorder: "#DBE1EE", // ink.border
   text: "#0D1B36", // ink.text
-  accent: "#1E4585", // ink.accent (royal navy blue)
+  accent: "#2A5AA0", // series slot 1 (royal blue) — single-series marks match the palette
+  neutral: "#93A0BC", // ink.faint — the "Lainnya"/other bucket, never a series slot
   good: "#15803D", // ink.good
   bad: "#DC2626", // ink.bad
 };

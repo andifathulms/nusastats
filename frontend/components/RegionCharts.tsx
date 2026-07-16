@@ -59,10 +59,12 @@ function Donut({ title, data }: { title: string; data: Datum[] }) {
   const rows = data.filter((d) => d.value > 0).sort((a, b) => b.value - a.value);
   const total = rows.reduce((s, d) => s + d.value, 0);
   if (!total) return null;
-  // Keep legends readable: top 7 slices, the rest folded into "Lainnya".
-  const top = rows.slice(0, 7);
-  const restVal = rows.slice(7).reduce((s, d) => s + d.value, 0);
+  // Part-to-whole stays glanceable up to ~6 segments: top 5 + "Lainnya".
+  const top = rows.slice(0, 5);
+  const restVal = rows.slice(5).reduce((s, d) => s + d.value, 0);
   const slices = restVal > 0 ? [...top, { name: "Lainnya", value: restVal }] : top;
+  // "Lainnya" wears the neutral bucket color, never a series slot.
+  const sliceColor = (d: Datum, i: number) => (d.name === "Lainnya" ? CHART.neutral : SERIES_COLORS[i]);
   const pct = (v: number) => `${((v / total) * 100).toFixed(1)}%`;
 
   return (
@@ -71,9 +73,10 @@ function Donut({ title, data }: { title: string; data: Datum[] }) {
       <div className="flex items-center gap-3">
         <ResponsiveContainer width="45%" height={130}>
           <PieChart>
-            <Pie data={slices} dataKey="value" nameKey="name" innerRadius="55%" outerRadius="90%" stroke="none">
-              {slices.map((_, i) => (
-                <Cell key={i} fill={SERIES_COLORS[i % SERIES_COLORS.length]} />
+            {/* 2px surface gap between slices so neighbors read distinct without borders. */}
+            <Pie data={slices} dataKey="value" nameKey="name" innerRadius="55%" outerRadius="90%" stroke={CHART.tooltipBg} strokeWidth={2}>
+              {slices.map((d, i) => (
+                <Cell key={i} fill={sliceColor(d, i)} />
               ))}
             </Pie>
             <Tooltip
@@ -93,7 +96,7 @@ function Donut({ title, data }: { title: string; data: Datum[] }) {
         <ul className="flex-1 space-y-0.5 text-[11px]">
           {slices.map((d, i) => (
             <li key={d.name} className="flex items-center gap-1.5">
-              <span className="h-2 w-2 shrink-0 rounded-sm" style={{ background: SERIES_COLORS[i % SERIES_COLORS.length] }} />
+              <span className="h-2 w-2 shrink-0 rounded-sm" style={{ background: sliceColor(d, i) }} />
               <span className="truncate text-ink-muted">{d.name}</span>
               <span className="ml-auto shrink-0 tabular-nums text-ink-text">{pct(d.value)}</span>
             </li>

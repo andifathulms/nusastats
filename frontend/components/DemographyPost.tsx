@@ -25,7 +25,7 @@ const AGE_BANDS: { field: string; label: string; stage: "children" | "productive
   { field: "u60", label: "60–64", stage: "productive" }, { field: "u65", label: "65–69", stage: "elderly" }, { field: "u70", label: "70–74", stage: "elderly" },
   { field: "u75", label: "75+", stage: "elderly" },
 ];
-const STAGE_COLOR = { children: "#E0803A", productive: "#1E4585", elderly: "#7C3AED" };
+const STAGE_COLOR = { children: "#D9722C", productive: "#2A5AA0", elderly: "#7C3AED" };
 const STAGE_LABEL = { children: "Anak (0–14)", productive: "Produktif (15–64)", elderly: "Lansia (65+)" };
 
 const fmtVal = (m: DemographyMetric, v: number | undefined) =>

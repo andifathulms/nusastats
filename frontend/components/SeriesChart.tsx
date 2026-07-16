@@ -40,11 +40,13 @@ export function SeriesChart({
           tickFormatter={(v) => (Math.abs(v) >= 1000 ? `${(v / 1000).toLocaleString()}k` : `${v}`)}
         />
         <Tooltip
+          cursor={{ stroke: CHART.axisLine, strokeWidth: 1 }}
           contentStyle={{ background: CHART.tooltipBg, border: `1px solid ${CHART.tooltipBorder}`, borderRadius: 8, color: CHART.text }}
           labelStyle={{ color: CHART.axisTick }}
           formatter={(v: number, name: string) => [`${v?.toLocaleString?.() ?? v}${unit ? ` ${unit}` : ""}`, name]}
         />
-        <Legend wrapperStyle={{ fontSize: 12, color: CHART.axisTick }} />
+        {/* Legend only when there are ≥2 series — a lone swatch just restates the title. */}
+        {entities.length > 1 && <Legend wrapperStyle={{ fontSize: 12, color: CHART.axisTick }} />}
         {entities.map((e, i) => (
           <Line
             key={e.key}
@@ -54,6 +56,8 @@ export function SeriesChart({
             stroke={SERIES_COLORS[i % SERIES_COLORS.length]}
             strokeWidth={2}
             dot={false}
+            // Hover marker with a 2px surface ring so it stays legible crossing other lines.
+            activeDot={{ r: 4.5, strokeWidth: 2, stroke: CHART.tooltipBg }}
             connectNulls
           />
         ))}

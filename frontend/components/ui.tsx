@@ -46,7 +46,8 @@ export function StatTile({
         <span className={`h-1.5 w-1.5 rounded-full ${dot[accent]}`} />
         {label}
       </div>
-      <div className="mt-2.5 text-[28px] font-semibold leading-none tabular-nums text-ink-text">
+      {/* Proportional figures on the big value — tabular-nums makes "121" look loose at display sizes. */}
+      <div className="mt-2.5 text-[28px] font-semibold leading-none text-ink-text">
         {typeof value === "number" ? formatNumber(value) : value}
       </div>
       {sub && <div className="mt-1.5 text-xs text-ink-muted">{sub}</div>}

@@ -55,7 +55,7 @@ export function HorizontalBars({
           tickLine={false}
         />
         <Tooltip cursor={{ fill: CHART.cursor }} content={<BarTooltip unit={unit} />} />
-        <Bar dataKey="value" radius={[0, 4, 4, 0]}>
+        <Bar dataKey="value" radius={[0, 4, 4, 0]} maxBarSize={20}>
           {data.map((d, i) => (
             <Cell
               key={i}

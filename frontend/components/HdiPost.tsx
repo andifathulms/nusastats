@@ -18,11 +18,11 @@ type Row = { domain_id: string; name: string; provCode: string; provName: string
 
 // Colour per metric — the composite is coloured by its category instead.
 const METRIC_COLOR: Record<string, string> = {
-  ipm: "#1E4585",
-  uhh: "#0E8F9C", // health — teal
-  hls: "#1E4585", // education — navy
+  ipm: "#2A5AA0",
+  uhh: "#0C8FA6", // health — teal
+  hls: "#2A5AA0", // education — navy
   rls: "#5B8DEF", // education — light blue
-  income: "#C49A48", // living standard — gold
+  income: "#A87F2F", // living standard — gold
 };
 const POV = "#C0392B"; // poverty axis in the scatter
 

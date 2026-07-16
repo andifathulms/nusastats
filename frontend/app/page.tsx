@@ -2,13 +2,12 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Bar, BarChart, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { Bar, BarChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import {
   api,
   CHART,
   dukcapilApi,
   formatNumber,
-  SERIES_COLORS,
   type DukcapilSummary,
   type Summary,
 } from "@/lib/api";
@@ -137,11 +136,8 @@ export default function OverviewPage() {
                 contentStyle={{ background: CHART.tooltipBg, border: `1px solid ${CHART.tooltipBorder}`, borderRadius: 10, color: CHART.text }}
                 formatter={(v: number) => [formatNumber(v), "Titik data"]}
               />
-              <Bar dataKey="data_points" radius={[6, 6, 0, 0]}>
-                {levelData.map((_, i) => (
-                  <Cell key={i} fill={SERIES_COLORS[i % SERIES_COLORS.length]} />
-                ))}
-              </Bar>
+              {/* One series, one hue — nominal categories don't get identity colors. */}
+              <Bar dataKey="data_points" radius={[4, 4, 0, 0]} maxBarSize={48} fill={CHART.accent} />
             </BarChart>
           </ResponsiveContainer>
         </Panel>
@@ -149,20 +145,22 @@ export default function OverviewPage() {
         <Panel>
           <SectionTitle hint="indikator dengan data, per kategori BPS">Cakupan per kategori (BPS)</SectionTitle>
           <div className="space-y-3">
-            {summary.by_category.map((c, i) => {
+            {summary.by_category.map((c) => {
               const pct = c.variables ? Math.round((c.with_data / c.variables) * 100) : 0;
               return (
                 <div key={c.category}>
-                  <div className="flex items-baseline justify-between text-sm">
-                    <span className="text-ink-text">{c.category}</span>
-                    <span className="tabular-nums text-ink-muted">
+                  <div className="flex items-baseline justify-between gap-3 text-sm">
+                    <span className="truncate text-ink-text">{c.category}</span>
+                    <span className="shrink-0 tabular-nums text-ink-muted">
                       {formatNumber(c.with_data)} / {formatNumber(c.variables)}
+                      <span className="ml-1.5 text-ink-faint">({pct}%)</span>
                     </span>
                   </div>
+                  {/* All rows the same hue: the fill length is the encoding, not the color. */}
                   <div className="mt-1 h-2 w-full overflow-hidden rounded-full bg-ink-panel2">
                     <div
-                      className="h-full rounded-full transition-all"
-                      style={{ width: `${pct}%`, background: SERIES_COLORS[i % SERIES_COLORS.length] }}
+                      className="h-full rounded-full bg-ink-accent transition-all"
+                      style={{ width: `${pct}%` }}
                     />
                   </div>
                 </div>

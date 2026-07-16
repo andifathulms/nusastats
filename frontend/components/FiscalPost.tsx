@@ -189,7 +189,7 @@ function Detail({ row, ratios, total, series }: { row: Row; ratios: FiscalRatio[
   const transfer = Math.max(0, pend - pad);
   const other = Math.max(0, bel - peg - mod);
   const revSeg = [{ l: "PAD", v: pad, c: "#15803D" }, { l: "Transfer pusat", v: transfer, c: "#94A3B8" }];
-  const spSeg = [{ l: "Pegawai", v: peg, c: "#E0803A" }, { l: "Modal", v: mod, c: "#1E4585" }, { l: "Lainnya", v: other, c: "#94A3B8" }];
+  const spSeg = [{ l: "Pegawai", v: peg, c: "#D9722C" }, { l: "Modal", v: mod, c: "#2A5AA0" }, { l: "Lainnya", v: other, c: "#94A3B8" }];
 
   return (
     <div className="space-y-4">
