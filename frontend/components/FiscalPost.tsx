@@ -41,7 +41,11 @@ export function FiscalPost({ config }: { config: FiscalConfig }) {
       ...config.ratios.map((r) => djpkApi.rank({ level, akun: r.akun, tahun: y }).then((d) => ({ kind: "ratio" as const, akun: r.akun, d }))),
       ...ABS_AKUNS.map((a) => djpkApi.rank({ level, akun: a, tahun: y, measure: "realisasi" }).then((d) => ({ kind: "abs" as const, akun: a, d }))),
       djpkApi.rank({ level: "province", akun: config.primaryAkun, tahun: y }).then((d) => ({ kind: "prov" as const, akun: "", d })),
-      ...config.years.map((yr) => djpkApi.rank({ level, akun: config.primaryAkun, tahun: String(yr) }).then((d) => ({ kind: "yr" as const, akun: String(yr), d }))),
+      // History of the SELECTED ratio, not just the primary one — switching the
+      // chip should redraw the trend, otherwise the only ratio anyone can see
+      // over time is kemandirian, and the sharpest movement in this dataset
+      // (median belanja modal 24,1% in 2016 -> 14,0% in 2024) stays hidden.
+      ...config.years.map((yr) => djpkApi.rank({ level, akun, tahun: String(yr) }).then((d) => ({ kind: "yr" as const, akun: String(yr), d }))),
     ]).then((res) => {
       if (cancelled) return;
       const provName = new Map<string, string>();
@@ -81,7 +85,7 @@ export function FiscalPost({ config }: { config: FiscalConfig }) {
       setLoading(false);
     });
     return () => { cancelled = true; };
-  }, [level, config]);
+  }, [level, config, akun]);
 
   const m = ratioByAkun[akun];
   const sorted = useMemo(() => [...rows].filter((r) => r.ratio[akun]).sort((a, b) => b.ratio[akun].value - a.ratio[akun].value), [rows, akun]);
@@ -92,7 +96,12 @@ export function FiscalPost({ config }: { config: FiscalConfig }) {
   const selected = rows.find((r) => r.domain_id === sel) ?? rows[0];
 
   const kemAkun = "rasio_kemandirian";
-  const natKem = natTrend[natTrend.length - 1]?.value;
+  // Read from `rows` (all four ratios at latestYear), NOT natTrend — that now
+  // follows the selected chip and would make this card report the wrong ratio.
+  const natKem = useMemo(() => {
+    const v = rows.map((r) => r.ratio[kemAkun]?.value).filter((x): x is number => x != null).sort((a, b) => a - b);
+    return v.length ? v[Math.floor(v.length / 2)] : undefined;
+  }, [rows]);
   const mostIndep = useMemo(() => [...rows].filter((r) => r.ratio[kemAkun]).sort((a, b) => b.ratio[kemAkun].value - a.ratio[kemAkun].value)[0], [rows]);
   const salaryHeavy = useMemo(() => [...rows].filter((r) => r.ratio.rasio_belanja_pegawai).sort((a, b) => b.ratio.rasio_belanja_pegawai.value - a.ratio.rasio_belanja_pegawai.value)[0], [rows]);
 
@@ -167,14 +176,14 @@ export function FiscalPost({ config }: { config: FiscalConfig }) {
       <MapPanel rows={rows} ratios={config.ratios} akun={akun} level={level} />
       {natTrend.length > 1 && (
         <Panel>
-          <div className="mb-2 text-xs font-medium uppercase tracking-wide text-ink-muted">Kemandirian fiskal (median) · {natTrend[0].year}–{natTrend[natTrend.length - 1].year}</div>
+          <div className="mb-2 text-xs font-medium uppercase tracking-wide text-ink-muted">{m.label} (median) · {natTrend[0].year}–{natTrend[natTrend.length - 1].year}</div>
           <ResponsiveContainer width="100%" height={260}>
             <LineChart data={natTrend} margin={{ top: 8, right: 16, bottom: 0, left: 8 }}>
               <CartesianGrid stroke={CHART.grid} vertical={false} />
               <XAxis dataKey="year" tick={{ fill: CHART.axisTick, fontSize: 12 }} axisLine={{ stroke: CHART.axisLine }} tickLine={false} />
               <YAxis tick={{ fill: CHART.axisTick, fontSize: 12 }} axisLine={{ stroke: CHART.axisLine }} tickLine={false} width={40} tickFormatter={(v) => `${v}%`} />
-              <RTooltip contentStyle={{ background: CHART.tooltipBg, border: `1px solid ${CHART.tooltipBorder}`, borderRadius: 8 }} formatter={(v: number) => [`${v.toFixed(1)}%`, "Kemandirian median"]} />
-              <Line type="monotone" dataKey="value" name="Kemandirian" stroke="#15803D" strokeWidth={2} dot={false} />
+              <RTooltip contentStyle={{ background: CHART.tooltipBg, border: `1px solid ${CHART.tooltipBorder}`, borderRadius: 8 }} formatter={(v: number) => [`${v.toFixed(1)}%`, `${m.short} median`]} />
+              <Line type="monotone" dataKey="value" name={m.short} stroke={m.color} strokeWidth={2} dot={false} />
             </LineChart>
           </ResponsiveContainer>
         </Panel>

@@ -406,9 +406,12 @@ export const POSTS: Post[] = [
     kind: "fiscal",
     fiscal: {
       primaryAkun: "rasio_kemandirian",
-      years: [2019, 2020, 2021, 2022, 2023, 2024],
+      // 2016 is where these ratios begin (2011–2015 return no PAD/pendapatan
+      // lines). Starting there captures the sharpest movement in the dataset:
+      // median belanja modal 24,1% -> 14,0%.
+      years: [2016, 2017, 2018, 2019, 2020, 2021, 2022, 2023, 2024],
       latestYear: 2024,
-      note: "Rasio APBD (realisasi) dari DJPK/Kemenkeu SIKD: kemandirian (PAD÷Pendapatan), ketergantungan (Transfer÷Pendapatan), belanja pegawai & belanja modal (÷Belanja). Per provinsi & kabupaten/kota, 2019–2024. Kode wilayah DJPK dipetakan ke Kemendagri. Sumber: DJPK.",
+      note: "Rasio APBD (realisasi) dari DJPK/Kemenkeu SIKD: kemandirian (PAD÷Pendapatan), ketergantungan (Transfer÷Pendapatan), belanja pegawai & belanja modal (÷Belanja). Per provinsi & kabupaten/kota, 2016–2024. Grafik median mengikuti rasio yang dipilih. Cakupan berubah sepanjang periode (466–482 kab/kota sampai 2022, 508 sejak 2023 setelah pemekaran Papua) — karena itu yang ditampilkan median, yang tahan terhadap perubahan jumlah wilayah, bukan jumlah total. Kode wilayah DJPK dipetakan ke Kemendagri. Sumber: DJPK.",
       ratios: [
         { akun: "rasio_kemandirian", label: "Kemandirian Fiskal", short: "Kemandirian", desc: "Bagian pendapatan dari sumber sendiri (PAD ÷ total pendapatan). Makin tinggi = makin mandiri, makin sedikit bergantung pada transfer pusat.", color: "#15803D" },
         { akun: "rasio_ketergantungan", label: "Ketergantungan pada Pusat", short: "Ketergantungan", desc: "Bagian pendapatan dari transfer pemerintah pusat (TKDD ÷ pendapatan). Kebalikan dari kemandirian.", color: "#C0392B" },
