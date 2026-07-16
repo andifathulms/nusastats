@@ -75,7 +75,12 @@ def _dukcapil_index():
     if the dukcapil app / data is unavailable.
 
       prov_by_norm:  {normalized_prov_name: prov_code}                (2-digit)
-      reg_by_prov:   {prov_code: {normalized_reg_name: reg_code}}     (4-digit)
+      reg_by_prov:   {prov_code: {(status_family, normalized_reg_name): reg_code}}
+                     (4-digit). The family is part of the key because
+                     `normalize_name` strips the Kab./Kota type token, so a
+                     kabupaten and the kota of the same name ('Kab. Bogor' /
+                     'Kota Bogor') both normalize to 'BOGOR' — without the
+                     family they collide and one silently takes the other's code.
       reg_national:  {(status_family, normalized_reg_name): reg_code} — only
                      names that are UNIQUE per family nationwide (ambiguous ones
                      dropped), used as a province-independent fallback so
@@ -108,8 +113,8 @@ def _dukcapil_index():
         level="regency", period=latest
     ).values_list("code", "name", "status", "prov_code"):
         norm = normalize_name(name)
-        reg_by_prov.setdefault(prov_code, {}).setdefault(norm, code)
         nkey = (status_family(status), norm)
+        reg_by_prov.setdefault(prov_code, {}).setdefault(nkey, code)
         if nkey in reg_national and reg_national[nkey] != code:
             ambiguous.add(nkey)
         else:
@@ -173,11 +178,12 @@ def build_crosswalk():
         if r.level != "regency":
             continue
         norm = normalize_name(r.name)
+        nkey = (status_family(r.name), norm)
         kemenprov = djpkprov_to_kemenprov.get(r.djpk_prov)
-        code = reg_by_prov.get(kemenprov, {}).get(norm) if kemenprov else None
+        code = reg_by_prov.get(kemenprov, {}).get(nkey) if kemenprov else None
         method = "name-exact" if code else ""
         if not code:
-            code = reg_national.get((status_family(r.name), norm))
+            code = reg_national.get(nkey)
             method = "name-national" if code else ""
         if code:
             r.kemendagri_code = code
