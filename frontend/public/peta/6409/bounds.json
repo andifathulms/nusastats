@@ -13,6 +13,7 @@
   "note": "Pixel-edge bounds. Stretch each layer over this lon/lat box (linear lon/lat, same as ChoroplethMap's projection).",
   "layers": {
     "elevation": "elevation.webp",
-    "hillshade": "hillshade.webp"
+    "hillshade": "hillshade.webp",
+    "landcover": "landcover.webp"
   }
 }
