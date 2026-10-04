@@ -32,6 +32,25 @@ DATASETS = {
         "notes": ("Ocean has no tiles (tileList.txt is authoritative; absent = ocean). "
                   "Licence/attribution verified 2026-10-05 from the docs_url page."),
     },
+    "esa_worldcover_2021_v200": {
+        "name": "ESA WorldCover 10 m 2021 v200",
+        "provider": "ESA WorldCover consortium; AWS Open Data mirror",
+        "type": "Land cover map, 11 classes, Sentinel-1/2 derived",
+        "resolution": "1/12000 degree (~10 m)",
+        "horizontal_crs": "EPSG:4326",
+        "year": 2021,
+        "version": "v200",
+        "url_pattern": "https://esa-worldcover.s3.eu-central-1.amazonaws.com/v200/2021/map/ESA_WorldCover_10m_2021_v200_{tile}_Map.tif",
+        "tile_index_url": "https://esa-worldcover.s3.eu-central-1.amazonaws.com/esa_worldcover_grid.geojson",
+        "docs_url": "https://esa-worldcover.org/en/data-access",
+        "license": "CC BY 4.0 (Creative Commons Attribution 4.0 International)",
+        "attribution": ("© ESA WorldCover project 2021 / Contains modified Copernicus Sentinel data "
+                        "(2021) processed by ESA WorldCover consortium"),
+        "attribution_short": "ESA WorldCover 2021 v200 (CC BY 4.0)",
+        "notes": ("3x3 degree tiles named by their south-west corner. Licence/attribution template "
+                  "verified 2026-10-05 from the docs_url page ([year] = 2021). Plantations "
+                  "(sawit, akasia) usually map to class 10: say 'tutupan pohon', never 'hutan'."),
+    },
 }
 
 

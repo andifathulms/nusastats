@@ -1,0 +1,24 @@
+# Land cover parameters (docs/FEATURE-peta-wilayah.md §3, §4.3, §5.3).
+stats:
+  utm_pixel_m: 10            # equal-area grid for class areas (WorldCover native ~10 m)
+  resampling: nearest        # categorical: never blend class codes
+  max_nodata_pct: 0.1        # fail if more of the polygon than this has no class
+  max_area_diff_pct: 2.0
+  max_share_sum_error_pct: 0.5
+render:
+  resampling: mode           # display grid: most frequent class per display pixel
+  max_bytes: 2000000
+# Official ESA WorldCover v200 palette (Product User Manual). The pipeline also
+# checks it against the colour table embedded in each tile and fails on a mismatch.
+classes:
+  - {code: 10, name: Tree cover, label: Tutupan pohon, color: "#006400"}
+  - {code: 20, name: Shrubland, label: Semak belukar, color: "#ffbb22"}
+  - {code: 30, name: Grassland, label: Padang rumput, color: "#ffff4c"}
+  - {code: 40, name: Cropland, label: Lahan pertanian, color: "#f096ff"}
+  - {code: 50, name: Built-up, label: Lahan terbangun, color: "#fa0000"}
+  - {code: 60, name: Bare / sparse vegetation, label: Lahan terbuka, color: "#b4b4b4"}
+  - {code: 70, name: Snow and ice, label: Salju dan es, color: "#f0f0f0"}
+  - {code: 80, name: Permanent water bodies, label: Badan air, color: "#0064c8"}
+  - {code: 90, name: Herbaceous wetland, label: Lahan basah, color: "#0096a0"}
+  - {code: 95, name: Mangroves, label: Mangrove, color: "#00cf75"}
+  - {code: 100, name: Moss and lichen, label: Lumut, color: "#fae6a0"}
