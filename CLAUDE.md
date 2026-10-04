@@ -122,3 +122,9 @@ real output from a real crawl run.**
 - Do not silently swallow BPS error responses (`404 UserNotFound`, rate
   limit errors, malformed JSON) — log them into `CoverageCheckLog` with
   status `error` so gaps are distinguishable from genuine unavailability.
+
+## Frontend design standard
+
+Before adding or changing anything under `frontend/`, read and follow
+[DESIGN.md](DESIGN.md): theme tokens (light + dark), typography, number
+formatting, routes, shared components, and the done-checklist.
