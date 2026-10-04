@@ -1,0 +1,43 @@
+{
+  "datasets": {
+    "copernicus_dem_glo30": {
+      "acquisition": "TanDEM-X 2011-2015",
+      "attribution": "produced using Copernicus WorldDEM-30 © DLR e.V. 2010-2014 and © Airbus Defence and Space GmbH 2014-2018 provided under COPERNICUS by the European Union and ESA; all rights reserved",
+      "attribution_short": "Copernicus DEM GLO-30 (© DLR e.V., © Airbus DS; Copernicus/EU/ESA)",
+      "docs_url": "https://dataspace.copernicus.eu/explore-data/data-collections/copernicus-contributing-missions/collections-description/COP-DEM",
+      "horizontal_crs": "EPSG:4326",
+      "license": "Copernicus DEM licence: GLO-30 free for the general public, with attribution",
+      "name": "Copernicus DEM GLO-30 Public",
+      "notes": "Ocean has no tiles (tileList.txt is authoritative; absent = ocean). Licence/attribution verified 2026-10-05 from the docs_url page.",
+      "provider": "ESA / Copernicus (TanDEM-X derived WorldDEM); AWS Open Data mirror",
+      "resolution": "1 arc-second (~30 m)",
+      "tile_index_url": "https://copernicus-dem-30m.s3.amazonaws.com/tileList.txt",
+      "type": "DSM (surface model: includes canopy and buildings)",
+      "url_pattern": "https://copernicus-dem-30m.s3.amazonaws.com/{tile}/{tile}.tif",
+      "vertical_datum": "EGM2008 geoid (EPSG:3855), metres",
+      "year": 2015
+    }
+  },
+  "files": {
+    "copernicus_dem_glo30": {
+      "Copernicus_DSM_COG_10_S01_00_E116_00_DEM": {
+        "bytes": 50734839,
+        "downloaded_at": "2026-10-04T18:10:33+00:00",
+        "sha256": "6984a6fbd5b3aa1939165ddac829cf5971868f81efa29bacf0085692bf3858cb",
+        "url": "https://copernicus-dem-30m.s3.amazonaws.com/Copernicus_DSM_COG_10_S01_00_E116_00_DEM/Copernicus_DSM_COG_10_S01_00_E116_00_DEM.tif"
+      },
+      "Copernicus_DSM_COG_10_S02_00_E116_00_DEM": {
+        "bytes": 33317470,
+        "downloaded_at": "2026-10-04T18:10:28+00:00",
+        "sha256": "2add2fbb4ce33893c5d2c50b953e88ce8cd2a92f3fb45c1354e19ae3efd86ce9",
+        "url": "https://copernicus-dem-30m.s3.amazonaws.com/Copernicus_DSM_COG_10_S02_00_E116_00_DEM/Copernicus_DSM_COG_10_S02_00_E116_00_DEM.tif"
+      },
+      "tileList.txt": {
+        "bytes": 1110900,
+        "downloaded_at": "2026-10-04T18:10:23+00:00",
+        "sha256": "10604e3052c98a09e9216f1a8f0a555a04148419757575f783d4937fd44316dc",
+        "url": "https://copernicus-dem-30m.s3.amazonaws.com/tileList.txt"
+      }
+    }
+  }
+}
