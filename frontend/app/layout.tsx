@@ -17,6 +17,9 @@ const display = Newsreader({
   display: "swap",
   style: ["normal", "italic"],
   axes: ["opsz"],
+  // next/font ships no fallback metrics for Newsreader; skip the (failing)
+  // size-adjusted fallback instead of logging an error on every build.
+  adjustFontFallback: false,
 });
 // Region codes, source URLs, hashes, eyebrow labels.
 const mono = JetBrains_Mono({ subsets: ["latin"], variable: "--font-mono", display: "swap" });
