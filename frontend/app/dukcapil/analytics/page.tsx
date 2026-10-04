@@ -197,7 +197,7 @@ export default function DukcapilAnalyticsPage() {
     <div className="space-y-6">
       <header className="border-b border-ink-border pb-5">
         <div className="flex items-center gap-3">
-          <h1 className="font-display text-3xl font-medium tracking-tight text-ink-text sm:text-4xl">Analitik Dukcapil</h1>
+          <h1 className="font-display text-4xl font-medium leading-[1.02] tracking-[-0.02em] text-ink-text sm:text-5xl">Analitik Dukcapil</h1>
           <Badge tone="accent">{catalog ? `${catalog.count} indikator` : "…"}</Badge>
         </div>
         <p className="mt-2 max-w-2xl text-sm text-ink-muted">
@@ -212,9 +212,9 @@ export default function DukcapilAnalyticsPage() {
           <button
             key={v}
             onClick={() => setView(v)}
-            className={`rounded-lg px-4 py-1.5 text-sm font-medium transition-colors ${
+            className={`rounded-full px-4 py-1.5 text-sm font-semibold transition-colors ${
               view === v
-                ? "bg-brand-gradient text-white shadow-glow"
+                ? "bg-laut-950 text-kertas-200 shadow-tile dark:bg-ink-accent dark:text-ink-onAccent"
                 : "text-ink-muted hover:bg-ink-panel2/70 hover:text-ink-text"
             }`}
           >
@@ -249,9 +249,9 @@ export default function DukcapilAnalyticsPage() {
                       if (l.v === "province") setSelProv("");
                       if (l.v !== "village") setSelDist("");
                     }}
-                    className={`rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${
+                    className={`rounded-full px-3 py-1.5 text-sm font-semibold transition-colors ${
                       level === l.v
-                        ? "bg-brand-gradient text-white shadow-glow"
+                        ? "bg-laut-950 text-kertas-200 shadow-tile dark:bg-ink-accent dark:text-ink-onAccent"
                         : "text-ink-muted hover:bg-ink-panel2/70 hover:text-ink-text"
                     }`}
                   >

@@ -167,7 +167,7 @@ export function DukcapilMap({
                 key={v}
                 onClick={() => setMapLevel(v)}
                 className={`rounded-md px-3 py-1 text-xs font-medium transition-colors ${
-                  mapLevel === v ? "bg-brand-gradient text-white" : "text-ink-muted hover:bg-ink-panel2/70 hover:text-ink-text"
+                  mapLevel === v ? "bg-laut-950 text-kertas-200 dark:bg-ink-accent dark:text-ink-onAccent" : "text-ink-muted hover:bg-ink-panel2/70 hover:text-ink-text"
                 }`}
               >
                 {lbl}

@@ -39,7 +39,7 @@ export function Segmented({
           key={o.v}
           onClick={() => onChange(o.v)}
           className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
-            value === o.v ? "bg-brand-gradient text-white shadow-glow" : "text-ink-muted hover:text-ink-text"
+            value === o.v ? "bg-laut-950 text-kertas-200 shadow-tile dark:bg-ink-accent dark:text-ink-onAccent" : "text-ink-muted hover:text-ink-text"
           }`}
         >
           {o.label}

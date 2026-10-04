@@ -13,7 +13,7 @@ import {
   type DjpkRegionLevel,
   type DjpkSummary,
 } from "@/lib/api";
-import { Panel, SectionTitle } from "@/components/ui";
+import { Panel, SectionTitle, PageHeader } from "@/components/ui";
 import { Field, Segmented, Pager, GROUP_LABEL, MEASURES } from "@/components/keuangan/controls";
 import { KeuanganMap } from "@/components/keuangan/KeuanganMap";
 import { KeuanganCorrelation } from "@/components/keuangan/KeuanganCorrelation";
@@ -57,12 +57,9 @@ export default function KeuanganAnalyticsPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="font-display text-2xl font-medium tracking-tight text-ink-text">Analitik keuangan daerah</h1>
-        <p className="mt-1 text-sm text-ink-muted">
-          Peringkat APBD antar-wilayah — pilih akun, tingkat, ukuran, dan tahun.
-        </p>
-      </div>
+      <PageHeader eyebrow="Kemenkeu · DJPK–SIKD" title="Analitik keuangan daerah">
+        Peringkat APBD antar-wilayah — pilih akun, tingkat, ukuran, dan tahun.
+      </PageHeader>
 
       {/* Shared scope controls */}
       <Panel>

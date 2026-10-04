@@ -190,7 +190,7 @@ export default function VariableDetailPage({ params }: { params: { variableId: s
                     onClick={() => setAdminLevel(l)}
                     className={`rounded-md px-2 py-1 text-xs ${
                       adminLevel === l
-                        ? "bg-brand-gradient text-white shadow-glow"
+                        ? "bg-laut-950 text-kertas-200 shadow-tile dark:bg-ink-accent dark:text-ink-onAccent"
                         : "border border-ink-border text-ink-muted hover:bg-ink-panel2"
                     }`}
                   >

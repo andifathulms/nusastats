@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { dukcapilApi, formatNumber, type DukcapilSummary } from "@/lib/api";
-import { Badge, ErrorState, Panel, SectionTitle, Skeleton, SkeletonRows, SkeletonTile, StatTile } from "@/components/ui";
+import { ErrorState, Panel, SectionTitle, Skeleton, SkeletonRows, SkeletonTile, StatTile } from "@/components/ui";
 
 export default function DukcapilOverviewPage() {
   const [summary, setSummary] = useState<DukcapilSummary | null>(null);
@@ -21,35 +21,35 @@ export default function DukcapilOverviewPage() {
 
   return (
     <div className="space-y-10">
-      <section className="relative overflow-hidden rounded-3xl border border-ink-border/70 bg-ink-panel/60 p-8 shadow-panel sm:p-12">
-        <div className="pointer-events-none absolute inset-0 bg-brand-radial" />
+      <section className="relative overflow-hidden rounded-[28px] bg-coal-bg p-8 text-coal-text shadow-lift ring-1 ring-white/5 sm:p-12">
+        <div className="pointer-events-none absolute inset-0 bg-royal-weave opacity-50" />
         <div className="relative">
-          <Badge tone="accent">Sumber: Kemendagri / Ditjen Dukcapil</Badge>
-          <h1 className="mt-4 max-w-2xl font-display text-4xl font-medium leading-[1.1] tracking-tight text-ink-text sm:text-5xl">
+          <div className="font-mono text-[11.5px] uppercase tracking-[0.1em] text-ink-gold">Sumber: Kemendagri / Ditjen Dukcapil</div>
+          <h1 className="mt-4 max-w-2xl font-display text-4xl font-medium leading-[1.02] tracking-[-0.02em] text-coal-text sm:text-[56px]">
             Data administrasi kependudukan Indonesia
           </h1>
-          <p className="mt-3 max-w-xl text-sm leading-relaxed text-ink-muted sm:text-base">
+          <p className="mt-4 max-w-xl text-[15px] leading-relaxed text-coal-muted sm:text-base">
             Rekaman kependudukan administratif dari GIS Dukcapil — hingga tingkat{" "}
-            <span className="font-medium text-ink-text">desa/kelurahan</span>. Setiap angka berasal
+            <span className="font-semibold text-coal-text">desa/kelurahan</span>. Setiap angka berasal
             dari respons ArcGIS yang direkam, terpisah dari data BPS.
           </p>
           <div className="mt-6 flex flex-wrap gap-3">
             <Link
               href="/dukcapil/analytics"
-              className="rounded-xl bg-brand-gradient px-5 py-2.5 text-sm font-medium text-white shadow-glow transition-transform hover:scale-[1.02]"
+              className="inline-flex h-11 items-center rounded-full bg-brand-gradient px-6 text-sm font-bold text-white shadow-glow transition-transform hover:-translate-y-0.5"
             >
               Buka analitik →
             </Link>
             <Link
               href="/jelajahi"
-              className="rounded-xl border border-ink-border bg-ink-panel2/60 px-5 py-2.5 text-sm font-medium text-ink-text transition-colors hover:border-ink-borderStrong"
+              className="inline-flex h-11 items-center rounded-full border border-white/20 px-6 text-sm font-bold text-coal-text transition-colors hover:bg-white/5"
             >
               Jelajahi wilayah
             </Link>
           </div>
           {summary.period && (
-            <div className="mt-5 text-xs text-ink-muted">
-              Periode <span className="font-medium text-ink-text">{summary.period}</span>
+            <div className="mt-5 text-xs text-coal-muted">
+              Periode <span className="font-semibold text-coal-text">{summary.period}</span>
               {summary.periods.length > 1 && <span> · {summary.periods.length} snapshot</span>}
               {summary.last_fetched_at && (
                 <span> · direkam {new Date(summary.last_fetched_at).toLocaleDateString("id-ID")}</span>
@@ -123,8 +123,8 @@ export default function DukcapilOverviewPage() {
 function OverviewSkeleton() {
   return (
     <div className="space-y-10">
-      <section className="relative overflow-hidden rounded-3xl border border-ink-border/70 bg-ink-panel/60 p-8 shadow-panel sm:p-12">
-        <div className="pointer-events-none absolute inset-0 bg-brand-radial" />
+      <section className="relative overflow-hidden rounded-[28px] bg-coal-bg p-8 text-coal-text shadow-lift ring-1 ring-white/5 sm:p-12">
+        <div className="pointer-events-none absolute inset-0 bg-royal-weave opacity-50" />
         <div className="relative">
           <Skeleton className="h-5 w-64" />
           <Skeleton className="mt-4 h-10 w-full max-w-2xl" />

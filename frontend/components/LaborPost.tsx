@@ -200,7 +200,7 @@ function ScatterPanel({ rows }: { rows: Row[] }) {
         <div className="inline-flex gap-0.5 rounded-lg border border-ink-border/80 bg-ink-panel2/50 p-0.5">
           {SCATTER_X.map((s) => (
             <button key={s.k} onClick={() => setXk(s.k)}
-              className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${xk === s.k ? "bg-brand-gradient text-white" : "text-ink-muted hover:text-ink-text"}`}>
+              className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${xk === s.k ? "bg-laut-950 text-kertas-200 dark:bg-ink-accent dark:text-ink-onAccent" : "text-ink-muted hover:text-ink-text"}`}>
               {s.label}
             </button>
           ))}

@@ -440,7 +440,7 @@ function MetricSection({
                   key={m.key}
                   onClick={() => setKey(m.key)}
                   className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
-                    key === m.key ? "bg-brand-gradient text-white" : "text-ink-muted hover:text-ink-text"
+                    key === m.key ? "bg-laut-950 text-kertas-200 dark:bg-ink-accent dark:text-ink-onAccent" : "text-ink-muted hover:text-ink-text"
                   }`}
                 >
                   {m.label}

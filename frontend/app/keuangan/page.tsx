@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { djpkApi, formatRupiah, type DjpkRank, type DjpkSummary } from "@/lib/api";
-import { Badge, ErrorState, Panel, SectionTitle, Skeleton, SkeletonRows, SkeletonTile, StatTile } from "@/components/ui";
+import { ErrorState, Panel, SectionTitle, Skeleton, SkeletonRows, SkeletonTile, StatTile } from "@/components/ui";
 
 export default function KeuanganOverviewPage() {
   const [summary, setSummary] = useState<DjpkSummary | null>(null);
@@ -27,14 +27,14 @@ export default function KeuanganOverviewPage() {
 
   return (
     <div className="space-y-10">
-      <section className="relative overflow-hidden rounded-3xl border border-ink-border/70 bg-ink-panel/60 p-8 shadow-panel sm:p-12">
-        <div className="pointer-events-none absolute inset-0 bg-brand-radial" />
+      <section className="relative overflow-hidden rounded-[28px] bg-coal-bg p-8 text-coal-text shadow-lift ring-1 ring-white/5 sm:p-12">
+        <div className="pointer-events-none absolute inset-0 bg-royal-weave opacity-50" />
         <div className="relative">
-          <Badge tone="accent">Sumber: Kemenkeu / DJPK–SIKD</Badge>
-          <h1 className="mt-4 max-w-2xl font-display text-4xl font-medium leading-[1.1] tracking-tight text-ink-text sm:text-5xl">
+          <div className="font-mono text-[11.5px] uppercase tracking-[0.1em] text-ink-gold">Sumber: Kemenkeu / DJPK–SIKD</div>
+          <h1 className="mt-4 max-w-2xl font-display text-4xl font-medium leading-[1.02] tracking-[-0.02em] text-coal-text sm:text-[56px]">
             Keuangan daerah: APBD &amp; PAD per wilayah
           </h1>
-          <p className="mt-3 max-w-xl text-sm leading-relaxed text-ink-muted sm:text-base">
+          <p className="mt-4 max-w-xl text-[15px] leading-relaxed text-coal-muted sm:text-base">
             Realisasi APBD tiap provinsi dan kabupaten/kota — Pendapatan Asli Daerah, transfer,
             belanja, dan pembiayaan. Setiap angka berasal dari ekspor resmi portal SIKD DJPK,
             terpisah dari data BPS dan Dukcapil.
@@ -42,12 +42,12 @@ export default function KeuanganOverviewPage() {
           <div className="mt-6 flex flex-wrap gap-3">
             <Link
               href="/keuangan/analytics"
-              className="rounded-xl bg-brand-gradient px-5 py-2.5 text-sm font-medium text-white shadow-glow transition-transform hover:scale-[1.02]"
+              className="inline-flex h-11 items-center rounded-full bg-brand-gradient px-6 text-sm font-bold text-white shadow-glow transition-transform hover:-translate-y-0.5"
             >
               Buka analitik →
             </Link>
           </div>
-          <div className="mt-5 text-xs text-ink-muted">
+          <div className="mt-5 text-xs text-coal-muted">
             Tahun anggaran <span className="font-medium text-ink-text">{summary.scope.tahun}</span>
             {summary.years.length > 1 && <span> · {summary.years.length} tahun</span>}
             {summary.last_fetched_at && (
@@ -123,8 +123,8 @@ export default function KeuanganOverviewPage() {
 function OverviewSkeleton() {
   return (
     <div className="space-y-10">
-      <section className="relative overflow-hidden rounded-3xl border border-ink-border/70 bg-ink-panel/60 p-8 shadow-panel sm:p-12">
-        <div className="pointer-events-none absolute inset-0 bg-brand-radial" />
+      <section className="relative overflow-hidden rounded-[28px] bg-coal-bg p-8 text-coal-text shadow-lift ring-1 ring-white/5 sm:p-12">
+        <div className="pointer-events-none absolute inset-0 bg-royal-weave opacity-50" />
         <div className="relative">
           <Skeleton className="h-5 w-64" />
           <Skeleton className="mt-4 h-10 w-full max-w-2xl" />

@@ -201,7 +201,7 @@ export function CompositionPost({ config }: { config: CompositionConfig }) {
                     setPage(0);
                   }}
                   className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
-                    level === lv ? "bg-brand-gradient text-white" : "text-ink-muted hover:text-ink-text"
+                    level === lv ? "bg-laut-950 text-kertas-200 dark:bg-ink-accent dark:text-ink-onAccent" : "text-ink-muted hover:text-ink-text"
                   }`}
                 >
                   {lv === "regency" ? "Kab/Kota" : lv === "province" ? "Provinsi" : "Region"}
@@ -382,7 +382,7 @@ function MapPanel({
                 key={mt}
                 onClick={() => setMetric(mt)}
                 className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
-                  metric === mt ? "bg-brand-gradient text-white" : "text-ink-muted hover:text-ink-text"
+                  metric === mt ? "bg-laut-950 text-kertas-200 dark:bg-ink-accent dark:text-ink-onAccent" : "text-ink-muted hover:text-ink-text"
                 }`}
               >
                 {mt === "share" ? "Persentase" : "Nominal"}
@@ -395,7 +395,7 @@ function MapPanel({
                 key={lv}
                 onClick={() => setMapLevel(lv)}
                 className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
-                  mapLevel === lv ? "bg-brand-gradient text-white" : "text-ink-muted hover:text-ink-text"
+                  mapLevel === lv ? "bg-laut-950 text-kertas-200 dark:bg-ink-accent dark:text-ink-onAccent" : "text-ink-muted hover:text-ink-text"
                 }`}
               >
                 {lv === "province" ? "Provinsi" : "Kab/Kota"}
@@ -469,7 +469,7 @@ function TopSectorPanel({
   const Toggle = <T extends string>({ opts, v, on }: { opts: [T, string][]; v: T; on: (x: T) => void }) => (
     <div className="inline-flex rounded-lg border border-ink-border/80 bg-ink-panel2/50 p-0.5">
       {opts.map(([val, lbl]) => (
-        <button key={val} onClick={() => on(val)} className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${v === val ? "bg-brand-gradient text-white" : "text-ink-muted hover:text-ink-text"}`}>
+        <button key={val} onClick={() => on(val)} className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${v === val ? "bg-laut-950 text-kertas-200 dark:bg-ink-accent dark:text-ink-onAccent" : "text-ink-muted hover:text-ink-text"}`}>
           {lbl}
         </button>
       ))}
@@ -670,7 +670,7 @@ function CorrelationPanel({
                 key={mt}
                 onClick={() => setCMetric(mt)}
                 className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
-                  cMetric === mt ? "bg-brand-gradient text-white" : "text-ink-muted hover:text-ink-text"
+                  cMetric === mt ? "bg-laut-950 text-kertas-200 dark:bg-ink-accent dark:text-ink-onAccent" : "text-ink-muted hover:text-ink-text"
                 }`}
               >
                 {mt === "share" ? "Persentase" : "Nominal"}
@@ -967,7 +967,7 @@ function HistoryPanel({
               key={m}
               onClick={() => setMode(m)}
               className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
-                mode === m ? "bg-brand-gradient text-white" : "text-ink-muted hover:text-ink-text"
+                mode === m ? "bg-laut-950 text-kertas-200 dark:bg-ink-accent dark:text-ink-onAccent" : "text-ink-muted hover:text-ink-text"
               }`}
             >
               {m === "total" ? "Total" : m === "components" ? "Per sektor" : "Peringkat"}
@@ -1108,7 +1108,7 @@ function TrendPanel({
               key={m}
               onClick={() => setMode(m)}
               className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
-                mode === m ? "bg-brand-gradient text-white" : "text-ink-muted hover:text-ink-text"
+                mode === m ? "bg-laut-950 text-kertas-200 dark:bg-ink-accent dark:text-ink-onAccent" : "text-ink-muted hover:text-ink-text"
               }`}
             >
               {m === "pdrb" ? "PDRB" : "Peringkat"}

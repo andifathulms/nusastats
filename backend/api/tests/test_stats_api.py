@@ -172,3 +172,17 @@ def test_search_finds_regions_and_indicators(api_client, dataset):
 def test_search_ignores_too_short_queries(api_client, dataset):
     body = api_client.get("/api/search/", {"q": "a"}).json()
     assert body["regions"] == [] and body["variables"] == [] and body["subregions"] == []
+
+
+@pytest.mark.django_db
+def test_variable_catalog_facets(api_client, dataset):
+    url = "/api/stats/variables/"
+    # Must have data at every listed level.
+    assert api_client.get(url, {"admin_level": "province,regency"}).json()["count"] == 1
+    assert api_client.get(url, {"admin_level": "province,national"}).json()["count"] == 0
+    # Recency: latest year with data >= value.
+    assert api_client.get(url, {"min_year_max": 2023}).json()["count"] == 1
+    assert api_client.get(url, {"min_year_max": 2024}).json()["count"] == 0
+    # Multi-word keyword matches all words, in any order.
+    assert api_client.get(url, {"keyword": "ahh"}).json()["count"] == 1
+    assert api_client.get(url, {"sort": "recent"}).status_code == 200

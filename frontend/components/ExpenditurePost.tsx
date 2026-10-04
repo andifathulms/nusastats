@@ -155,7 +155,7 @@ export function ExpenditurePost({ config }: { config: ExpenditureConfig }) {
           <div className="flex items-center gap-2">
             <div className="inline-flex rounded-lg border border-ink-border/80 bg-ink-panel2/50 p-0.5">
               {(["regency", "province", "region"] as const).map((lv) => (
-                <button key={lv} onClick={() => { setLevel(lv); setPage(0); }} className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${level === lv ? "bg-brand-gradient text-white" : "text-ink-muted hover:text-ink-text"}`}>
+                <button key={lv} onClick={() => { setLevel(lv); setPage(0); }} className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${level === lv ? "bg-laut-950 text-kertas-200 dark:bg-ink-accent dark:text-ink-onAccent" : "text-ink-muted hover:text-ink-text"}`}>
                   {lv === "regency" ? "Kab/Kota" : lv === "province" ? "Provinsi" : "Region"}
                 </button>
               ))}
@@ -383,7 +383,7 @@ function HistoryPanel({
           {(["total", "components", "rank"] as const).map((m) => {
             const disabled = m === "components" && !canComponents;
             return (
-              <button key={m} disabled={disabled} onClick={() => setMode(m)} className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors disabled:opacity-40 ${mode === m ? "bg-brand-gradient text-white" : "text-ink-muted hover:text-ink-text"}`}>
+              <button key={m} disabled={disabled} onClick={() => setMode(m)} className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors disabled:opacity-40 ${mode === m ? "bg-laut-950 text-kertas-200 dark:bg-ink-accent dark:text-ink-onAccent" : "text-ink-muted hover:text-ink-text"}`}>
                 {m === "total" ? "Total" : m === "components" ? "Komponen" : "Peringkat"}
               </button>
             );

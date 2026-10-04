@@ -368,7 +368,7 @@ function LevelToggle({ level, onChange }: { level: Level; onChange: (l: Level) =
           key={lv}
           onClick={() => onChange(lv)}
           className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
-            level === lv ? "bg-brand-gradient text-white" : "text-ink-muted hover:text-ink-text"
+            level === lv ? "bg-laut-950 text-kertas-200 dark:bg-ink-accent dark:text-ink-onAccent" : "text-ink-muted hover:text-ink-text"
           }`}
         >
           {lv === "regency" ? "Kab/Kota" : "Provinsi"}
@@ -472,7 +472,7 @@ function RegionTrend({
               key={mm}
               onClick={() => setMode(mm)}
               className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
-                mode === mm ? "bg-brand-gradient text-white" : "text-ink-muted hover:text-ink-text"
+                mode === mm ? "bg-laut-950 text-kertas-200 dark:bg-ink-accent dark:text-ink-onAccent" : "text-ink-muted hover:text-ink-text"
               }`}
             >
               {mm === "value" ? "Tingkat" : "Peringkat"}
@@ -688,7 +688,7 @@ function NationalTrend({ national }: { national: { year: number; poor: number; r
         <div className="inline-flex rounded-lg border border-ink-border/80 bg-ink-panel2/50 p-0.5">
           {(["rate", "count"] as const).map((mm) => (
             <button key={mm} onClick={() => setMode(mm)}
-              className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${mode === mm ? "bg-brand-gradient text-white" : "text-ink-muted hover:text-ink-text"}`}>
+              className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${mode === mm ? "bg-laut-950 text-kertas-200 dark:bg-ink-accent dark:text-ink-onAccent" : "text-ink-muted hover:text-ink-text"}`}>
               {mm === "rate" ? "Tingkat (%)" : "Jumlah (juta)"}
             </button>
           ))}
@@ -747,7 +747,7 @@ function DisparityPanel({ regLatest, p0 }: { regLatest: RegRow[]; p0: PovertyMet
         <div className="ml-auto inline-flex rounded-lg border border-ink-border/80 bg-ink-panel2/50 p-0.5">
           {(["gap", "max"] as const).map((s) => (
             <button key={s} onClick={() => setSort(s)}
-              className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${sort === s ? "bg-brand-gradient text-white" : "text-ink-muted hover:text-ink-text"}`}>
+              className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${sort === s ? "bg-laut-950 text-kertas-200 dark:bg-ink-accent dark:text-ink-onAccent" : "text-ink-muted hover:text-ink-text"}`}>
               {s === "gap" ? "Rentang" : "Tertinggi"}
             </button>
           ))}
@@ -825,7 +825,7 @@ function ConcentrationPanel({ regLatest }: { regLatest: RegRow[] }) {
         <div className="ml-auto inline-flex rounded-lg border border-ink-border/80 bg-ink-panel2/50 p-0.5">
           {(["regency", "province"] as const).map((lv) => (
             <button key={lv} onClick={() => setLevel(lv)}
-              className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${level === lv ? "bg-brand-gradient text-white" : "text-ink-muted hover:text-ink-text"}`}>
+              className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${level === lv ? "bg-laut-950 text-kertas-200 dark:bg-ink-accent dark:text-ink-onAccent" : "text-ink-muted hover:text-ink-text"}`}>
               {lv === "regency" ? "Kab/Kota" : "Provinsi"}
             </button>
           ))}

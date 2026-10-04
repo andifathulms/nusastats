@@ -194,7 +194,7 @@ export function DukcapilCorrelation({ groups }: { groups: DukcapilIndicatorGroup
                 key={v}
                 onClick={() => setLevel(v)}
                 className={`rounded-md px-3 py-1 text-xs font-medium transition-colors ${
-                  level === v ? "bg-brand-gradient text-white" : "text-ink-muted hover:bg-ink-panel2/70 hover:text-ink-text"
+                  level === v ? "bg-laut-950 text-kertas-200 dark:bg-ink-accent dark:text-ink-onAccent" : "text-ink-muted hover:bg-ink-panel2/70 hover:text-ink-text"
                 }`}
               >
                 {lbl}
