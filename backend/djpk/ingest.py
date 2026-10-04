@@ -145,6 +145,9 @@ def ingest(
         if on_progress:
             on_progress(dname, i, total)
 
+    from api.caching import bump_data_version
+
+    bump_data_version("djpk")
     return {
         "tahun": tahun,
         "report_type": report_type,

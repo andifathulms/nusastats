@@ -3,6 +3,7 @@
 import pytest
 from rest_framework.test import APIClient
 
+from api.caching import bump_data_version
 from djpk.models import ApbdLine, ApbdRegion, ApbdReport, RegionLevel
 
 from .test_stats_api import dataset  # noqa: F401  (shared fixture)
@@ -40,6 +41,7 @@ def test_series_reports_truncation(api_client, dataset, monkeypatch):  # noqa: F
     assert {"domain_id", "domain_name", "year", "value"} <= set(full["results"][0])
 
     monkeypatch.setattr(stats_views, "SERIES_CAP", 3)
+    bump_data_version("bps")  # the uncapped response is cached
     cut = api_client.get("/api/stats/variables/455/series/").data
     assert cut["truncated"] is True
     assert cut["count"] == 3

@@ -165,7 +165,10 @@ export type Region = {
 };
 
 async function get<T>(path: string): Promise<T> {
-  const res = await fetch(`${API_BASE}/api${path}`, { cache: "no-store" });
+  // Default HTTP caching: the backend sends Cache-Control + ETag on read
+  // endpoints, so the browser reuses responses that several components on one
+  // page request (crosswalk, bridge, catalogs) instead of refetching each time.
+  const res = await fetch(`${API_BASE}/api${path}`);
   if (!res.ok) throw new Error(`API ${path} -> ${res.status}`);
   return res.json();
 }

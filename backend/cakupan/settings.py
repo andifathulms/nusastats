@@ -39,6 +39,9 @@ MIDDLEWARE = [
     # secrets in response bodies, so BREACH-style concerns don't apply. In
     # production a reverse proxy may do this instead; both together are fine.
     "django.middleware.gzip.GZipMiddleware",
+    # ETag + 304 Not Modified on GETs. Sits below GZip so the ETag is taken
+    # over the uncompressed body (GZip then marks it weak).
+    "django.middleware.http.ConditionalGetMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
@@ -115,6 +118,23 @@ REST_FRAMEWORK = {
 CORS_ALLOWED_ORIGINS = os.environ.get(
     "CORS_ALLOWED_ORIGINS", "http://localhost:3000"
 ).split(",")
+
+# --- Read-API response cache (api.caching) ---
+# Keys embed a per-source data version that each ingest bumps, so entries
+# never go stale; the timeout only bounds memory. Uses its own Redis DB so it
+# can be flushed without touching Celery's broker/results. Not the same thing
+# as the crawler's BPS response cache below, and not an audit trail.
+API_CACHE_TIMEOUT = int(os.environ.get("API_CACHE_TIMEOUT", 60 * 60 * 24))
+if "pytest" in sys.modules:
+    CACHES = {"default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"}}
+else:
+    CACHES = {
+        "default": {
+            "BACKEND": "django.core.cache.backends.redis.RedisCache",
+            "LOCATION": os.environ.get("API_CACHE_REDIS_URL", "redis://redis:6379/2"),
+            "KEY_PREFIX": "nusastats",
+        }
+    }
 
 # --- Celery ---
 CELERY_BROKER_URL = os.environ.get("REDIS_URL", "redis://redis:6379/0")

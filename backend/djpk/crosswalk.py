@@ -199,6 +199,9 @@ def build_crosswalk():
         updated, ["kemendagri_code", "match_method", "matched_name"]
     )
 
+    from api.caching import bump_data_version
+
+    bump_data_version("djpk")
     matched = sum(1 for r in updated if r.kemendagri_code)
     return {
         "matched": matched,

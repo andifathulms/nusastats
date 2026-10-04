@@ -23,4 +23,7 @@ def seed_indicators():
         )
         seen.append(field)
     removed, _ = DukcapilIndicator.objects.exclude(field__in=seen).delete()
+    from api.caching import bump_data_version
+
+    bump_data_version("dukcapil")
     return {"seeded": len(seen), "removed": removed}

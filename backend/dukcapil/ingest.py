@@ -201,4 +201,7 @@ def ingest(levels, period=None, on_page=None):
     for level in levels:
         counts[level] = ingest_level(level, period, on_page=on_page)
     relinked = relink_parents(period)
+    from api.caching import bump_data_version
+
+    bump_data_version("dukcapil")
     return {"counts": counts, "relinked": relinked, "period": period}

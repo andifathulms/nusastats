@@ -76,6 +76,9 @@ class Command(BaseCommand):
             self._bulk(updates)
             self.stdout.write(f"{level}: {sum(1 for u in updates if u.luas_big is not None):,}/{len(updates):,} set")
 
+        from api.caching import bump_data_version
+
+        bump_data_version("dukcapil")
         self.stdout.write(self.style.SUCCESS("done"))
 
     def _period(self):

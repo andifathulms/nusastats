@@ -23,17 +23,24 @@ from dukcapil.models import DukcapilFetchLog, DukcapilIndicator, DukcapilLevel, 
 from dukcapil.values import region_value, to_number
 
 from .analytics import distribution, pearson, percentile_rank, rank_rows
-from .params import MAX_PAGE, int_param, paginate
+from .caching import cached_api, memo
 from .dukcapil_serializers import DukcapilIndicatorSerializer, DukcapilRegionSerializer
+from .params import MAX_PAGE, int_param, paginate
 
 # Headline indicators summed for the overview cards.
 _SUMMARY_FIELDS = ["jumlah_penduduk", "jumlah_kk", "pria", "wanita", "jml_lahir", "jml_meninggal"]
 
 
 def _periods():
-    """All snapshot periods, newest first."""
-    return list(
-        DukcapilRegion.objects.order_by("-period").values_list("period", flat=True).distinct()
+    """All snapshot periods, newest first. Memoized per Dukcapil ingest — it's
+    a DISTINCT over the whole region table, and every Dukcapil request (and
+    every search keystroke) needs it."""
+    return memo(
+        ("dukcapil",),
+        "dukcapil_periods",
+        lambda: list(
+            DukcapilRegion.objects.order_by("-period").values_list("period", flat=True).distinct()
+        ),
     )
 
 
@@ -121,6 +128,7 @@ def _metric_values(qs, field):
 
 
 @api_view(["GET"])
+@cached_api("dukcapil")
 def summary(request):
     """`/api/dukcapil/summary/` — per-level region counts and national
     aggregates (summed from provinces on the fly; no synthetic national row
@@ -158,6 +166,7 @@ def summary(request):
 
 
 @api_view(["GET"])
+@cached_api("dukcapil")
 def indicators(request):
     """`/api/dukcapil/indicators/` — the catalog, grouped for the picker.
     Includes derived demographic indicators (sex ratio, dependency ratio,
@@ -185,6 +194,7 @@ def indicators(request):
 
 
 @api_view(["GET"])
+@cached_api("dukcapil")
 def regions(request):
     """`/api/dukcapil/regions/?level=&parent=&search=&limit=` — region
     picker/list. Defaults to provinces; `parent` narrows to one parent's
@@ -203,6 +213,7 @@ def regions(request):
 
 
 @api_view(["GET"])
+@cached_api("dukcapil")
 def region_detail(request, code):
     """`/api/dukcapil/regions/{code}/` — one region's full indicator profile,
     grouped, each with the region's rank/percentile among peers at its level."""
@@ -304,6 +315,7 @@ def region_detail(request, code):
 
 
 @api_view(["GET"])
+@cached_api("dukcapil")
 def rank(request):
     """`/api/dukcapil/rank/?indicator=&level=&parent=&order=&limit=` — rank
     regions at a level by one indicator, plus distribution stats. `parent`
@@ -400,6 +412,7 @@ def rank(request):
 
 
 @api_view(["GET"])
+@cached_api("dukcapil")
 def correlate(request):
     """`/api/dukcapil/correlate/?x=&y=&level=` — two indicators across regions
     at a level, one point per region, plus the Pearson correlation."""
@@ -523,6 +536,7 @@ def _resolve_dukcapil_regency(domain_id, bps_name, period, regs=None):
 
 
 @api_view(["GET"])
+@cached_api("bps", "dukcapil")
 def regency_crosswalk(request):
     """`/api/dukcapil/regency-crosswalk/` — every BPS regency domain_id mapped to
     its Kemendagri (Dukcapil) regency code + its modern province (2-digit code +
@@ -554,6 +568,7 @@ def regency_crosswalk(request):
 
 
 @api_view(["GET"])
+@cached_api("bps", "dukcapil")
 def regency_bridge(request, domain_id):
     """`/api/dukcapil/regency-bridge/<bps_domain_id>/` — bridge a BPS regency
     to the Dukcapil side: the matched Dukcapil regency plus its kecamatan (with

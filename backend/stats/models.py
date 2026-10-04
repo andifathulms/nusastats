@@ -71,3 +71,17 @@ class DataPoint(models.Model):
     def __str__(self):
         label = self.vervar_label or self.turvar_label or "total"
         return f"{self.variable_id}@{self.domain_id}/{self.period_id} ({label}) = {self.value}"
+
+
+class LevelStats(models.Model):
+    """Data-point count per admin level, refreshed alongside the per-variable
+    `Variable.stat_*` figures (stats.aggregates.refresh_variable_stats) so the
+    overview summary never has to group the multi-million-row DataPoint table
+    per request. Derived purely from DataPoint; holds no values of its own."""
+
+    admin_level = models.CharField(max_length=16, unique=True)
+    data_points = models.PositiveBigIntegerField(default=0)
+    refreshed_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.admin_level}: {self.data_points}"

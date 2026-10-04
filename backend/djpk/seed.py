@@ -16,4 +16,7 @@ def seed_accounts():
         unique_fields=["akun_key"],
         update_fields=["label_id", "group", "parent_key", "sort"],
     )
+    from api.caching import bump_data_version
+
+    bump_data_version("djpk")
     return len(rows)

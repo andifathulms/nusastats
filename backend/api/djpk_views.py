@@ -23,8 +23,9 @@ from djpk.derived import meta as derived_meta
 from djpk.models import ApbdAccount, ApbdLine, ApbdRegion, ApbdReport, RegionLevel
 
 from .analytics import distribution, growth_rows, pearson, percentile_rank, rank_rows
-from .params import MAX_PAGE, int_param, paginate
+from .caching import cached_api, memo
 from .djpk_serializers import ApbdAccountSerializer, ApbdRegionSerializer
+from .params import MAX_PAGE, int_param, paginate
 
 MEASURES = {"realisasi": "realisasi", "anggaran": "anggaran", "persentase": "persentase"}
 DEFAULT_MEASURE = "realisasi"
@@ -37,11 +38,16 @@ _HEADLINE = ["pendapatan_daerah", "pad", "belanja_daerah", "pembiayaan_daerah"]
 
 def _scopes():
     """Distinct (tahun, report_type, periode) triples that have reports,
-    newest year first."""
-    return list(
-        ApbdReport.objects.order_by("-tahun", "report_type", "-periode")
-        .values("tahun", "report_type", "periode")
-        .distinct()
+    newest year first. Memoized per DJPK ingest (summary alone used to run
+    this DISTINCT four times per request)."""
+    return memo(
+        ("djpk",),
+        "djpk_scopes",
+        lambda: list(
+            ApbdReport.objects.order_by("-tahun", "report_type", "-periode")
+            .values("tahun", "report_type", "periode")
+            .distinct()
+        ),
     )
 
 
@@ -151,6 +157,7 @@ def _metric_values(tahun, rtype, periode, level, akun_key, measure, prov=None):
 # --- endpoints -----------------------------------------------------------
 
 @api_view(["GET"])
+@cached_api("djpk")
 def summary(request):
     """`/api/djpk/summary/` — available scopes, region counts, and national
     headline totals (summed from provinces for the resolved scope)."""
@@ -209,6 +216,7 @@ def summary(request):
 
 
 @api_view(["GET"])
+@cached_api("djpk")
 def accounts(request):
     """`/api/djpk/accounts/` — the APBD chart-of-accounts catalog, grouped
     (pendapatan / belanja / pembiayaan) with parent_key hierarchy for a picker
@@ -228,6 +236,7 @@ def accounts(request):
 
 
 @api_view(["GET"])
+@cached_api("djpk")
 def regions(request):
     """`/api/djpk/regions/?level=&prov=&search=&limit=` — region list with the
     Kemendagri crosswalk. Defaults to provinces; `prov` (DJPK province code)
@@ -247,6 +256,7 @@ def regions(request):
 
 
 @api_view(["GET"])
+@cached_api("djpk")
 def rank(request):
     """`/api/djpk/rank/?akun=&measure=&level=&prov=&tahun=&type=&periode=&order=`
     — rank regions at a level by one account+measure, plus distribution stats."""
@@ -281,6 +291,7 @@ def rank(request):
 
 
 @api_view(["GET"])
+@cached_api("djpk")
 def correlate(request):
     """`/api/djpk/correlate/?x=&y=&measure=&level=&tahun=&type=&periode=` — two
     accounts across regions at a level (one point per region) + Pearson r."""
@@ -310,6 +321,7 @@ def correlate(request):
 
 
 @api_view(["GET"])
+@cached_api("djpk")
 def growth(request):
     """`/api/djpk/growth/?akun=&measure=&level=&from=&to=&type=&periode=` —
     per-region change of one account+measure between two years."""
@@ -343,6 +355,7 @@ def growth(request):
 
 
 @api_view(["GET"])
+@cached_api("djpk")
 def region_detail(request, code):
     """`/api/djpk/regions/{djpk_code}/?tahun=&type=&periode=` — one region's
     full APBD tree for the scope (every account line, joined to the catalog for

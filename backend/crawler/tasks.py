@@ -48,6 +48,10 @@ def recrawl_confirmed_coverage():
             upsert_domain_coverage(variable, domain, response_log_pairs)
             checked += 1
 
+    # The overview summary reports the confirmed-variable count.
+    from api.caching import bump_data_version
+
+    bump_data_version("bps")
     return {"checked": checked}
 
 

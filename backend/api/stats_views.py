@@ -6,18 +6,19 @@ concerns stay distinct.
 
 from collections import defaultdict
 
-from django.db.models import Avg, Count, Max, Min
+from django.db.models import Avg, Count, F, Max, Min, Q, Sum
 from rest_framework import viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from catalog.models import AdminLevel, CoverageRecord, CoverageStatus, Domain, SubjectCategory, Variable
-from stats.models import DataPoint
+from stats.models import DataPoint, LevelStats
 
 from .analytics import distribution, growth_rows, pearson, percentile_rank, rank_rows
-from .stats_filters import RegionFilter, StatsVariableFilter
+from .caching import cached_api
 from .params import int_param, paginate
+from .stats_filters import RegionFilter, StatsVariableFilter
 from .stats_serializers import RegionSerializer, VariableWithDataSerializer
 
 # Hard cap on rows per series response; callers learn about a cut via
@@ -46,17 +47,15 @@ class SummaryView(APIView):
     """`/api/stats/summary/` — headline figures for the overview dashboard,
     all derived from real ingested data (never hardcoded).
 
-    Written as a handful of single-pass grouped queries rather than a
-    per-bucket count loop: against the real ~2.7M-row table the naive
-    version took ~3.3s, this ~0.3s.
+    Reads only the denormalized figures refresh_variable_stats() writes after
+    each ingest (Variable.stat_* and stats.LevelStats) — no request touches
+    the multi-million-row DataPoint table. The previous grouped-scan version
+    took 0.5-1.9s against the real ~2.7M rows; this is a few small queries.
     """
 
+    @cached_api("bps")
     def get(self, request):
-        # One grouped pass for data-point counts per admin level.
-        points_by_level = {
-            row["admin_level"]: row["c"]
-            for row in DataPoint.objects.order_by().values("admin_level").annotate(c=Count("id"))
-        }
+        points_by_level = dict(LevelStats.objects.values_list("admin_level", "data_points"))
         domains_by_level = {
             row["admin_level"]: row["c"]
             for row in Domain.objects.order_by().values("admin_level").annotate(c=Count("id"))
@@ -71,34 +70,19 @@ class SummaryView(APIView):
             for level, label in AdminLevel.choices
         ]
 
-        # One grouped pass: variable pk -> its data-point count. Gives both
-        # the set of variables-with-data and the total, avoiding separate
-        # distinct/count scans over the full table.
-        counts_by_variable = {
-            row["variable_id"]: row["c"]
-            for row in DataPoint.objects.order_by().values("variable_id").annotate(c=Count("id"))
-        }
-        vars_with_data = set(counts_by_variable)
-        total_data_points = sum(counts_by_variable.values())
-
-        # Cheap catalog-side lookups (thousands of rows, not millions).
-        category_by_variable = dict(
-            Variable.objects.values_list("id", "subject__subject_category__name")
+        with_data = Variable.objects.filter(stat_data_points__gt=0)
+        agg = with_data.aggregate(
+            n=Count("id"), points=Sum("stat_data_points"),
+            year_min=Min("stat_year_min"), year_max=Max("stat_year_max"),
         )
-        category_variable_totals = {}
-        category_with_data = {}
-        for var_pk, category_name in category_by_variable.items():
-            category_variable_totals[category_name] = category_variable_totals.get(category_name, 0) + 1
-            if var_pk in vars_with_data:
-                category_with_data[category_name] = category_with_data.get(category_name, 0) + 1
+
         by_category = [
-            {
-                "category": name,
-                "variables": category_variable_totals.get(name, 0),
-                "with_data": category_with_data.get(name, 0),
-            }
-            for name in sorted(category_variable_totals)
-            if name is not None
+            {"category": row["category"], "variables": row["variables"], "with_data": row["with_data"]}
+            for row in Variable.objects.order_by()
+            .values(category=F("subject__subject_category__name"))
+            .annotate(variables=Count("id"), with_data=Count("id", filter=Q(stat_data_points__gt=0)))
+            .order_by("category")
+            if row["category"] is not None
         ]
 
         confirmed_variables = (
@@ -108,18 +92,17 @@ class SummaryView(APIView):
             .distinct()
             .count()
         )
-        year_agg = DataPoint.objects.aggregate(year_min=Min("year"), year_max=Max("year"))
 
         return Response(
             {
                 "total_variables": Variable.objects.count(),
                 "confirmed_variables": confirmed_variables,
-                "variables_with_data": len(vars_with_data),
-                "total_data_points": total_data_points,
+                "variables_with_data": agg["n"],
+                "total_data_points": agg["points"] or 0,
                 "total_domains": Domain.objects.count(),
                 "subject_categories": SubjectCategory.objects.count(),
-                "year_min": year_agg["year_min"],
-                "year_max": year_agg["year_max"],
+                "year_min": agg["year_min"],
+                "year_max": agg["year_max"],
                 "by_admin_level": by_admin_level,
                 "by_category": by_category,
             }
@@ -146,7 +129,16 @@ class VariableDataViewSet(viewsets.ReadOnlyModelViewSet):
             .order_by("subject__subject_category__name", "name")
         )
 
+    @cached_api("bps")
+    def list(self, request, *args, **kwargs):
+        return super().list(request, *args, **kwargs)
+
+    @cached_api("bps")
+    def retrieve(self, request, *args, **kwargs):
+        return super().retrieve(request, *args, **kwargs)
+
     @action(detail=True, methods=["get"])
+    @cached_api("bps")
     def dimensions(self, request, variable_id=None):
         """`/api/stats/variables/{id}/dimensions/` — the axes available for
         this variable: which years, which vervar/turvar breakdowns, and
@@ -183,6 +175,7 @@ class VariableDataViewSet(viewsets.ReadOnlyModelViewSet):
         )
 
     @action(detail=True, methods=["get"])
+    @cached_api("bps")
     def series(self, request, variable_id=None):
         """`/api/stats/variables/{id}/series/` — the actual values, the
         core analytics endpoint. Filter with query params:
@@ -246,6 +239,7 @@ class VariableDataViewSet(viewsets.ReadOnlyModelViewSet):
         return points.order_by("turvar_id").values_list("turvar_id", flat=True).first()
 
     @action(detail=True, methods=["get"])
+    @cached_api("bps")
     def ranking(self, request, variable_id=None):
         """`/api/stats/variables/{id}/ranking/` — rank every region at an
         admin level by this indicator's value for one year. Params:
@@ -295,6 +289,7 @@ class VariableDataViewSet(viewsets.ReadOnlyModelViewSet):
         )
 
     @action(detail=True, methods=["get"])
+    @cached_api("bps")
     def trend(self, request, variable_id=None):
         """`/api/stats/variables/{id}/trend/` — the national trajectory over
         time: per year the national value (if the indicator has a national
@@ -360,6 +355,7 @@ class VariableDataViewSet(viewsets.ReadOnlyModelViewSet):
         )
 
     @action(detail=True, methods=["get"])
+    @cached_api("bps")
     def growth(self, request, variable_id=None):
         """`/api/stats/variables/{id}/growth/` — per-region change between
         two years, sorted fastest-rising to fastest-declining. Params:
@@ -420,7 +416,16 @@ class RegionViewSet(viewsets.ReadOnlyModelViewSet):
     def get_queryset(self):
         return Domain.objects.select_related("parent_province").order_by("domain_id")
 
+    @cached_api("bps")
+    def list(self, request, *args, **kwargs):
+        return super().list(request, *args, **kwargs)
+
+    @cached_api("bps")
+    def retrieve(self, request, *args, **kwargs):
+        return super().retrieve(request, *args, **kwargs)
+
     @action(detail=True, methods=["get"])
+    @cached_api("bps")
     def variables(self, request, domain_id=None):
         """`/api/stats/regions/{domain_id}/variables/` — every indicator
         that has data for this region, with per-region counts and year
@@ -475,6 +480,7 @@ class RegionViewSet(viewsets.ReadOnlyModelViewSet):
         )
 
     @action(detail=True, methods=["get"])
+    @cached_api("bps")
     def profile(self, request, domain_id=None):
         """`/api/stats/regions/{domain_id}/profile/` — how this region ranks
         against its peers (other regions at the same admin level) across its
@@ -565,6 +571,7 @@ class CorrelateView(APIView):
     y_turvar_id.
     """
 
+    @cached_api("bps")
     def get(self, request):
         x_id = request.query_params.get("x")
         y_id = request.query_params.get("y")

@@ -13,6 +13,7 @@ from rest_framework.response import Response
 from catalog.models import AdminLevel, Domain, Variable
 from dukcapil.models import DukcapilLevel, DukcapilRegion
 
+from .caching import cached_api
 from .dukcapil_views import _resolve_period
 
 MIN_QUERY = 2
@@ -57,6 +58,7 @@ def _bps_level_label(d):
 
 
 @api_view(["GET"])
+@cached_api("bps", "dukcapil")
 def search(request):
     q = (request.query_params.get("q") or "").strip()
     tokens = _tokens(q)

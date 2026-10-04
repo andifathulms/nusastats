@@ -342,4 +342,9 @@ def run_coverage_crawl(client=None, log=None):
             checked += 1
             log(f"  var={variable.variable_id} domain={domain.domain_id} -> {record.status}")
 
+    # Read-API cache only (the overview's confirmed count); this never feeds
+    # back into coverage detection.
+    from api.caching import bump_data_version
+
+    bump_data_version("bps")
     return {"checked": checked, "variables": len(variables), "hard_stopped": hard_stopped}
