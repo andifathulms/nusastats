@@ -1,0 +1,31 @@
+# Terrain classification (docs/FEATURE-peta-wilayah.md §5.2).
+# A NusaStats classification, NOT an official one. Rules are checked in order;
+# the first match wins. `any` = at least one condition holds, `all` = every
+# condition holds. Values are percentages of the area (equal-area UTM pixels).
+version: 1
+metrics:
+  share_elev_ge_1000: "area ≥1000 m"
+  share_elev_ge_200: "area ≥200 m"
+  share_elev_lt_100: "area <100 m"
+  share_slope_ge_25: "area slope ≥25°"
+  share_slope_ge_8: "area slope ≥8°"
+  share_slope_lt_8: "area slope <8°"
+rules:
+  - class: pegunungan
+    label: Pegunungan
+    any:
+      - {metric: share_elev_ge_1000, op: ">=", value: 40}
+      - {metric: share_slope_ge_25, op: ">=", value: 40}
+  - class: perbukitan
+    label: Perbukitan
+    any:
+      - {metric: share_slope_ge_8, op: ">=", value: 50}
+      - {metric: share_elev_ge_200, op: ">=", value: 50}
+  - class: dataran_rendah
+    label: Dataran rendah
+    all:
+      - {metric: share_elev_lt_100, op: ">=", value: 60}
+      - {metric: share_slope_lt_8, op: ">=", value: 60}
+  - class: campuran
+    label: Campuran
+    default: true

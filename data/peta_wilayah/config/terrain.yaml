@@ -1,0 +1,28 @@
+# Terrain processing & rendering parameters (docs/FEATURE-peta-wilayah.md §4.3, §5.1).
+stats:
+  utm_pixel_m: 30            # equal-area grid for stats & slope (DEM native ~30.9 m)
+  resampling: bilinear       # DEM -> UTM
+  pad_deg: 0.01              # mosaic padding so edge slopes have neighbours
+  max_nodata_pct: 0.1        # fail if more of the polygon than this has no DEM value
+  max_area_diff_pct: 2.0     # fail if pixel/UTM area differs from geodesic polygon area by more
+  elevation_bands_m: [100, 500, 1000, 2000]   # -> <100, 100-500, 500-1000, 1000-2000, >=2000
+  slope_breaks_deg: [8, 25]                   # -> <8, 8-25, >=25
+render:
+  max_px: 2048               # longest side of display layers; downsample factor grows to fit
+  max_bytes: 2000000         # ~2 MB per WebP
+  webp_quality: 90
+  hillshade:
+    azimuth_deg: 315
+    altitude_deg: 45
+    z_factor: 1.0
+  # Hypsometric tint, absolute metres (same colours for every area so maps compare).
+  # Green lowland -> tan -> brown -> white peaks.
+  tint:
+    - [0, "#4f8f4a"]
+    - [100, "#8fb36a"]
+    - [300, "#cfd28c"]
+    - [500, "#e3cf98"]
+    - [1000, "#c8a06a"]
+    - [2000, "#9a6a43"]
+    - [3000, "#7b5a4a"]
+    - [4000, "#ffffff"]
