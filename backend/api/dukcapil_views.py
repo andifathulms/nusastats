@@ -9,6 +9,7 @@ endpoints use, so nothing about the BPS/`stats` stack is touched.
 """
 
 import re
+from collections import defaultdict
 
 from django.db.models import Count, F
 from django.db.models.fields.json import KeyTextTransform
@@ -25,7 +26,7 @@ from dukcapil.values import region_value, to_number
 from .analytics import distribution, pearson, percentile_rank, rank_rows
 from .caching import cached_api, memo
 from .dukcapil_serializers import DukcapilIndicatorSerializer, DukcapilRegionSerializer
-from .params import MAX_PAGE, int_param, paginate
+from .params import MAX_PAGE, int_param, paginate, str_list_param
 
 # Headline indicators summed for the overview cards.
 _SUMMARY_FIELDS = ["jumlah_penduduk", "jumlah_kk", "pria", "wanita", "jml_lahir", "jml_meninggal"]
@@ -57,11 +58,15 @@ def _apply_ancestor(qs, request):
     """Narrow to the deepest selected ancestor (kec > kab > prov). This makes
     filtering adaptive: picking only a province, or province+kabupaten, both
     work — a level is filtered by whichever ancestor code is given, not by
-    requiring its immediate parent. Returns (queryset, applied_scope)."""
+    requiring its immediate parent. Each param may list several codes
+    (`?prov=32,33` or repeated), so a multi-province map is one request, not
+    one per province. Returns (queryset, applied_scope)."""
     for param, field in (("kec", "kec_code"), ("kab", "kab_code"), ("prov", "prov_code")):
-        val = request.query_params.get(param)
-        if val:
-            return qs.filter(**{field: val}), {param: val}
+        vals = str_list_param(request, param)
+        if len(vals) == 1:
+            return qs.filter(**{field: vals[0]}), {param: vals[0]}
+        if vals:
+            return qs.filter(**{f"{field}__in": vals}), {param: ",".join(vals)}
     return qs, {}
 
 
@@ -208,7 +213,13 @@ def regions(request):
     if search:
         qs = qs.filter(name__icontains=search)
     limit = int_param(request, "limit", 1000, lo=1, hi=MAX_PAGE)
-    qs = qs.select_related("parent").order_by("code")[:limit]
+    # Only the serializer's columns: a bare select_related also pulled every
+    # row's and its parent's full `attributes` JSONB just to print a name.
+    qs = (
+        qs.select_related("parent")
+        .only("code", "level", "name", "status", "parent_code", "parent__name")
+        .order_by("code")[:limit]
+    )
     return Response(DukcapilRegionSerializer(qs, many=True).data)
 
 
@@ -219,7 +230,10 @@ def region_detail(request, code):
     grouped, each with the region's rank/percentile among peers at its level."""
     period, _ = _resolve_period(request)
     region = (
-        DukcapilRegion.objects.filter(code=code, period=period).select_related("parent").first()
+        DukcapilRegion.objects.filter(code=code, period=period)
+        .select_related("parent")
+        .defer("parent__attributes")
+        .first()
     )
     if not region:
         return Response({"detail": "Unknown region code."}, status=404)
@@ -378,6 +392,9 @@ def rank(request):
     stats = distribution([r["value"] for r in rows])
     # Pagination: distribution stats are over the full set; only a page of
     # ranked rows is returned (bounded by MAX_PAGE even without a limit).
+    # Ranking stays in Python on purpose: doing it in SQL re-detoasts the
+    # large `attributes` JSONB once per expression use and measured ~6x
+    # slower at village level; repeat views are served by the response cache.
     page, page_meta = paginate(rank_rows(rows, order=order), request)
 
     # Enrich the page rows with status + denormalized ancestor names so the UI
@@ -497,7 +514,28 @@ _REGENCY_CROSSWALK = {
 }
 
 
-def _resolve_dukcapil_regency(domain_id, bps_name, period, regs=None):
+class _RegencyIndex:
+    """The period's Dukcapil regencies, indexed once by every key the
+    resolver matches on. Replaces re-scanning (and re-normalizing with a
+    regex) the full ~514-row list three times per lookup — O(n^2) across the
+    crosswalk. Loads only the identity columns, not the attributes JSONB."""
+
+    def __init__(self, period):
+        self.by_code = {}
+        self.by_key = defaultdict(list)
+        for r in DukcapilRegion.objects.filter(level="regency", period=period).only("id", "code", "name", "status"):
+            key, fam = _norm(r.name), _status_family(r.status)
+            self.by_code[r.code] = r
+            self.by_key[("prov", r.code[:2], fam, key)].append(r)
+            self.by_key[("status", fam, key)].append(r)
+            self.by_key[("name", key)].append(r)
+
+    def unique(self, *key):
+        m = self.by_key.get(key, ())
+        return m[0] if len(m) == 1 else None
+
+
+def _resolve_dukcapil_regency(domain_id, bps_name, index):
     """A BPS regency domain_id -> the matching Dukcapil regency.
 
     BPS and Kemendagri number regencies DIFFERENTLY within most provinces, so
@@ -509,30 +547,20 @@ def _resolve_dukcapil_regency(domain_id, bps_name, period, regs=None):
     province codes, and DKI labels its kota as 'Kabupaten'), with a small
     hand-verified crosswalk for the few genuine renames/spelling splits."""
     xcode = _REGENCY_CROSSWALK.get(domain_id)
-    if xcode:
-        r = DukcapilRegion.objects.filter(level="regency", period=period, code=xcode).first()
-        if r:
-            return r
-    status, key = bps_regency_status(domain_id), _norm(bps_name)
+    if xcode and xcode in index.by_code:
+        return index.by_code[xcode]
+    key = _norm(bps_name)
     if not key:
         return None
-    if regs is None:
-        regs = list(DukcapilRegion.objects.filter(level="regency", period=period))
-    fam = _status_family(status)
-    prov = domain_id[:2]
-    # 1) same province + status + name (resolves the vast majority)
-    m = [r for r in regs if r.code[:2] == prov and _status_family(r.status) == fam and _norm(r.name) == key]
-    if len(m) == 1:
-        return m[0]
-    # 2) national + status + name (Papua reorg: regency moved to a new province)
-    m = [r for r in regs if _status_family(r.status) == fam and _norm(r.name) == key]
-    if len(m) == 1:
-        return m[0]
-    # 3) national name only, last resort (DKI kota are labeled 'Kabupaten')
-    m = [r for r in regs if _norm(r.name) == key]
-    if len(m) == 1:
-        return m[0]
-    return None
+    fam = _status_family(bps_regency_status(domain_id))
+    return (
+        # 1) same province + status + name (resolves the vast majority)
+        index.unique("prov", domain_id[:2], fam, key)
+        # 2) national + status + name (Papua reorg: regency moved province)
+        or index.unique("status", fam, key)
+        # 3) national name only, last resort (DKI kota are labeled 'Kabupaten')
+        or index.unique("name", key)
+    )
 
 
 @api_view(["GET"])
@@ -543,18 +571,17 @@ def regency_crosswalk(request):
     name). Lets BPS data (which numbers regencies differently and uses the stale
     34-province structure) be joined to the Kemendagri geometry and aggregated
     into the current 38 provinces. Resolution reuses `_resolve_dukcapil_regency`
-    (name + Kota/Kabupaten status), with the region set prefetched once."""
+    (name + Kota/Kabupaten status), with the region set indexed once."""
     period, _ = _resolve_period(request)
-    regs = list(DukcapilRegion.objects.filter(level="regency", period=period))
+    index = _RegencyIndex(period)
     prov_names = dict(
         DukcapilRegion.objects.filter(level="province", period=period).values_list("code", "name")
     )
     out = []
-    for d in Domain.objects.all():
-        did = d.domain_id
+    for did, name in Domain.objects.values_list("domain_id", "domain_name"):
         if not (len(did) == 4 and did.isdigit() and not did.endswith("00")):
             continue
-        r = _resolve_dukcapil_regency(did, d.domain_name, period, regs=regs)
+        r = _resolve_dukcapil_regency(did, name, index)
         if not r:
             continue
         pc = r.code[:2]
@@ -576,8 +603,8 @@ def regency_bridge(request, domain_id):
     Dukcapil administrative tree. Villages per kecamatan come from the rank
     endpoint (level=village&kec=<code>)."""
     period, _ = _resolve_period(request)
-    bps = Domain.objects.filter(domain_id=domain_id).first()
-    reg = _resolve_dukcapil_regency(domain_id, bps.domain_name if bps else "", period)
+    bps_name = Domain.objects.filter(domain_id=domain_id).values_list("domain_name", flat=True).first()
+    reg = _resolve_dukcapil_regency(domain_id, bps_name or "", _RegencyIndex(period))
     if not reg:
         return Response({"bps_domain_id": domain_id, "dukcapil": None, "districts": []})
 
@@ -609,7 +636,8 @@ def regency_bridge(request, domain_id):
                 "code": reg.code,
                 "name": reg.name,
                 "status": reg.status,
-                "population": region_value(reg.attributes, "jumlah_penduduk"),
+                "population": _value_map(DukcapilRegion.objects.filter(pk=reg.pk), "jumlah_penduduk")
+                .get(reg.code, (None, None))[1],
                 "district_count": len(dist),
                 "village_count": sum(vcounts.values()),
             },

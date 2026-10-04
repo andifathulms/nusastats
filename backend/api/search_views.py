@@ -93,6 +93,9 @@ def search(request):
         )
         .filter(_all_tokens("name", tokens))
         .select_related("parent", "parent__parent")
+        # Only the display columns: a bare select_related pulled each row's
+        # (and both ancestors') full `attributes` JSONB just to print names.
+        .only("code", "name", "level", "status", "parent__name", "parent__parent__name")
         .annotate(
             rank=_prefix_first("name", tokens[0]),
             lvl=Case(When(level=DukcapilLevel.DISTRICT, then=Value(0)), default=Value(1), output_field=IntegerField()),
@@ -118,6 +121,7 @@ def search(request):
         Variable.objects.filter(stat_data_points__gt=0)
         .filter(_all_tokens("name", tokens))
         .select_related("subject__subject_category")
+        .only("variable_id", "name", "unit", "stat_year_min", "stat_year_max", "subject__subject_category__name")
         .annotate(rank=_prefix_first("name", tokens[0]))
         .order_by("rank", "-stat_data_points")[: LIMITS["variable"]]
     )

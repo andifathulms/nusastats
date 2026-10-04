@@ -1,6 +1,20 @@
 services:
   db:
     image: postgres:16-alpine
+    # Stock Postgres defaults (128MB shared_buffers, 4MB work_mem) are sized
+    # for a toy box; the hot tables here are ~2.5GB (DataPoint 1.4GB,
+    # Dukcapil regions and the check log ~0.5GB each), so grouped analytics
+    # spilled to disk and evicted each other's pages. Overridable per host.
+    command: >
+      postgres
+      -c shared_buffers=${PG_SHARED_BUFFERS:-1GB}
+      -c effective_cache_size=${PG_EFFECTIVE_CACHE_SIZE:-3GB}
+      -c work_mem=${PG_WORK_MEM:-16MB}
+      -c maintenance_work_mem=${PG_MAINTENANCE_WORK_MEM:-256MB}
+      -c random_page_cost=1.1
+      -c effective_io_concurrency=200
+    # Parallel query workers share memory through /dev/shm (64MB by default).
+    shm_size: 256mb
     env_file: backend/.env
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-cakupan}

@@ -63,9 +63,8 @@ export function DukcapilMap({
       setRegencies([]);
       return;
     }
-    Promise.all(selProvs.map((p) => dukcapilApi.regions({ level: "regency", prov: p }))).then((rs) =>
-      setRegencies(rs.flat())
-    );
+    // One request for every selected province (the API takes a comma list).
+    dukcapilApi.regions({ level: "regency", prov: selProvs.join(",") }).then(setRegencies);
     setSelKabs((kabs) => kabs.filter((k) => selProvs.includes(k.slice(0, 2))));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [provKeyAll]);
@@ -77,7 +76,9 @@ export function DukcapilMap({
   const loadProvs = selKabs.length ? Array.from(new Set(selKabs.map((k) => k.slice(0, 2)))) : selProvs;
   const prefixKey = filterPrefixes.join(",");
 
-  const provKey = mapLevel === "village" ? loadProvs.join(",") : "";
+  // What the rank request is scoped by: villages load per (derived) province,
+  // districts by the selected provinces, the coarser levels nationwide.
+  const provKey = mapLevel === "village" ? loadProvs.join(",") : mapLevel === "district" ? provKeyAll : "";
   useEffect(() => {
     if ((mapLevel === "district" || mapLevel === "village") && !selProvs.length) {
       setRank(null);
@@ -90,10 +91,15 @@ export function DukcapilMap({
       order: "desc",
       ...(percentOf ? { percent_of: percentOf } : {}),
     };
+    // Villages stay one call per province: two large provinces together can
+    // exceed the API's 10k-row page. Districts are scoped server-side to the
+    // selected provinces instead of fetching all ~7k nationwide.
     const calls =
       mapLevel === "village"
         ? loadProvs.map((p) => dukcapilApi.rank({ ...base, level: "village", prov: p }))
-        : [dukcapilApi.rank({ ...base, level: mapLevel })];
+        : mapLevel === "district"
+          ? [dukcapilApi.rank({ ...base, level: "district", prov: selProvs.join(",") })]
+          : [dukcapilApi.rank({ ...base, level: mapLevel })];
     Promise.all(calls)
       .then((rs) => {
         const first = rs.find(Boolean);

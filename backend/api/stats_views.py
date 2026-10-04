@@ -303,6 +303,8 @@ class VariableDataViewSet(viewsets.ReadOnlyModelViewSet):
         def with_turvar(qs):
             tv = turvar_id or qs.order_by("turvar_id").values_list("turvar_id", flat=True).first()
             return qs.filter(turvar_id=tv) if tv is not None else qs
+        # (Resolved per admin level on purpose: national and province rows can
+        # carry different lowest turvars.)
 
         nat = {
             r["year"]: r["v"]
@@ -524,6 +526,9 @@ class RegionViewSet(viewsets.ReadOnlyModelViewSet):
 
         # Peers (same admin level) for exactly those (indicator, year, turvar)
         # combos, in one query; matched precisely in Python. (query 3)
+        # (An OR of exact (variable, year, turvar) tuples was tried: Postgres
+        # planned it 2-5x slower than this over-fetch, so the cross product
+        # stays and is filtered here.)
         peers_by_pk = defaultdict(list)
         if own:
             years = {y for (y, _, _) in own.values()}
@@ -533,7 +538,7 @@ class RegionViewSet(viewsets.ReadOnlyModelViewSet):
                 variable_id__in=list(own),
                 year__in=years,
                 turvar_id__in=turvars,
-            ).values("variable_id", "year", "turvar_id", "value"):
+            ).order_by().values("variable_id", "year", "turvar_id", "value"):
                 y, tv, _ = own[r["variable_id"]]
                 if r["year"] == y and r["turvar_id"] == tv:
                     peers_by_pk[r["variable_id"]].append(r["value"])
@@ -591,6 +596,7 @@ class CorrelateView(APIView):
                 .exclude(year__isnull=True)
                 .order_by()  # result feeds a set — drop the default sort
                 .values_list("year", flat=True)
+                .distinct()  # a handful of years, not one row per region
             )
 
         year = int_param(request, "year")

@@ -76,3 +76,23 @@ def test_djpk_peer_rank_counts_duplicate_lines_once(api_client):
     pad = next(line for g in resp.data["groups"] for line in g["lines"] if line["akun_key"] == "pad")
     assert pad["of"] == 2  # two regions, not three lines
     assert pad["rank"] == 2
+
+
+@pytest.mark.django_db
+def test_dukcapil_scope_accepts_several_provinces(api_client):
+    from dukcapil.models import DukcapilIndicator, DukcapilRegion
+
+    DukcapilIndicator.objects.create(field="jumlah_penduduk", label_id="Penduduk", group="Umum", unit="jiwa")
+    for code, pop in (("3201", 10), ("3301", 30), ("3501", 20)):
+        DukcapilRegion.objects.create(
+            level="regency", code=code, name=f"Kab {code}", period="2026-10",
+            prov_code=code[:2], kab_code=code, attributes={"jumlah_penduduk": pop},
+            fetched_at="2026-10-01T00:00:00Z",
+        )
+
+    resp = api_client.get("/api/dukcapil/rank/?level=regency&prov=32,33").data
+    assert resp["scope"] == {"prov": "32,33"}
+    assert [r["domain_id"] for r in resp["results"]] == ["3301", "3201"]
+
+    repeated = api_client.get("/api/dukcapil/regions/?level=regency&prov=32&prov=35").data
+    assert [r["code"] for r in repeated] == ["3201", "3501"]
