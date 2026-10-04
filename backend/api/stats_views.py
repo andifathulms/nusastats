@@ -17,7 +17,12 @@ from stats.models import DataPoint
 
 from .analytics import distribution, growth_rows, pearson, percentile_rank, rank_rows
 from .stats_filters import RegionFilter, StatsVariableFilter
-from .stats_serializers import DataPointSerializer, RegionSerializer, VariableWithDataSerializer
+from .params import int_param, paginate
+from .stats_serializers import RegionSerializer, VariableWithDataSerializer
+
+# Hard cap on rows per series response; callers learn about a cut via
+# `truncated`/`total` instead of a silently short `count`.
+SERIES_CAP = 10000
 
 
 def region_values(variable, admin_level, year, turvar_id=None):
@@ -189,7 +194,7 @@ class VariableDataViewSet(viewsets.ReadOnlyModelViewSet):
         Returns rows ordered for direct charting (year ascending).
         """
         variable = self.get_object()
-        points = DataPoint.objects.filter(variable=variable).select_related("domain")
+        points = DataPoint.objects.filter(variable=variable)
 
         domain_ids = request.query_params.getlist("domain_id")
         if domain_ids:
@@ -201,19 +206,37 @@ class VariableDataViewSet(viewsets.ReadOnlyModelViewSet):
             points = points.filter(vervar_id=request.query_params["vervar_id"])
         if request.query_params.get("turvar_id"):
             points = points.filter(turvar_id=request.query_params["turvar_id"])
-        if request.query_params.get("year_min"):
-            points = points.filter(year__gte=request.query_params["year_min"])
-        if request.query_params.get("year_max"):
-            points = points.filter(year__lte=request.query_params["year_max"])
+        year_min = int_param(request, "year_min")
+        year_max = int_param(request, "year_max")
+        if year_min is not None:
+            points = points.filter(year__gte=year_min)
+        if year_max is not None:
+            points = points.filter(year__lte=year_max)
 
-        points = points.order_by("domain__domain_id", "vervar_id", "turvar_id", "year")[:10000]
+        # Plain dicts via .values() rather than a ModelSerializer per row —
+        # at the 10k cap the per-row serializer overhead dominated the
+        # request. One extra row is fetched to detect truncation without a
+        # COUNT; the exact total is only counted when the cap was hit.
+        rows = list(
+            points.order_by("domain__domain_id", "vervar_id", "turvar_id", "year").values(
+                "domain__domain_id", "domain__domain_name", "admin_level", "year",
+                "vervar_id", "vervar_label", "turvar_id", "turvar_label", "value",
+            )[: SERIES_CAP + 1]
+        )
+        truncated = len(rows) > SERIES_CAP
+        rows = rows[:SERIES_CAP]
+        for r in rows:
+            r["domain_id"] = r.pop("domain__domain_id")
+            r["domain_name"] = r.pop("domain__domain_name")
         return Response(
             {
                 "variable_id": variable.variable_id,
                 "name": variable.name,
                 "unit": variable.unit,
-                "count": len(points),
-                "results": DataPointSerializer(points, many=True).data,
+                "count": len(rows),
+                "total": points.count() if truncated else len(rows),
+                "truncated": truncated,
+                "results": rows,
             }
         )
 
@@ -241,8 +264,9 @@ class VariableDataViewSet(viewsets.ReadOnlyModelViewSet):
                  "admin_level": admin_level, "year": None, "stats": distribution([]), "results": []}
             )
 
-        year = request.query_params.get("year")
-        year = int(year) if year else points.aggregate(m=Max("year"))["m"]
+        year = int_param(request, "year")
+        if year is None:
+            year = points.aggregate(m=Max("year"))["m"]
         points = points.filter(year=year)
 
         turvar_id = request.query_params.get("turvar_id") or self._default_turvar(points)
@@ -254,10 +278,7 @@ class VariableDataViewSet(viewsets.ReadOnlyModelViewSet):
             for p in points.values("domain__domain_id", "domain__domain_name", "value")
         ]
         stats = distribution([r["value"] for r in rows])
-        ranked = rank_rows(rows, order=order)
-        limit = request.query_params.get("limit")
-        if limit:
-            ranked = ranked[: int(limit)]
+        ranked, page_meta = paginate(rank_rows(rows, order=order), request)
 
         return Response(
             {
@@ -268,6 +289,7 @@ class VariableDataViewSet(viewsets.ReadOnlyModelViewSet):
                 "year": year,
                 "turvar_id": turvar_id,
                 "stats": stats,
+                **page_meta,
                 "results": ranked,
             }
         )
@@ -356,8 +378,8 @@ class VariableDataViewSet(viewsets.ReadOnlyModelViewSet):
             )
 
         yr = base.aggregate(lo=Min("year"), hi=Max("year"))
-        year_from = int(request.query_params.get("year_from") or yr["lo"])
-        year_to = int(request.query_params.get("year_to") or yr["hi"])
+        year_from = int_param(request, "year_from", yr["lo"])
+        year_to = int_param(request, "year_to", yr["hi"])
 
         turvar_id = request.query_params.get("turvar_id") or self._default_turvar(base.filter(year=year_to))
 
@@ -464,7 +486,7 @@ class RegionViewSet(viewsets.ReadOnlyModelViewSet):
         if region.admin_level == AdminLevel.NATIONAL:
             return Response({"region": RegionSerializer(region).data, "results": []})
 
-        limit = int(request.query_params.get("limit", 40))
+        limit = int_param(request, "limit", 40, lo=1, hi=500)
         # Top indicators for this region by data volume, with the latest year
         # each has here. (query 1)
         agg = list(
@@ -564,10 +586,8 @@ class CorrelateView(APIView):
                 .values_list("year", flat=True)
             )
 
-        year_param = request.query_params.get("year")
-        if year_param:
-            year = int(year_param)
-        else:
+        year = int_param(request, "year")
+        if year is None:
             common = years_of(xvar) & years_of(yvar)
             year = max(common) if common else None
 

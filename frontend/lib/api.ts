@@ -70,7 +70,17 @@ export type DataPoint = {
   value: number;
 };
 
-export type Series = { variable_id: string; name: string; unit: string; count: number; results: DataPoint[] };
+export type Series = {
+  variable_id: string;
+  name: string;
+  unit: string;
+  count: number;
+  // The backend caps a series at 10,000 rows; `truncated` says the cap was hit
+  // and `total` is the full match count, so a chart never silently drops data.
+  total: number;
+  truncated: boolean;
+  results: DataPoint[];
+};
 
 export type Ranking = {
   variable_id: string;
@@ -80,6 +90,8 @@ export type Ranking = {
   year: number | null;
   turvar_id: string | null;
   stats: { count: number; min: number | null; max: number | null; mean: number | null; median: number | null };
+  total: number;
+  offset: number;
   results: { domain_id: string; domain_name: string; value: number; rank: number }[];
 };
 

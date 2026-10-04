@@ -23,6 +23,7 @@ from djpk.derived import meta as derived_meta
 from djpk.models import ApbdAccount, ApbdLine, ApbdRegion, ApbdReport, RegionLevel
 
 from .analytics import distribution, growth_rows, pearson, percentile_rank, rank_rows
+from .params import MAX_PAGE, int_param, paginate
 from .djpk_serializers import ApbdAccountSerializer, ApbdRegionSerializer
 
 MEASURES = {"realisasi": "realisasi", "anggaran": "anggaran", "persentase": "persentase"}
@@ -240,7 +241,7 @@ def regions(request):
     search = request.query_params.get("search")
     if search:
         qs = qs.filter(name__icontains=search)
-    limit = int(request.query_params.get("limit", 1000))
+    limit = int_param(request, "limit", 1000, lo=1, hi=MAX_PAGE)
     qs = qs.order_by("djpk_code")[:limit]
     return Response(ApbdRegionSerializer(qs, many=True).data)
 
@@ -263,11 +264,7 @@ def rank(request):
         for code, (name, v, kemen) in vals.items()
     ]
     stats = distribution([r["value"] for r in rows])
-    full = rank_rows(rows, order=order)
-
-    offset = max(0, int(request.query_params.get("offset", 0)))
-    limit = request.query_params.get("limit")
-    page = full[offset : offset + int(limit)] if limit else full[offset:]
+    page, page_meta = paginate(rank_rows(rows, order=order), request)
 
     return Response({
         "account": account,
@@ -278,8 +275,7 @@ def rank(request):
         "order": order,
         "unit": unit,
         "stats": stats,
-        "total": len(full),
-        "offset": offset,
+        **page_meta,
         "results": page,
     })
 
@@ -337,12 +333,12 @@ def growth(request):
     to_vals, _u, _m = _metric_values(y_to, rtype, periode, level, akun_key, measure)
     from_by = {c: (n, v) for c, (n, v, _) in from_vals.items()}
     to_by = {c: (n, v) for c, (n, v, _) in to_vals.items()}
-    rows = growth_rows(from_by, to_by, order=order)
+    page, page_meta = paginate(growth_rows(from_by, to_by, order=order), request)
 
     return Response({
         "account": account, "unit": unit,
         "measure": measure, "level": level, "type": rtype, "periode": periode,
-        "from": y_from, "to": y_to, "total": len(rows), "results": rows,
+        "from": y_from, "to": y_to, **page_meta, "results": page,
     })
 
 
@@ -387,12 +383,17 @@ def region_detail(request, code):
     # akun) wins for the operands, matching _derived_values.
     _derived_requires = {k for spec in DERIVED for k in spec["requires"]}
     region_akun = {}
+    seen_peer = set()
     peer_rows = peer_qs.order_by("report__region__djpk_code", "line_index").values_list(
         "report__region__djpk_code", "akun_key", "realisasi"
     )
     for code, akun_key, realisasi in peer_rows:
-        if realisasi is None:
+        if realisasi is None or (code, akun_key) in seen_peer:
             continue
+        # First line per (region, akun) wins — a region with duplicate-label
+        # rows must count once among its peers, or `of` is inflated and the
+        # percentiles shift.
+        seen_peer.add((code, akun_key))
         peer_lists.setdefault(akun_key, []).append(realisasi)
         if akun_key in _derived_requires:
             vals = region_akun.setdefault(code, {})

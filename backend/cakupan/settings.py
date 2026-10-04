@@ -8,7 +8,9 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(BASE_DIR / ".env")
 
 SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY", "insecure-dev-key-change-me")
-DEBUG = os.environ.get("DJANGO_DEBUG", "true").lower() == "true"
+# Off unless explicitly enabled: with DEBUG on, Django also records every SQL
+# statement per request in memory. Local dev opts in via DJANGO_DEBUG=true.
+DEBUG = os.environ.get("DJANGO_DEBUG", "false").lower() == "true"
 ALLOWED_HOSTS = os.environ.get("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1").split(",")
 
 INSTALLED_APPS = [
@@ -33,6 +35,10 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     "corsheaders.middleware.CorsMiddleware",
+    # JSON compresses 6-22x here (a 2.08 MB series -> 93 KB). The API sets no
+    # secrets in response bodies, so BREACH-style concerns don't apply. In
+    # production a reverse proxy may do this instead; both together are fine.
+    "django.middleware.gzip.GZipMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
@@ -75,6 +81,10 @@ else:
             "PASSWORD": os.environ.get("POSTGRES_PASSWORD", "cakupan"),
             "HOST": os.environ.get("POSTGRES_HOST", "db"),
             "PORT": os.environ.get("POSTGRES_PORT", "5432"),
+            # Reuse connections across requests instead of a fresh Postgres
+            # handshake per request; health checks drop dead ones safely.
+            "CONN_MAX_AGE": int(os.environ.get("DB_CONN_MAX_AGE", 60)),
+            "CONN_HEALTH_CHECKS": True,
         }
     }
 

@@ -23,6 +23,7 @@ from dukcapil.models import DukcapilFetchLog, DukcapilIndicator, DukcapilLevel, 
 from dukcapil.values import region_value, to_number
 
 from .analytics import distribution, pearson, percentile_rank, rank_rows
+from .params import MAX_PAGE, int_param, paginate
 from .dukcapil_serializers import DukcapilIndicatorSerializer, DukcapilRegionSerializer
 
 # Headline indicators summed for the overview cards.
@@ -196,7 +197,7 @@ def regions(request):
     search = request.query_params.get("search")
     if search:
         qs = qs.filter(name__icontains=search)
-    limit = int(request.query_params.get("limit", 1000))
+    limit = int_param(request, "limit", 1000, lo=1, hi=MAX_PAGE)
     qs = qs.select_related("parent").order_by("code")[:limit]
     return Response(DukcapilRegionSerializer(qs, many=True).data)
 
@@ -363,14 +364,9 @@ def rank(request):
         indicator_data, unit = DukcapilIndicatorSerializer(ind).data, ind.unit
 
     stats = distribution([r["value"] for r in rows])
-    full = rank_rows(rows, order=order)
-    total = len(full)
-
     # Pagination: distribution stats are over the full set; only a page of
-    # ranked rows is returned.
-    offset = max(0, int(request.query_params.get("offset", 0)))
-    limit = request.query_params.get("limit")
-    page = full[offset : offset + int(limit)] if limit else full[offset:]
+    # ranked rows is returned (bounded by MAX_PAGE even without a limit).
+    page, page_meta = paginate(rank_rows(rows, order=order), request)
 
     # Enrich the page rows with status + denormalized ancestor names so the UI
     # can show where each region sits (kab -> its prov; kec -> prov + kab; desa
@@ -397,8 +393,7 @@ def rank(request):
             "percent_of": percent_of,
             "unit": unit,
             "stats": stats,
-            "total": total,
-            "offset": offset,
+            **page_meta,
             "results": page,
         }
     )
