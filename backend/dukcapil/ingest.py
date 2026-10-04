@@ -31,14 +31,20 @@ def _int(v):
         return None
 
 
+# Fields that can differ between the source's duplicate rows without any
+# difference in real content: the row id and the geometry-derived stats (the
+# duplicate copies carry slightly different polygons, seen from 2026-10 on).
+_SIG_IGNORED = {"objectid", "shape", "st_area(shape)", "st_length(shape)"}
+
+
 def _payload_sig(a):
-    """Fingerprint of a raw record ignoring `objectid` (the only field that
-    differs between the source's exact-duplicate rows). Two rows with the same
-    fingerprint are true duplicates; anything that differs in real content —
-    e.g. a future update that splits a merged desa/kelurahan by adding a field —
-    fingerprints differently and is kept, never silently dropped."""
+    """Fingerprint of a raw record ignoring `_SIG_IGNORED` (row id + geometry
+    stats). Two rows with the same fingerprint are true duplicates; anything
+    that differs in real content — e.g. a future update that splits a merged
+    desa/kelurahan by adding a field — fingerprints differently and is kept,
+    never silently dropped."""
     return hashlib.md5(
-        json.dumps({k: v for k, v in a.items() if k != "objectid"}, sort_keys=True, default=str).encode()
+        json.dumps({k: v for k, v in a.items() if k not in _SIG_IGNORED}, sort_keys=True, default=str).encode()
     ).hexdigest()
 
 
