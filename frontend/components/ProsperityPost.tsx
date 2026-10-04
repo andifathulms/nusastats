@@ -22,7 +22,7 @@ type MetricKey = "perkap" | "p0" | "pdrb";
 const METRICS: { key: MetricKey; short: string; desc: string; color: string }[] = [
   { key: "perkap", short: "PDRB per kapita", desc: "Output ekonomi per penduduk (PDRB harga berlaku ÷ jumlah penduduk) — ukuran 'kekayaan' produksi daerah, bukan yang dinikmati warga.", color: "#15803D" },
   { key: "p0", short: "Kemiskinan (P0)", desc: "Persentase penduduk miskin — seberapa banyak warga yang tak menikmati output itu.", color: "#C0392B" },
-  { key: "pdrb", short: "PDRB total", desc: "Ukuran besar ekonomi daerah secara keseluruhan (harga berlaku).", color: "#2A5AA0" },
+  { key: "pdrb", short: "PDRB total", desc: "Ukuran besar ekonomi daerah secara keseluruhan (harga berlaku).", color: "rgb(var(--series-1))" },
 ];
 
 // perkap in Juta Rp/orang → "Rp X jt" or "Rp X,X M" (miliar) when ≥1000.

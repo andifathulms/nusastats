@@ -13,7 +13,7 @@ import { Stat, PageBtn, PillToggle, pearson } from "@/components/sorotan-ui";
 const PAGE = 12;
 type Daerah = "total" | "urban" | "rural";
 type Row = { domain_id: string; name: string; gini: Record<Daerah, number | undefined>; cmp: Record<string, number> };
-const DAERAH_COLOR: Record<Daerah, string> = { total: "#2A5AA0", urban: "#C0392B", rural: "#15803D" };
+const DAERAH_COLOR: Record<Daerah, string> = { total: "rgb(var(--series-1))", urban: "#C0392B", rural: "#15803D" };
 const DAERAH_LABEL: Record<Daerah, string> = { total: "Total", urban: "Perkotaan", rural: "Perdesaan" };
 
 export function GiniPost({ config }: { config: InequalityConfig }) {

@@ -30,7 +30,7 @@ async function fullSeries(variableId: string, level: Level, firstYear: number, l
 }
 
 const METRIC_COLOR: Record<MetricKey, string> = {
-  count: "#2A5AA0", // navy — magnitude
+  count: "rgb(var(--series-1))", // navy — magnitude
   p0: "#C0392B", // red — headcount (how wide)
   p1: "#D9722C", // orange — depth
   p2: "#7C3AED", // purple — severity

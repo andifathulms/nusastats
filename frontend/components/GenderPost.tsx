@@ -12,7 +12,7 @@ import { Stat, PageBtn, PillToggle, pearson } from "@/components/sorotan-ui";
 
 const PAGE = 10;
 const MALE_T = "211", FEMALE_T = "212";
-const MALE = "#2A5AA0", FEMALE = "#D55181"; // blue vs magenta
+const MALE = "rgb(var(--series-1))", FEMALE = "#D55181"; // blue vs magenta
 type Level = "province" | "regency";
 type Pair = { male: number; female: number; gap: number }; // gap = female − male
 type Row = { domain_id: string; name: string; provCode: string; provName: string; by: Record<string, Pair> };

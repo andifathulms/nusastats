@@ -375,7 +375,7 @@ export const POSTS: Post[] = [
       components: [
         { akun: "belanja_pegawai", label: "Belanja Pegawai (gaji ASN)", short: "Pegawai", color: "#D9722C" },
         { akun: "belanja_barang_dan_jasa", label: "Belanja Barang & Jasa", short: "Barang & Jasa", color: "#37A98C" },
-        { akun: "belanja_modal", label: "Belanja Modal (aset/infrastruktur)", short: "Modal", color: "#2A5AA0" },
+        { akun: "belanja_modal", label: "Belanja Modal (aset/infrastruktur)", short: "Modal", color: "rgb(var(--series-1))" },
         { akun: "belanja_hibah", label: "Belanja Hibah", short: "Hibah", color: "#9BCB4A" },
         { akun: "belanja_bantuan_sosial", label: "Belanja Bantuan Sosial", short: "Bansos", color: "#D9455E" },
         { akun: "belanja_bantuan_keuangan", label: "Belanja Bantuan Keuangan", short: "Bantuan Keuangan", color: "#6C6FE0" },
@@ -386,7 +386,7 @@ export const POSTS: Post[] = [
       ],
       groups: [
         { label: "Operasi", color: "#37A98C", akuns: ["belanja_pegawai", "belanja_barang_dan_jasa", "belanja_hibah", "belanja_bantuan_sosial", "belanja_subsidi", "belanja_bunga"] },
-        { label: "Modal", color: "#2A5AA0", akuns: ["belanja_modal"] },
+        { label: "Modal", color: "rgb(var(--series-1))", akuns: ["belanja_modal"] },
         { label: "Transfer", color: "#6C6FE0", akuns: ["belanja_bantuan_keuangan", "belanja_bagi_hasil"] },
         { label: "Tak Terduga", color: "#94A3B8", akuns: ["belanja_tidak_terduga"] },
       ],
@@ -416,7 +416,7 @@ export const POSTS: Post[] = [
         { akun: "rasio_kemandirian", label: "Kemandirian Fiskal", short: "Kemandirian", desc: "Bagian pendapatan dari sumber sendiri (PAD ÷ total pendapatan). Makin tinggi = makin mandiri, makin sedikit bergantung pada transfer pusat.", color: "#15803D" },
         { akun: "rasio_ketergantungan", label: "Ketergantungan pada Pusat", short: "Ketergantungan", desc: "Bagian pendapatan dari transfer pemerintah pusat (TKDD ÷ pendapatan). Kebalikan dari kemandirian.", color: "#C0392B" },
         { akun: "rasio_belanja_pegawai", label: "Belanja Pegawai", short: "Belanja Pegawai", desc: "Bagian belanja yang habis untuk gaji & tunjangan ASN. Makin tinggi = makin sedikit ruang untuk pembangunan.", color: "#D9722C" },
-        { akun: "rasio_belanja_modal", label: "Belanja Modal", short: "Belanja Modal", desc: "Bagian belanja untuk aset/investasi jangka panjang (infrastruktur dll). Makin tinggi = makin berorientasi pembangunan.", color: "#2A5AA0" },
+        { akun: "rasio_belanja_modal", label: "Belanja Modal", short: "Belanja Modal", desc: "Bagian belanja untuk aset/investasi jangka panjang (infrastruktur dll). Makin tinggi = makin berorientasi pembangunan.", color: "rgb(var(--series-1))" },
       ],
     },
   },
@@ -540,7 +540,7 @@ export const POSTS: Post[] = [
       religions: [
         { field: "islam", label: "Islam", color: "#15803D" },
         { field: "kristen", label: "Kristen", color: "#3F6FD6" },
-        { field: "katholik", label: "Katolik", color: "#2A5AA0" },
+        { field: "katholik", label: "Katolik", color: "rgb(var(--series-1))" },
         { field: "hindu", label: "Hindu", color: "#D9722C" },
         { field: "budha", label: "Buddha", color: "#A87F2F" },
         { field: "konghucu", label: "Konghucu", color: "#C0392B" },

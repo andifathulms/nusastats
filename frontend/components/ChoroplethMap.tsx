@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { CHART, titleCase } from "@/lib/api";
+import { useIsDark } from "@/lib/theme";
 
 type Feature = {
   properties: { domain_id: string; name: string };
@@ -11,12 +12,15 @@ type FC = { features: Feature[] };
 
 export type MapValue = { value: number; name: string; sub?: string; extra?: string };
 
-// Sequential low->high scale — single-hue royal blue ramp.
-const STOPS = ["#EAF0FD", "#B7CBF3", "#7CA0E8", "#3F6FD6", "#14264F"];
+// Sequential low->high scale: pale sea → deep sea. On the dark theme it
+// runs the other way (dark sea → cream) so high values still read as "bright".
+const STOPS_LIGHT = ["#E3EBFA", "#B5C9EE", "#6B96E6", "#2557BE", "#10264D"];
+const STOPS_DARK = ["#1A2E55", "#2B57A3", "#4F82DC", "#A3BEF0", "#F3ECDD"];
 // "No data" is a NEUTRAL gray, deliberately off the blue ramp: a blue-tinted
 // fill here is unreadable against the ramp's lightest step and would let a gap
 // pass as "lowest value" — the one thing this project must never do.
-const NO_DATA_FILL = "#E3E3DF";
+const NO_DATA_LIGHT = "#D6D3CA";
+const NO_DATA_DARK = "#2E3442";
 
 function lerpHex(a: string, b: string, t: number): string {
   const pa = [1, 3, 5].map((i) => parseInt(a.slice(i, i + 2), 16));
@@ -24,7 +28,8 @@ function lerpHex(a: string, b: string, t: number): string {
   const p = pa.map((v, i) => Math.round(v + (pb[i] - v) * t));
   return `#${p.map((v) => v.toString(16).padStart(2, "0")).join("")}`;
 }
-function scale(t: number): string {
+function scale(t: number, dark = false): string {
+  const STOPS = dark ? STOPS_DARK : STOPS_LIGHT;
   const x = Math.max(0, Math.min(1, t)) * (STOPS.length - 1);
   const i = Math.min(STOPS.length - 2, Math.floor(x));
   return lerpHex(STOPS[i], STOPS[i + 1], x - i);
@@ -58,6 +63,8 @@ export function ChoroplethMap({
   const [fc, setFc] = useState<FC | null>(null);
   const [failed, setFailed] = useState(false);
   const [hover, setHover] = useState<{ id: string; x: number; y: number } | null>(null);
+  const dark = useIsDark();
+  const NO_DATA_FILL = dark ? NO_DATA_DARK : NO_DATA_LIGHT;
 
   const urlKey = geojsonUrls.join(",");
   useEffect(() => {
@@ -230,14 +237,14 @@ export function ChoroplethMap({
           <g transform={`translate(${t.x} ${t.y}) scale(${t.k})`}>
             {paths.map((p) => {
               const v = values.get(p.id);
-              const fill = v ? scale((v.value - min) / span) : NO_DATA_FILL;
+              const fill = v ? scale((v.value - min) / span, dark) : NO_DATA_FILL;
               const isHover = hover?.id === p.id;
               return (
                 <path
                   key={p.id}
                   d={p.d}
                   fill={fill}
-                  stroke={isHover ? CHART.text : "#FFFFFF"}
+                  stroke={isHover ? CHART.text : "rgb(var(--ink-panel))"}
                   strokeWidth={isHover ? 1.5 : 0.5}
                   vectorEffect="non-scaling-stroke"
                   onMouseEnter={(e) => !drag.current && setHover({ id: p.id, x: e.clientX, y: e.clientY })}
@@ -269,7 +276,7 @@ export function ChoroplethMap({
         <span className="tabular-nums">{fmt(min)}</span>
         <div
           className="h-2 w-40 rounded-full"
-          style={{ background: `linear-gradient(90deg, ${STOPS.join(",")})` }}
+          style={{ background: `linear-gradient(90deg, ${(dark ? STOPS_DARK : STOPS_LIGHT).join(",")})` }}
         />
         <span className="tabular-nums">
           {fmt(max)} {unit}

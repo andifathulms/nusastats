@@ -11,7 +11,7 @@ import { Stat, PageBtn, PillToggle, pearson } from "@/components/sorotan-ui";
 const PAGE = 12;
 type Metric = "tpt" | "informal" | "under" | "tpakL" | "tpakP" | "gap";
 type Row = { domain_id: string; name: string; tpt?: number; informal?: number; under?: number; tpakL?: number; tpakP?: number; p0?: number };
-const MALE = "#2A5AA0", FEMALE = "#D55181";
+const MALE = "rgb(var(--series-1))", FEMALE = "#D55181";
 const METRICS: { k: Metric; short: string; desc: string; fmt: (r: Row) => number | undefined }[] = [
   { k: "tpt", short: "Pengangguran (TPT)", desc: "Tingkat Pengangguran Terbuka: persen angkatan kerja yang menganggur & mencari kerja. Justru tinggi di provinsi industri (Jawa), rendah di provinsi agraris — pertanian menyerap tenaga kerja secara informal.", fmt: (r) => r.tpt },
   { k: "informal", short: "Kerja Informal", desc: "Proporsi pekerja di lapangan kerja informal — pertanian keluarga, usaha sendiri, pekerja tak dibayar: bekerja, tapi tanpa kontrak, jaminan, atau upah tetap. Inilah yang menampung orang di daerah yang pengangguran resminya rendah.", fmt: (r) => r.informal },

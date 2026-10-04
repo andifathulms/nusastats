@@ -18,9 +18,9 @@ type Row = { domain_id: string; name: string; provCode: string; provName: string
 
 // Colour per metric — the composite is coloured by its category instead.
 const METRIC_COLOR: Record<string, string> = {
-  ipm: "#2A5AA0",
+  ipm: "rgb(var(--series-1))",
   uhh: "#0C8FA6", // health — teal
-  hls: "#2A5AA0", // education — navy
+  hls: "rgb(var(--series-1))", // education — navy
   rls: "#5B8DEF", // education — light blue
   income: "#A87F2F", // living standard — gold
 };
@@ -54,7 +54,7 @@ const axisUnit = (key: string) => (key === "income" ? "jt" : key === "p0" ? "%" 
 // mean. Recomputing it lands within 0.005 points of BPS's own published IPM for
 // every kab/kota — so the sub-indices are exactly recoverable, and `residual`
 // below is shipped as the proof rather than asserted.
-const DIM_COLOR: Record<string, string> = { Kesehatan: "#0C8FA6", Pendidikan: "#2A5AA0", Pengeluaran: "#A87F2F" };
+const DIM_COLOR: Record<string, string> = { Kesehatan: "#0C8FA6", Pendidikan: "rgb(var(--series-1))", Pengeluaran: "#A87F2F" };
 const DIM_NOTE: Record<string, string> = {
   Kesehatan: "Umur Harapan Hidup, dinormalkan ke rentang 20–85 tahun.",
   Pendidikan: "Rata-rata Harapan Lama Sekolah (batas 18 th) dan Rata-rata Lama Sekolah (batas 15 th).",

@@ -211,7 +211,7 @@ function RankView({ akun, level, measure, tahun }: { akun: string; level: DjpkRe
                 <div className="w-8 shrink-0 text-right text-xs tabular-nums text-ink-muted">{r.rank}</div>
                 <div className="w-44 shrink-0 truncate text-sm text-ink-text" title={r.domain_name}>{r.domain_name}</div>
                 <div className="relative h-5 flex-1 overflow-hidden rounded bg-ink-panel2">
-                  <div className="h-full rounded" style={{ width: `${w}%`, background: isPct ? PCT_COLOR(Math.min(100, r.value)) : "#2A5AA0" }} />
+                  <div className="h-full rounded" style={{ width: `${w}%`, background: isPct ? PCT_COLOR(Math.min(100, r.value)) : "rgb(var(--series-1))" }} />
                 </div>
                 <div className="w-28 shrink-0 text-right text-sm tabular-nums text-ink-text">{fmt(r.value)}</div>
               </button>

@@ -668,7 +668,25 @@ export const djpkApi = {
 
 export function formatNumber(n: number | null | undefined): string {
   if (n === null || n === undefined) return "–";
-  return n.toLocaleString("en-US");
+  return n.toLocaleString("id-ID");
+}
+
+/** Indonesian decimal formatting: fixed `digits` decimals with a comma (1,5 not 1.5). */
+export function formatDecimal(n: number | null | undefined, digits = 1): string {
+  if (n === null || n === undefined || Number.isNaN(n)) return "–";
+  return n.toLocaleString("id-ID", { minimumFractionDigits: digits, maximumFractionDigits: digits });
+}
+
+/** Compact Indonesian magnitude for tiles and chart labels: 284,97 juta · 1,2 rb. */
+export function formatCompact(n: number | null | undefined): string {
+  if (n === null || n === undefined) return "–";
+  const a = Math.abs(n);
+  const f = (v: number, d: number) => v.toLocaleString("id-ID", { maximumFractionDigits: d });
+  if (a >= 1e12) return `${f(n / 1e12, 2)} T`;
+  if (a >= 1e9) return `${f(n / 1e9, 2)} M`;
+  if (a >= 1e6) return `${f(n / 1e6, 2)} juta`;
+  if (a >= 1e4) return `${f(n / 1e3, 1)} rb`;
+  return f(n, 2);
 }
 
 // Compact rupiah for finance figures: triliun / miliar / juta. DJPK values are
@@ -691,36 +709,36 @@ export function formatByUnit(n: number | null | undefined, unit: string | undefi
   return formatRupiah(n);
 }
 
-// Categorical palette for chart series — royal-blue-led, validated on the white
-// panel surface (lightness band, chroma floor, CVD ΔE ≥ 8, normal-vision ΔE ≥ 15,
-// contrast ≥ 3:1 all PASS). Fixed slot order is the CVD-safety mechanism: assign
-// in sequence, never cycle past 8 — fold extra series into "Lainnya" instead.
+// Categorical palette for chart series — sea-blue-led. Slot 1 is a CSS variable
+// so it lightens on the dark theme; the rest are mid-tones that clear 3:1 on both
+// the cream panel and the dark sea panel. Fixed slot order is the CVD-safety
+// mechanism: assign in sequence, never cycle past 8 — fold extras into "Lainnya".
 export const SERIES_COLORS = [
-  "#2A5AA0", // royal blue (brand)
-  "#A87F2F", // royal gold (deepened to clear 3:1 on white)
+  "rgb(var(--series-1))", // sea blue (brand)
+  "#B98222", // kunyit (turmeric)
   "#0C8FA6", // teal
   "#C0392B", // red
   "#7C3AED", // purple
   "#15803D", // green
-  "#5B8DEF", // light royal blue
+  "#5B8DEF", // light sea blue
   "#92400E", // brown
 ];
 
-// Central hex constants for Recharts (which can't read Tailwind tokens). Mirror the `ink.*`
-// tokens — keep these in sync with tailwind.config.ts so charts never re-inline stray hexes.
+// Recharts props can't read Tailwind classes, but SVG attributes and inline
+// styles do resolve CSS variables — so charts follow the theme (incl. dark).
 export const CHART = {
-  axisTick: "#5B6B8A", // ink.muted
-  axisLine: "#AEB9D2", // ink.borderStrong
-  grid: "#E4EAF4", // ink.panel3
-  cursor: "#EEF2F9", // ink.panel2
-  tooltipBg: "#FFFFFF", // ink.panel
-  tooltipBorder: "#DBE1EE", // ink.border
-  text: "#0D1B36", // ink.text
-  accent: "#2A5AA0", // series slot 1 (royal blue) — single-series marks match the palette
-  neutral: "#93A0BC", // ink.faint — the "Lainnya"/other bucket, never a series slot
-  good: "#15803D", // ink.good
-  bad: "#DC2626", // ink.bad
+  axisTick: "rgb(var(--ink-muted))",
+  axisLine: "rgb(var(--ink-border-strong))",
+  grid: "rgb(var(--ink-panel3))",
+  cursor: "rgb(var(--ink-panel2))",
+  tooltipBg: "rgb(var(--ink-panel))",
+  tooltipBorder: "rgb(var(--ink-border))",
+  text: "rgb(var(--ink-text))",
+  accent: "rgb(var(--series-1))", // series slot 1 — single-series marks match the palette
+  neutral: "rgb(var(--ink-faint))", // the "Lainnya"/other bucket, never a series slot
+  good: "rgb(var(--ink-good))",
+  bad: "rgb(var(--ink-bad))",
 };
 
 // Rank/percentile colour ramp: green (high) → amber (mid) → red (low).
-export const PCT_COLOR = (p: number): string => (p >= 66 ? CHART.good : p >= 33 ? "#B45309" : CHART.bad);
+export const PCT_COLOR = (p: number): string => (p >= 66 ? CHART.good : p >= 33 ? "rgb(var(--ink-warn))" : CHART.bad);
