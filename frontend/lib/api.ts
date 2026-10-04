@@ -742,3 +742,32 @@ export const CHART = {
 
 // Rank/percentile colour ramp: green (high) → amber (mid) → red (low).
 export const PCT_COLOR = (p: number): string => (p >= 66 ? CHART.good : p >= 33 ? "rgb(var(--ink-warn))" : CHART.bad);
+
+// --- global search (⌘K palette) ----------------------------------------------
+
+export type SearchRegionHit = {
+  source: "bps" | "dukcapil";
+  code: string;
+  name: string;
+  level: string;
+  label: string; // Provinsi / Kota / Kabupaten / Kecamatan / Desa / Kelurahan …
+  context: string; // parent chain, e.g. "Jakarta Timur · DKI Jakarta"
+};
+export type SearchVariableHit = {
+  source: "bps";
+  code: string;
+  name: string;
+  unit: string;
+  context: string; // BPS subject category
+  years: [number | null, number | null];
+};
+export type SearchResults = {
+  q: string;
+  regions: SearchRegionHit[];
+  subregions: SearchRegionHit[];
+  variables: SearchVariableHit[];
+};
+
+export const searchApi = {
+  search: (q: string) => get<SearchResults>(`/search/?q=${encodeURIComponent(q)}`),
+};

@@ -153,3 +153,22 @@ def test_region_variables_regency_scoped_to_that_regency(api_client, dataset):
     assert resp.data["region"]["parent_province_id"] == "1100"
     assert resp.data["region"]["parent_province_name"] == "Aceh"
     assert resp.data["total_data_points"] == 2  # Simeulue's own 2 points only
+
+
+@pytest.mark.django_db
+def test_search_finds_regions_and_indicators(api_client, dataset):
+    res = api_client.get("/api/search/", {"q": "sime"})
+    assert res.status_code == 200
+    body = res.json()
+    assert [r["code"] for r in body["regions"]] == ["1101"]
+    assert body["regions"][0]["label"] == "Kabupaten"
+    assert body["regions"][0]["context"] == "Aceh"
+
+    res = api_client.get("/api/search/", {"q": "ahh"})
+    assert [v["code"] for v in res.json()["variables"]] == ["455"]
+
+
+@pytest.mark.django_db
+def test_search_ignores_too_short_queries(api_client, dataset):
+    body = api_client.get("/api/search/", {"q": "a"}).json()
+    assert body["regions"] == [] and body["variables"] == [] and body["subregions"] == []

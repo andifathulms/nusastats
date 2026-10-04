@@ -1,7 +1,7 @@
 from django.urls import include, path
 from rest_framework.routers import DefaultRouter
 
-from . import djpk_views, dukcapil_views
+from . import djpk_views, dukcapil_views, search_views
 from .stats_views import CorrelateView, RegionViewSet, SummaryView, VariableDataViewSet
 from .views import CoverageExportView, SimdasiTableViewSet, VariableViewSet
 
@@ -14,6 +14,7 @@ stats_router.register("variables", VariableDataViewSet, basename="stats-variable
 stats_router.register("regions", RegionViewSet, basename="stats-region")
 
 urlpatterns = [
+    path("search/", search_views.search, name="search"),
     path("coverage/export/", CoverageExportView.as_view(), name="coverage-export"),
     path("coverage/", include(coverage_router.urls)),
     path("stats/summary/", SummaryView.as_view(), name="stats-summary"),

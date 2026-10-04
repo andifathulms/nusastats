@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { openSearch, SearchIcon } from "@/components/CommandPalette";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 type NavItem = { href: string; label: string };
 type NavSection = {
@@ -86,60 +88,65 @@ export function Topbar() {
   const active = NAV.find((s) => s.match(pathname)) ?? NAV[0];
 
   return (
-    <header className="sticky top-0 z-30 shadow-header">
-      {/* Row 1 — dark royal navy: brand + source switcher */}
-      <div className="relative border-b border-coal-border/70 bg-coal-bg">
-        <div className="pointer-events-none absolute inset-0 bg-royal-weave opacity-70" />
-        <div className="relative mx-auto flex h-16 max-w-7xl items-center gap-4 px-5 lg:px-8">
-          <Link href="/" className="flex items-center gap-2.5">
-            <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-brand-gradient text-sm font-bold text-white shadow-glow ring-1 ring-white/10">
-              N
-            </span>
-            <span className="hidden text-[16px] font-semibold tracking-tight text-coal-text sm:inline">
-              Nusa<span className="bg-brand-gradient-onDark bg-clip-text text-transparent">Stats</span>
-            </span>
+    <header className="sticky top-0 z-30">
+      {/* Row 1 — cream paper bar: brand, sections, search, theme */}
+      <div className="border-b border-ink-border bg-ink-bg/85 backdrop-blur-md supports-[backdrop-filter]:bg-ink-bg/75">
+        <div className="mx-auto flex h-16 max-w-7xl items-center gap-3 px-4 sm:px-5 lg:gap-5 lg:px-8">
+          <Link href="/" aria-label="NusaStats — beranda" className="shrink-0">
+            <Logo />
           </Link>
 
-          <div className="mx-1 hidden h-6 w-px bg-coal-border/60 sm:block" />
-
-          <nav className="flex items-center gap-1 overflow-x-auto scroll-thin">
+          <nav aria-label="Bagian utama" className="hidden items-center gap-0.5 md:flex">
             {NAV.map((s) => {
               const on = s.key === active.key;
               return (
                 <Link
                   key={s.key}
                   href={s.home}
-                  className={`flex shrink-0 items-center gap-2 rounded-lg px-3.5 py-2 text-sm font-medium transition-colors ${
-                    on
-                      ? "bg-brand-gradient text-white shadow-glow ring-1 ring-white/10"
-                      : "text-coal-muted hover:bg-coal-hover/60 hover:text-coal-text"
+                  aria-current={on ? "page" : undefined}
+                  className={`flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-[13.5px] font-semibold transition-colors lg:px-3.5 ${
+                    on ? "bg-laut-950 text-kertas-200 dark:bg-ink-accent dark:text-ink-onAccent" : "text-ink-muted hover:bg-ink-panel2 hover:text-ink-text"
                   }`}
                 >
-                  <s.icon className="h-4 w-4 shrink-0" />
+                  <s.icon className="hidden h-4 w-4 shrink-0 xl:block" />
                   {s.label}
                 </Link>
               );
             })}
           </nav>
+
+          <button
+            onClick={() => openSearch()}
+            className="ml-auto flex h-10 min-w-0 items-center gap-2.5 rounded-full border border-ink-border bg-ink-panel px-3.5 text-sm text-ink-faint transition-colors hover:border-ink-borderStrong sm:w-64 lg:w-72"
+            aria-label="Cari wilayah, indikator, atau analisis (⌘K)"
+          >
+            <SearchIcon className="h-4 w-4 shrink-0 text-ink-muted" />
+            <span className="hidden truncate sm:inline">Cari wilayah, indikator…</span>
+            <kbd className="ml-auto hidden rounded-md border border-ink-border bg-ink-panel2 px-1.5 py-0.5 font-mono text-[10.5px] text-ink-muted sm:block">
+              ⌘K
+            </kbd>
+          </button>
+          <ThemeToggle className="hidden sm:flex" />
         </div>
       </div>
 
-      {/* Row 2 — light strip: sub-nav for the active section (hidden when none) */}
+      {/* Row 2 — sub-nav for the active section (hidden when none) */}
       {active.items.length > 0 && (
-        <div className="border-b border-ink-border bg-ink-panel/95 backdrop-blur">
+        <div className="border-b border-ink-border bg-ink-panel/90 backdrop-blur">
           {/* No overflow-x-auto here. Setting one axis to a non-visible value makes
               the other compute to `auto`, and the tabs' -mb-px (which laps the
               active underline over the divider) leaves the content 1px taller than
               the box — so the row grew a vertical scrollbar. This strip only ever
               holds two short items, so it never needs to scroll anyway. */}
-          <div className="mx-auto flex max-w-7xl items-center gap-1 px-5 lg:px-8">
+          <div className="mx-auto flex max-w-7xl items-center gap-1 px-4 sm:px-5 lg:px-8">
             {active.items.map((item) => {
               const on = isItemActive(item.href, pathname);
               return (
                 <Link
                   key={item.href}
                   href={item.href}
-                  className={`-mb-px shrink-0 border-b-2 px-3.5 py-3 text-sm font-medium transition-colors ${
+                  aria-current={on ? "page" : undefined}
+                  className={`-mb-px shrink-0 border-b-2 px-3.5 py-2.5 text-sm font-semibold transition-colors ${
                     on
                       ? "border-ink-accent text-ink-accent"
                       : "border-transparent text-ink-muted hover:text-ink-text"
@@ -153,6 +160,60 @@ export function Topbar() {
         </div>
       )}
     </header>
+  );
+}
+
+/** Mark: three islands (one kunyit) on a sea-blue tile, plus the wordmark. */
+export function Logo({ onDark = false, wordmark = "sm" }: { onDark?: boolean; wordmark?: "sm" | "always" }) {
+  return (
+    <span className="flex items-center gap-2.5">
+      <span className="relative block h-9 w-9 shrink-0 rounded-[11px] bg-laut-700 shadow-glow ring-1 ring-white/10">
+        <span className="absolute left-[7px] top-[19px] h-[9px] w-[9px] rounded-full bg-kertas-200" />
+        <span className="absolute left-[16px] top-[13px] h-[7px] w-[7px] rounded-full bg-kunyit-light" />
+        <span className="absolute left-[25px] top-[20px] h-[5px] w-[5px] rounded-full bg-kertas-200" />
+      </span>
+      <span className={`${wordmark === "always" ? "inline" : "hidden sm:inline"} text-[18px] font-extrabold tracking-[-0.02em] ${onDark ? "text-kertas-200" : "text-ink-text"}`}>
+        Nusa<span className={onDark ? "text-laut-300" : "text-ink-accent"}>Stats</span>
+      </span>
+    </span>
+  );
+}
+
+/** Bottom tab bar for phones — the four places people reach for with a thumb. */
+export function MobileNav() {
+  const pathname = usePathname() || "/";
+  const active = NAV.find((s) => s.match(pathname)) ?? NAV[0];
+  const tabs = [
+    { key: "beranda", label: "Beranda", href: "/", icon: HomeIcon },
+    { key: "wilayah", label: NAV.find((n) => n.key === "wilayah")!.label, href: NAV.find((n) => n.key === "wilayah")!.home, icon: MapPinIcon },
+    { key: "sorotan", label: "Sorotan", href: "/sorotan", icon: SparkIcon },
+    { key: "data", label: "Data", href: "/variables", icon: LayersIcon },
+  ];
+  const isOn = (k: string) => (k === "data" ? ["bps", "dukcapil", "keuangan"].includes(active.key) : active.key === k);
+  return (
+    <nav
+      aria-label="Navigasi bawah"
+      className="fixed inset-x-0 bottom-0 z-30 border-t border-ink-border bg-ink-panel/95 backdrop-blur md:hidden"
+      style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
+    >
+      <div className="mx-auto grid h-16 max-w-md grid-cols-5">
+        {tabs.map((t) => (
+          <Link
+            key={t.key}
+            href={t.href}
+            aria-current={isOn(t.key) ? "page" : undefined}
+            className={`flex flex-col items-center justify-center gap-1 text-[11px] font-semibold ${isOn(t.key) ? "text-ink-accent" : "text-ink-muted"}`}
+          >
+            <t.icon className="h-5 w-5" />
+            {t.label}
+          </Link>
+        ))}
+        <button onClick={() => openSearch()} className="flex flex-col items-center justify-center gap-1 text-[11px] font-semibold text-ink-muted">
+          <SearchIcon className="h-5 w-5" />
+          Cari
+        </button>
+      </div>
+    </nav>
   );
 }
 

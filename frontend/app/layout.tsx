@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import { JetBrains_Mono, Newsreader, Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
-import { Topbar } from "@/components/Topbar";
+import { MobileNav, Topbar } from "@/components/Topbar";
+import { Footer } from "@/components/Footer";
+import { CommandPalette } from "@/components/CommandPalette";
 
 import { THEME_BOOT_SCRIPT } from "@/lib/theme";
 
@@ -35,16 +37,19 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             8+ tabs through the nav before reaching the content. */}
         <a
           href="#main"
-          className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-lg focus:bg-ink-accent focus:px-4 focus:py-2 focus:text-sm focus:font-medium focus:text-white"
+          className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-lg focus:bg-ink-accent focus:px-4 focus:py-2 focus:text-sm focus:font-medium focus:text-ink-onAccent"
         >
           Lewati ke konten
         </a>
         <div className="flex min-h-screen flex-col">
           <Topbar />
-          <main id="main" className="mx-auto w-full max-w-7xl flex-1 px-5 py-8 lg:px-8">
+          <main id="main" className="mx-auto w-full max-w-7xl flex-1 px-4 py-8 sm:px-5 lg:px-8">
             {children}
           </main>
+          <Footer />
         </div>
+        <MobileNav />
+        <CommandPalette />
       </body>
     </html>
   );
