@@ -806,3 +806,15 @@ export const POSTS: Post[] = [
 export function getPost(slug: string): Post | undefined {
   return POSTS.find((p) => p.slug === slug);
 }
+
+/** The post's methodology note (every viz config carries one). */
+export function postNote(post: Post): string | null {
+  const cfg = (post as unknown as Record<string, { note?: string } | undefined>)[post.kind];
+  return cfg?.note ?? null;
+}
+
+/** Which source families a post draws on, for the Sorotan filters. */
+export function postSources(post: Post): ("BPS" | "Dukcapil" | "DJPK")[] {
+  const s = post.source;
+  return (["BPS", "Dukcapil", "DJPK"] as const).filter((k) => s.includes(k));
+}

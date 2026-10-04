@@ -7,8 +7,8 @@ import { Panel } from "@/components/ui";
 export function Stat({ label, value, sub }: { label: string; value: string; sub?: string }) {
   return (
     <Panel>
-      <div className="text-xs uppercase tracking-wide text-ink-muted">{label}</div>
-      <div className="mt-1 truncate text-lg font-semibold text-ink-text" title={value}>{value}</div>
+      <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-ink-muted">{label}</div>
+      <div className="mt-1.5 truncate text-[22px] font-extrabold tracking-[-0.02em] text-ink-accent" title={value}>{value}</div>
       {sub && <div className="mt-0.5 truncate text-xs text-ink-muted">{sub}</div>}
     </Panel>
   );
@@ -29,13 +29,13 @@ export function PageBtn({ disabled, onClick, children }: { disabled?: boolean; o
 // A segmented pill toggle. `opts` is [value, label] pairs.
 export function PillToggle<T extends string>({ opts, value, onChange }: { opts: [T, string][]; value: T; onChange: (v: T) => void }) {
   return (
-    <div className="inline-flex rounded-lg border border-ink-border/80 bg-ink-panel2/50 p-0.5">
+    <div className="inline-flex rounded-full border border-ink-border bg-ink-bg2 p-0.5">
       {opts.map(([v, label]) => (
         <button
           key={v}
           onClick={() => onChange(v)}
-          className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
-            value === v ? "bg-brand-gradient text-white" : "text-ink-muted hover:text-ink-text"
+          className={`rounded-full px-3 py-1 text-xs font-semibold transition-colors ${
+            value === v ? "bg-ink-panel text-ink-accent shadow-tile" : "text-ink-muted hover:text-ink-text"
           }`}
         >
           {label}
