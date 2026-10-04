@@ -1,130 +1,107 @@
-# CLAUDE.md — Build Rules for Cakupan
+# CLAUDE.md — Build Rules for NusaStats
 
-## Non-negotiable architectural rules
+## What this project is
 
-1. **No ML/AI anywhere in the coverage-detection path.** Coverage status is
-   set only from a real HTTP response to the BPS WebAPI. Never infer,
-   guess, or hardcode a coverage value. If you don't have a stored response
-   backing a coverage record, that record must not exist.
-2. **Every coverage record is traceable.** Each record must store: the
-   exact URL called (with params, key redacted in logs/UI), HTTP status,
-   response timestamp, and a hash of the raw response body. No exceptions,
-   including for "obviously available" national-level data.
-3. **Idempotent crawling.** Use `get_or_create` / upsert patterns keyed on
-   (variable_id, domain_id, model_type). Re-running a crawl updates
-   `last_checked_at` and appends to a history table if status changed; it
-   never creates duplicate coverage rows.
-4. **Explicit sampling, never silent partial crawls.** Kabupaten-level
-   checks use a documented, configurable sample (e.g. N provinces × M
-   kabupaten each). This sample list must be logged and included in the
-   generated report. Do not crawl "as many as time allows" without
-   recording exactly which were checked.
-5. **Rate limiting is mandatory, not optional.** Default: max 1 request per
-   configurable interval (start conservative, e.g. 500ms-1s between calls),
-   exponential backoff on non-200 responses, hard stop after N consecutive
-   failures rather than hammering the API.
-6. **API key handling.** BPS API key lives in `.env`, never committed,
-   never logged in plaintext (mask in any debug output).
+**NusaStats** is a regional statistics explorer for Indonesia. It covers
+national, provinsi, kabupaten/kota, kecamatan and desa levels. It combines
+several official sources and keeps each source traceable to the real
+response it came from.
 
-## Build order (strict — do not skip ahead)
+It started as **Cakupan**, a BPS WebAPI coverage catalog (`PRD.md`). That
+catalog is still the BPS backbone of the app, and its rules below still
+apply to the BPS stack.
 
-### Phase 1: Scaffold
-- Django 5 project + DRF, PostgreSQL, Redis, Celery wired up via Docker
-  Compose.
-- Core models: `Domain`, `SubjectCategory`, `Subject`, `Variable`,
-  `VerticalVariable`, `PeriodData`, `CoverageRecord`, `CoverageCheckLog`,
-  `SimdasiTable`, `SimdasiCoverageRecord`.
-- `CoverageRecord` must include: variable/table FK, domain FK, admin_level
-  enum (national/province/regency), status enum
-  (confirmed/not_confirmed/unchecked/error), years_confirmed (array/JSON),
-  last_checked_at, source_response_hash FK/ref to `CoverageCheckLog`.
-- `CoverageCheckLog` stores the raw call metadata (url, status, timestamp,
-  response hash, optionally the raw body if small enough — decide storage
-  approach and note the decision in a comment).
+| Source | Backend app(s) | Region key |
+|---|---|---|
+| BPS WebAPI: coverage catalog + confirmed data | `bps_client`, `crawler`, `catalog`, `stats` | BPS `domain_id` (`0000`, `XX00`, `XXNN`) |
+| Kemendagri/Dukcapil: population (ArcGIS) | `dukcapil` | Kemendagri code (2/4/6/10 digits) |
+| DJPK/Kemenkeu: APBD regional finance | `djpk` (name-match crosswalk → Kemendagri) | Kemendagri code |
+| BIG 1:10K desa boundaries | `data/big_boundaries/` (scripts), `frontend/public/dukcapil-*.geojson` (display) | Kemendagri code |
+| Terrain & land cover (Copernicus DEM, ESA WorldCover) | `data/peta_wilayah/` pipeline; backend app planned | Kemendagri code |
 
-### Phase 2: BPS API Client
-- A single wrapper module handling: auth key injection, rate limiting,
-  retry/backoff, response parsing, and consistent error handling (BPS
-  returns `404 UserNotFound` for various error conditions — don't assume
-  it always means "user not found").
-- Write this with tests against recorded/fixture responses before hitting
-  the live API repeatedly during development, to avoid burning rate limit
-  budget on iteration.
+Read API: `backend/api` (DRF), cached per ingest version. Frontend: Next.js 14
++ Tailwind (`frontend/`), "Laut & Kertas" design system. See `DESIGN.md`, which
+is binding for UI work. Feature specs live in `docs/`.
 
-### Phase 3: Domain & Metadata Crawler
-- Implement domain crawl (`type=all`, `type=prov`, `type=kabbyprov` per
-  province) → populate `Domain` table with correct `admin_level`.
-- Implement Subject Category → Subject → Variable → Vertical Variable
-  crawl for the national domain, populating the metadata tables. This
-  phase does NOT yet confirm coverage — it only records what BPS *claims*
-  exists.
+Run: `docker compose up --build` (db, redis, web :8000, celery worker/beat,
+frontend :3000). Management commands run with `docker compose exec web
+python manage.py …`. Data pipelines under `data/` run on the host, outside
+Docker.
 
-### Phase 4: Coverage Confirmation Crawler
-- For each variable, issue real `data` calls at:
-  - National domain (always, exactly once)
-  - A fixed, documented sample of provinces
-  - A fixed, documented sample of kabupaten/kota within sampled provinces
-- Parse `data-availability` and `datacontent` from each response. Only
-  write `confirmed_*` status when `datacontent` contains actual non-null
-  values, not just when `data-availability: available` is returned
-  (metadata can claim availability while content is empty — verify both).
-- Do the same for SIMDASI tables using MFD region codes.
+## Non-negotiable rules (all sources)
 
-### Phase 5: Validation Gate — MANDATORY BEFORE ANY UI WORK
+1. **No ML/AI anywhere in a data path.** Every stored value comes from a real
+   upstream response or a deterministic computation over stored inputs.
+   Never infer, guess, impute or hardcode a value.
+2. **Every value is traceable.** Each source has a fetch/check log that stores
+   the exact URL called (secrets redacted), the HTTP status, a timestamp and a
+   SHA-256 of the raw body: `CoverageCheckLog`, `DukcapilFetchLog`,
+   `DjpkFetchLog`, and per-tile hashes in `data/peta_wilayah/sources.json`.
+   Derived values record their inputs, method and parameters.
+3. **Sources stay separate.** `stats.DataPoint` is only for BPS data backed by a
+   confirmed `catalog.Variable` and a `CoverageCheckLog`. A new source gets its
+   own self-contained app with its own log, as `dukcapil` and `djpk` do.
+4. **Never match regions by code identity across systems.** BPS and Kemendagri
+   number many regencies differently, and the Papua provinces as well. Use the
+   existing crosswalks: `_resolve_dukcapil_regency` / the regency-crosswalk
+   endpoint in `api/dukcapil_views.py`, and `djpk/crosswalk.py`. Report
+   unmatched regions; never guess them.
+5. **Idempotent ingest.** Re-running any crawl or ingest updates rows in place
+   (upsert on natural keys) and never duplicates them.
+6. **Explicit, never silent partial work.** Sampling, skipped regions and
+   failed fetches are logged and reported (e.g. provinsi 96 has no BIG
+   archive, so it is logged as skipped). Absence is recorded as absence.
+7. **Be polite to upstream services.** Rate-limit, back off exponentially on
+   errors, and stop hard after N consecutive failures. Don't hammer an endpoint
+   that keeps failing.
+8. **Secrets** (e.g. `BPS_API_KEY`) live in `backend/.env`. They are never
+   committed and never logged in plaintext.
+9. **New data writers call `bump_data_version`**, so the read-API cache
+   invalidates.
+10. **Big blobs stay out of git.** Raw downloads and GB-scale geodata are
+    gitignored and regenerated by committed scripts. Only scripts, manifests
+    and small derived outputs are committed.
 
-**Do not write a single line of frontend code until this phase produces
-real output from a real crawl run.**
+## BPS stack rules (Cakupan)
 
-- Run the Phase 3+4 crawlers against the live BPS API (using your own API
-  key, configured in `.env`).
-- Generate the coverage report (Markdown + JSON) as specified in PRD §5.5:
-  totals per admin level, per-subject breakdown, explicit list of sampled
-  domains, explicit list of confirmed gaps.
-- Present this report's summary numbers back to the user before proceeding
-  — this is the actual point of the whole project, and it must be backed
-  by real data, not scaffold assumptions. If the crawl reveals surprises
-  (e.g. far fewer kabupaten-level indicators than expected), report that
-  honestly rather than adjusting the report to look more complete.
-- Only after the user has seen and accepted this report, proceed to Phase 6.
+- Coverage status is set only from a real HTTP response to the BPS WebAPI.
+  Write `confirmed_*` only when `datacontent` holds actual non-null values;
+  `data-availability: available` alone is not enough.
+- `CoverageRecord` is keyed on (variable_id, domain_id, model_type). A
+  re-crawl updates `last_checked_at` and appends history when the status
+  changes.
+- Kabupaten-level checks use a documented, configurable sample, and the
+  sample is listed in the coverage report. Never crawl all ~514 kabupaten
+  for all variables.
+- BPS returns `404 UserNotFound` for many unrelated errors; don't take it
+  literally. Log every error response (UserNotFound, rate limits, malformed
+  JSON) to `CoverageCheckLog` with status `error`, so gaps can be told apart
+  from genuine unavailability.
+- New BPS-client behaviour is tested against recorded fixture responses
+  before it hits the live API.
 
-### Phase 6: Celery Scheduling
-- Periodic task (e.g. weekly) to re-run coverage confirmation for
-  previously-confirmed variables, to catch BPS silently removing/adding
-  data.
-- Cache raw BPS responses in Redis with a sane TTL to avoid redundant
-  calls during the same crawl run (not as a substitute for the permanent
-  audit trail in Postgres).
+### Original build order (complete — kept because code comments reference it)
 
-### Phase 7: DRF Read API
-- `/api/coverage/variables/` with filters: `admin_level`, `subject`,
-  `status`, `keyword`.
-- `/api/coverage/variables/{id}/` full detail including check history.
-- `/api/coverage/simdasi/` equivalent for SIMDASI tables.
-- `/api/coverage/export/` returns the full or filtered catalog as JSON,
-  intended for other projects (e.g. NusaStats) to ingest directly.
+1. Scaffold: Django 5 + DRF, PostgreSQL, Redis, Celery; core catalog models.
+2. BPS API client: auth, rate limit, retry/backoff, parsing, error handling.
+3. Domain & metadata crawler: domains, subjects, variables, vervar.
+4. Coverage confirmation crawler: national, sampled provinces, sampled
+   kabupaten; SIMDASI.
+5. Validation gate: a real crawl report (`backend/reports/`, gitignored),
+   reviewed before any UI work.
+6. Celery scheduling: periodic re-confirmation; Redis response cache.
+7. DRF read API: `/api/coverage/…`, `/api/coverage/export/`.
+8. Frontend dashboard.
 
-### Phase 8: Frontend Dashboard
-- Only after Phase 5's report exists and Phase 7's API is live.
-- Browse/filter UI as specified in PRD §5.6. Coverage badges must reflect
-  real `CoverageRecord.status` values — no placeholder "assume confirmed"
-  states in the UI.
+The same principle still applies to new features: prove the data with a real
+run, and report the numbers honestly before building UI on top of them.
 
-## Things to explicitly avoid
+## Working on features
 
-- Do not mark a variable "confirmed" at any level without a stored,
-  hashed, real response backing it.
-- Do not crawl all ~514 kabupaten/kota for all variables — this is neither
-  necessary nor polite to BPS's infrastructure. Sample deliberately.
-- Do not build the frontend before Phase 5's report exists — the whole
-  value of this project is the confirmed-by-evidence catalog, and building
-  UI first risks designing around assumed data shapes that the real crawl
-  later contradicts.
-- Do not silently swallow BPS error responses (`404 UserNotFound`, rate
-  limit errors, malformed JSON) — log them into `CoverageCheckLog` with
-  status `error` so gaps are distinguishable from genuine unavailability.
-
-## Frontend design standard
-
-Before adding or changing anything under `frontend/`, read and follow
-[DESIGN.md](DESIGN.md): theme tokens (light + dark), typography, number
-formatting, routes, shared components, and the done-checklist.
+- Feature specs in `docs/` define their own phases. Finish and verify one
+  phase, then report, before starting the next.
+- UI follows `DESIGN.md`: tokens, dark mode, number formatting (id-ID) and
+  existing components. The maps are custom SVG (`ChoroplethMap`,
+  `OutlineMap`); there is no map library.
+- Fail loudly on implausible results (shares that don't sum, negative ranges,
+  missing inputs) rather than rendering them.
