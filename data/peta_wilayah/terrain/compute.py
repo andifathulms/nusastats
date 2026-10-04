@@ -13,7 +13,6 @@ Two grids, each used for what it is good at:
 Every guardrail failure raises before any output is written.
 """
 import hashlib
-import io
 import json
 import math
 import sys
@@ -21,14 +20,13 @@ import sys
 import numpy as np
 import rasterio
 import yaml
-from PIL import Image
 from rasterio.features import geometry_mask
 from rasterio.merge import merge
 from rasterio.transform import from_origin
 from rasterio.warp import Resampling, reproject
 from shapely.geometry import mapping
 
-from common import manifest, tiles
+from common import display, manifest, tiles
 from common.outlines import get_area, province_name
 from common.paths import CONFIG, PUBLIC_PETA
 from common.projection import geodesic_area_km2, to_crs, utm_epsg
@@ -88,12 +86,6 @@ def _band_labels(breaks):
     return labs + [f">={breaks[-1]}"]
 
 
-def _webp(rgba: np.ndarray, quality: int) -> bytes:
-    buf = io.BytesIO()
-    Image.fromarray(rgba, "RGBA").save(buf, "WEBP", quality=quality, method=6, exact=False)
-    return buf.getvalue()
-
-
 def compute(kode: str) -> dict:
     cfg, cfg_sha = _cfg()
     rules_cfg, rules_sha = rules.load()
@@ -117,7 +109,7 @@ def compute(kode: str) -> dict:
         paths.append(p)
         tile_recs[t] = rec["sha256"]
 
-    z, ztr, zcrs, zres, ztags = _mosaic(paths, (w - pad, s - pad, e + pad, n + pad))
+    z, ztr, zcrs, _res, ztags = _mosaic(paths, (w - pad, s - pad, e + pad, n + pad))
 
     # --- native grid: true min / max / highest point ------------------------------
     m_nat = geometry_mask([mapping(geom)], out_shape=z.shape, transform=ztr, invert=True)
@@ -188,45 +180,28 @@ def compute(kode: str) -> dict:
     }
     t_class, t_label, t_reason = rules.classify(metrics, rules_cfg)
 
-    # --- display layers (EPSG:4326, matches the SVG map's linear lon/lat projection) --
-    native_deg = abs(zres[1])
-    f = max(1, math.ceil(max((e - w), (n - s)) / native_deg / rc["max_px"]))
+    # --- display layers (shared EPSG:4326 grid, see common/display.py) -------------
+    f = display.start_factor(kode, geom, rc["max_px"])
     hs_cfg = rc["hillshade"]
     while True:
-        rd = native_deg * f
-        dw = math.floor(w / rd) * rd - rd
-        dn = math.ceil(n / rd) * rd + rd
-        ww = int(math.ceil((e - dw) / rd)) + 1
-        hh = int(math.ceil((dn - s) / rd)) + 1
-        dtr = from_origin(dw, dn, rd, rd)
-        zd = np.full((hh, ww), np.nan, dtype=np.float32)
+        g = display.grid(geom, f)
+        zd = np.full(g.shape, np.nan, dtype=np.float32)
         reproject(z, zd, src_transform=ztr, src_crs=zcrs, src_nodata=np.nan,
-                  dst_transform=dtr, dst_crs=zcrs, dst_nodata=np.nan,
+                  dst_transform=g.transform, dst_crs=zcrs, dst_nodata=np.nan,
                   resampling=Resampling.average)
-        lats = dn - (np.arange(hh) + 0.5) * rd
-        mlon, mlat = _m_per_deg(lats)
-        hs = dem.hillshade(zd.astype(np.float64), mlon * rd, float(np.mean(mlat)) * rd,
+        mlon, mlat = _m_per_deg(g.row_lats())
+        hs = dem.hillshade(zd.astype(np.float64), mlon * g.pixel_deg, float(np.mean(mlat)) * g.pixel_deg,
                            hs_cfg["azimuth_deg"], hs_cfg["altitude_deg"], hs_cfg["z_factor"])
-        m_d = geometry_mask([mapping(geom)], out_shape=zd.shape, transform=dtr, invert=True)
+        m_d = geometry_mask([mapping(geom)], out_shape=g.shape, transform=g.transform, invert=True)
         alpha = np.where(m_d & np.isfinite(zd), 255, 0).astype(np.uint8)
         gray = np.round(np.nan_to_num(hs, nan=1.0) * 255).astype(np.uint8)
         hs_rgba = np.dstack([gray, gray, gray, np.where(np.isfinite(hs), alpha, 0)])
         el_rgba = np.dstack([dem.tint(zd, rc["tint"]), alpha])
-        hs_bytes, el_bytes = _webp(hs_rgba, rc["webp_quality"]), _webp(el_rgba, rc["webp_quality"])
+        hs_bytes = display.webp(hs_rgba, quality=rc["webp_quality"])
+        el_bytes = display.webp(el_rgba, quality=rc["webp_quality"])
         if max(len(hs_bytes), len(el_bytes)) <= rc["max_bytes"]:
             break
         f += 1
-
-    bounds = {
-        "kode": kode, "crs": "EPSG:4326",
-        "west": round(dw, 8), "north": round(dn, 8),
-        "east": round(dw + ww * rd, 8), "south": round(dn - hh * rd, 8),
-        "width": ww, "height": hh, "pixel_deg": rd,
-        "downsample_factor": f, "source_pixel_deg": native_deg,
-        "note": "Pixel-edge bounds. Stretch the image over this lon/lat box (linear lon/lat, "
-                "same as ChoroplethMap's projection).",
-        "layers": {"hillshade": "hillshade.webp", "elevation": "elevation.webp"},
-    }
 
     r1 = lambda v: round(float(v), 1)  # noqa: E731
     r2 = lambda v: round(float(v), 2)  # noqa: E731
@@ -271,18 +246,16 @@ def compute(kode: str) -> dict:
             "computed_at": manifest.now_iso(),
         },
     }
-    return {"stats": stats, "bounds": bounds,
+    return {"stats": stats, "grid": g,
             "images": {"hillshade.webp": hs_bytes, "elevation.webp": el_bytes}}
 
 
 def write(kode: str, result: dict):
     out = PUBLIC_PETA / kode
     out.mkdir(parents=True, exist_ok=True)
-    files = {"terrain.json": json.dumps(result["stats"], indent=2, ensure_ascii=False) + "\n",
-             "bounds.json": json.dumps(result["bounds"], indent=2) + "\n"}
-    for fn, txt in files.items():
-        (out / fn).write_text(txt)
+    (out / "terrain.json").write_text(json.dumps(result["stats"], indent=2, ensure_ascii=False) + "\n")
     for fn, b in result["images"].items():
         (out / fn).write_bytes(b)
+    display.write_bounds(kode, result["grid"], {"hillshade": "hillshade.webp", "elevation": "elevation.webp"})
     sys.stderr.write(f"terrain: wrote {out}\n")
     return out

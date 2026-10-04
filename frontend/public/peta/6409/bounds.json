@@ -9,10 +9,10 @@
   "height": 1440,
   "pixel_deg": 0.0005555555555555556,
   "downsample_factor": 2,
-  "source_pixel_deg": 0.0002777777777777778,
-  "note": "Pixel-edge bounds. Stretch the image over this lon/lat box (linear lon/lat, same as ChoroplethMap's projection).",
+  "base_pixel_deg": 0.0002777777777777778,
+  "note": "Pixel-edge bounds. Stretch each layer over this lon/lat box (linear lon/lat, same as ChoroplethMap's projection).",
   "layers": {
-    "hillshade": "hillshade.webp",
-    "elevation": "elevation.webp"
+    "elevation": "elevation.webp",
+    "hillshade": "hillshade.webp"
   }
 }
