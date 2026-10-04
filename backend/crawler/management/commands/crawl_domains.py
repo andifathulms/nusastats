@@ -48,6 +48,11 @@ class Command(BaseCommand):
             )
             self._crawl_regencies(client, province)
 
+        # Read-API cache only: region lists and pickers read Domain.
+        from api.caching import bump_data_version
+
+        bump_data_version("bps")
+
     def _crawl_regencies(self, client, province):
         # Confirmed live: `kabbyprov` takes the 2-digit province code, not
         # the full 4-digit province domain_id (e.g. "11", not "1100").

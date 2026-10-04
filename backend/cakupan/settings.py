@@ -42,6 +42,7 @@ MIDDLEWARE = [
     # ETag + 304 Not Modified on GETs. Sits below GZip so the ETag is taken
     # over the uncompressed body (GZip then marks it weak).
     "django.middleware.http.ConditionalGetMiddleware",
+    "api.middleware.SlowRequestLogMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
@@ -113,6 +114,26 @@ REST_FRAMEWORK = {
     "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
     "PAGE_SIZE": 50,
     "DEFAULT_PERMISSION_CLASSES": ["rest_framework.permissions.AllowAny"],
+    # A public read API: generous per-IP limits (one page can fire 10-20
+    # calls, and many users share a NAT), tighter on the multi-MB export.
+    "DEFAULT_THROTTLE_CLASSES": [
+        "rest_framework.throttling.AnonRateThrottle",
+        "rest_framework.throttling.ScopedRateThrottle",
+    ],
+    "DEFAULT_THROTTLE_RATES": {
+        "anon": os.environ.get("API_THROTTLE_ANON", "1200/min"),
+        "export": os.environ.get("API_THROTTLE_EXPORT", "60/hour"),
+    },
+}
+
+# Requests slower than this are logged by api.middleware.SlowRequestLogMiddleware.
+API_SLOW_REQUEST_MS = int(os.environ.get("API_SLOW_REQUEST_MS", 500))
+
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "handlers": {"console": {"class": "logging.StreamHandler"}},
+    "loggers": {"api.slow": {"handlers": ["console"], "level": "WARNING", "propagate": False}},
 }
 
 CORS_ALLOWED_ORIGINS = os.environ.get(

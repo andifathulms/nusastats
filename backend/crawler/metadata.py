@@ -129,6 +129,10 @@ def run_metadata_crawl(
         subject.metadata_crawled_at = timezone.now()
         subject.save(update_fields=["metadata_crawled_at"])
 
+    # Read-API cache only (the coverage export lists variables).
+    from api.caching import bump_data_version
+
+    bump_data_version("bps")
     return {
         "categories": categories_seen,
         "subjects_discovered": len(discovered_subjects),

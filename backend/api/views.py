@@ -4,6 +4,7 @@ from rest_framework.views import APIView
 
 from catalog.models import SimdasiTable, Variable
 
+from .caching import cached_api
 from .filters import VariableFilter
 from .serializers import SimdasiTableSerializer, VariableDetailSerializer, VariableListSerializer
 
@@ -39,8 +40,17 @@ class SimdasiTableViewSet(viewsets.ReadOnlyModelViewSet):
 
 class CoverageExportView(APIView):
     """`/api/coverage/export/` — the full or filtered catalog as JSON, for
-    other projects (e.g. NusaStats) to ingest directly (PRD §5.7)."""
+    other projects (e.g. NusaStats) to ingest directly (PRD §5.7).
 
+    Building it takes seconds (every variable with its coverage records and
+    history), so the result is cached until the next metadata/coverage
+    crawl or ingest bumps the BPS data version. Only stored CoverageRecords
+    are read; nothing here touches coverage detection. Scoped-throttled,
+    since it is the heaviest response the API serves."""
+
+    throttle_scope = "export"
+
+    @cached_api("bps")
     def get(self, request):
         queryset = VariableFilter(request.query_params, queryset=Variable.objects.all()).qs
         queryset = queryset.select_related("subject", "subject__subject_category").prefetch_related(
