@@ -1,0 +1,19 @@
+[project]
+name = "peta-wilayah"
+version = "0.1.0"
+description = "NusaStats terrain & land cover pipeline (Copernicus DEM, ESA WorldCover)"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "numpy>=2.0",
+    "shapely>=2.0",
+    "pyproj>=3.6",
+    "rasterio>=1.4",
+    "pillow>=10.4",
+    "pyyaml>=6.0",
+]
+
+[dependency-groups]
+dev = ["pytest>=8.0"]
+
+[tool.uv]
+package = false

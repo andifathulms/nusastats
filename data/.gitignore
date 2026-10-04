@@ -3,3 +3,6 @@
 big_boundaries/*.geojson
 dukcapil_extra/AGR_VISUAL_KEL_202401*.json
 dukcapil_extra/kel_prov_*.json
+# Peta Wilayah pipeline: raw DEM/land-cover tiles, full-detail outlines, run logs.
+peta_wilayah/cache/
+peta_wilayah/.venv/
