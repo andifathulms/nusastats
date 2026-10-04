@@ -56,7 +56,6 @@ type Metric = {
 
 type LoadCtx = {
   prov: string; // 2-digit Kemendagri/BPS province code
-  djpkProv: string | null; // DJPK's own province code, or null if unresolved
   kab?: string; // 4-digit Kemendagri regency code (regency pages)
 };
 
@@ -133,9 +132,10 @@ const PDRB_METRIC: Metric = {
   additive: true,
   format: rupiahMiliar,
   load: async (ctx) => {
-    const r = await api.ranking(PDRB_ADHB, { admin_level: "regency", turvar_id: PDRB_TOTAL_TURVAR });
-    // BPS regency domain_ids are hierarchical: first 2 digits = the province.
-    const rows = r.results.filter((x) => x.domain_id.startsWith(ctx.prov)).map((x) => bpsRow(x, x.value));
+    // Scoped server-side to this province's regencies (BPS regency domain_ids
+    // are hierarchical: first 2 digits = the province).
+    const r = await api.ranking(PDRB_ADHB, { admin_level: "regency", turvar_id: PDRB_TOTAL_TURVAR, prov: ctx.prov });
+    const rows = r.results.map((x) => bpsRow(x, x.value));
     return { rows, note: `PDRB atas dasar harga berlaku ${r.year} · sumber BPS` };
   },
 };
@@ -151,16 +151,18 @@ const PDRB_GROWTH_METRIC: Metric = {
   load: async (ctx) => {
     // Anchor to the latest year the size ranking has, then measure real growth
     // over the year before it on the constant-price series.
-    const base = await api.ranking(PDRB_ADHB, { admin_level: "regency", turvar_id: PDRB_TOTAL_TURVAR });
+    // Same request as the PDRB size metric, so it's shared/cached, not refetched.
+    const base = await api.ranking(PDRB_ADHB, { admin_level: "regency", turvar_id: PDRB_TOTAL_TURVAR, prov: ctx.prov });
     if (!base.year) return { rows: [], note: "tahun PDRB tidak diketahui" };
     const g = await api.growth(PDRB_ADHK, {
       admin_level: "regency",
       turvar_id: PDRB_TOTAL_TURVAR,
+      prov: ctx.prov,
       year_from: String(base.year - 1),
       year_to: String(base.year),
     });
     const rows = g.results
-      .filter((x) => x.domain_id.startsWith(ctx.prov) && x.change_pct !== null)
+      .filter((x) => x.change_pct !== null)
       .map((x) => bpsRow(x, x.change_pct as number));
     return { rows, note: `pertumbuhan riil ${base.year - 1}→${base.year} (harga konstan) · sumber BPS` };
   },
@@ -189,13 +191,13 @@ function djpkMetric(
     additive,
     format,
     load: async (ctx) => {
-      // DJPK numbers provinces on its own scheme; without the resolved code we
-      // cannot scope the query, so say so rather than showing the whole country.
-      if (!ctx.djpkProv) return { rows: [], note: "wilayah DJPK tidak dikenali" };
+      // DJPK numbers provinces on its own scheme; the API resolves our
+      // Kemendagri code. Unresolved -> prov null and no rows, never the whole
+      // country.
       const r = await djpkApi.rank({
         akun,
         level: "regency",
-        prov: ctx.djpkProv,
+        kemendagri_prov: ctx.prov,
         measure: "realisasi",
         order: "desc",
         limit: "600",
@@ -206,7 +208,7 @@ function djpkMetric(
           name: x.domain_name, // DJPK names already carry "Kab. "/"Kota "
           value: x.value,
         })),
-        note: djpkScopeNote(r.scope),
+        note: r.prov === null ? "wilayah DJPK tidak dikenali" : djpkScopeNote(r.scope),
       };
     },
   };
@@ -235,19 +237,7 @@ const ECONOMY_METRICS: Metric[] = [
 
 export function ProvinceInsight({ domainId, regionName }: { domainId: string; regionName: string }) {
   const prov = domainId.slice(0, 2);
-  const [djpkProv, setDjpkProv] = useState<string | null>(null);
-  const [djpkReady, setDjpkReady] = useState(false);
-
-  // DJPK province code <- Kemendagri province code, via the DJPK region list.
-  useEffect(() => {
-    djpkApi
-      .regions({ level: "province" })
-      .then((rows) => setDjpkProv(rows.find((r) => r.kemendagri_code === prov)?.djpk_prov ?? null))
-      .catch(() => setDjpkProv(null))
-      .finally(() => setDjpkReady(true));
-  }, [prov]);
-
-  const ctx: LoadCtx = { prov, djpkProv };
+  const ctx: LoadCtx = { prov };
 
   return (
     <div className="space-y-10">
@@ -261,18 +251,16 @@ export function ProvinceInsight({ domainId, regionName }: { domainId: string; re
         mapFilter={[prov]}
         linkVia="crosswalk"
       />
-      {djpkReady && (
-        <MetricSection
-          title="Ekonomi kabupaten/kota"
-          childLabel="kabupaten/kota"
-          parentName={regionName}
-          metrics={ECONOMY_METRICS}
-          ctx={ctx}
-          geojsonUrl="/dukcapil-regencies.geojson"
-          mapFilter={[prov]}
-          linkVia="crosswalk"
-        />
-      )}
+      <MetricSection
+        title="Ekonomi kabupaten/kota"
+        childLabel="kabupaten/kota"
+        parentName={regionName}
+        metrics={ECONOMY_METRICS}
+        ctx={ctx}
+        geojsonUrl="/dukcapil-regencies.geojson"
+        mapFilter={[prov]}
+        linkVia="crosswalk"
+      />
     </div>
   );
 }
@@ -306,7 +294,7 @@ export function RegencyInsight({ domainId, regionName }: { domainId: string; reg
         childLabel="kecamatan"
         parentName={regionName}
         metrics={DEMOGRAPHY_METRICS(() => ({ level: "district", kab }))}
-        ctx={{ prov: kab.slice(0, 2), djpkProv: null, kab }}
+        ctx={{ prov: kab.slice(0, 2), kab }}
         geojsonUrl={`/dukcapil-districts-${kab.slice(0, 2)}.geojson`}
         mapFilter={[kab]}
         linkVia="direct"
@@ -370,7 +358,7 @@ function MetricSection({
       live = false;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [key, ctx.prov, ctx.djpkProv, ctx.kab]);
+  }, [key, ctx.prov, ctx.kab]);
 
   // Fill in whichever code side the loader didn't supply.
   const { bpsByKemen, kemenByBps } = useMemo(

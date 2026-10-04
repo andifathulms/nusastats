@@ -223,21 +223,45 @@ def regions(request):
     return Response(DukcapilRegionSerializer(qs, many=True).data)
 
 
+def _detail_region(period, **lookup):
+    return (
+        DukcapilRegion.objects.filter(period=period, **lookup)
+        .select_related("parent")
+        .defer("parent__attributes")
+        .first()
+    )
+
+
 @api_view(["GET"])
 @cached_api("dukcapil")
 def region_detail(request, code):
     """`/api/dukcapil/regions/{code}/` — one region's full indicator profile,
     grouped, each with the region's rank/percentile among peers at its level."""
     period, _ = _resolve_period(request)
-    region = (
-        DukcapilRegion.objects.filter(code=code, period=period)
-        .select_related("parent")
-        .defer("parent__attributes")
-        .first()
-    )
+    region = _detail_region(period, code=code)
     if not region:
         return Response({"detail": "Unknown region code."}, status=404)
+    return Response(_region_detail_payload(region, period))
 
+
+@api_view(["GET"])
+@cached_api("bps", "dukcapil")
+def region_detail_by_bps(request, domain_id):
+    """`/api/dukcapil/regions/bps/{bps_regency_domain_id}/` — the same profile
+    as region_detail, for a BPS regency, resolved through the name+status
+    crosswalk server-side. Saves the BPS region page a bridge round-trip
+    before it can ask for the detail."""
+    period, _ = _resolve_period(request)
+    bps_name = Domain.objects.filter(domain_id=domain_id).values_list("domain_name", flat=True).first()
+    match = _resolve_dukcapil_regency(domain_id, bps_name or "", _RegencyIndex(period))
+    region = _detail_region(period, pk=match.pk) if match else None
+    if not region:
+        return Response({"detail": "No Dukcapil regency matches this BPS region."}, status=404)
+    return Response({**_region_detail_payload(region, period), "bps_domain_id": domain_id})
+
+
+def _region_detail_payload(region, period):
+    """The grouped, peer-ranked indicator profile for one region."""
     catalog = list(DukcapilIndicator.objects.all())
     # Peers = regions at the same level in the same period. For regions with a
     # parent (regency, district, village) that means same-parent siblings —
@@ -309,23 +333,21 @@ def region_detail(request, code):
     if "Rasio & Turunan" not in order:
         order.append("Rasio & Turunan")
     groups = [{"group": g, "indicators": by_group[g]} for g in order if g in by_group]
-    return Response(
-        {
-            "region": {
-                "code": region.code,
-                "level": region.level,
-                "name": region.name,
-                "status": region.status,
-                "parent_code": region.parent_code,
-                "parent_name": region.parent.name if region.parent else None,
-                "nama_prop": region.nama_prop,
-                "nama_kab": region.nama_kab,
-                "nama_kec": region.nama_kec,
-            },
-            "peer_scope": peer_scope,
-            "groups": groups,
-        }
-    )
+    return {
+        "region": {
+            "code": region.code,
+            "level": region.level,
+            "name": region.name,
+            "status": region.status,
+            "parent_code": region.parent_code,
+            "parent_name": region.parent.name if region.parent else None,
+            "nama_prop": region.nama_prop,
+            "nama_kab": region.nama_kab,
+            "nama_kec": region.nama_kec,
+        },
+        "peer_scope": peer_scope,
+        "groups": groups,
+    }
 
 
 @api_view(["GET"])

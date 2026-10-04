@@ -24,6 +24,7 @@ urlpatterns = [
     path("dukcapil/summary/", dukcapil_views.summary, name="dukcapil-summary"),
     path("dukcapil/indicators/", dukcapil_views.indicators, name="dukcapil-indicators"),
     path("dukcapil/regions/", dukcapil_views.regions, name="dukcapil-regions"),
+    path("dukcapil/regions/bps/<str:domain_id>/", dukcapil_views.region_detail_by_bps, name="dukcapil-region-by-bps"),
     path("dukcapil/regions/<str:code>/", dukcapil_views.region_detail, name="dukcapil-region-detail"),
     path("dukcapil/rank/", dukcapil_views.rank, name="dukcapil-rank"),
     path("dukcapil/correlate/", dukcapil_views.correlate, name="dukcapil-correlate"),

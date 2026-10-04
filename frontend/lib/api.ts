@@ -164,13 +164,52 @@ export type Region = {
   parent_province_name?: string | null;
 };
 
+// Identical GETs already in flight share one network request. The browser HTTP
+// cache (the backend sends Cache-Control + ETag) covers repeats once a response
+// has landed; this covers the moment several components on one page ask for the
+// same thing at once (crosswalk, bridge, province lists), which the HTTP cache
+// can't merge. Each caller parses its own copy, since some mutate results.
+const inflight = new Map<string, Promise<string>>();
+
 async function get<T>(path: string): Promise<T> {
-  // Default HTTP caching: the backend sends Cache-Control + ETag on read
-  // endpoints, so the browser reuses responses that several components on one
-  // page request (crosswalk, bridge, catalogs) instead of refetching each time.
-  const res = await fetch(`${API_BASE}/api${path}`);
-  if (!res.ok) throw new Error(`API ${path} -> ${res.status}`);
-  return res.json();
+  const url = `${API_BASE}/api${path}`;
+  let body = inflight.get(url);
+  if (!body) {
+    body = fetch(url)
+      .then((res) => {
+        if (!res.ok) throw new Error(`API ${path} -> ${res.status}`);
+        return res.text();
+      })
+      .finally(() => inflight.delete(url));
+    inflight.set(url, body);
+  }
+  return JSON.parse(await body) as T;
+}
+
+// Fetch a series for many domain_id/vervar_id values in a few batched requests
+// (instead of one per value), merged into one result. Batches keep each
+// response under the backend's 10k-row series cap.
+async function seriesBatched(
+  variableId: string,
+  key: "domain_id" | "vervar_id",
+  values: string[],
+  params: Record<string, string> = {},
+  batchSize = 8
+): Promise<Series> {
+  const batches: string[][] = [];
+  for (let i = 0; i < values.length; i += batchSize) batches.push(values.slice(i, i + batchSize));
+  const parts = await Promise.all(batches.map((b) => api.series(variableId, { ...params, [key]: b })));
+  const results = parts.flatMap((p) => p.results);
+  const first = parts[0];
+  return {
+    variable_id: first?.variable_id ?? variableId,
+    name: first?.name ?? "",
+    unit: first?.unit ?? "",
+    count: results.length,
+    total: parts.reduce((n, p) => n + p.total, 0),
+    truncated: parts.some((p) => p.truncated),
+    results,
+  };
 }
 
 export const api = {
@@ -189,6 +228,7 @@ export const api = {
     const qs = q.toString();
     return get<Series>(`/stats/variables/${variableId}/series/${qs ? `?${qs}` : ""}`);
   },
+  seriesBatched,
   regions: (params: Record<string, string> = {}) => {
     const q = new URLSearchParams(params).toString();
     return get<Region[]>(`/stats/regions/${q ? `?${q}` : ""}`);
@@ -493,6 +533,9 @@ export const dukcapilApi = {
     return get<DukcapilRegionRow[]>(`/dukcapil/regions/${q ? `?${q}` : ""}`);
   },
   regionDetail: (code: string) => get<DukcapilRegionDetail>(`/dukcapil/regions/${code}/`),
+  // Same profile for a BPS regency, resolved server-side (no bridge hop first).
+  regionDetailByBps: (bpsDomainId: string) =>
+    get<DukcapilRegionDetail & { bps_domain_id: string }>(`/dukcapil/regions/bps/${bpsDomainId}/`),
   rank: (params: Record<string, string> = {}) => {
     const q = new URLSearchParams(params).toString();
     return get<DukcapilRank>(`/dukcapil/rank/${q ? `?${q}` : ""}`);
@@ -645,6 +688,8 @@ export type DjpkRankParams = {
   level?: DjpkRegionLevel;
   measure?: DjpkMeasure;
   prov?: string;
+  // Kemendagri province code; the API maps it to DJPK's numbering.
+  kemendagri_prov?: string;
   tahun?: string;
   type?: DjpkReportType;
   periode?: string;

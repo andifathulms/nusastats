@@ -930,17 +930,16 @@ function HistoryPanel({
     let cancelled = false;
     setRows(null);
     // Sum every province's series per (year, turvar) — one province, or a whole
-    // region's provinces.
-    Promise.all(provCodes.map((pc) => api.series(cfg.variableId, { vervar_id: pc }))).then((results) => {
+    // region's provinces — fetched in a few batched requests, not one each.
+    api.seriesBatched(cfg.variableId, "vervar_id", provCodes).then((s) => {
       if (cancelled) return;
       const byYear = new Map<number, Record<string, number>>();
-      for (const s of results)
-        for (const d of s.results) {
-          if (d.year == null) continue;
-          const y = byYear.get(d.year) ?? { year: d.year };
-          y[d.turvar_id] = (y[d.turvar_id] ?? 0) + d.value;
-          byYear.set(d.year, y);
-        }
+      for (const d of s.results) {
+        if (d.year == null) continue;
+        const y = byYear.get(d.year) ?? { year: d.year };
+        y[d.turvar_id] = (y[d.turvar_id] ?? 0) + d.value;
+        byYear.set(d.year, y);
+      }
       const ordered = [...byYear.values()].sort((a, b) => a.year - b.year);
       // Drop the partial current year (BPS reports it as one quarter).
       setRows(cfg.partialLastYear ? ordered.slice(0, -1) : ordered);

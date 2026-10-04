@@ -353,16 +353,16 @@ function HistoryPanel({
     if (!canComponents) return;
     let cancelled = false;
     setCompRows(null);
-    Promise.all(members.map((m) => api.series(variableId, { domain_id: m }))).then((res) => {
+    // A few batched requests rather than one per member region.
+    api.seriesBatched(variableId, "domain_id", members).then((s) => {
       if (cancelled) return;
       const byYear = new Map<number, Record<string, number>>();
-      for (const s of res)
-        for (const d of s.results) {
-          if (d.year == null) continue;
-          const y = byYear.get(d.year) ?? { year: d.year };
-          y[d.turvar_id] = (y[d.turvar_id] ?? 0) + d.value;
-          byYear.set(d.year, y);
-        }
+      for (const d of s.results) {
+        if (d.year == null) continue;
+        const y = byYear.get(d.year) ?? { year: d.year };
+        y[d.turvar_id] = (y[d.turvar_id] ?? 0) + d.value;
+        byYear.set(d.year, y);
+      }
       setCompRows([...byYear.values()].sort((a, b) => a.year - b.year));
     });
     return () => { cancelled = true; };

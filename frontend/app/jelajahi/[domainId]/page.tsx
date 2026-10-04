@@ -93,12 +93,12 @@ function BpsRegion({ domainId, kind }: { domainId: string; kind: Kind }) {
   useEffect(() => {
     if (kind === "national") return;
     setDukState("loading");
+    // One request either way: a regency resolves to its Dukcapil match
+    // server-side (previously a bridge call, then the detail call).
     const resolve =
       kind === "province"
         ? dukcapilApi.regionDetail(dukcapilProvinceCode(domainId))
-        : dukcapilApi
-            .regencyBridge(domainId)
-            .then((b) => (b.dukcapil ? dukcapilApi.regionDetail(b.dukcapil.code) : null));
+        : dukcapilApi.regionDetailByBps(domainId);
     resolve
       .then((d) => (d ? setDuk(d) : setDukState("empty")))
       .catch(() => setDukState("empty"));
@@ -110,13 +110,15 @@ function BpsRegion({ domainId, kind }: { domainId: string; kind: Kind }) {
   }, [data, search]);
 
   if (error) return <ErrorState message={error} />;
-  if (!data) return <RegionSkeleton />;
 
-  const { region } = data;
+  // Only the hero and the indicator table wait for the region's variable list;
+  // the tabs and their own data (insight maps, demografi, wilayah) start
+  // loading immediately instead of after it.
+  const region = data?.region;
   // BPS ships "Dki Jakarta" / "Di Yogyakarta"; titleCase restores the acronyms.
-  const regionName = titleCase(region.domain_name);
+  const regionName = region ? titleCase(region.domain_name) : "";
   const badge =
-    kind === "regency" ? bpsRegencyStatus(region.domain_id) || "Kabupaten/Kota" : KIND_LABEL[kind];
+    kind === "regency" ? bpsRegencyStatus(domainId) || "Kabupaten/Kota" : KIND_LABEL[kind];
 
   const tabs: [Tab, string][] = [
     ...(kind === "province" ? ([["insight", "Kabupaten/Kota"]] as [Tab, string][]) : []),
@@ -128,7 +130,7 @@ function BpsRegion({ domainId, kind }: { domainId: string; kind: Kind }) {
   ];
 
   const crumbs: Crumb[] = [{ label: "Indonesia", href: routes.region("0000") }];
-  if (region.parent_province_id && region.parent_province_name)
+  if (region?.parent_province_id && region.parent_province_name)
     crumbs.push({ label: titleCase(region.parent_province_name), href: routes.region(region.parent_province_id) });
   if (kind !== "national") crumbs.push({ label: kind === "regency" ? regionLabel(regionName, badge) : regionName });
 
@@ -152,8 +154,12 @@ function BpsRegion({ domainId, kind }: { domainId: string; kind: Kind }) {
             chip: dens?.rank ? `#${dens.rank} terpadat${peers}` : null,
           },
         ]),
-    { value: formatNumber(data.total_variables), label: "indikator BPS", chip: `${formatCompact(data.total_data_points)} titik data` },
-    { value: data.year_min && data.year_max ? `${data.year_min}–${data.year_max}` : "–", label: "rentang tahun" },
+    ...(data
+      ? [
+          { value: formatNumber(data.total_variables), label: "indikator BPS", chip: `${formatCompact(data.total_data_points)} titik data` },
+          { value: data.year_min && data.year_max ? `${data.year_min}–${data.year_max}` : "–", label: "rentang tahun" },
+        ]
+      : []),
   ];
   const silhouette =
     kind === "province"
@@ -164,15 +170,21 @@ function BpsRegion({ domainId, kind }: { domainId: string; kind: Kind }) {
 
   return (
     <div className="space-y-6">
+      {!data ? (
+        <HeroSkeleton />
+      ) : (
+        <>
       <Breadcrumbs items={crumbs} />
       <RegionHero
         eyebrow={kind === "national" ? "Profil nasional" : kind === "province" ? "Profil provinsi" : "Profil kabupaten/kota"}
         name={kind === "regency" ? regionLabel(regionName, badge) : regionName}
         tags={[badge, ...(duk?.region.status && duk.region.status !== badge && kind === "province" ? duk.region.status.split(", ") : [])]}
-        code={region.domain_id}
+        code={domainId}
         facts={facts}
         silhouette={silhouette}
       />
+        </>
+      )}
 
       {tabs.length > 1 && <StickyTabs tabs={tabs} value={tab} onChange={setTab} />}
 
@@ -187,6 +199,8 @@ function BpsRegion({ domainId, kind }: { domainId: string; kind: Kind }) {
         <DemografiView state={dukState} detail={duk} />
       ) : tab === "profile" && kind !== "national" ? (
         <ProfileView profile={profile} regionLevel={kind} domainId={domainId} />
+      ) : !data ? (
+        <Panel><Skeleton className="h-3 w-48" /><SkeletonRows rows={8} className="mt-4" /></Panel>
       ) : (
         <div>
           <SectionTitle hint="klik untuk membuat grafik wilayah ini">Indikator tersedia</SectionTitle>
@@ -212,7 +226,7 @@ function BpsRegion({ domainId, kind }: { domainId: string; kind: Kind }) {
                     <tr key={v.variable_id} className="border-b border-ink-border/50 transition-colors last:border-0 hover:bg-ink-accent/[0.04]">
                       <td className="px-5 py-3">
                         <Link
-                          href={`/variables/${v.variable_id}?region=${region.domain_id}`}
+                          href={`/variables/${v.variable_id}?region=${domainId}`}
                           className="font-medium text-ink-accent hover:underline"
                         >
                           {v.name}
@@ -392,6 +406,16 @@ function DukcapilRegion({ code, kind }: { code: string; kind: Kind }) {
 function RegionSkeleton() {
   return (
     <div className="space-y-6">
+      <HeroSkeleton />
+      <Skeleton className="h-10 w-full max-w-lg rounded-xl" />
+      <Panel><Skeleton className="h-3 w-48" /><SkeletonRows rows={8} className="mt-4" /></Panel>
+    </div>
+  );
+}
+
+function HeroSkeleton() {
+  return (
+    <div className="space-y-6">
       <header className="border-b border-ink-border pb-5">
         <Skeleton className="h-4 w-24" />
         <Skeleton className="mt-3 h-9 w-72" />
@@ -399,8 +423,6 @@ function RegionSkeleton() {
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-3">
         {[0, 1, 2].map((i) => <SkeletonTile key={i} />)}
       </div>
-      <Skeleton className="h-10 w-full max-w-lg rounded-xl" />
-      <Panel><Skeleton className="h-3 w-48" /><SkeletonRows rows={8} className="mt-4" /></Panel>
     </div>
   );
 }

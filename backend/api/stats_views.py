@@ -9,6 +9,7 @@ from collections import defaultdict
 from django.db.models import Avg, Count, F, Max, Min, Q, Sum
 from rest_framework import viewsets
 from rest_framework.decorators import action
+from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -24,6 +25,18 @@ from .stats_serializers import RegionSerializer, VariableWithDataSerializer
 # Hard cap on rows per series response; callers learn about a cut via
 # `truncated`/`total` instead of a silently short `count`.
 SERIES_CAP = 10000
+
+
+def _scope_prov(points, request):
+    """Narrow DataPoints to one province's regencies via `?prov=<2 digits>`.
+    BPS regency domain_ids are hierarchical (first two digits = province), so
+    callers no longer download a nationwide ranking to show one province."""
+    prov = request.query_params.get("prov")
+    if prov:
+        if not (len(prov) == 2 and prov.isdigit()):
+            raise ValidationError({"prov": "must be a 2-digit province code"})
+        points = points.filter(domain__domain_id__startswith=prov)
+    return points
 
 
 def region_values(variable, admin_level, year, turvar_id=None):
@@ -181,7 +194,7 @@ class VariableDataViewSet(viewsets.ReadOnlyModelViewSet):
         core analytics endpoint. Filter with query params:
           domain_id      one or more (repeatable) region codes
           admin_level    national|province|regency (if no domain_id given)
-          vervar_id      restrict to one vervar breakdown value
+          vervar_id      one or more (repeatable) vervar breakdown values
           turvar_id      restrict to one turvar breakdown value
           year_min/year_max   inclusive year bounds
         Returns rows ordered for direct charting (year ascending).
@@ -195,8 +208,9 @@ class VariableDataViewSet(viewsets.ReadOnlyModelViewSet):
         elif request.query_params.get("admin_level"):
             points = points.filter(admin_level=request.query_params["admin_level"])
 
-        if request.query_params.get("vervar_id"):
-            points = points.filter(vervar_id=request.query_params["vervar_id"])
+        vervar_ids = request.query_params.getlist("vervar_id")
+        if vervar_ids:
+            points = points.filter(vervar_id__in=vervar_ids)
         if request.query_params.get("turvar_id"):
             points = points.filter(turvar_id=request.query_params["turvar_id"])
         year_min = int_param(request, "year_min")
@@ -244,18 +258,20 @@ class VariableDataViewSet(viewsets.ReadOnlyModelViewSet):
         """`/api/stats/variables/{id}/ranking/` — rank every region at an
         admin level by this indicator's value for one year. Params:
         admin_level (default province), year (default latest available),
-        turvar_id (default first present), order (desc|asc), limit.
+        turvar_id (default first present), order (desc|asc), limit/offset,
+        prov (2-digit code: only that province's regencies).
         Returns the ranked regions plus distribution stats for the spread.
         """
         variable = self.get_object()
         admin_level = request.query_params.get("admin_level", AdminLevel.PROVINCE)
         order = request.query_params.get("order", "desc")
 
-        points = DataPoint.objects.filter(variable=variable, admin_level=admin_level)
+        points = _scope_prov(DataPoint.objects.filter(variable=variable, admin_level=admin_level), request)
         if not points.exists():
             return Response(
                 {"variable_id": variable.variable_id, "name": variable.name, "unit": variable.unit,
-                 "admin_level": admin_level, "year": None, "stats": distribution([]), "results": []}
+                 "admin_level": admin_level, "year": None, "stats": distribution([]),
+                 "total": 0, "offset": 0, "results": []}
             )
 
         year = int_param(request, "year")
@@ -362,13 +378,13 @@ class VariableDataViewSet(viewsets.ReadOnlyModelViewSet):
         """`/api/stats/variables/{id}/growth/` — per-region change between
         two years, sorted fastest-rising to fastest-declining. Params:
         admin_level (default province), year_from/year_to (default the
-        earliest/latest available), turvar_id, order.
+        earliest/latest available), turvar_id, order, limit/offset, prov.
         """
         variable = self.get_object()
         admin_level = request.query_params.get("admin_level", AdminLevel.PROVINCE)
         order = request.query_params.get("order", "desc")
 
-        base = DataPoint.objects.filter(variable=variable, admin_level=admin_level)
+        base = _scope_prov(DataPoint.objects.filter(variable=variable, admin_level=admin_level), request)
         if not base.exists():
             return Response(
                 {"variable_id": variable.variable_id, "name": variable.name, "unit": variable.unit,
@@ -390,7 +406,7 @@ class VariableDataViewSet(viewsets.ReadOnlyModelViewSet):
                 for p in qs.values("domain__domain_id", "domain__domain_name", "value")
             }
 
-        results = growth_rows(by_domain(year_from), by_domain(year_to), order=order)
+        results, page_meta = paginate(growth_rows(by_domain(year_from), by_domain(year_to), order=order), request)
         return Response(
             {
                 "variable_id": variable.variable_id,
@@ -400,6 +416,7 @@ class VariableDataViewSet(viewsets.ReadOnlyModelViewSet):
                 "year_from": year_from,
                 "year_to": year_to,
                 "turvar_id": turvar_id,
+                **page_meta,
                 "results": results,
             }
         )

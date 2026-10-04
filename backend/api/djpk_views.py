@@ -259,13 +259,30 @@ def regions(request):
 @cached_api("djpk")
 def rank(request):
     """`/api/djpk/rank/?akun=&measure=&level=&prov=&tahun=&type=&periode=&order=`
-    — rank regions at a level by one account+measure, plus distribution stats."""
+    — rank regions at a level by one account+measure, plus distribution stats.
+    `kemendagri_prov` may stand in for `prov` (resolved to DJPK's numbering)."""
     akun_key = request.query_params.get("akun", "pad")
     measure = _measure(request)
     level = request.query_params.get("level", RegionLevel.PROVINCE)
     prov = request.query_params.get("prov")
+    kemendagri_prov = request.query_params.get("kemendagri_prov")
     order = request.query_params.get("order", "desc")
     tahun, rtype, periode = _resolve_scope(request)
+
+    unresolved = False
+    if kemendagri_prov and not prov:
+        # Resolve DJPK's own province numbering here, so a caller holding a
+        # Kemendagri code needn't fetch the DJPK region list first. An
+        # unrecognised code yields no rows (and prov=None), never the whole
+        # country.
+        prov = (
+            ApbdRegion.objects.filter(level=RegionLevel.PROVINCE, kemendagri_code=kemendagri_prov)
+            .values_list("djpk_prov", flat=True)
+            .first()
+        )
+        unresolved = prov is None
+        if unresolved:
+            prov = "--"  # matches no region
 
     vals, unit, account = _metric_values(tahun, rtype, periode, level, akun_key, measure,
                                          prov=str(prov).zfill(2) if prov else None)
@@ -280,7 +297,7 @@ def rank(request):
         "account": account,
         "measure": measure,
         "level": level,
-        "prov": prov,
+        "prov": None if unresolved else prov,
         "scope": {"tahun": tahun, "type": rtype, "periode": periode},
         "order": order,
         "unit": unit,

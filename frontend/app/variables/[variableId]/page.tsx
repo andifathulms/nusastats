@@ -73,17 +73,24 @@ export default function VariableDetailPage({ params }: { params: { variableId: s
       .catch((e) => setError(String(e)));
   }, [variableId]);
 
-  // 2) Geographic: load the region list for the chosen admin level. Keep any
-  //    already-selected regions that belong to this level (so a deep-linked
-  //    region survives); otherwise default to the first few.
+  // 2) All regions, fetched once at mount in parallel with the dimensions
+  //    (a small, cached list) rather than per admin level after them — that
+  //    sequential hop delayed the first chart.
+  const [allRegions, setAllRegions] = useState<Region[] | null>(null);
   useEffect(() => {
-    if (!isGeographic || !adminLevel) return;
-    api.regions({ admin_level: adminLevel }).then((rs) => {
-      setRegions(rs);
-      const ids = new Set(rs.map((r) => r.domain_id));
-      setSelected((cur) => (cur.some((id) => ids.has(id)) ? cur : rs.slice(0, 5).map((r) => r.domain_id)));
-    });
-  }, [isGeographic, adminLevel]);
+    api.regions().then(setAllRegions).catch(() => setAllRegions([]));
+  }, []);
+
+  //    Geographic: narrow to the chosen admin level. Keep any already-selected
+  //    regions that belong to this level (so a deep-linked region survives);
+  //    otherwise default to the first few.
+  useEffect(() => {
+    if (!isGeographic || !adminLevel || !allRegions) return;
+    const rs = allRegions.filter((r) => r.admin_level === adminLevel);
+    setRegions(rs);
+    const ids = new Set(rs.map((r) => r.domain_id));
+    setSelected((cur) => (cur.some((id) => ids.has(id)) ? cur : rs.slice(0, 5).map((r) => r.domain_id)));
+  }, [isGeographic, adminLevel, allRegions]);
 
   // 3) Fetch the series whenever the selection changes.
   useEffect(() => {
