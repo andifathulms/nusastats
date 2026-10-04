@@ -227,7 +227,7 @@ function RankTable({ headers, rows }: { headers: string[]; rows: string[][] }) {
               <tr key={i} className="border-b border-ink-border/40 transition-colors last:border-0 hover:bg-ink-accent/[0.04]">
                 <td className="px-5 py-2 tabular-nums text-ink-muted">{r[0]}</td>
                 <td className="px-5 py-2">
-                  <Link href={`/regions/${r[1]}`} className="font-medium text-ink-accent hover:underline">
+                  <Link href={`/jelajahi/${r[1]}`} className="font-medium text-ink-accent hover:underline">
                     {r[2]}
                   </Link>
                 </td>

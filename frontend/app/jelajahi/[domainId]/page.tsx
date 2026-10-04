@@ -6,17 +6,28 @@ import {
   api,
   bpsRegencyStatus,
   dukcapilApi,
+  formatCompact,
+  formatDecimal,
   formatNumber,
+  regionLabel,
   PCT_COLOR,
   titleCase,
   type DukcapilRegionDetail,
   type RegionProfile,
   type RegionVariables,
 } from "@/lib/api";
-import { Badge, ErrorState, Panel, SectionTitle, Skeleton, SkeletonRows, SkeletonTile, StatTile } from "@/components/ui";
+import { Badge, ErrorState, Panel, SectionTitle, Skeleton, SkeletonRows, SkeletonTile } from "@/components/ui";
 import { DukcapilDrilldown } from "@/components/DukcapilDrilldown";
 import { DukcapilRegionProfile } from "@/components/DukcapilRegionProfile";
 import { ProvinceInsight, RegencyInsight } from "@/components/RegionInsight";
+import { Breadcrumbs, RegionHero, StickyTabs, type Crumb, type HeroFact } from "@/components/explore/RegionHero";
+import { provinceHref, routes } from "@/lib/routes";
+
+// BPS province domain -> Dukcapil 2-digit code. BPS still uses the pre-2022
+// Papua split: 9400 Papua = Dukcapil 91, 9100 Papua Barat = Dukcapil 92.
+function dukcapilProvinceCode(bpsId: string): string {
+  return ({ "9400": "91", "9100": "92" } as Record<string, string>)[bpsId] ?? bpsId.slice(0, 2);
+}
 
 type Kind = "national" | "province" | "regency" | "district" | "village";
 
@@ -25,6 +36,8 @@ type Kind = "national" | "province" | "regency" | "district" | "village";
 // and desa (10-digit), which BPS has no counterpart for.
 function regionKind(code: string): Kind {
   if (code === "0000") return "national";
+  // 2-digit = a Dukcapil-only province (the four post-2022 Papua provinces).
+  if (code.length === 2) return "province";
   if (code.length === 4) return code.endsWith("00") ? "province" : "regency";
   if (code.length <= 7) return "district";
   return "village";
@@ -41,7 +54,7 @@ const KIND_LABEL: Record<Kind, string> = {
 export default function RegionDetailPage({ params }: { params: { domainId: string } }) {
   const { domainId } = params;
   const kind = regionKind(domainId);
-  const bpsBacked = kind === "national" || kind === "province" || kind === "regency";
+  const bpsBacked = (kind === "national" || kind === "province" || kind === "regency") && domainId.length === 4;
 
   return bpsBacked ? (
     <BpsRegion domainId={domainId} kind={kind} />
@@ -74,21 +87,22 @@ function BpsRegion({ domainId, kind }: { domainId: string; kind: Kind }) {
     if (tab === "profile" && !profile) api.regionProfile(domainId).then(setProfile);
   }, [tab, profile, domainId]);
 
-  // Lazy-load Dukcapil demographics: province via code[:2], regency via the
-  // bridge (BPS and Dukcapil regency codes diverge, so name-matching is needed).
+  // Dukcapil demographics feed both the hero facts and the Demografi tab.
+  // Province via its 2-digit code (BPS keeps the old Papua split), regency via
+  // the bridge (BPS and Dukcapil regency codes diverge; name-matched).
   useEffect(() => {
-    if (tab !== "demografi" || duk || dukState === "loading" || dukState === "empty") return;
+    if (kind === "national") return;
     setDukState("loading");
     const resolve =
       kind === "province"
-        ? dukcapilApi.regionDetail(domainId.slice(0, 2))
+        ? dukcapilApi.regionDetail(dukcapilProvinceCode(domainId))
         : dukcapilApi
             .regencyBridge(domainId)
             .then((b) => (b.dukcapil ? dukcapilApi.regionDetail(b.dukcapil.code) : null));
     resolve
       .then((d) => (d ? setDuk(d) : setDukState("empty")))
       .catch(() => setDukState("empty"));
-  }, [tab, duk, dukState, kind, domainId]);
+  }, [kind, domainId]);
 
   const filtered = useMemo(() => {
     if (!data) return [];
@@ -113,55 +127,56 @@ function BpsRegion({ domainId, kind }: { domainId: string; kind: Kind }) {
     ...(kind === "regency" ? ([["wilayah", "Wilayah (Dukcapil)"]] as [Tab, string][]) : []),
   ];
 
+  const crumbs: Crumb[] = [{ label: "Indonesia", href: routes.region("0000") }];
+  if (region.parent_province_id && region.parent_province_name)
+    crumbs.push({ label: titleCase(region.parent_province_name), href: routes.region(region.parent_province_id) });
+  if (kind !== "national") crumbs.push({ label: kind === "regency" ? regionLabel(regionName, badge) : regionName });
+
+  const ind = (f: string) => duk?.groups.flatMap((g) => g.indicators).find((i) => i.field === f);
+  const pop = ind("jumlah_penduduk");
+  const dens = ind("pop_density_big");
+  const dukPending = kind !== "national" && !duk && dukState !== "empty";
+  const peers = kind === "province" ? "" : " di provinsi";
+  const facts: HeroFact[] = [
+    ...(kind === "national" || dukState === "empty"
+      ? []
+      : [
+          {
+            value: dukPending ? null : pop ? formatCompact(pop.value) : "–",
+            label: "penduduk (Dukcapil)",
+            chip: pop?.rank ? `#${pop.rank} dari ${pop.of}${peers}` : null,
+          },
+          {
+            value: dukPending ? null : dens ? formatDecimal(dens.value, dens.value < 100 ? 1 : 0) : "–",
+            label: "jiwa/km²",
+            chip: dens?.rank ? `#${dens.rank} terpadat${peers}` : null,
+          },
+        ]),
+    { value: formatNumber(data.total_variables), label: "indikator BPS", chip: `${formatCompact(data.total_data_points)} titik data` },
+    { value: data.year_min && data.year_max ? `${data.year_min}–${data.year_max}` : "–", label: "rentang tahun" },
+  ];
+  const silhouette =
+    kind === "province"
+      ? { kind: "provinces" as const, code: dukcapilProvinceCode(domainId) }
+      : kind === "regency" && duk
+        ? { kind: "regencies" as const, code: duk.region.code }
+        : null;
+
   return (
     <div className="space-y-6">
-      <header className="border-b border-ink-border pb-5">
-        <Link href="/regions" className="text-sm text-ink-muted transition-colors hover:text-ink-accent">
-          ← Wilayah
-        </Link>
-        <div className="mt-2 flex flex-wrap items-center gap-3">
-          <h1 className="font-display text-3xl font-medium tracking-tight text-ink-text sm:text-4xl">
-            {regionName}
-          </h1>
-          <Badge tone="accent">{badge}</Badge>
-          {region.parent_province_name && (
-            <Link
-              href={`/regions/${region.parent_province_id}`}
-              className="text-sm text-ink-muted transition-colors hover:text-ink-accent"
-            >
-              di {titleCase(region.parent_province_name)}
-            </Link>
-          )}
-          <span className="text-xs text-ink-faint">kode {region.domain_id}</span>
-        </div>
-      </header>
+      <Breadcrumbs items={crumbs} />
+      <RegionHero
+        eyebrow={kind === "national" ? "Profil nasional" : kind === "province" ? "Profil provinsi" : "Profil kabupaten/kota"}
+        name={kind === "regency" ? regionLabel(regionName, badge) : regionName}
+        tags={[badge, ...(duk?.region.status && duk.region.status !== badge && kind === "province" ? duk.region.status.split(", ") : [])]}
+        code={region.domain_id}
+        facts={facts}
+        silhouette={silhouette}
+      />
 
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-3">
-        <StatTile label="Indikator" value={data.total_variables} sub="punya data di wilayah ini" />
-        <StatTile label="Titik data" value={data.total_data_points} sub="nilai riil tersimpan" accent="accent2" />
-        <StatTile
-          label="Rentang tahun"
-          value={data.year_min && data.year_max ? `${data.year_min}–${data.year_max}` : "–"}
-          accent="good"
-        />
-      </div>
+      {tabs.length > 1 && <StickyTabs tabs={tabs} value={tab} onChange={setTab} />}
 
-      {tabs.length > 1 && (
-        <div className="inline-flex flex-wrap rounded-xl border border-ink-border/80 bg-ink-panel/50 p-1 backdrop-blur-sm">
-          {tabs.map(([v, label]) => (
-            <button
-              key={v}
-              onClick={() => setTab(v)}
-              className={`rounded-lg px-4 py-1.5 text-sm font-medium transition-colors ${
-                tab === v ? "bg-brand-gradient text-white shadow-glow" : "text-ink-muted hover:text-ink-text"
-              }`}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
-      )}
-
+      <div id="profile-body" className="scroll-mt-32" />
       {tab === "insight" && kind === "province" ? (
         <ProvinceInsight domainId={domainId} regionName={regionName} />
       ) : tab === "insight" && kind === "regency" ? (
@@ -317,33 +332,55 @@ function DukcapilRegion({ code, kind }: { code: string; kind: Kind }) {
   const [detail, setDetail] = useState<DukcapilRegionDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  const [kabHref, setKabHref] = useState<string | null>(null);
+
   useEffect(() => {
     dukcapilApi.regionDetail(code).then(setDetail).catch((e) => setError(String(e)));
+  }, [code]);
+
+  // Kab/kota crumb → the BPS profile, via the validated crosswalk (never by code).
+  useEffect(() => {
+    if (code.length <= 4) return;
+    dukcapilApi
+      .regencyCrosswalk()
+      .then((cw) => {
+        const hit = cw.results.find((x) => x.kemendagri_code === code.slice(0, 4));
+        if (hit) setKabHref(routes.region(hit.bps_domain_id));
+      })
+      .catch(() => {});
   }, [code]);
 
   if (error) return <ErrorState message={error} />;
   if (!detail) return <RegionSkeleton />;
 
   const r = detail.region;
-  const scope = [r.nama_kec, r.nama_kab, r.nama_prop].filter(Boolean).map(titleCase).join(", ");
+  const ind = (f: string) => detail.groups.flatMap((g) => g.indicators).find((i) => i.field === f);
+  const pop = ind("jumlah_penduduk");
+  const dens = ind("pop_density_big");
+  const crumbs: Crumb[] = [{ label: "Indonesia", href: routes.region("0000") }];
+  if (r.nama_prop && kind !== "province") crumbs.push({ label: titleCase(r.nama_prop), href: provinceHref(code.slice(0, 2)) });
+  if (r.nama_kab && code.length > 4) crumbs.push({ label: titleCase(r.nama_kab), href: kabHref ?? undefined });
+  if (r.nama_kec && code.length > 6) crumbs.push({ label: titleCase(r.nama_kec), href: routes.region(code.slice(0, 6)) });
+  crumbs.push({ label: kind === "village" ? regionLabel(r.name, r.status) : r.name });
+  const peerNote = kind === "district" ? " kecamatan" : kind === "village" ? " desa/kel" : "";
 
   return (
     <div className="space-y-6">
-      <header className="border-b border-ink-border pb-5">
-        <Link href="/regions" className="text-sm text-ink-muted transition-colors hover:text-ink-accent">
-          ← Wilayah
-        </Link>
-        <div className="mt-2 flex flex-wrap items-center gap-3">
-          <h1 className="font-display text-3xl font-medium tracking-tight text-ink-text sm:text-4xl">{r.name}</h1>
-          <Badge tone="accent">{r.status || KIND_LABEL[kind]}</Badge>
-          <span className="text-xs text-ink-faint">kode {r.code}</span>
-        </div>
-        {scope && <div className="mt-1.5 text-sm text-ink-muted">{scope}</div>}
-        <p className="mt-1 text-xs text-ink-muted">
-          Sumber Dukcapil · peringkat & persentil terhadap {detail.peer_scope}. BPS tidak menyediakan
-          data pada tingkat ini.
-        </p>
-      </header>
+      <Breadcrumbs items={crumbs} />
+      <RegionHero
+        eyebrow={`Profil ${KIND_LABEL[kind].toLowerCase()} · sumber Dukcapil`}
+        name={kind === "village" ? regionLabel(r.name, r.status) : r.name}
+        tags={(r.status || KIND_LABEL[kind]).split(", ")}
+        code={r.code}
+        facts={[
+          { value: pop ? formatCompact(pop.value) : "–", label: "penduduk", chip: pop?.rank ? `#${pop.rank} dari ${pop.of}${peerNote}` : null },
+          { value: dens ? formatDecimal(dens.value, dens.value < 100 ? 1 : 0) : "–", label: "jiwa/km² (luas BIG)", chip: dens?.rank ? `#${dens.rank} terpadat` : null },
+        ]}
+        silhouette={kind === "province" ? { kind: "provinces", code } : null}
+      />
+      <p className="text-sm text-ink-muted">
+        Peringkat & persentil terhadap {detail.peer_scope}. BPS tidak menyediakan data pada tingkat ini.
+      </p>
       <Panel>
         <DukcapilRegionProfile detail={detail} bare />
       </Panel>

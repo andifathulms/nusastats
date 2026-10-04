@@ -7,7 +7,7 @@
 //
 // Three sources, three code schemes. Every metric loader normalizes to a single
 // row shape carrying the Kemendagri code (what the map geometry is keyed on)
-// and/or the BPS domain_id (what /regions/<id> routes on); MetricSection fills
+// and/or the BPS domain_id (what /jelajahi/<id> routes on); MetricSection fills
 // in whichever side the loader didn't supply, via the regency crosswalk.
 
 import { useEffect, useMemo, useState } from "react";
@@ -31,7 +31,7 @@ import { ChoroplethMap, type MapValue } from "@/components/ChoroplethMap";
 
 type MetricRow = {
   code?: string; // Kemendagri wilayah code — map geometry key
-  bpsId?: string; // BPS domain_id — /regions/<id> route
+  bpsId?: string; // BPS domain_id — /jelajahi/<id> route
   name: string; // display-ready (loaders apply the Kota/Kab. prefix)
   value: number;
 };
@@ -542,7 +542,7 @@ function RankedList({ rows, metric, childLabel }: { rows: MetricRow[]; metric: M
       <span className="w-6 shrink-0 text-right text-xs tabular-nums text-ink-muted">{rankNo}</span>
       <span className="w-36 min-w-0 shrink-0 truncate text-sm" title={r.name}>
         {r.bpsId ? (
-          <Link href={`/regions/${r.bpsId}`} className="text-ink-text transition-colors hover:text-ink-accent">
+          <Link href={`/jelajahi/${r.bpsId}`} className="text-ink-text transition-colors hover:text-ink-accent">
             {r.name}
           </Link>
         ) : (

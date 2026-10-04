@@ -34,10 +34,10 @@ const NAV: NavSection[] = [
   },
   {
     key: "wilayah",
-    label: "Wilayah",
+    label: "Jelajahi",
     icon: MapPinIcon,
-    home: "/regions",
-    match: (p) => p === "/regions" || p.startsWith("/regions/"),
+    home: "/jelajahi",
+    match: (p) => p === "/jelajahi" || p.startsWith("/jelajahi/"),
     items: [],
   },
   {

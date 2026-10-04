@@ -49,4 +49,4 @@ def build(src, dst, tolerance, min_area):
 if __name__ == "__main__":
     out = sys.argv[1] if len(sys.argv) > 1 else "frontend/public"
     build(f"{out}/dukcapil-provinces.geojson", f"{out}/outline-provinces.json", 0.035, 0.004)
-    build(f"{out}/dukcapil-regencies.geojson", f"{out}/outline-regencies.json", 0.012, 0.0008)
+    build(f"{out}/dukcapil-regencies.geojson", f"{out}/outline-regencies.json", 0.005, 0.0004)

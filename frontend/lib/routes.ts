@@ -1,8 +1,8 @@
 // Single source of truth for in-app URLs, so a route rename touches one file.
 export const routes = {
   home: "/",
-  explore: "/regions",
-  region: (code: string) => `/regions/${code}`,
+  explore: "/jelajahi",
+  region: (code: string) => `/jelajahi/${code}`,
   sorotan: "/sorotan",
   post: (slug: string) => `/sorotan/${slug}`,
   variables: "/variables",

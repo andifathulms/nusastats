@@ -41,7 +41,7 @@ export default function DukcapilOverviewPage() {
               Buka analitik →
             </Link>
             <Link
-              href="/regions"
+              href="/jelajahi"
               className="rounded-xl border border-ink-border bg-ink-panel2/60 px-5 py-2.5 text-sm font-medium text-ink-text transition-colors hover:border-ink-borderStrong"
             >
               Jelajahi wilayah

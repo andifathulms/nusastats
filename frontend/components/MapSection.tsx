@@ -102,7 +102,7 @@ export function MapSection() {
           <div className="mt-4 grid grid-cols-2 gap-x-6 gap-y-1 text-sm sm:grid-cols-3">
             {ranking.results.slice(0, 6).map((r) => (
               <div key={r.domain_id} className="flex items-baseline justify-between">
-                <Link href={`/regions/${r.domain_id}`} className="truncate text-ink-accent hover:underline">
+                <Link href={`/jelajahi/${r.domain_id}`} className="truncate text-ink-accent hover:underline">
                   {r.rank}. {r.domain_name}
                 </Link>
                 <span className="tabular-nums text-ink-muted">{formatNumber(r.value)}</span>

@@ -19,7 +19,7 @@ export function openSearch(initial = "") {
 type Item = { key: string; group: string; title: string; meta: string; href: string };
 
 const QUICK: Item[] = [
-  { key: "q-explore", group: "Mulai dari", title: "Jelajahi wilayah", meta: "Peta & daftar provinsi", href: routes.explore },
+  { key: "q-explore", group: "Mulai dari", title: "Jelajahi wilayah", meta: "Peta & daftar wilayah", href: routes.explore },
   { key: "q-sorotan", group: "Mulai dari", title: "Sorotan", meta: "15 cerita data", href: routes.sorotan },
   { key: "q-vars", group: "Mulai dari", title: "Katalog indikator BPS", meta: "1.692 indikator", href: routes.variables },
   { key: "q-duk", group: "Mulai dari", title: "Kependudukan (Dukcapil)", meta: "Ringkasan nasional", href: routes.dukcapil },

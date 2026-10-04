@@ -2,138 +2,93 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import {
-  api,
-  bpsRegencyStatus,
-  dukcapilApi,
-  regionLabel,
-  titleCase,
-  type Region,
-  type DukcapilRegionRow,
-} from "@/lib/api";
-import { EmptyState, Panel, Skeleton } from "@/components/ui";
+import { dukcapilApi, formatNumber, regionLabel, type DukcapilRegionRow } from "@/lib/api";
+import { routes } from "@/lib/routes";
+import { EmptyState, Eyebrow, Panel, Skeleton } from "@/components/ui";
+import { AreaExplorer } from "@/components/explore/AreaExplorer";
 
-// Five levels across both sources. Nasional/Provinsi/Kab-Kota come from BPS
-// (canonical domain_id, keeps ?region= links working); Kecamatan/Desa are
-// Dukcapil-only and reached through a cascading parent filter.
+// Five levels. Provinsi/Kab-Kota browse on a Dukcapil map + list and link to
+// the BPS-keyed profile (via provinceHref / the regency crosswalk); Kecamatan/
+// Desa are Dukcapil-only and reached through a cascading parent filter.
 type Level = "national" | "province" | "regency" | "district" | "village";
-const LEVELS: { v: Level; label: string; src: "bps" | "dukcapil" }[] = [
-  { v: "national", label: "Nasional", src: "bps" },
-  { v: "province", label: "Provinsi", src: "bps" },
-  { v: "regency", label: "Kab/Kota", src: "bps" },
-  { v: "district", label: "Kecamatan", src: "dukcapil" },
-  { v: "village", label: "Desa/Kelurahan", src: "dukcapil" },
+const LEVELS: { v: Level; label: string }[] = [
+  { v: "national", label: "Nasional" },
+  { v: "province", label: "Provinsi" },
+  { v: "regency", label: "Kab/Kota" },
+  { v: "district", label: "Kecamatan" },
+  { v: "village", label: "Desa/Kel" },
 ];
 
-export default function RegionsPage() {
+export default function ExplorePage() {
   const [level, setLevel] = useState<Level>("province");
-  const src = LEVELS.find((l) => l.v === level)!.src;
-
-  return (
-    <div className="space-y-5">
-      <header className="border-b border-ink-border pb-5">
-        <h1 className="font-display text-3xl font-medium tracking-tight text-ink-text sm:text-4xl">Wilayah</h1>
-        <p className="mt-2 max-w-2xl text-sm text-ink-muted">
-          Telusuri wilayah dari tingkat nasional hingga desa/kelurahan. Setiap profil menggabungkan
-          indikator BPS dan data kependudukan Dukcapil bila tersedia.
-        </p>
-      </header>
-
-      <div className="inline-flex flex-wrap gap-1 rounded-xl border border-ink-border/80 bg-ink-panel/50 p-1 backdrop-blur-sm">
-        {LEVELS.map((l) => (
-          <button
-            key={l.v}
-            onClick={() => setLevel(l.v)}
-            className={`rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${
-              level === l.v ? "bg-brand-gradient text-white shadow-glow" : "text-ink-muted hover:text-ink-text"
-            }`}
-          >
-            {l.label}
-          </button>
-        ))}
-      </div>
-
-      {src === "bps" ? <BpsBrowser level={level} /> : <DukcapilBrowser level={level as "district" | "village"} />}
-    </div>
-  );
-}
-
-// --- BPS levels: nasional / provinsi / kab-kota ----------------------------
-
-function BpsBrowser({ level }: { level: Level }) {
-  const [regions, setRegions] = useState<Region[]>([]);
-  const [search, setSearch] = useState("");
-  const [loading, setLoading] = useState(true);
+  const [counts, setCounts] = useState<Record<string, number>>({});
 
   useEffect(() => {
-    setLoading(true);
-    setSearch("");
-    api
-      .regions({ admin_level: level })
-      .then(setRegions)
-      .finally(() => setLoading(false));
-  }, [level]);
-
-  const filtered = useMemo(
-    () => regions.filter((r) => !search || r.domain_name.toLowerCase().includes(search.toLowerCase())),
-    [regions, search]
-  );
-
-  // Group kabupaten/kota under their province for readability.
-  const grouped = useMemo(() => {
-    if (level !== "regency") return null;
-    const byProv = new Map<string, Region[]>();
-    for (const r of filtered) {
-      const key = r.parent_province_name || "—";
-      byProv.set(key, [...(byProv.get(key) ?? []), r]);
-    }
-    return [...byProv.entries()].sort((a, b) => a[0].localeCompare(b[0]));
-  }, [filtered, level]);
-
-  if (loading) return <RegionCardsSkeleton />;
+    dukcapilApi
+      .summary()
+      .then((s) => setCounts(Object.fromEntries(s.by_level.map((l) => [l.level, l.regions]))))
+      .catch(() => {});
+  }, []);
 
   return (
-    <div className="space-y-4">
-      {level !== "national" && (
-        <input
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Cari nama wilayah…"
-          aria-label="Cari nama wilayah"
-          className="w-full rounded-lg border border-ink-border bg-ink-panel px-4 py-2 text-sm text-ink-text placeholder:text-ink-muted focus:border-ink-accent focus:outline-none"
-        />
-      )}
+    <div className="space-y-6">
+      <header className="flex flex-wrap items-end justify-between gap-5 border-b border-ink-border pb-6">
+        <div>
+          <Eyebrow>
+            {counts.province
+              ? `${formatNumber(counts.province)} provinsi · ${formatNumber(counts.regency)} kab/kota · ${formatNumber(counts.district)} kecamatan · ${formatNumber(counts.village)} desa/kel`
+              : "Nasional hingga desa/kelurahan"}
+          </Eyebrow>
+          <h1 className="mt-3 font-display text-4xl font-medium leading-none tracking-[-0.02em] text-ink-text sm:text-[54px]">
+            Jelajahi wilayah
+          </h1>
+          <p className="mt-3 max-w-2xl text-[15px] leading-relaxed text-ink-muted">
+            Pilih lewat peta atau daftar. Setiap profil menggabungkan indikator BPS dan data kependudukan Dukcapil bila
+            tersedia.
+          </p>
+        </div>
+        <div role="tablist" aria-label="Tingkat wilayah" className="flex flex-wrap rounded-full border border-ink-border bg-ink-bg2 p-1">
+          {LEVELS.map((l) => (
+            <button
+              key={l.v}
+              role="tab"
+              aria-selected={level === l.v}
+              onClick={() => setLevel(l.v)}
+              className={`rounded-full px-3.5 py-1.5 text-[13.5px] font-semibold transition-colors ${
+                level === l.v ? "bg-ink-panel text-ink-text shadow-tile" : "text-ink-muted hover:text-ink-text"
+              }`}
+            >
+              {l.label}
+            </button>
+          ))}
+        </div>
+      </header>
 
-      {level === "regency" && grouped ? (
-        <div className="space-y-6">
-          {grouped.map(([prov, list]) => (
-            <div key={prov}>
-              <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-ink-muted">{prov}</div>
-              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
-                {list.map((r) => (
-                  <RegionCard key={r.domain_id} code={r.domain_id} label={cardLabel(r)} small />
-                ))}
-              </div>
-            </div>
-          ))}
-        </div>
+      {level === "province" || level === "regency" ? (
+        <AreaExplorer key={level} level={level} />
+      ) : level === "national" ? (
+        <NationalCard />
       ) : (
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-          {filtered.map((r) => (
-            <RegionCard key={r.domain_id} code={r.domain_id} label={cardLabel(r)} sub={`kode ${r.domain_id}`} />
-          ))}
-        </div>
+        <DukcapilBrowser level={level as "district" | "village"} />
       )}
     </div>
   );
 }
 
-function cardLabel(r: Region): string {
-  // titleCase, not the raw name: BPS ships "Dki Jakarta" / "Di Yogyakarta", and
-  // titleCase restores the acronyms.
-  return r.admin_level === "regency"
-    ? regionLabel(titleCase(r.domain_name), bpsRegencyStatus(r.domain_id))
-    : titleCase(r.domain_name);
+function NationalCard() {
+  return (
+    <Link
+      href={routes.region("0000")}
+      className="group block overflow-hidden rounded-[24px] bg-coal-bg p-8 text-coal-text shadow-lift transition-transform hover:-translate-y-0.5 sm:p-10"
+    >
+      <Eyebrow className="!text-ink-gold">Profil nasional</Eyebrow>
+      <div className="mt-3 font-display text-4xl font-medium sm:text-5xl">Indonesia</div>
+      <p className="mt-3 max-w-xl text-coal-muted">
+        Semua indikator BPS tingkat nasional, dengan deret waktu dan perbandingan antarprovinsi.
+      </p>
+      <span className="mt-6 inline-block font-bold text-laut-300">Buka profil nasional <span className="inline-block transition-transform group-hover:translate-x-1">→</span></span>
+    </Link>
+  );
 }
 
 // --- Dukcapil-only levels: kecamatan / desa --------------------------------
@@ -275,7 +230,7 @@ function Picker({
 
 function RegionCard({ code, label, sub, small }: { code: string; label: string; sub?: string; small?: boolean }) {
   return (
-    <Link href={`/regions/${code}`}>
+    <Link href={routes.region(code)}>
       <Panel className={`transition-colors hover:border-ink-accent/60 ${small ? "p-3" : ""}`}>
         <div className={`font-medium text-ink-text ${small ? "text-sm" : ""}`}>{label}</div>
         {sub && <div className="mt-0.5 text-xs text-ink-muted">{sub}</div>}

@@ -41,7 +41,7 @@ export function Footer() {
         <div>
           <div className="font-mono text-[11px] uppercase tracking-[0.1em] text-ink-gold">Jelajahi</div>
           <ul className="mt-3 space-y-2 text-sm">
-            <li><Link className="hover:text-coal-text" href={routes.explore}>Wilayah</Link></li>
+            <li><Link className="hover:text-coal-text" href={routes.explore}>Wilayah &amp; peta</Link></li>
             <li><Link className="hover:text-coal-text" href={routes.sorotan}>Sorotan</Link></li>
             <li><Link className="hover:text-coal-text" href={routes.variables}>Indikator BPS</Link></li>
             <li><Link className="hover:text-coal-text" href={routes.dukcapil}>Kependudukan</Link></li>
