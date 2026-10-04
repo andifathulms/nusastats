@@ -291,6 +291,9 @@ export type Post = {
   subtitle: string;
   tag: string;
   source: string;
+  // Card cover: Dukcapil 2-digit province codes to highlight — ONLY places the
+  // story itself names (empty = whole country) — plus a short caption.
+  cover?: { prov?: string[]; label: string };
   intro: string[];
   kind: PostKind;
   composition?: CompositionConfig;
@@ -315,6 +318,7 @@ export const POSTS: Post[] = [
     subtitle: "Daerah yang membiayai dirinya sendiri cenderung lebih maju — tapi 'mandiri' tidak berarti kaya.",
     tag: "Ekonomi",
     source: "DJPK + BPS",
+    cover: { prov: ["51"], label: "Bali · Kab. Badung" },
     intro: [
       "Apakah kemandirian fiskal — kemampuan sebuah daerah membiayai dirinya sendiri dari Pendapatan Asli Daerah — berujung pada pembangunan manusia yang lebih baik? Untuk menjawabnya, kita gabungkan dua sumber yang jarang disandingkan: rasio kemandirian fiskal dari DJPK/Kemenkeu dengan Indeks Pembangunan Manusia dan angka kemiskinan dari BPS.",
       "Hasilnya cukup jelas: keduanya berjalan beriringan. Daerah dengan kemandirian tinggi — Badung, kota-kota besar — umumnya juga ber-IPM tinggi dan berkemiskinan rendah (korelasi ~0,66 dengan IPM, −0,41 dengan kemiskinan di tingkat kabupaten/kota).",
@@ -500,6 +504,7 @@ export const POSTS: Post[] = [
     subtitle: "Hampir semua orang Indonesia punya KTP-el — kecuali di pegunungan Papua.",
     tag: "Sosial",
     source: "Dukcapil (Kemendagri)",
+    cover: { prov: ["94", "95"], label: "Pegunungan Papua · Yahukimo, Puncak, Nduga" },
     intro: [
       "KTP elektronik adalah gerbang menuju hampir semua layanan negara: bantuan sosial, BPJS, rekening bank, hak pilih. Secara nasional, cakupan perekaman KTP-el sudah luar biasa tinggi — median kabupaten/kota mencapai 99%.",
       "Tapi rata-rata yang tinggi menyembunyikan sebuah jurang. Di sejumlah kabupaten pegunungan Papua — Yahukimo (8%), Puncak (11%), Nduga (12%), Intan Jaya (13%) — cakupan perekaman hanya 8–14%. Godaannya adalah menjelaskannya dengan medan terjal dan jarak. Datanya tidak mendukung itu: keterpencilan tidak memprediksi cakupan sama sekali (korelasi kepadatan penduduk dengan cakupan KTP-el hanya 0,11) — ini bukan gradien, melainkan tujuh-delapan kabupaten yang sangat spesifik.",
@@ -527,6 +532,7 @@ export const POSTS: Post[] = [
     subtitle: "Dari Bengkayang yang nyaris seimbang tiga agama, hingga daerah yang hampir seragam.",
     tag: "Sosial",
     source: "Dukcapil (Kemendagri)",
+    cover: { prov: ["61"], label: "Kalimantan Barat · Bengkayang" },
     intro: [
       "Indonesia dikenal majemuk, tapi kemajemukan itu terdistribusi sangat tidak merata. Sebagian kabupaten nyaris homogen — satu agama menaungi hampir seluruh penduduk — sementara sebagian lain begitu berimbang hingga tak ada satu pun agama yang benar-benar mayoritas.",
       "Menggunakan data administrasi kependudukan Dukcapil, kita ukur komposisi agama tiap daerah dan meringkasnya dalam indeks keberagaman (0 = seragam, makin tinggi makin beragam). Yang paling beragam justru bukan kota besar, melainkan daerah seperti Bengkayang (70,0) dan Sintang di Kalimantan Barat, tempat Islam, Kristen, dan Katolik hidup nyaris seimbang. Skalanya perlu dibaca dengan benar: karena hanya ada tujuh kategori agama, nilai maksimum yang mungkin secara matematis adalah 85,7 — bukan 100. Angka 70 milik Bengkayang jauh lebih dekat ke puncak daripada kelihatannya.",

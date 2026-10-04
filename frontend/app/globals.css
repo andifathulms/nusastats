@@ -31,6 +31,7 @@
   --brand-from: 37 87 190;
   --brand-to: 22 53 112;
   --series-1: 37 87 190;
+  --cover-land: 203 218 246;
   --shadow-panel: 0 1px 0 0 rgba(255, 255, 255, 0.7) inset, 0 14px 34px -24px rgba(10, 26, 51, 0.28);
   --shadow-tile: 0 1px 0 0 rgba(255, 255, 255, 0.8) inset, 0 8px 20px -16px rgba(10, 26, 51, 0.3);
   --shadow-header: 0 1px 0 0 rgba(10, 26, 51, 0.06);
@@ -66,6 +67,7 @@
   --brand-from: 58 114 219;
   --brand-to: 28 69 150;
   --series-1: 107 150 230;
+  --cover-land: 43 87 163;
   --shadow-panel: 0 14px 34px -24px rgba(0, 0, 0, 0.7);
   --shadow-tile: 0 8px 20px -16px rgba(0, 0, 0, 0.6);
   --shadow-header: 0 1px 0 0 rgba(0, 0, 0, 0.4);
