@@ -29,7 +29,7 @@ from rest_framework.response import Response
 
 logger = logging.getLogger(__name__)
 
-SOURCES = ("bps", "dukcapil", "djpk")
+SOURCES = ("bps", "dukcapil", "djpk", "peta")
 
 # Browser/CDN reuse window. Short, so an ingest is visible within a minute;
 # stale-while-revalidate lets the browser show the old copy instantly while it

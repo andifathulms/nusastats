@@ -17,7 +17,7 @@ apply to the BPS stack.
 | Kemendagri/Dukcapil: population (ArcGIS) | `dukcapil` | Kemendagri code (2/4/6/10 digits) |
 | DJPK/Kemenkeu: APBD regional finance | `djpk` (name-match crosswalk → Kemendagri) | Kemendagri code |
 | BIG 1:10K desa boundaries | `data/big_boundaries/` (scripts), `frontend/public/dukcapil-*.geojson` (display) | Kemendagri code |
-| Terrain & land cover (Copernicus DEM, ESA WorldCover) | `data/peta_wilayah/` pipeline; backend app planned | Kemendagri code |
+| Terrain & land cover (Copernicus DEM, ESA WorldCover) | `data/peta_wilayah/` pipeline → `peta` app (`load_peta`) | Kemendagri code |
 
 Read API: `backend/api` (DRF), cached per ingest version. Frontend: Next.js 14
 + Tailwind (`frontend/`), "Laut & Kertas" design system. See `DESIGN.md`, which
@@ -36,7 +36,7 @@ Docker.
 2. **Every value is traceable.** Each source has a fetch/check log that stores
    the exact URL called (secrets redacted), the HTTP status, a timestamp and a
    SHA-256 of the raw body: `CoverageCheckLog`, `DukcapilFetchLog`,
-   `DjpkFetchLog`, and per-tile hashes in `data/peta_wilayah/sources.json`.
+   `DjpkFetchLog`, and per-tile hashes in `data/peta_wilayah/sources.json` (loaded into `PetaSourceFile`, each load in `PetaLoadLog`).
    Derived values record their inputs, method and parameters.
 3. **Sources stay separate.** `stats.DataPoint` is only for BPS data backed by a
    confirmed `catalog.Variable` and a `CoverageCheckLog`. A new source gets its

@@ -1,7 +1,7 @@
 from django.urls import include, path
 from rest_framework.routers import DefaultRouter
 
-from . import djpk_views, dukcapil_views, search_views
+from . import djpk_views, dukcapil_views, peta_views, search_views
 from .stats_views import CorrelateView, RegionViewSet, SummaryView, VariableDataViewSet
 from .views import CoverageExportView, SimdasiTableViewSet, VariableViewSet
 
@@ -38,4 +38,8 @@ urlpatterns = [
     path("djpk/rank/", djpk_views.rank, name="djpk-rank"),
     path("djpk/correlate/", djpk_views.correlate, name="djpk-correlate"),
     path("djpk/growth/", djpk_views.growth, name="djpk-growth"),
+    # Peta Wilayah terrain & land cover (Copernicus DEM / ESA WorldCover), Kemendagri-keyed.
+    path("peta/indicators/", peta_views.indicators, name="peta-indicators"),
+    path("peta/regions/<str:code>/", peta_views.region_detail, name="peta-region-detail"),
+    path("peta/rank/", peta_views.rank, name="peta-rank"),
 ]

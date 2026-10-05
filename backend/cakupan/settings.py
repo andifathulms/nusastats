@@ -31,6 +31,7 @@ INSTALLED_APPS = [
     "stats",
     "dukcapil",
     "djpk",
+    "peta",
 ]
 
 MIDDLEWARE = [
