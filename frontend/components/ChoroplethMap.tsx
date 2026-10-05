@@ -12,6 +12,13 @@ type FC = { features: Feature[] };
 
 export type MapValue = { value: number; name: string; sub?: string; extra?: string };
 
+// A georeferenced image drawn under the outlines (e.g. Peta Wilayah's
+// hillshade / land cover). It must be a regular lon/lat (EPSG:4326) raster:
+// this map projects linearly in lon/lat, so stretching the image over the
+// projected `frame` box lines it up with the outlines exactly.
+export type MapLayer = { href: string; blend?: "normal" | "multiply"; opacity?: number; pixelated?: boolean };
+export type MapFrame = { west: number; south: number; east: number; north: number };
+
 // Sequential low->high scale: pale sea → deep sea. On the dark theme it
 // runs the other way (dark sea → cream) so high values still read as "bright".
 const STOPS_LIGHT = ["#E3EBFA", "#B5C9EE", "#6B96E6", "#2557BE", "#10264D"];
@@ -43,6 +50,16 @@ export function ChoroplethMap({
   format,
   geojsonUrls = ["/indonesia-provinces.geojson"],
   provFilter,
+  frame,
+  layers = [],
+  outlineOnly = false,
+  outlineFill = "transparent",
+  onSelect,
+  selectHint,
+  highlight,
+  onHover,
+  hideLegend = false,
+  ariaLabel,
 }: {
   values: Map<string, MapValue>;
   min: number;
@@ -59,6 +76,23 @@ export function ChoroplethMap({
   // (and the map zooms to them). Region codes are hierarchical, so a province
   // code is a prefix of its regencies'/districts' codes.
   provFilter?: string[];
+  // Fixed projection frame (lon/lat box). Required when `layers` are drawn:
+  // the image and the outlines must share one projection. Defaults to the
+  // bbox of the rendered features.
+  frame?: MapFrame;
+  // Images drawn under the outlines, in order, stretched over `frame`.
+  layers?: MapLayer[];
+  // Outlines only: no choropleth fill (so layers show through), no value legend.
+  outlineOnly?: boolean;
+  outlineFill?: string;
+  // Click / Enter on a region. Regions become focusable links.
+  onSelect?: (id: string) => void;
+  selectHint?: string;
+  // Linked list hover (Map + list pattern).
+  highlight?: string | null;
+  onHover?: (id: string | null) => void;
+  hideLegend?: boolean;
+  ariaLabel?: string;
 }) {
   const [fc, setFc] = useState<FC | null>(null);
   const [failed, setFailed] = useState(false);
@@ -93,28 +127,33 @@ export function ChoroplethMap({
   }, [urlKey]);
 
   const filterKey = provFilter?.join(",") ?? "";
-  const { paths, vb } = useMemo(() => {
-    if (!fc) return { paths: [] as { id: string; d: string }[], vb: "0 0 1000 400" };
+  const frameKey = frame ? `${frame.west},${frame.south},${frame.east},${frame.north}` : "";
+  const { paths, vb, W, H } = useMemo(() => {
+    if (!fc) return { paths: [] as { id: string; d: string }[], vb: "0 0 1000 400", W: 1000, H: 400 };
     const active = filterKey
       ? fc.features.filter((f) => filterKey.split(",").some((p) => f.properties.domain_id.startsWith(p)))
       : fc.features;
-    if (!active.length) return { paths: [], vb: "0 0 1000 400" };
+    if (!active.length) return { paths: [], vb: "0 0 1000 400", W: 1000, H: 400 };
 
     let lonMin = 180, lonMax = -180, latMin = 90, latMax = -90;
     const eachRing = (f: Feature, cb: (ring: number[][]) => void) => {
       const polys = f.geometry.type === "Polygon" ? [f.geometry.coordinates] : f.geometry.coordinates;
       (polys as number[][][][]).forEach((poly) => poly.forEach((ring) => cb(ring as number[][])));
     };
-    active.forEach((f) =>
-      eachRing(f, (ring) =>
-        ring.forEach(([lon, lat]) => {
-          lonMin = Math.min(lonMin, lon);
-          lonMax = Math.max(lonMax, lon);
-          latMin = Math.min(latMin, lat);
-          latMax = Math.max(latMax, lat);
-        })
-      )
-    );
+    if (frameKey) {
+      [lonMin, latMin, lonMax, latMax] = frameKey.split(",").map(Number);
+    } else {
+      active.forEach((f) =>
+        eachRing(f, (ring) =>
+          ring.forEach(([lon, lat]) => {
+            lonMin = Math.min(lonMin, lon);
+            lonMax = Math.max(lonMax, lon);
+            latMin = Math.min(latMin, lat);
+            latMax = Math.max(latMax, lat);
+          })
+        )
+      );
+    }
     const W = 1000;
     const cosMid = Math.cos((((latMin + latMax) / 2) * Math.PI) / 180);
     const s = W / ((lonMax - lonMin) * cosMid);
@@ -129,8 +168,8 @@ export function ChoroplethMap({
       });
       return { id: f.properties.domain_id, d };
     });
-    return { paths, vb: `0 0 ${W.toFixed(0)} ${H.toFixed(0)}` };
-  }, [fc, filterKey]);
+    return { paths, vb: `0 0 ${W.toFixed(0)} ${H.toFixed(0)}`, W, H };
+  }, [fc, filterKey, frameKey]);
 
   const nameById = useMemo(() => {
     const m = new Map<string, string>();
@@ -142,6 +181,8 @@ export function ChoroplethMap({
   const wrapRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
   const drag = useRef<{ x: number; y: number } | null>(null);
+  // A drag that moved is a pan, not a click on the region under the cursor.
+  const moved = useRef(false);
   const [t, setT] = useState({ k: 1, x: 0, y: 0 });
   const [isFull, setIsFull] = useState(false);
 
@@ -193,12 +234,14 @@ export function ChoroplethMap({
   };
   const onDown = (e: React.MouseEvent) => {
     drag.current = { x: e.clientX, y: e.clientY };
+    moved.current = false;
     setHover(null);
   };
   const onMove = (e: React.MouseEvent) => {
     if (!drag.current) return;
     const p0 = toSvg(drag.current.x, drag.current.y);
     const p1 = toSvg(e.clientX, e.clientY);
+    if (Math.abs(e.clientX - drag.current.x) + Math.abs(e.clientY - drag.current.y) > 2) moved.current = true;
     setT((cur) => ({ ...cur, x: cur.x + (p1.x - p0.x), y: cur.y + (p1.y - p0.y) }));
     drag.current = { x: e.clientX, y: e.clientY };
   };
@@ -233,23 +276,56 @@ export function ChoroplethMap({
           onMouseMove={onMove}
           onMouseUp={onUp}
           onMouseLeave={onUp}
+          role="img"
+          aria-label={ariaLabel}
         >
           <g transform={`translate(${t.x} ${t.y}) scale(${t.k})`}>
+            {layers.map((l) => (
+              <image
+                key={l.href}
+                href={l.href}
+                x={0}
+                y={0}
+                width={W}
+                height={H}
+                preserveAspectRatio="none"
+                opacity={l.opacity ?? 1}
+                pointerEvents="none"
+                style={{ mixBlendMode: l.blend ?? "normal", imageRendering: l.pixelated ? "pixelated" : "auto" }}
+              />
+            ))}
             {paths.map((p) => {
               const v = values.get(p.id);
-              const fill = v ? scale((v.value - min) / span, dark) : NO_DATA_FILL;
-              const isHover = hover?.id === p.id;
+              const fill = outlineOnly ? outlineFill : v ? scale((v.value - min) / span, dark) : NO_DATA_FILL;
+              const isHover = hover?.id === p.id || highlight === p.id;
+              const enter = (e: React.MouseEvent) => {
+                if (drag.current) return;
+                setHover({ id: p.id, x: e.clientX, y: e.clientY });
+                onHover?.(p.id);
+              };
               return (
                 <path
                   key={p.id}
                   d={p.d}
                   fill={fill}
-                  stroke={isHover ? CHART.text : "rgb(var(--ink-panel))"}
-                  strokeWidth={isHover ? 1.5 : 0.5}
+                  stroke={
+                    outlineOnly
+                      ? isHover ? "rgb(var(--ink-accent2))" : CHART.text
+                      : isHover ? CHART.text : "rgb(var(--ink-panel))"
+                  }
+                  strokeWidth={outlineOnly ? (isHover ? 3 : 1.2) : isHover ? 1.5 : 0.5}
                   vectorEffect="non-scaling-stroke"
-                  onMouseEnter={(e) => !drag.current && setHover({ id: p.id, x: e.clientX, y: e.clientY })}
-                  onMouseMove={(e) => !drag.current && setHover({ id: p.id, x: e.clientX, y: e.clientY })}
-                  onMouseLeave={() => setHover(null)}
+                  onMouseEnter={enter}
+                  onMouseMove={enter}
+                  onMouseLeave={() => {
+                    setHover(null);
+                    onHover?.(null);
+                  }}
+                  onClick={onSelect ? () => !moved.current && onSelect(p.id) : undefined}
+                  onKeyDown={onSelect ? (e) => e.key === "Enter" && onSelect(p.id) : undefined}
+                  tabIndex={onSelect ? 0 : undefined}
+                  role={onSelect ? "link" : undefined}
+                  aria-label={onSelect ? nameById.get(p.id) : undefined}
                   style={{ cursor: "pointer" }}
                 />
               );
@@ -272,6 +348,7 @@ export function ChoroplethMap({
       {/* flex-wrap: without it the legend's min-content width (a 160px ramp plus
           two formatted bounds) sets a floor that pushes its whole panel — and
           the page — wider than a phone viewport. */}
+      {!hideLegend && !outlineOnly && (
       <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2 text-xs text-ink-muted">
         <span className="tabular-nums">{fmt(min)}</span>
         <div
@@ -285,6 +362,7 @@ export function ChoroplethMap({
           <span className="inline-block h-2 w-2 rounded-sm" style={{ background: NO_DATA_FILL }} /> tanpa data
         </span>
       </div>
+      )}
 
       {hover && (
         <div
@@ -295,9 +373,13 @@ export function ChoroplethMap({
           {values.get(hover.id)?.sub && (
             <div className="mt-0.5 text-ink-muted">{values.get(hover.id)!.sub}</div>
           )}
-          <div className="mt-1 tabular-nums text-ink-text">
-            {values.has(hover.id) ? `${fmt(values.get(hover.id)!.value)} ${unit ?? ""}` : "tanpa data"}
-          </div>
+          {outlineOnly ? (
+            selectHint && <div className="mt-0.5 text-ink-muted">{selectHint}</div>
+          ) : (
+            <div className="mt-1 tabular-nums text-ink-text">
+              {values.has(hover.id) ? `${fmt(values.get(hover.id)!.value)} ${unit ?? ""}` : "tanpa data"}
+            </div>
+          )}
           {values.get(hover.id)?.extra && (
             <div className="mt-0.5 tabular-nums text-ink-muted">{values.get(hover.id)!.extra}</div>
           )}
