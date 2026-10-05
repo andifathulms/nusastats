@@ -94,7 +94,8 @@ export type PetaNightlights = {
   base_year: number;
   latest_year: number;
   years: Record<string, PetaNightlightsYear>;
-  growth: { lit_km2_x: number | null; sum_lit_x: number | null; lit_pct_change_pp: number };
+  years_skipped?: Record<string, string>; // year -> why it was left out (e.g. too cloudy)
+  growth: { lit_km2_x: number | null; sum_lit_x: number | null; lit_pct_change_pp: number | null; note?: string };
   metadata: { dataset: string; attribution: string; license: string; note: string; colors: string[]; max_radiance_nw: number };
 };
 

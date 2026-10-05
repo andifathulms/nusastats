@@ -516,6 +516,11 @@ function NightlightsPanel({ nl, ranks }: { nl: PetaNightlights; ranks: Ranks }) 
         ))}
       </div>
       <RankChip ranks={ranks} k="ntl_lit_pct" />
+      {nl.years_skipped && Object.keys(nl.years_skipped).length > 0 && (
+        <p className="mt-3 text-xs text-ink-muted">
+          Tidak dihitung: {Object.keys(nl.years_skipped).sort().join(", ")} (terlalu sedikit malam tanpa awan di sebagian wilayah).
+        </p>
+      )}
       <p className="mt-3 text-xs leading-relaxed text-ink-muted">
         Bercahaya = median tahunan ≥ {formatNumber(nl.lit_threshold_nw)} nW/cm²/sr (VIIRS, ~460 m). {nl.metadata.note}
       </p>

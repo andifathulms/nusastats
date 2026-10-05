@@ -60,7 +60,8 @@ function problems(peta: Peta | null, template: Template): string[] {
     if (!nl) return ["nightlights.json tidak ada"];
     if (!peta.present.nightlights) out.push("gambar cahaya malam tidak ada di perangkat ini");
     const ys = Object.values(nl.years);
-    if (!nl.years[String(nl.base_year)] || !nl.years[String(nl.latest_year)]) out.push("tahun dasar/terakhir tidak ada");
+    if (!nl.years[String(nl.base_year)] || !nl.years[String(nl.latest_year)] || nl.growth.lit_km2_x === null)
+      out.push("tahun dasar/terakhir tidak lengkap; perbandingan tidak sebanding");
     if (ys.some((y) => y.lit_pct < 0 || y.lit_pct > 100 || y.mean_nw < 0)) out.push("nilai cahaya malam di luar rentang");
   } else {
     const lc = peta.landcover;
