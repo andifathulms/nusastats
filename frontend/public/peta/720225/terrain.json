@@ -1,0 +1,128 @@
+{
+  "kode": "720225",
+  "name": "LORE PEORE",
+  "level": "kecamatan",
+  "provinsi": {
+    "kode": "72",
+    "name": "SULAWESI TENGAH"
+  },
+  "area_km2": 405.1,
+  "elevation_m": {
+    "min": 764.1,
+    "max": 2251.8,
+    "mean": 1513.9,
+    "median": 1502.4,
+    "p5": 1089.9,
+    "p95": 2074.2
+  },
+  "relief_m": 984.2,
+  "highest_point": {
+    "elevation_m": 2251.8,
+    "lon": 120.46917,
+    "lat": -1.7075
+  },
+  "elevation_bands_pct": {
+    "<100": 0.0,
+    "100-500": 0.0,
+    "500-1000": 0.41,
+    "1000-2000": 86.22,
+    ">=2000": 13.37
+  },
+  "slope_deg": {
+    "mean": 12.91
+  },
+  "slope_classes_pct": {
+    "<8": 39.19,
+    "8-25": 47.8,
+    ">=25": 13.01
+  },
+  "metrics_pct": {
+    "share_elev_ge_1000": 99.59,
+    "share_elev_ge_200": 100.0,
+    "share_elev_lt_100": 0.0,
+    "share_slope_ge_25": 13.01,
+    "share_slope_ge_8": 60.81,
+    "share_slope_lt_8": 39.19
+  },
+  "terrain_class": "pegunungan",
+  "terrain_class_label": "Pegunungan",
+  "terrain_class_reason": "Pegunungan: 99,6% area ≥1000 m",
+  "classification": {
+    "official": false,
+    "note": "Klasifikasi NusaStats (aturan di config/terrain_rules.yaml), bukan klasifikasi resmi.",
+    "rules_sha256": "46978aef2bbd47b075cb7feebba2e50524c63ce4f39271053ce4d2aaaf8fb479"
+  },
+  "checks": {
+    "area_geodesic_km2": 405.08,
+    "area_utm_polygon_km2": 405.62,
+    "area_utm_pixels_km2": 405.63,
+    "utm_vs_geodesic_pct": 0.132,
+    "pixels_vs_utm_pct": 0.002,
+    "nodata_pct": 0.0,
+    "polygon_pixels_utm": 450698
+  },
+  "metadata": {
+    "dataset": "Copernicus DEM GLO-30 Public",
+    "dataset_type": "DSM (surface model: includes canopy and buildings)",
+    "vertical_datum": "EGM2008 geoid (EPSG:3855), metres",
+    "year": 2015,
+    "attribution": "produced using Copernicus WorldDEM-30 © DLR e.V. 2010-2014 and © Airbus Defence and Space GmbH 2014-2018 provided under COPERNICUS by the European Union and ESA; all rights reserved",
+    "tile_version_tag": null,
+    "tiles": {
+      "Copernicus_DSM_COG_10_S02_00_E120_00_DEM": "c69d184fa65f57b4d1a297388415521734edd138d74d2b3a1b27e53b5dec0d2e"
+    },
+    "ocean_tiles_absent": [],
+    "boundary": {
+      "source": "data/big_boundaries/big-villages-72.geojson",
+      "sha256": "a383988e0e97a716f5106e998363f3440316c6761537058f89e8d6f6b5a34f30",
+      "method": "shapely.union_all(grid_size=1e-8) per code prefix; no simplify, no island/hole dropping (data/big_boundaries/dissolve.py:dissolve)"
+    },
+    "crs_stats": "EPSG:32751",
+    "pixel_size_m": 30.0,
+    "resampling_to_utm": "bilinear",
+    "min_max_from": "native DEM pixels (EPSG:4326, 1 arc-second) inside the polygon",
+    "shares_from": "30 m UTM pixels (EPSG:32751) whose centre lies inside the polygon",
+    "slope_method": "Horn 3x3 on the UTM grid",
+    "hillshade": {
+      "azimuth_deg": 315,
+      "altitude_deg": 45,
+      "z_factor": 1.0
+    },
+    "tint": [
+      [
+        0,
+        "#4f8f4a"
+      ],
+      [
+        100,
+        "#8fb36a"
+      ],
+      [
+        300,
+        "#cfd28c"
+      ],
+      [
+        500,
+        "#e3cf98"
+      ],
+      [
+        1000,
+        "#c8a06a"
+      ],
+      [
+        2000,
+        "#9a6a43"
+      ],
+      [
+        3000,
+        "#7b5a4a"
+      ],
+      [
+        4000,
+        "#ffffff"
+      ]
+    ],
+    "config_sha256": "4c52051153ac0e8c752e2b1604867cbd872548b06921c11b37052e8f6d63279e",
+    "computed_at": "2026-10-05T07:33:48+00:00"
+  }
+}

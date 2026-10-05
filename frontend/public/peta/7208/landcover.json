@@ -1,0 +1,140 @@
+{
+  "kode": "7208",
+  "name": "PARIGI MOUTONG",
+  "level": "kabupaten",
+  "provinsi": {
+    "kode": "72",
+    "name": "SULAWESI TENGAH"
+  },
+  "year": 2021,
+  "area_km2": 5803.9,
+  "dominant": {
+    "code": 10,
+    "label": "Tutupan pohon",
+    "share_pct": 86.24
+  },
+  "classes": [
+    {
+      "code": 10,
+      "name": "Tree cover",
+      "label": "Tutupan pohon",
+      "color": "#006400",
+      "pixels": 50118243,
+      "share_pct": 86.24,
+      "area_km2": 5005.59
+    },
+    {
+      "code": 30,
+      "name": "Grassland",
+      "label": "Padang rumput",
+      "color": "#ffff4c",
+      "pixels": 3437805,
+      "share_pct": 5.92,
+      "area_km2": 343.35
+    },
+    {
+      "code": 40,
+      "name": "Cropland",
+      "label": "Lahan pertanian",
+      "color": "#f096ff",
+      "pixels": 2685360,
+      "share_pct": 4.62,
+      "area_km2": 268.2
+    },
+    {
+      "code": 95,
+      "name": "Mangroves",
+      "label": "Mangrove",
+      "color": "#00cf75",
+      "pixels": 594231,
+      "share_pct": 1.02,
+      "area_km2": 59.35
+    },
+    {
+      "code": 80,
+      "name": "Permanent water bodies",
+      "label": "Badan air",
+      "color": "#0064c8",
+      "pixels": 593814,
+      "share_pct": 1.02,
+      "area_km2": 59.31
+    },
+    {
+      "code": 50,
+      "name": "Built-up",
+      "label": "Lahan terbangun",
+      "color": "#fa0000",
+      "pixels": 511137,
+      "share_pct": 0.88,
+      "area_km2": 51.05
+    },
+    {
+      "code": 60,
+      "name": "Bare / sparse vegetation",
+      "label": "Lahan terbuka",
+      "color": "#b4b4b4",
+      "pixels": 111225,
+      "share_pct": 0.19,
+      "area_km2": 11.11
+    },
+    {
+      "code": 90,
+      "name": "Herbaceous wetland",
+      "label": "Lahan basah",
+      "color": "#0096a0",
+      "pixels": 57935,
+      "share_pct": 0.1,
+      "area_km2": 5.79
+    },
+    {
+      "code": 20,
+      "name": "Shrubland",
+      "label": "Semak belukar",
+      "color": "#ffbb22",
+      "pixels": 1916,
+      "share_pct": 0.0,
+      "area_km2": 0.19
+    }
+  ],
+  "checks": {
+    "share_sum_pct": 99.99,
+    "area_geodesic_km2": 5803.94,
+    "area_utm_polygon_km2": 5811.17,
+    "area_utm_pixels_km2": 5811.17,
+    "utm_vs_geodesic_pct": 0.125,
+    "pixels_vs_utm_pct": -0.0,
+    "nodata_pct": 0.0,
+    "polygon_pixels_utm": 58111666,
+    "render_palette_colours": 9,
+    "render_palette_exact": true
+  },
+  "metadata": {
+    "dataset": "ESA WorldCover 10 m 2021 v200",
+    "version": "v200",
+    "year": 2021,
+    "license": "CC BY 4.0 (Creative Commons Attribution 4.0 International)",
+    "attribution": "© ESA WorldCover project 2021 / Contains modified Copernicus Sentinel data (2021) processed by ESA WorldCover consortium",
+    "product_version_tag": "V2.0.0",
+    "tiles": {
+      "S03E117": "9a7544a5689114a6e1b26b80f0773a6a21c39d08749030ca9ffd4f8d361b755e",
+      "S03E120": "38ec2102fe83e7d7f5013a0f38047ba8f6711098b93d2c67445e874310bb1228",
+      "N00E117": "b95beb9811985108a0113ce4d36f7acca83e5bcba06d8146004d17a0a5c8b960",
+      "N00E120": "b2463be97d8783ff5f120b560a221ab9c41c99f6020114b6553a35ce392d38ae"
+    },
+    "tiles_absent": [],
+    "boundary": {
+      "source": "data/big_boundaries/big-villages-72.geojson",
+      "sha256": "a383988e0e97a716f5106e998363f3440316c6761537058f89e8d6f6b5a34f30",
+      "method": "shapely.union_all(grid_size=1e-8) per code prefix; no simplify, no island/hole dropping (data/big_boundaries/dissolve.py:dissolve)"
+    },
+    "crs_stats": "EPSG:32651",
+    "pixel_size_m": 10.0,
+    "resampling_to_utm": "nearest",
+    "shares_from": "10 m UTM pixels (EPSG:32651) whose centre lies inside the polygon; shares are of classified pixels",
+    "area_km2_method": "share × geodesic polygon area (WGS84 ellipsoid)",
+    "display_resampling": "mode",
+    "caveat": "Kelas 10 'Tutupan pohon' mencakup perkebunan (sawit, akasia); jangan sebut 'hutan'.",
+    "config_sha256": "cf0713550fb2fc58b2fae33bf270d90afc44a31c24d2d51990d7ca6d1811c0a5",
+    "computed_at": "2026-10-05T07:20:30+00:00"
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "kode": "720618",
+  "crs": "EPSG:4326",
+  "west": 121.71138889,
+  "north": -2.60638889,
+  "east": 122.04166667,
+  "south": -2.8075,
+  "width": 1189,
+  "height": 724,
+  "pixel_deg": 0.0002777777777777778,
+  "downsample_factor": 1,
+  "base_pixel_deg": 0.0002777777777777778,
+  "note": "Pixel-edge bounds. Stretch each layer over this lon/lat box (linear lon/lat, same as ChoroplethMap's projection).",
+  "layers": {
+    "elevation": "elevation.webp",
+    "hillshade": "hillshade.webp",
+    "landcover": "landcover.webp"
+  }
+}
