@@ -48,6 +48,18 @@
         "sha256": "2add2fbb4ce33893c5d2c50b953e88ce8cd2a92f3fb45c1354e19ae3efd86ce9",
         "url": "https://copernicus-dem-30m.s3.amazonaws.com/Copernicus_DSM_COG_10_S02_00_E116_00_DEM/Copernicus_DSM_COG_10_S02_00_E116_00_DEM.tif"
       },
+      "Copernicus_DSM_COG_10_S03_00_E115_00_DEM": {
+        "bytes": 50200115,
+        "downloaded_at": "2026-10-05T01:36:32+00:00",
+        "sha256": "6eb675a532623bc45d302cd7845cc19814ddef555c8c954573b63198ab7157df",
+        "url": "https://copernicus-dem-30m.s3.amazonaws.com/Copernicus_DSM_COG_10_S03_00_E115_00_DEM/Copernicus_DSM_COG_10_S03_00_E115_00_DEM.tif"
+      },
+      "Copernicus_DSM_COG_10_S03_00_E116_00_DEM": {
+        "bytes": 23299649,
+        "downloaded_at": "2026-10-05T01:36:39+00:00",
+        "sha256": "2ac806c13e8f41ea5b22615e493059e40b3cde216b67106f7d4ed2163e497bb6",
+        "url": "https://copernicus-dem-30m.s3.amazonaws.com/Copernicus_DSM_COG_10_S03_00_E116_00_DEM/Copernicus_DSM_COG_10_S03_00_E116_00_DEM.tif"
+      },
       "tileList.txt": {
         "bytes": 1110900,
         "downloaded_at": "2026-10-05T00:31:57+00:00",

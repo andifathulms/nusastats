@@ -7,6 +7,7 @@ derived number would silently shift. Polite: one request at a time, a pause
 between downloads, exponential backoff, hard stop after a few failures.
 """
 import hashlib
+import shutil
 import sys
 import time
 import urllib.error
@@ -20,8 +21,24 @@ PAUSE_S = 0.5
 TRIES = 4
 
 
+# Never let a download push the disk below this; stop the run instead.
+MIN_FREE_BYTES = 1_500_000_000
+
+
 class SourceChanged(RuntimeError):
     pass
+
+
+class DiskLow(RuntimeError):
+    pass
+
+
+def ensure_free(path: Path, need: int = 0) -> None:
+    path.mkdir(parents=True, exist_ok=True)
+    free = shutil.disk_usage(path).free
+    if free - need < MIN_FREE_BYTES:
+        raise DiskLow(f"only {free / 1e9:.2f} GB free on the cache disk "
+                      f"(keeping {MIN_FREE_BYTES / 1e9:.1f} GB in reserve); stopping before download")
 
 
 def sha256(path: Path) -> str:
@@ -63,6 +80,7 @@ def fetch(dataset: str, key: str, url: str, dest: Path, data: dict) -> dict:
     rec = files.get(key)
     if dest.exists() and rec and sha256(dest) == rec["sha256"]:
         return rec
+    ensure_free(dest.parent, rec["bytes"] if rec else 0)
     sys.stderr.write(f"  downloading {url}\n")
     _download(url, dest)
     digest = sha256(dest)
