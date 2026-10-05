@@ -65,3 +65,16 @@ def test_rules_order_and_reason(cfg):
     c, _, reason = rules.classify(_m(share_elev_lt_100=70, share_slope_lt_8=80), cfg)
     assert c == "dataran_rendah" and reason == "Dataran rendah: 70,0% area <100 m dan 80,0% area slope <8°"
     assert rules.classify(_m(share_elev_lt_100=50, share_slope_lt_8=80), cfg)[0] == "campuran"
+
+
+def test_snap_bounds_lands_on_source_grid():
+    from rasterio.transform import from_origin
+
+    from common.raster import snap_bounds
+    res = 1 / 3600
+    t = from_origin(116 - res / 2, 0 + res / 2, res, res)  # Copernicus: half-pixel shifted
+    w, s, e, n = snap_bounds(t, (116.33395, -1.59578, 116.94518, -0.79777))
+    for v, origin in ((w, t.c), (e, t.c), (n, t.f), (s, t.f)):
+        k = (v - origin) / res
+        assert abs(k - round(k)) < 1e-6
+    assert w <= 116.33395 and e >= 116.94518 and s <= -1.59578 and n >= -0.79777

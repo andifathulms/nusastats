@@ -29,6 +29,7 @@ from shapely.geometry import mapping
 from common import display, manifest, tiles
 from common.outlines import get_area, province_name
 from common.paths import CONFIG, PUBLIC_PETA
+from common.raster import snap_bounds
 from common.projection import geodesic_area_km2, to_crs, utm_epsg
 
 from . import dem, rules
@@ -59,6 +60,7 @@ def _mosaic(names, bounds):
     srcs = [rasterio.open(p) for p in names]
     try:
         nod = srcs[0].nodata
+        bounds = snap_bounds(srcs[0].transform, bounds)
         arr, transform = merge(srcs, bounds=bounds, nodata=nod if nod is not None else -32767.0,
                                dtype="float32")
         z = arr[0].astype(np.float32)
@@ -242,6 +244,7 @@ def compute(kode: str) -> dict:
             "shares_from": f"{px:g} m UTM pixels (EPSG:{epsg}) whose centre lies inside the polygon",
             "slope_method": "Horn 3x3 on the UTM grid",
             "hillshade": hs_cfg,
+            "tint": rc["tint"],  # hypsometric stops [m, hex] used for elevation.webp (legend source)
             "config_sha256": cfg_sha,
             "computed_at": manifest.now_iso(),
         },

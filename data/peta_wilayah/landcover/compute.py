@@ -29,6 +29,7 @@ from shapely.geometry import mapping
 from common import display, manifest, worldcover
 from common.outlines import get_area, province_name
 from common.paths import CONFIG, PUBLIC_PETA
+from common.raster import snap_bounds
 from common.projection import geodesic_area_km2, to_crs, utm_epsg
 
 NODATA = 0
@@ -103,7 +104,8 @@ def compute(kode: str) -> dict:
         tags = srcs[0].tags()
         res = srcs[0].res[0]
         pad = 2 * res
-        arr, ltr = merge(srcs, bounds=(w - pad, s - pad, e + pad, n + pad), nodata=NODATA)
+        arr, ltr = merge(srcs, bounds=snap_bounds(srcs[0].transform, (w - pad, s - pad, e + pad, n + pad)),
+                         nodata=NODATA)
         lc, lcrs = arr[0], srcs[0].crs
     finally:
         for src in srcs:
