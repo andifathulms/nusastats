@@ -51,12 +51,12 @@ def _landcover(lc):
 
 def _nightlights(nl):
     m = nl["metadata"]
-    records = sorted({r for p in m["provenance"].values() for r in p["source_records"]})
     return {
         "unit": nl["unit"], "lit_threshold_nw": nl["lit_threshold_nw"], "base_year": nl["base_year"],
         "latest_year": nl["latest_year"], "years": nl["years"], "growth": nl["growth"],
-        "provenance": {"dataset": "wb_len_viirs_monthly", "source_records": records,
-                       "annual_sha256": {y: p["annual_sha256"] for y, p in m["provenance"].items()},
+        # Windows and annual rasters are shared by the whole province: described once in
+        # the top-level `nightlights_annual` (and the windows in `files`), referenced by province.
+        "provenance": {"dataset": "wb_len_viirs_monthly", "province": nl["provinsi"]["kode"],
                        "boundary_sha256": m["boundary"]["sha256"], "config_sha256": m["config_sha256"],
                        "computed_at": m["computed_at"]},
     }
@@ -64,7 +64,7 @@ def _nightlights(nl):
 
 def main():
     src = manifest.load()
-    areas, used = [], {}
+    areas, used, ntl_annual = [], {}, {}
     for d in sorted(p for p in PUBLIC_PETA.iterdir() if p.is_dir()):
         kode = d.name
         tf, lf, nf = d / "terrain.json", d / "landcover.json", d / "nightlights.json"
@@ -84,7 +84,13 @@ def main():
         if nf.exists():
             nl = json.loads(nf.read_text())
             rec["nightlights"] = _nightlights(nl)
-            used.setdefault("wb_len_viirs_monthly", set()).update(rec["nightlights"]["provenance"]["source_records"])
+            prov_years = ntl_annual.setdefault(nl["provinsi"]["kode"], {})
+            for y, p in nl["metadata"]["provenance"].items():
+                entry = {"months_used": p["months_used"], "annual_sha256": p["annual_sha256"]}
+                if prov_years.setdefault(y, entry) != entry:
+                    sys.exit(f"export: {kode} {y} used a different annual raster than its province neighbours")
+            used.setdefault("wb_len_viirs_monthly", set()).update(
+                r for p in nl["metadata"]["provenance"].values() for r in p["source_records"])
         areas.append(rec)
 
     files = {}
@@ -95,7 +101,7 @@ def main():
                 sys.exit(f"export: tile {ds}/{k} used by an area but missing from sources.json")
             files[ds][k] = src["files"][ds][k]
     datasets = {ds: src["datasets"][ds] for ds in used}
-    body = {"datasets": datasets, "files": files, "areas": areas}
+    body = {"datasets": datasets, "files": files, "nightlights_annual": ntl_annual, "areas": areas}
     raw = json.dumps(body, sort_keys=True, ensure_ascii=False, separators=(",", ":"))
     OUT.parent.mkdir(parents=True, exist_ok=True)
     OUT.write_text(raw + "\n")

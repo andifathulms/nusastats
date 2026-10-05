@@ -151,8 +151,8 @@ def _ntl(area, series):
         "unit": "nW/cm²/sr", "lit_threshold_nw": 1.0, "base_year": 2018, "latest_year": max(series),
         "years": {str(y): {"lit_pct": v, "lit_km2": v, "sum_lit": v * 10, "mean_nw": v / 10} for y, v in series.items()},
         "growth": {},
-        "provenance": {"dataset": "wb_len_viirs_monthly", "source_records": ["202401/avg_rade9@64"],
-                       "annual_sha256": {}, "boundary_sha256": "b", "config_sha256": "c", "computed_at": "x"},
+        "provenance": {"dataset": "wb_len_viirs_monthly", "province": "64",
+                       "boundary_sha256": "b", "config_sha256": "c", "computed_at": "x"},
     }
     return area
 
@@ -161,12 +161,14 @@ def _ntl(area, series):
 def loaded_ntl(db, tmp_path):
     p = tmp_path / "x.json"
     files = {DEM: {"T1": _file()}, WC: {"W1": _file()},
-             "wb_len_viirs_monthly": {"202401/avg_rade9@64": {"url": "u", "sha256_window": "cd" * 32, "shape": [10, 10],
-                                                               "dtype": "float32", "read_at": "t", "etag": "e"}}}
+             "wb_len_viirs_monthly": {f"202401/{b}@64": {"url": "u", "sha256_window": "cd" * 32, "shape": [10, 10],
+                                                          "dtype": "float32", "read_at": "t", "etag": "e"}
+                                      for b in ("avg_rade9", "n_cf")}}
     areas = [_ntl(_area("6409", "PPU", 89.0, 750.0, 86.9), {2018: 2.8, 2024: 10.1}),
              _ntl(_area("6471", "BALIKPAPAN", 40.0, 200.0, 50.0), {2018: 42.0, 2024: 58.7}),
              _ntl(_area("640904", "SEPAKU", 145.0, 750.0, 91.0), {2018: 0.6, 2024: 11.9})]
-    p.write_text(json.dumps({"datasets": {}, "files": files, "areas": areas}))
+    annual = {"64": {str(y): {"months_used": ["202401"], "annual_sha256": "a"} for y in (2018, 2024)}}
+    p.write_text(json.dumps({"datasets": {}, "files": files, "nightlights_annual": annual, "areas": areas}))
     return load_export(p)
 
 
@@ -175,7 +177,7 @@ def test_yearly_values_and_window_records(loaded_ntl):
     series = dict(r.values.filter(indicator__key="ntl_lit_pct").values_list("year", "value"))
     assert series == {2018: 0.6, 2024: 11.9}
     assert r.values.get(indicator__key="elevation_mean").year == 0
-    f = PetaSourceFile.objects.get(dataset="wb_len_viirs_monthly")
+    f = PetaSourceFile.objects.get(dataset="wb_len_viirs_monthly", key="202401/avg_rade9@64")
     assert f.sha256 == "cd" * 32 and f.bytes == 400
 
 

@@ -80,7 +80,8 @@ def load_export(path=DEFAULT_PATH) -> PetaLoadLog:
             "landcover_year": (lc or {}).get("year"),
             "terrain_provenance": (t or {}).get("provenance"),
             "landcover_provenance": (lc or {}).get("provenance"),
-            "nightlights_provenance": (nl or {}).get("provenance"),
+            "nightlights_provenance": ({**nl["provenance"], "annual": data["nightlights_annual"][nl["provenance"]["province"]]}
+                                       if nl else None),
             "load_log": log,
         })
         used = []
@@ -92,11 +93,20 @@ def load_export(path=DEFAULT_PATH) -> PetaLoadLog:
                         raise ExportInvalid(f"{code}: tile {prov['dataset']}/{key} not in export files")
                     used.append(files[(prov["dataset"], key)])
         if nl:
-            # Night-lights windows are shared by a whole province: their records
-            # are listed in nightlights_provenance, not linked per region.
-            for key in nl["provenance"]["source_records"]:
-                if (nl["provenance"]["dataset"], key) not in files:
-                    raise ExportInvalid(f"{code}: night-lights record {key} not in export files")
+            # Night-lights windows are shared by a whole province: the export lists them
+            # once in `files` and the months per province-year in `nightlights_annual`.
+            prov = nl["provenance"]
+            annual = data.get("nightlights_annual", {}).get(prov["province"])
+            if not annual:
+                raise ExportInvalid(f"{code}: no nightlights_annual entry for provinsi {prov['province']}")
+            for year in nl["years"]:
+                if year not in annual:
+                    raise ExportInvalid(f"{code}: provinsi {prov['province']} has no annual raster for {year}")
+                for ym in annual[year]["months_used"]:
+                    for band in ("avg_rade9", "n_cf"):
+                        if (prov["dataset"], f"{ym}/{band}@{prov['province']}") not in files:
+                            raise ExportInvalid(f"{code}: night-lights window {ym}/{band}@{prov['province']} "
+                                                "not in export files")
         region.source_files.set(used)
         rows = []
         for key, _label, _group, _unit, _dataset, ipath, _method in INDICATORS:
