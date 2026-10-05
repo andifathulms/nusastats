@@ -1,4 +1,4 @@
-# Peta Wilayah Phase 4: Sulawesi Selatan kabupaten/kota
+# Peta Wilayah Phase 4: Sulawesi Selatan (kabupaten/kota and kecamatan)
 
 Run: 2026-10-05, 04:45–05:02 UTC. Command: `uv run python -m all --level kabupaten --prov 73`.
 Log: `batch-20261005T044522Z.jsonl` (local).
@@ -58,3 +58,36 @@ Cropland share is highest in the rice belt: Wajo 35,9%, Takalar 31,6%, Pinrang 2
 | 7371 | Kota Makassar | Dataran rendah | 6 | 36 | 16,4% | 6,3% | 51,3% |
 | 7372 | Kota Pare Pare | Perbukitan | 140 | 794 | 68,2% | 7,0% | 13,1% |
 | 7373 | Kota Palopo | Perbukitan | 404 | 1.923 | 76,0% | 7,2% | 5,4% |
+
+## Step 2: kecamatan (313)
+
+Run 05:09–05:36 UTC, `uv run python -m all --level kecamatan --prov 73`: **620 jobs computed, 0 failed checks,
+0 errors.** No new tiles.
+
+**3 kecamatan were first skipped** as "no Kemendagri name": 730511, 730512 and 730603. They are real kecamatan:
+BIG has their desa, and Dukcapil's village records name them (730511 Polongbangkeng Timur and 730512 Laikang in
+Kab. Takalar; 730603 Tompobulu in Kab. Gowa). Dukcapil's kecamatan layer has no row for them, so the display boundary
+file leaves them nameless.
+
+Nationally, 169 kecamatan are nameless in the display file:
+- 136 are the stale Papua 92xx codes (no name anywhere; remap later);
+- 2 in Karimun (210323, 210324) have no name anywhere;
+- 31 are real kecamatan named only in Dukcapil village records.
+
+**Fix:** `manage.py export_kecamatan_names` writes `backend/peta/data/kecamatan_names.json` (7,275 kecamatan,
+code → name, each with the village row and DukcapilFetchLog it came from; ambiguous names are left out). The outline
+step uses it only where the display file has no name. Re-running the batch computed just those 3 (6 jobs, 620 up to
+date), so **all 313 Sulsel kecamatan are covered**. Tompobulu classifies as Pegunungan.
+
+| Check | Result |
+|---|---|
+| Kabupaten max/min = highest/lowest kecamatan max/min | exact in 24 of 24 |
+| Kecamatan areas sum to the kabupaten area | within 0.073% |
+| Area-weighted kecamatan land cover = kabupaten shares | within 0.016 percentage points |
+| Pixel vs UTM polygon area | max 0.97%, in Kepulauan Sangkarrang (0.9 km² of islets, where one 30 m pixel is a big share). Limit 2% |
+| Land cover nodata | max 0.078%, in Liukang Kalmas (small islands, coastal pixels). Limit 0.1% |
+
+Even smaller island kecamatan elsewhere could exceed the 2% area limit. They would then fail loudly and be logged,
+not be rendered. Decide then whether tiny islands need a size-aware limit.
+
+Backend export: 1,019 areas (80 kabupaten, 939 kecamatan), 18,342 values, loaded with `load_peta`.
