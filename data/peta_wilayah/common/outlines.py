@@ -22,7 +22,7 @@ from shapely.geometry import mapping, shape
 
 from . import manifest
 from .cache import sha256
-from .paths import BIG_DIR, CACHE, PUBLIC, big_desa_file
+from .paths import BIG_DIR, CACHE, PUBLIC, REPO, big_desa_file
 
 OUT = CACHE / "outlines"
 LEVELS = {2: "provinsi", 4: "kabupaten", 6: "kecamatan"}
@@ -42,6 +42,16 @@ def _dissolve_fn():
 def _names(path):
     fc = json.loads((PUBLIC / path).read_text())
     return {f["properties"]["domain_id"]: f["properties"].get("name", "") for f in fc["features"]}
+
+
+def _kecamatan_names():
+    """Fallback kecamatan names from Dukcapil village records
+    (backend/peta/data/kecamatan_names.json, `manage.py export_kecamatan_names`),
+    for real kecamatan that the display file leaves nameless."""
+    p = REPO / "backend" / "peta" / "data" / "kecamatan_names.json"
+    if not p.exists():
+        return {}
+    return {k: v["name"] for k, v in json.loads(p.read_text())["names"].items()}
 
 
 def _log_skip(prov: str, reason: str) -> None:
@@ -80,6 +90,12 @@ def build(prov: str, force: bool = False) -> dict:
 
     names = {6: _names("dukcapil-districts.geojson"), 4: _names("dukcapil-regencies.geojson"),
              2: _names("dukcapil-provinces.geojson")}
+    fallback = _kecamatan_names()
+    named_from_villages = []
+    for k, v in fallback.items():
+        if k[:2] == prov and (not names[6].get(k) or names[6][k] == k):
+            names[6][k] = v
+            named_from_villages.append(k)
     d.mkdir(parents=True, exist_ok=True)
     counts = {}
     items = desa
@@ -95,6 +111,7 @@ def build(prov: str, force: bool = False) -> dict:
 
     meta = {"prov": prov, "source": f"data/big_boundaries/{src.name}", "source_sha256": digest,
             "desa": len(desa), "desa_made_valid": invalid, "counts": counts,
+            "kecamatan_named_from_villages": sorted(named_from_villages),
             "method": "shapely.union_all(grid_size=1e-8) per code prefix; no simplify, "
                       "no island/hole dropping (data/big_boundaries/dissolve.py:dissolve)",
             "built_at": manifest.now_iso()}
