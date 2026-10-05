@@ -14,6 +14,8 @@
   "layers": {
     "elevation": "elevation.webp",
     "hillshade": "hillshade.webp",
-    "landcover": "landcover.webp"
+    "landcover": "landcover.webp",
+    "lowland": "lowland.webp",
+    "relief": "relief.webp"
   }
 }
