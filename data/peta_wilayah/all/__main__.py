@@ -27,7 +27,13 @@ from common import cache, manifest, tiles, worldcover
 from common.outlines import LEVELS, OUT, ProvinceSkipped, build
 from common.paths import CACHE, CONFIG, PUBLIC_PETA
 from landcover import compute as lc
+from nightlights import compute as nc
 from terrain import compute as tc
+
+MODULES = {"terrain": tc, "landcover": lc, "nightlights": nc}
+CONFIG_FILE = {"terrain": "terrain.yaml", "landcover": "landcover.yaml", "nightlights": "nightlights.yaml"}
+IMAGES = {"terrain": ["hillshade.webp", "elevation.webp", "lowland.webp", "relief.webp"],
+          "landcover": ["landcover.webp"], "nightlights": ["nightlights.webp"]}
 
 LEVEL_LEN = {v: k for k, v in LEVELS.items()}  # kabupaten -> 4, kecamatan -> 6
 PAD = 0.01
@@ -61,20 +67,18 @@ def up_to_date(kode: str, layer: str, boundary_sha: str) -> bool:
     meta = json.loads(js.read_text())
     if meta["metadata"].get("boundary", {}).get("sha256") != boundary_sha:
         return False
+    ok = meta["metadata"].get("config_sha256") == _sha(CONFIG / CONFIG_FILE[layer])
     if layer == "terrain":
-        ok = (meta["metadata"].get("config_sha256") == _sha(CONFIG / "terrain.yaml")
-              and meta["classification"].get("rules_sha256") == _sha(CONFIG / "terrain_rules.yaml"))
-        imgs = ["hillshade.webp", "elevation.webp"]
-    else:
-        ok = meta["metadata"].get("config_sha256") == _sha(CONFIG / "landcover.yaml")
-        imgs = ["landcover.webp"]
-    return ok and all((d / i).exists() for i in imgs)
+        ok = ok and meta["classification"].get("rules_sha256") == _sha(CONFIG / "terrain_rules.yaml")
+    return ok and all((d / i).exists() for i in IMAGES[layer])
 
 
 def needed_tiles(bounds, layer):
     w, s, e, n = bounds
     if layer == "terrain":
         return {("copdem", t) for t in tiles.tiles_for_bounds(w - PAD, s - PAD, e + PAD, n + PAD)}
+    if layer == "nightlights":
+        return set()  # remote windows; the per-province annual rasters are small and kept
     return {("worldcover", t) for t in worldcover.tiles_for_bounds(w, s, e, n)}
 
 
@@ -88,7 +92,8 @@ def main():
     ap = argparse.ArgumentParser(description="Batch terrain/land cover for every area of a level")
     ap.add_argument("--level", choices=["kabupaten", "kecamatan"], required=True)
     ap.add_argument("--prov", action="append", required=True, help="2-digit provinsi (repeatable)")
-    ap.add_argument("--layer", action="append", choices=["terrain", "landcover"])
+    ap.add_argument("--layer", action="append", choices=list(MODULES),
+                    help="default: terrain and landcover (nightlights must be asked for)")
     ap.add_argument("--force", action="store_true", help="recompute even if up to date")
     ap.add_argument("--evict-tiles", action="store_true", help="delete tiles once no remaining area needs them")
     a = ap.parse_args()
@@ -137,12 +142,12 @@ def main():
             if not a.force and up_to_date(kode, layer, bsha):
                 log({"kode": kode, "layer": layer, "status": "up_to_date"})
             else:
-                mod = tc if layer == "terrain" else lc
+                mod = MODULES[layer]
                 r = mod.compute(kode)
                 mod.write(kode, r)
                 log({"kode": kode, "name": name, "layer": layer, "status": "ok",
                      "seconds": round(time.time() - t0, 1)})
-        except (tc.TerrainCheckFailed, lc.LandcoverCheckFailed) as e:
+        except (tc.TerrainCheckFailed, lc.LandcoverCheckFailed, nc.NightlightsCheckFailed) as e:
             log({"kode": kode, "name": name, "layer": layer, "status": "failed_check", "message": str(e)})
         except (cache.SourceChanged, cache.DiskLow) as e:
             log({"kode": kode, "name": name, "layer": layer, "status": "run_stopped", "message": str(e)})

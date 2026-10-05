@@ -6,3 +6,4 @@ dukcapil_extra/kel_prov_*.json
 # Peta Wilayah pipeline: raw DEM/land-cover tiles, full-detail outlines, run logs.
 peta_wilayah/cache/
 peta_wilayah/.venv/
+peta_wilayah/sources.json.tmp

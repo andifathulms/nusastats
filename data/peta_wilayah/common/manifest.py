@@ -7,6 +7,7 @@ here, so any figure can be traced back to the exact bytes it was computed from.
 Written with sorted keys so diffs stay small and deterministic.
 """
 import json
+import os
 from datetime import datetime, timezone
 
 from .paths import SOURCES
@@ -51,6 +52,27 @@ DATASETS = {
                   "verified 2026-10-05 from the docs_url page ([year] = 2021). Plantations "
                   "(sawit, akasia) usually map to class 10: say 'tutupan pohon', never 'hutan'."),
     },
+    "wb_len_viirs_monthly": {
+        "name": "World Bank Light Every Night: VIIRS DNB monthly composites (SNPP)",
+        "provider": "World Bank / University of Michigan (Light Every Night, AWS Open Data), composites "
+                    "of NOAA VIIRS DNB data in the EOG monthly format",
+        "type": "Monthly average radiance (avg_rade9, nW/cm2/sr) + cloud-free night count (n_cf), "
+                "stray-light corrected (ecm-slcorr)",
+        "resolution": "15 arc-seconds (~460 m)",
+        "horizontal_crs": "EPSG:4326",
+        "url_pattern": "https://globalnightlight.s3.amazonaws.com/composites/npp_{YYYYMM}_ops/"
+                       "DNB_npp_{period}_global_ecm-slcorr_v10_ops.{avg_rade9|n_cf}.tif",
+        "docs_url": "https://worldbank.github.io/OpenNightLights/wb-light-every-night-readme.html",
+        "license": "CC BY 4.0 (World Bank open data terms, per the AWS Open Data registry entry)",
+        "attribution": ("Light Every Night, World Bank / University of Michigan (VIIRS DNB, NOAA/EOG monthly "
+                        "composites), CC BY 4.0"),
+        "attribution_short": "World Bank Light Every Night (VIIRS), CC BY 4.0",
+        "notes": ("Cloud-optimised GeoTIFFs read as remote WINDOWS: each record hashes the exact window "
+                  "bytes read (sha256_window), with the file's ETag/Last-Modified, not the whole 3-4 GB "
+                  "file. Only 'ops' processing (2017-04 onward) is used: earlier 'rp2' months have a "
+                  "different background level. The composites/ folder is not described in the README; "
+                  "licence from the AWS registry entry (verified 2026-10-05)."),
+    },
 }
 
 
@@ -68,7 +90,11 @@ def load() -> dict:
 
 
 def save(data: dict) -> None:
-    SOURCES.write_text(json.dumps(data, indent=2, sort_keys=True, ensure_ascii=False) + "\n")
+    # Atomic: write a temp file, then rename over. A concurrent reader (another
+    # pipeline process) sees the old or the new file, never a half-written one.
+    tmp = SOURCES.with_suffix(".json.tmp")
+    tmp.write_text(json.dumps(data, indent=2, sort_keys=True, ensure_ascii=False) + "\n")
+    os.replace(tmp, SOURCES)
 
 
 def now_iso() -> str:

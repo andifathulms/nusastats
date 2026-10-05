@@ -49,12 +49,25 @@ def _landcover(lc):
     }
 
 
+def _nightlights(nl):
+    m = nl["metadata"]
+    records = sorted({r for p in m["provenance"].values() for r in p["source_records"]})
+    return {
+        "unit": nl["unit"], "lit_threshold_nw": nl["lit_threshold_nw"], "base_year": nl["base_year"],
+        "latest_year": nl["latest_year"], "years": nl["years"], "growth": nl["growth"],
+        "provenance": {"dataset": "wb_len_viirs_monthly", "source_records": records,
+                       "annual_sha256": {y: p["annual_sha256"] for y, p in m["provenance"].items()},
+                       "boundary_sha256": m["boundary"]["sha256"], "config_sha256": m["config_sha256"],
+                       "computed_at": m["computed_at"]},
+    }
+
+
 def main():
     src = manifest.load()
     areas, used = [], {}
     for d in sorted(p for p in PUBLIC_PETA.iterdir() if p.is_dir()):
         kode = d.name
-        tf, lf = d / "terrain.json", d / "landcover.json"
+        tf, lf, nf = d / "terrain.json", d / "landcover.json", d / "nightlights.json"
         if not tf.exists() and not lf.exists():
             continue
         rec = {"kode": kode, "level": LEVEL[len(kode)], "prov_code": kode[:2]}
@@ -68,6 +81,10 @@ def main():
             rec.setdefault("name", lc["name"])
             rec["landcover"] = _landcover(lc)
             used.setdefault("esa_worldcover_2021_v200", set()).update(lc["metadata"]["tiles"])
+        if nf.exists():
+            nl = json.loads(nf.read_text())
+            rec["nightlights"] = _nightlights(nl)
+            used.setdefault("wb_len_viirs_monthly", set()).update(rec["nightlights"]["provenance"]["source_records"])
         areas.append(rec)
 
     files = {}
