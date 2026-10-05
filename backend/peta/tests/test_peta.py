@@ -20,6 +20,9 @@ def _area(kode, name, mean, mx, tree, built=None, landcover=True):
             "relief_m": mx, "highest_point": {"elevation_m": mx, "lon": 116.0, "lat": -1.0},
             "elevation_bands_pct": {}, "slope_deg": {"mean": 5.0}, "slope_classes_pct": {},
             "metrics_pct": {"share_elev_lt_100": 80.0, "share_elev_ge_1000": 0.0, "share_slope_ge_25": 1.0},
+            "lowland_pct": {"lt_5": 9.6, "lt_10": 17.0},
+            "local_relief": {"window_m": 1000, "mean_m": 68.0, "breaks_m": [30, 100, 300],
+                             "classes_pct": {"datar": 20.2, "bergelombang": 60.1, "berbukit": 18.9, "bergunung": 0.7}},
             "terrain_class": "dataran_rendah", "terrain_class_label": "Dataran rendah",
             "terrain_class_reason": "Dataran rendah: 80,0% area <100 m dan 70,0% area lereng <8°",
             "provenance": {"dataset": DEM, "tiles": ["T1"], "boundary_sha256": "b", "config_sha256": "c",
@@ -127,3 +130,17 @@ def test_indicators_catalog(loaded, client):
     keys = [i["key"] for i in d["indicators"]]
     assert {"elevation_mean", "relief", "share_elev_ge_1000", "share_slope_ge_25", "lc_tree", "lc_builtup", "lc_cropland"} <= set(keys)
     assert d["regions"] == {"regency": 3, "district": 1} and "bukan klasifikasi resmi" in d["classification_note"]
+
+
+def test_lowland_and_relief_indicators(loaded):
+    v = {pv.indicator.key: pv.value for pv in PetaRegion.objects.get(code="6409").values.select_related("indicator")}
+    assert v["lowland_lt_5"] == 9.6 and v["lowland_lt_10"] == 17.0
+    assert v["local_relief_mean"] == 68.0 and v["relief_bergunung"] == 0.7 and v["relief_datar"] == 20.2
+
+
+def test_old_export_without_new_fields_stores_no_value(db, export):
+    a = _area("6409", "PPU", 89.0, 750.0, 86.9)
+    del a["terrain"]["lowland_pct"], a["terrain"]["local_relief"]
+    load_export(export([a]))
+    keys = set(PetaRegion.objects.get(code="6409").values.values_list("indicator__key", flat=True))
+    assert "elevation_mean" in keys and "lowland_lt_5" not in keys and "relief_bergunung" not in keys

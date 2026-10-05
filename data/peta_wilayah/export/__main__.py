@@ -29,6 +29,7 @@ def _terrain(t):
         "highest_point": t["highest_point"], "elevation_bands_pct": t["elevation_bands_pct"],
         "slope_deg": t["slope_deg"], "slope_classes_pct": t["slope_classes_pct"],
         "metrics_pct": t["metrics_pct"], "terrain_class": t["terrain_class"],
+        "lowland_pct": t.get("lowland_pct"), "local_relief": t.get("local_relief"),
         "terrain_class_label": t["terrain_class_label"], "terrain_class_reason": t["terrain_class_reason"],
         "provenance": {"dataset": "copernicus_dem_glo30", "tiles": sorted(m["tiles"]),
                        "boundary_sha256": m["boundary"]["sha256"], "config_sha256": m["config_sha256"],
