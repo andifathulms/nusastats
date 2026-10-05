@@ -8,6 +8,7 @@ stretched over its lon/lat box lines up with the outlines exactly. The grid
 is a multiple `factor` of 1 arc-second, snapped outward to whole pixels with
 one pixel of padding, so it is deterministic for a given polygon and factor.
 """
+import fcntl
 import io
 import json
 import math
@@ -73,6 +74,14 @@ def write_bounds(kode: str, g: Grid, layers: dict) -> None:
     changed, layers rendered on the old grid are dropped (they must be re-run)."""
     out = PUBLIC_PETA / kode
     out.mkdir(parents=True, exist_ok=True)
+    # Exclusive lock: two pipeline processes (e.g. a terrain batch and a night-lights
+    # batch) may update the same area; the read-merge-write must not interleave.
+    with open(out / ".bounds.lock", "w") as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        _write_bounds_locked(out, kode, g, layers)
+
+
+def _write_bounds_locked(out, kode: str, g: Grid, layers: dict) -> None:
     p = out / "bounds.json"
     new = {
         "kode": kode, "crs": "EPSG:4326",

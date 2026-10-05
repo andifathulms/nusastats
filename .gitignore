@@ -64,3 +64,4 @@ docker-compose.override.yml
 # Peta Wilayah map layers (Phase 4+): generated locally, not committed for now.
 # The Phase 1-3 test-area images (6409 and its kecamatan) stay tracked.
 /frontend/public/peta/**/*.webp
+/frontend/public/peta/**/.bounds.lock
