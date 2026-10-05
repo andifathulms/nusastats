@@ -144,3 +144,46 @@ def test_old_export_without_new_fields_stores_no_value(db, export):
     load_export(export([a]))
     keys = set(PetaRegion.objects.get(code="6409").values.values_list("indicator__key", flat=True))
     assert "elevation_mean" in keys and "lowland_lt_5" not in keys and "relief_bergunung" not in keys
+
+
+def _ntl(area, series):
+    area["nightlights"] = {
+        "unit": "nW/cm²/sr", "lit_threshold_nw": 1.0, "base_year": 2018, "latest_year": max(series),
+        "years": {str(y): {"lit_pct": v, "lit_km2": v, "sum_lit": v * 10, "mean_nw": v / 10} for y, v in series.items()},
+        "growth": {},
+        "provenance": {"dataset": "wb_len_viirs_monthly", "source_records": ["202401/avg_rade9@64"],
+                       "annual_sha256": {}, "boundary_sha256": "b", "config_sha256": "c", "computed_at": "x"},
+    }
+    return area
+
+
+@pytest.fixture
+def loaded_ntl(db, tmp_path):
+    p = tmp_path / "x.json"
+    files = {DEM: {"T1": _file()}, WC: {"W1": _file()},
+             "wb_len_viirs_monthly": {"202401/avg_rade9@64": {"url": "u", "sha256_window": "cd" * 32, "shape": [10, 10],
+                                                               "dtype": "float32", "read_at": "t", "etag": "e"}}}
+    areas = [_ntl(_area("6409", "PPU", 89.0, 750.0, 86.9), {2018: 2.8, 2024: 10.1}),
+             _ntl(_area("6471", "BALIKPAPAN", 40.0, 200.0, 50.0), {2018: 42.0, 2024: 58.7}),
+             _ntl(_area("640904", "SEPAKU", 145.0, 750.0, 91.0), {2018: 0.6, 2024: 11.9})]
+    p.write_text(json.dumps({"datasets": {}, "files": files, "areas": areas}))
+    return load_export(p)
+
+
+def test_yearly_values_and_window_records(loaded_ntl):
+    r = PetaRegion.objects.get(code="640904")
+    series = dict(r.values.filter(indicator__key="ntl_lit_pct").values_list("year", "value"))
+    assert series == {2018: 0.6, 2024: 11.9}
+    assert r.values.get(indicator__key="elevation_mean").year == 0
+    f = PetaSourceFile.objects.get(dataset="wb_len_viirs_monthly")
+    assert f.sha256 == "cd" * 32 and f.bytes == 400
+
+
+def test_yearly_api(loaded_ntl, client):
+    d = client.get("/api/peta/regions/6409/").json()
+    row = next(r for r in d["indicators"] if r["key"] == "ntl_lit_pct")
+    assert row["year"] == 2024 and row["series"] == {"2018": 2.8, "2024": 10.1} and (row["rank"], row["of"]) == (2, 2)
+    rk = client.get("/api/peta/rank/?indicator=ntl_lit_pct&level=regency&year=2018").json()
+    assert rk["year"] == 2018 and [x["kemendagri_code"] for x in rk["results"]] == ["6471", "6409"]
+    assert client.get("/api/peta/rank/?indicator=ntl_lit_pct&level=regency").json()["year"] == 2024
+    assert client.get("/api/peta/rank/?indicator=ntl_lit_pct&year=1999").status_code == 400

@@ -3,11 +3,16 @@ values are stored, their labels, units and how each is read from the export.
 
 `path` is a tuple into an area record of peta_export.json; ("landcover_class",
 code) reads that WorldCover class's share (0 when the class is absent: shares
-are over all classified pixels, so absence is a true zero, not a gap).
+are over all classified pixels, so absence is a true zero, not a gap);
+("nightlights_year", field) is a yearly series: one value per data year.
 """
 
 T = "Copernicus DEM GLO-30"
 W = "ESA WorldCover 2021 v200"
+N = "World Bank Light Every Night (VIIRS)"
+NTL = ("Annual value from the per-pixel median of cloud-free monthly VIIRS composites ('ops' processing), "
+       "weighted by each ~460 m pixel's area inside the polygon. Night lights indicate settlement and activity, "
+       "not population or income.")
 SHARE = "Share of area: equal-area UTM pixels (centroid zone) whose centre lies inside the full-detail BIG polygon."
 
 INDICATORS = [
@@ -40,6 +45,14 @@ INDICATORS = [
     ("relief_datar", "Luas datar (relief lokal <30 m)", "medan", "%", T,
      ("terrain", "local_relief", "classes_pct", "datar"),
      "Share of area whose 1 km local relief is under 30 m. NusaStats class. " + SHARE),
+    ("ntl_lit_pct", "Luas bercahaya malam (≥1 nW)", "cahaya_malam", "%", N, ("nightlights_year", "lit_pct"),
+     "Share of area whose annual median radiance is at least 1 nW/cm²/sr. " + NTL),
+    ("ntl_lit_km2", "Luas bercahaya malam", "cahaya_malam", "km²", N, ("nightlights_year", "lit_km2"),
+     "Area whose annual median radiance is at least 1 nW/cm²/sr. " + NTL),
+    ("ntl_sum_lit", "Jumlah cahaya malam (indeks)", "cahaya_malam", "nW·km²", N, ("nightlights_year", "sum_lit"),
+     "Sum of radiance × area over lit pixels (≥1 nW): an index of total light, robust to background drift. " + NTL),
+    ("ntl_mean_nw", "Rata-rata cahaya malam", "cahaya_malam", "nW/cm²/sr", N, ("nightlights_year", "mean_nw"),
+     "Area-weighted mean annual median radiance. " + NTL),
     ("lc_tree", "Tutupan pohon", "tutupan", "%", W, ("landcover_class", 10),
      "WorldCover class 10. Includes plantations (sawit, akasia): not 'hutan'. " + SHARE),
     ("lc_cropland", "Lahan pertanian", "tutupan", "%", W, ("landcover_class", 40), "WorldCover class 40. " + SHARE),
@@ -51,6 +64,18 @@ INDICATORS = [
     ("lc_wetland", "Lahan basah", "tutupan", "%", W, ("landcover_class", 90), "WorldCover class 90. " + SHARE),
     ("lc_bare", "Lahan terbuka", "tutupan", "%", W, ("landcover_class", 60), "WorldCover class 60. " + SHARE),
 ]
+
+
+def is_yearly(path: tuple) -> bool:
+    return path[0] == "nightlights_year"
+
+
+def read_yearly(area: dict, path: tuple) -> dict:
+    """{year: value} for a yearly path; empty if the layer is absent."""
+    nl = area.get("nightlights")
+    if not nl:
+        return {}
+    return {int(y): float(v[path[1]]) for y, v in nl["years"].items()}
 
 
 def read(area: dict, path: tuple):

@@ -63,6 +63,7 @@ class PetaIndicator(models.Model):
     dataset = models.CharField(max_length=64)
     method = models.TextField()
     sort = models.IntegerField(default=0)
+    yearly = models.BooleanField(default=False)  # values carry a year (time series)
 
     class Meta:
         ordering = ["sort", "key"]
@@ -85,6 +86,7 @@ class PetaRegion(models.Model):
     landcover_year = models.IntegerField(null=True)
     terrain_provenance = models.JSONField(null=True)
     landcover_provenance = models.JSONField(null=True)
+    nightlights_provenance = models.JSONField(null=True)
     source_files = models.ManyToManyField(PetaSourceFile, related_name="regions")
     load_log = models.ForeignKey(PetaLoadLog, null=True, on_delete=models.SET_NULL, related_name="regions")
 
@@ -98,8 +100,11 @@ class PetaRegion(models.Model):
 class PetaValue(models.Model):
     region = models.ForeignKey(PetaRegion, on_delete=models.CASCADE, related_name="values")
     indicator = models.ForeignKey(PetaIndicator, on_delete=models.CASCADE, related_name="values")
+    # Data year for time series (night lights); 0 = not time-varying (terrain,
+    # land cover). Not nullable, so the unique constraint stays meaningful.
+    year = models.IntegerField(default=0)
     value = models.FloatField()
 
     class Meta:
-        constraints = [models.UniqueConstraint(fields=["region", "indicator"], name="peta_value_unique")]
-        indexes = [models.Index(fields=["indicator", "value"])]
+        constraints = [models.UniqueConstraint(fields=["region", "indicator", "year"], name="peta_value_unique_year")]
+        indexes = [models.Index(fields=["indicator", "year", "value"])]

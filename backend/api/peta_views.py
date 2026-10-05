@@ -24,7 +24,7 @@ PEER_SCOPE = {PetaLevel.PROVINCE: "provinsi", PetaLevel.REGENCY: "kabupaten/kota
 
 def _indicator_payload(i):
     return {"key": i.key, "label": i.label_id, "group": i.group, "unit": i.unit,
-            "dataset": i.dataset, "method": i.method}
+            "dataset": i.dataset, "method": i.method, "yearly": i.yearly}
 
 
 def _datasets():
@@ -57,12 +57,24 @@ def region_detail(request, code):
         return Response({"detail": "No Peta Wilayah data for this region code."}, status=404)
     peer_ids = PetaRegion.objects.filter(level=region.level, parent_code=region.parent_code).values_list("id", flat=True)
     peer_vals = defaultdict(list)
-    for ind_id, v in PetaValue.objects.filter(region_id__in=list(peer_ids)).values_list("indicator_id", "value"):
-        peer_vals[ind_id].append(v)
+    for ind_id, yr, v in PetaValue.objects.filter(region_id__in=list(peer_ids)).values_list("indicator_id", "year", "value"):
+        peer_vals[(ind_id, yr)].append(v)
+    own = defaultdict(dict)
+    indicators = {}
+    for pv in region.values.select_related("indicator"):
+        own[pv.indicator_id][pv.year] = pv.value
+        indicators[pv.indicator_id] = pv.indicator
     rows = []
-    for pv in region.values.select_related("indicator").order_by("indicator__sort"):
-        rank, of, pct = percentile_rank(pv.value, peer_vals[pv.indicator_id])
-        rows.append({**_indicator_payload(pv.indicator), "value": pv.value, "rank": rank, "of": of, "percentile": pct})
+    for ind_id, ind in sorted(indicators.items(), key=lambda kv: (kv[1].sort, kv[1].key)):
+        # Yearly series rank on their latest year; static indicators are stored as year 0.
+        year = max(own[ind_id])
+        value = own[ind_id][year]
+        rank, of, pct = percentile_rank(value, peer_vals[(ind_id, year)])
+        row = {**_indicator_payload(ind), "value": value, "rank": rank, "of": of, "percentile": pct}
+        if ind.yearly:
+            row["year"] = year
+            row["series"] = {str(y): v for y, v in sorted(own[ind_id].items())}
+        rows.append(row)
     return Response({
         "region": {"code": region.code, "level": region.level, "name": region.name,
                    "prov_code": region.prov_code, "parent_code": region.parent_code,
@@ -82,7 +94,8 @@ def region_detail(request, code):
 @api_view(["GET"])
 @cached_api("peta")
 def rank(request):
-    """`/api/peta/rank/?indicator=&level=&prov=&parent=&order=&offset=&limit=`"""
+    """`/api/peta/rank/?indicator=&level=&prov=&parent=&year=&order=&offset=&limit=`
+    (`year` for yearly indicators; defaults to the latest year loaded)."""
     key = request.query_params.get("indicator", "elevation_mean")
     ind = PetaIndicator.objects.filter(key=key).first()
     if ind is None:
@@ -91,7 +104,15 @@ def rank(request):
     if level not in PetaLevel.values:
         return Response({"detail": f"level must be one of {PetaLevel.values}."}, status=400)
     order = "asc" if request.query_params.get("order") == "asc" else "desc"
-    qs = PetaValue.objects.filter(indicator=ind, region__level=level).select_related("region")
+    if ind.yearly:
+        years = PetaValue.objects.filter(indicator=ind).values_list("year", flat=True).distinct()
+        raw = request.query_params.get("year")
+        if raw is not None and (not raw.isdigit() or int(raw) not in set(years)):
+            return Response({"detail": f"year must be one of {sorted(set(years))}."}, status=400)
+        year = int(raw) if raw is not None else max(years, default=0)
+    else:
+        year = 0
+    qs = PetaValue.objects.filter(indicator=ind, region__level=level, year=year).select_related("region")
     if prov := request.query_params.get("prov"):
         qs = qs.filter(region__prov_code=prov)
     if parent := request.query_params.get("parent"):
@@ -101,4 +122,5 @@ def rank(request):
     stats = distribution([r["value"] for r in rows])
     page, meta = paginate(rank_rows(rows, order=order), request)
     return Response({"indicator": _indicator_payload(ind), "level": level, "order": order,
+                     "year": year or None,
                      "stats": stats, **meta, "results": page})
