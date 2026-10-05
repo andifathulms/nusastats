@@ -127,10 +127,14 @@ def compute(kode: str) -> dict:
     g_utm = to_crs(geom, epsg)
     px = float(sc["utm_pixel_m"])
     ux0, uy0, ux1, uy1 = g_utm.bounds
-    x0 = math.floor(ux0 / px) * px - 2 * px
-    y1 = math.ceil(uy1 / px) * px + 2 * px
-    uw = int(math.ceil((ux1 - x0) / px)) + 2
-    uh = int(math.ceil((y1 - uy0) / px)) + 2
+    # Pad by half the local-relief window so edge pixels see their whole window.
+    # The origin stays on the 30 m lattice, so every pixel is the same as before.
+    win = int(round(sc["local_relief_window_m"] / px)) | 1  # odd window, in pixels
+    pad_px = win // 2 + 2
+    x0 = math.floor(ux0 / px) * px - pad_px * px
+    y1 = math.ceil(uy1 / px) * px + pad_px * px
+    uw = int(math.ceil((ux1 - x0) / px)) + pad_px
+    uh = int(math.ceil((y1 - uy0) / px)) + pad_px
     utr = from_origin(x0, y1, px, px)
     zu = np.full((uh, uw), np.nan, dtype=np.float32)
     reproject(z, zu, src_transform=ztr, src_crs=zcrs, src_nodata=np.nan,
@@ -138,10 +142,12 @@ def compute(kode: str) -> dict:
               resampling=Resampling[sc["resampling"]])
     m_utm = geometry_mask([mapping(g_utm)], out_shape=zu.shape, transform=utr, invert=True)
     slope = dem.slope_deg(zu.astype(np.float64), px, px)
+    lrelief = dem.local_relief(zu.astype(np.float64), win)
 
     n_poly = int(m_utm.sum())
     ev = zu[m_utm & np.isfinite(zu)].astype(np.float64)
     sv = slope[m_utm & np.isfinite(slope)]
+    lv = lrelief[m_utm & np.isfinite(lrelief)]
     nodata_pct = (n_poly - ev.size) * 100.0 / n_poly
 
     # --- guardrails ------------------------------------------------------------------
@@ -157,7 +163,7 @@ def compute(kode: str) -> dict:
         problems.append(f"UTM polygon area differs from geodesic by {d_utm:.2f}%")
     if abs(d_px) > sc["max_area_diff_pct"]:
         problems.append(f"pixel area differs from UTM polygon area by {d_px:.2f}%")
-    if ev.size == 0 or sv.size == 0:
+    if ev.size == 0 or sv.size == 0 or lv.size == 0:
         problems.append("no valid elevation/slope pixels")
     if problems:
         raise TerrainCheckFailed(f"{kode}: " + "; ".join(problems))
@@ -166,7 +172,11 @@ def compute(kode: str) -> dict:
     relief = p95 - p5
     bands = _shares(ev, sc["elevation_bands_m"])
     slopes = _shares(sv, sc["slope_breaks_deg"])
-    for label, sh in (("elevation bands", bands), ("slope classes", slopes)):
+    reliefs = _shares(lv, sc["local_relief_breaks_m"])
+    lo5, lo10 = sc["lowland_m"]
+    lowland = {f"lt_{lo5}": float(np.count_nonzero(ev < lo5) * 100.0 / ev.size),
+               f"lt_{lo10}": float(np.count_nonzero(ev < lo10) * 100.0 / ev.size)}
+    for label, sh in (("elevation bands", bands), ("slope classes", slopes), ("local relief classes", reliefs)):
         if abs(sum(sh) - 100.0) > 0.01:
             raise TerrainCheckFailed(f"{kode}: {label} sum to {sum(sh):.3f}%")
     if relief < 0:
@@ -199,9 +209,18 @@ def compute(kode: str) -> dict:
         gray = np.round(np.nan_to_num(hs, nan=1.0) * 255).astype(np.uint8)
         hs_rgba = np.dstack([gray, gray, gray, np.where(np.isfinite(hs), alpha, 0)])
         el_rgba = np.dstack([dem.tint(zd, rc["tint"]), alpha])
+        # Very low land: < 5 m and 5-10 m in two blues; everything else transparent.
+        low = np.where(np.isfinite(zd) & (zd < lo10), zd, np.nan)
+        lw_rgba = dem.classes_rgba(low, [lo5], rc["lowland_colors"], alpha)
+        # Local relief on the display grid, window scaled to the display pixel size.
+        dwin = max(3, int(round(sc["local_relief_window_m"] / (g.pixel_deg * float(np.mean(mlat)))))) | 1
+        rl_rgba = dem.classes_rgba(dem.local_relief(zd.astype(np.float64), dwin), sc["local_relief_breaks_m"],
+                                   rc["relief_colors"], alpha)
         hs_bytes = display.webp(hs_rgba, quality=rc["webp_quality"])
         el_bytes = display.webp(el_rgba, quality=rc["webp_quality"])
-        if max(len(hs_bytes), len(el_bytes)) <= rc["max_bytes"]:
+        lw_bytes = display.webp(lw_rgba, lossless=True)
+        rl_bytes = display.webp(rl_rgba, lossless=True)
+        if max(len(hs_bytes), len(el_bytes), len(lw_bytes), len(rl_bytes)) <= rc["max_bytes"]:
             break
         f += 1
 
@@ -220,6 +239,11 @@ def compute(kode: str) -> dict:
         "slope_deg": {"mean": r2(sv.mean())},
         "slope_classes_pct": dict(zip(_band_labels(sc["slope_breaks_deg"]), map(r2, slopes))),
         "metrics_pct": {k: r2(v) for k, v in metrics.items()},
+        # Lower bounds: the DEM is a surface model, so canopy/buildings read high.
+        "lowland_pct": {k: r2(v) for k, v in lowland.items()},
+        "local_relief": {"window_m": sc["local_relief_window_m"], "mean_m": r1(lv.mean()),
+                         "classes_pct": dict(zip(["datar", "bergelombang", "berbukit", "bergunung"], map(r2, reliefs))),
+                         "breaks_m": sc["local_relief_breaks_m"]},
         "terrain_class": t_class,
         "terrain_class_label": t_label,
         "terrain_class_reason": t_reason,
@@ -245,12 +269,17 @@ def compute(kode: str) -> dict:
             "slope_method": "Horn 3x3 on the UTM grid",
             "hillshade": hs_cfg,
             "tint": rc["tint"],  # hypsometric stops [m, hex] used for elevation.webp (legend source)
+            "lowland_colors": rc["lowland_colors"], "relief_colors": rc["relief_colors"],
+            "lowland_note": "Batas bawah: model permukaan (tajuk pohon, bangunan) terbaca lebih tinggi dari tanah.",
+            "local_relief_method": f"max - min elevation in a {win}x{win} px ({win * px:g} m) window on the UTM grid; "
+                                   "NusaStats classes, shown alongside (not replacing) the terrain class",
             "config_sha256": cfg_sha,
             "computed_at": manifest.now_iso(),
         },
     }
     return {"stats": stats, "grid": g,
-            "images": {"hillshade.webp": hs_bytes, "elevation.webp": el_bytes}}
+            "images": {"hillshade.webp": hs_bytes, "elevation.webp": el_bytes,
+                       "lowland.webp": lw_bytes, "relief.webp": rl_bytes}}
 
 
 def write(kode: str, result: dict):
@@ -259,6 +288,7 @@ def write(kode: str, result: dict):
     (out / "terrain.json").write_text(json.dumps(result["stats"], indent=2, ensure_ascii=False) + "\n")
     for fn, b in result["images"].items():
         (out / fn).write_bytes(b)
-    display.write_bounds(kode, result["grid"], {"hillshade": "hillshade.webp", "elevation": "elevation.webp"})
+    display.write_bounds(kode, result["grid"], {"hillshade": "hillshade.webp", "elevation": "elevation.webp",
+                                                "lowland": "lowland.webp", "relief": "relief.webp"})
     sys.stderr.write(f"terrain: wrote {out}\n")
     return out

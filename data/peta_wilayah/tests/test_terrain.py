@@ -78,3 +78,18 @@ def test_snap_bounds_lands_on_source_grid():
         k = (v - origin) / res
         assert abs(k - round(k)) < 1e-6
     assert w <= 116.33395 and e >= 116.94518 and s <= -1.59578 and n >= -0.79777
+
+
+def test_local_relief_window():
+    z = np.zeros((9, 9))
+    z[4, 4] = 50.0
+    lr = dem.local_relief(z, 3)
+    assert lr[4, 4] == 50 and lr[3, 3] == 50 and lr[0, 0] == 0  # only windows touching the peak
+    z[0, 0] = np.nan
+    assert dem.local_relief(z, 3)[0, 0] == 0  # NaN ignored, not propagated
+
+
+def test_classes_rgba():
+    out = dem.classes_rgba(np.array([[1.0, 7.0, np.nan]]), [5], ["#000000", "#ffffff"], 255)
+    assert out[0, 0].tolist() == [0, 0, 0, 255] and out[0, 1].tolist() == [255, 255, 255, 255]
+    assert out[0, 2, 3] == 0

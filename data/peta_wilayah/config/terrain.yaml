@@ -7,6 +7,13 @@ stats:
   max_area_diff_pct: 2.0     # fail if pixel/UTM area differs from geodesic polygon area by more
   elevation_bands_m: [100, 500, 1000, 2000]   # -> <100, 100-500, 500-1000, 1000-2000, >=2000
   slope_breaks_deg: [8, 25]                   # -> <8, 8-25, >=25
+  # Very low land. The DEM is a surface model (canopy, buildings), so these shares
+  # are LOWER BOUNDS of the true ground share: present as "setidaknya".
+  lowland_m: [5, 10]
+  # Local relief: max - min elevation within a square window. NusaStats classes,
+  # not an official scheme; shown alongside the terrain class, never replacing it.
+  local_relief_window_m: 1000
+  local_relief_breaks_m: [30, 100, 300]       # -> datar, bergelombang, berbukit, bergunung
 render:
   max_px: 2048               # longest side of display layers; downsample factor grows to fit
   max_bytes: 2000000         # ~2 MB per WebP
@@ -15,6 +22,8 @@ render:
     azimuth_deg: 315
     altitude_deg: 45
     z_factor: 1.0
+  lowland_colors: ["#1d4f91", "#6fa8dc"]      # < 5 m, 5-10 m (over hillshade)
+  relief_colors: ["#eef0dc", "#c9d7a0", "#c99a5b", "#7a4b2e"]  # datar .. bergunung
   # Hypsometric tint, absolute metres (same colours for every area so maps compare).
   # Green lowland -> tan -> brown -> white peaks.
   tint:

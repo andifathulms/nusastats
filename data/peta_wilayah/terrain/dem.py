@@ -5,6 +5,7 @@ per-row array (lon/lat grids, where a degree of longitude shrinks with cos lat).
 Edge cells and cells next to NaN come out NaN.
 """
 import numpy as np
+from scipy import ndimage
 
 
 def _horn(z, dx, dy):
@@ -35,6 +36,24 @@ def hillshade(z, dx, dy, azimuth_deg=315.0, altitude_deg=45.0, z_factor=1.0):
     az_math = np.radians((360.0 - azimuth_deg + 90.0) % 360.0)
     hs = np.cos(zenith) * np.cos(slope) + np.sin(zenith) * np.sin(slope) * np.cos(az_math - aspect)
     return np.clip(hs, 0.0, 1.0)
+
+
+def local_relief(z, size: int):
+    """max - min elevation in a size x size window (NaN = no data, ignored).
+    NaN where the window holds no data at all."""
+    finite = np.isfinite(z)
+    hi = ndimage.maximum_filter(np.where(finite, z, -np.inf), size=size, mode="nearest")
+    lo = ndimage.minimum_filter(np.where(finite, z, np.inf), size=size, mode="nearest")
+    out = hi - lo
+    return np.where(np.isfinite(out), out, np.nan)
+
+
+def classes_rgba(values, breaks, colors, alpha):
+    """Colour each value by the class its breaks put it in; NaN -> transparent."""
+    idx = np.digitize(np.nan_to_num(values, nan=-np.inf), breaks)
+    rgb = np.array([[int(c[k:k + 2], 16) for k in (1, 3, 5)] for c in colors], dtype=np.uint8)
+    out = np.dstack([rgb[idx], np.where(np.isfinite(values), alpha, 0).astype(np.uint8)])
+    return out
 
 
 def tint(z, stops):
