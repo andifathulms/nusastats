@@ -70,7 +70,7 @@ def compute(kode: str) -> dict:
     prov = kode[:2]
     thr = cfg["stats"]["lit_threshold_nw"]
     area_geod = geodesic_area_km2(geom)
-    years, provenance = {}, {}
+    years, provenance, skipped = {}, {}, {}
     for year in cfg["years"]:
         tif = annual.ensure(prov, year, data)
         meta = json.loads(tif.with_suffix(".json").read_text())
@@ -90,7 +90,9 @@ def compute(kode: str) -> dict:
         valid = np.isfinite(r)
         nod = wgt[~valid].sum() / total * 100
         if nod > cfg["stats"]["max_nodata_pct"]:
-            raise NightlightsCheckFailed(f"{kode} {year}: {nod:.2f}% of the area has no cloud-free month")
+            # One cloudy year must not discard the others: leave it out of the series, with the reason.
+            skipped[str(year)] = f"{nod:.2f}% of the area had no cloud-free night (max {cfg['stats']['max_nodata_pct']}%)"
+            continue
         floor = cfg["stats"]["noise_floor_nw"]
         if (valid & (r < floor) & (wgt > 0)).any():
             raise NightlightsCheckFailed(
@@ -110,11 +112,17 @@ def compute(kode: str) -> dict:
         }
         provenance[str(year)] = {"annual_sha256": meta["sha256_annual"], "months_used": meta["months_used"],
                                  "source_records": meta["source_records"]}
-    base, latest = str(cfg["base_year"]), str(cfg["years"][-1])
+    if not years:
+        raise NightlightsCheckFailed(f"{kode}: no year passed the checks ({skipped})")
+    base, latest = str(cfg["base_year"]), max(years)
     ratio = lambda a, b: round(a / b, 3) if b > 0 else None  # noqa: E731
-    growth = {"lit_km2_x": ratio(years[latest]["lit_km2"], years[base]["lit_km2"]),
-              "sum_lit_x": ratio(years[latest]["sum_lit"], years[base]["sum_lit"]),
-              "lit_pct_change_pp": round(years[latest]["lit_pct"] - years[base]["lit_pct"], 3)}
+    if base in years and latest == str(cfg["years"][-1]):
+        growth = {"lit_km2_x": ratio(years[latest]["lit_km2"], years[base]["lit_km2"]),
+                  "sum_lit_x": ratio(years[latest]["sum_lit"], years[base]["sum_lit"]),
+                  "lit_pct_change_pp": round(years[latest]["lit_pct"] - years[base]["lit_pct"], 3)}
+    else:  # no like-for-like comparison: say so rather than compare other years
+        growth = {"lit_km2_x": None, "sum_lit_x": None, "lit_pct_change_pp": None,
+                  "note": f"base {base} or latest {cfg['years'][-1]} year not available"}
 
     # Display layer: the latest year on the shared lon/lat grid (nearest: ~460 m blocks are honest).
     f = display.start_factor(kode, geom, 2048)
@@ -134,7 +142,7 @@ def compute(kode: str) -> dict:
         "area_km2": round(area_geod, 1),
         "unit": "nW/cm²/sr", "lit_threshold_nw": thr,
         "base_year": int(base), "latest_year": int(latest),
-        "years": years, "growth": growth,
+        "years": years, "years_skipped": skipped, "growth": growth,
         "metadata": {
             "dataset": ds["name"], "license": ds["license"], "attribution": ds["attribution"],
             "statistic": "per-pixel median of cloud-free monthly composites ('ops' processing)",
