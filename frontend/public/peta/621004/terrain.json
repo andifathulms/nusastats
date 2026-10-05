@@ -1,0 +1,129 @@
+{
+  "kode": "621004",
+  "name": "KAHAYAN HULU UTARA",
+  "level": "kecamatan",
+  "provinsi": {
+    "kode": "62",
+    "name": "KALIMANTAN TENGAH"
+  },
+  "area_km2": 421.7,
+  "elevation_m": {
+    "min": 45.0,
+    "max": 386.7,
+    "mean": 110.8,
+    "median": 104.7,
+    "p5": 71.6,
+    "p95": 164.9
+  },
+  "relief_m": 93.3,
+  "highest_point": {
+    "elevation_m": 386.7,
+    "lon": 113.435,
+    "lat": -0.73889
+  },
+  "elevation_bands_pct": {
+    "<100": 43.66,
+    "100-500": 56.34,
+    "500-1000": 0.0,
+    "1000-2000": 0.0,
+    ">=2000": 0.0
+  },
+  "slope_deg": {
+    "mean": 9.31
+  },
+  "slope_classes_pct": {
+    "<8": 46.9,
+    "8-25": 51.93,
+    ">=25": 1.16
+  },
+  "metrics_pct": {
+    "share_elev_ge_1000": 0.0,
+    "share_elev_ge_200": 1.62,
+    "share_elev_lt_100": 43.66,
+    "share_slope_ge_25": 1.16,
+    "share_slope_ge_8": 53.1,
+    "share_slope_lt_8": 46.9
+  },
+  "terrain_class": "perbukitan",
+  "terrain_class_label": "Perbukitan",
+  "terrain_class_reason": "Perbukitan: 53,1% area lereng ≥8°",
+  "classification": {
+    "official": false,
+    "note": "Klasifikasi NusaStats (aturan di config/terrain_rules.yaml), bukan klasifikasi resmi.",
+    "rules_sha256": "46978aef2bbd47b075cb7feebba2e50524c63ce4f39271053ce4d2aaaf8fb479"
+  },
+  "checks": {
+    "area_geodesic_km2": 421.72,
+    "area_utm_polygon_km2": 422.2,
+    "area_utm_pixels_km2": 422.2,
+    "utm_vs_geodesic_pct": 0.114,
+    "pixels_vs_utm_pct": -0.001,
+    "nodata_pct": 0.0,
+    "polygon_pixels_utm": 469113
+  },
+  "metadata": {
+    "dataset": "Copernicus DEM GLO-30 Public",
+    "dataset_type": "DSM (surface model: includes canopy and buildings)",
+    "vertical_datum": "EGM2008 geoid (EPSG:3855), metres",
+    "year": 2015,
+    "attribution": "produced using Copernicus WorldDEM-30 © DLR e.V. 2010-2014 and © Airbus Defence and Space GmbH 2014-2018 provided under COPERNICUS by the European Union and ESA; all rights reserved",
+    "tile_version_tag": null,
+    "tiles": {
+      "Copernicus_DSM_COG_10_S02_00_E113_00_DEM": "94bca388af1844da33ad00cc21856f4b916b35a763a5f26ce8e692c5d55ffce1",
+      "Copernicus_DSM_COG_10_S01_00_E113_00_DEM": "feb0b065d040a588a90d5361fd9111f103768a8b09d2989562dfc1916cf02d4a"
+    },
+    "ocean_tiles_absent": [],
+    "boundary": {
+      "source": "data/big_boundaries/big-villages-62.geojson",
+      "sha256": "a5ba4888cbf9dcd88143eebdd51f4e0c2d52618ef52e91ed0201a880d3a4a757",
+      "method": "shapely.union_all(grid_size=1e-8) per code prefix; no simplify, no island/hole dropping (data/big_boundaries/dissolve.py:dissolve)"
+    },
+    "crs_stats": "EPSG:32749",
+    "pixel_size_m": 30.0,
+    "resampling_to_utm": "bilinear",
+    "min_max_from": "native DEM pixels (EPSG:4326, 1 arc-second) inside the polygon",
+    "shares_from": "30 m UTM pixels (EPSG:32749) whose centre lies inside the polygon",
+    "slope_method": "Horn 3x3 on the UTM grid",
+    "hillshade": {
+      "azimuth_deg": 315,
+      "altitude_deg": 45,
+      "z_factor": 1.0
+    },
+    "tint": [
+      [
+        0,
+        "#4f8f4a"
+      ],
+      [
+        100,
+        "#8fb36a"
+      ],
+      [
+        300,
+        "#cfd28c"
+      ],
+      [
+        500,
+        "#e3cf98"
+      ],
+      [
+        1000,
+        "#c8a06a"
+      ],
+      [
+        2000,
+        "#9a6a43"
+      ],
+      [
+        3000,
+        "#7b5a4a"
+      ],
+      [
+        4000,
+        "#ffffff"
+      ]
+    ],
+    "config_sha256": "4c52051153ac0e8c752e2b1604867cbd872548b06921c11b37052e8f6d63279e",
+    "computed_at": "2026-10-05T03:53:59+00:00"
+  }
+}

@@ -1,0 +1,129 @@
+{
+  "kode": "641102",
+  "name": "LONG HUBUNG",
+  "level": "kecamatan",
+  "provinsi": {
+    "kode": "64",
+    "name": "KALIMANTAN TIMUR"
+  },
+  "area_km2": 1522.1,
+  "elevation_m": {
+    "min": 9.5,
+    "max": 1199.3,
+    "mean": 146.3,
+    "median": 91.5,
+    "p5": 33.3,
+    "p95": 466.9
+  },
+  "relief_m": 433.7,
+  "highest_point": {
+    "elevation_m": 1199.3,
+    "lon": 115.31583,
+    "lat": -0.00222
+  },
+  "elevation_bands_pct": {
+    "<100": 55.4,
+    "100-500": 40.61,
+    "500-1000": 3.95,
+    "1000-2000": 0.04,
+    ">=2000": 0.0
+  },
+  "slope_deg": {
+    "mean": 8.72
+  },
+  "slope_classes_pct": {
+    "<8": 55.5,
+    "8-25": 41.65,
+    ">=25": 2.84
+  },
+  "metrics_pct": {
+    "share_elev_ge_1000": 0.04,
+    "share_elev_ge_200": 20.77,
+    "share_elev_lt_100": 55.4,
+    "share_slope_ge_25": 2.84,
+    "share_slope_ge_8": 44.5,
+    "share_slope_lt_8": 55.5
+  },
+  "terrain_class": "campuran",
+  "terrain_class_label": "Campuran",
+  "terrain_class_reason": "Campuran: tidak memenuhi aturan lain (0,0% area ≥1000 m, 44,5% area lereng ≥8°, 55,4% area <100 m)",
+  "classification": {
+    "official": false,
+    "note": "Klasifikasi NusaStats (aturan di config/terrain_rules.yaml), bukan klasifikasi resmi.",
+    "rules_sha256": "46978aef2bbd47b075cb7feebba2e50524c63ce4f39271053ce4d2aaaf8fb479"
+  },
+  "checks": {
+    "area_geodesic_km2": 1522.08,
+    "area_utm_polygon_km2": 1521.91,
+    "area_utm_pixels_km2": 1521.94,
+    "utm_vs_geodesic_pct": -0.011,
+    "pixels_vs_utm_pct": 0.002,
+    "nodata_pct": 0.0,
+    "polygon_pixels_utm": 1691046
+  },
+  "metadata": {
+    "dataset": "Copernicus DEM GLO-30 Public",
+    "dataset_type": "DSM (surface model: includes canopy and buildings)",
+    "vertical_datum": "EGM2008 geoid (EPSG:3855), metres",
+    "year": 2015,
+    "attribution": "produced using Copernicus WorldDEM-30 © DLR e.V. 2010-2014 and © Airbus Defence and Space GmbH 2014-2018 provided under COPERNICUS by the European Union and ESA; all rights reserved",
+    "tile_version_tag": null,
+    "tiles": {
+      "Copernicus_DSM_COG_10_S01_00_E115_00_DEM": "3218019562ea7ce26bf43845471500cd917d508ac8a8b3536103c7695cf2574c",
+      "Copernicus_DSM_COG_10_N00_00_E115_00_DEM": "b7334b2dca97b88e17175fdc4bd00757a105b3bce1bf122d58773c7cec6e5fc3"
+    },
+    "ocean_tiles_absent": [],
+    "boundary": {
+      "source": "data/big_boundaries/big-villages-64.geojson",
+      "sha256": "21865b770c95c323961dbd0045300b8c7b4cbf531eaaf0f800773c18634eeba6",
+      "method": "shapely.union_all(grid_size=1e-8) per code prefix; no simplify, no island/hole dropping (data/big_boundaries/dissolve.py:dissolve)"
+    },
+    "crs_stats": "EPSG:32650",
+    "pixel_size_m": 30.0,
+    "resampling_to_utm": "bilinear",
+    "min_max_from": "native DEM pixels (EPSG:4326, 1 arc-second) inside the polygon",
+    "shares_from": "30 m UTM pixels (EPSG:32650) whose centre lies inside the polygon",
+    "slope_method": "Horn 3x3 on the UTM grid",
+    "hillshade": {
+      "azimuth_deg": 315,
+      "altitude_deg": 45,
+      "z_factor": 1.0
+    },
+    "tint": [
+      [
+        0,
+        "#4f8f4a"
+      ],
+      [
+        100,
+        "#8fb36a"
+      ],
+      [
+        300,
+        "#cfd28c"
+      ],
+      [
+        500,
+        "#e3cf98"
+      ],
+      [
+        1000,
+        "#c8a06a"
+      ],
+      [
+        2000,
+        "#9a6a43"
+      ],
+      [
+        3000,
+        "#7b5a4a"
+      ],
+      [
+        4000,
+        "#ffffff"
+      ]
+    ],
+    "config_sha256": "4c52051153ac0e8c752e2b1604867cbd872548b06921c11b37052e8f6d63279e",
+    "computed_at": "2026-10-05T04:15:08+00:00"
+  }
+}
