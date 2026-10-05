@@ -15,8 +15,8 @@ import { loadPeta, petaAsset, type Peta } from "@/lib/peta";
  * the image does not depend on the viewer's theme. No animation.
  */
 
-export type Template = "terrain" | "landcover";
-export const TEMPLATES: Template[] = ["terrain", "landcover"];
+export type Template = "terrain" | "landcover" | "nightlights";
+export const TEMPLATES: Template[] = ["terrain", "landcover", "nightlights"];
 
 const W = 1080;
 const H = 1920;
@@ -34,8 +34,8 @@ const metres = (v: number) => `${formatNumber(Math.round(v))} m`;
 const peak = (v: number) => `${formatNumber(Math.round(v / 10) * 10)} m`;
 
 function areaTitle(peta: Peta, kode: string): { title: string; sub: string } {
-  const name = peta.terrain?.name ?? peta.landcover?.name ?? kode;
-  const provName = titleCase((peta.terrain ?? peta.landcover)?.provinsi.name ?? "");
+  const name = peta.terrain?.name ?? peta.landcover?.name ?? peta.nightlights?.name ?? kode;
+  const provName = titleCase((peta.terrain ?? peta.landcover ?? peta.nightlights)?.provinsi.name ?? "");
   const t = titleCase(name);
   if (kode.length === 4) return { title: /^kota /i.test(name) ? t : regionLabel(t, "Kabupaten"), sub: provName };
   if (kode.length === 6) return { title: `Kec. ${t}`, sub: provName };
@@ -55,6 +55,13 @@ function problems(peta: Peta | null, template: Template): string[] {
     const bands = Object.values(t.elevation_bands_pct).reduce((a, b) => a + b, 0);
     if (Math.abs(bands - 100) > 0.5) out.push(`pita elevasi berjumlah ${bands.toFixed(2)}%`);
     if (t.classification.official !== false) out.push("klasifikasi medan tidak ditandai sebagai klasifikasi NusaStats");
+  } else if (template === "nightlights") {
+    const nl = peta.nightlights;
+    if (!nl) return ["nightlights.json tidak ada"];
+    if (!peta.present.nightlights) out.push("gambar cahaya malam tidak ada di perangkat ini");
+    const ys = Object.values(nl.years);
+    if (!nl.years[String(nl.base_year)] || !nl.years[String(nl.latest_year)]) out.push("tahun dasar/terakhir tidak ada");
+    if (ys.some((y) => y.lit_pct < 0 || y.lit_pct > 100 || y.mean_nw < 0)) out.push("nilai cahaya malam di luar rentang");
   } else {
     const lc = peta.landcover;
     if (!lc) return ["landcover.json tidak ada"];
@@ -90,7 +97,9 @@ export function ShareCard({ template, kode, debug }: { template: Template; kode:
     peta && !error
       ? template === "terrain"
         ? [petaAsset(kode, peta.bounds.layers.elevation!), petaAsset(kode, peta.bounds.layers.hillshade!)]
-        : [petaAsset(kode, peta.bounds.layers.landcover!)]
+        : template === "nightlights"
+          ? [petaAsset(kode, peta.bounds.layers.nightlights!)]
+          : [petaAsset(kode, peta.bounds.layers.landcover!)]
       : [];
   const ready = !error && !!peta && !!geo && fontsReady && loaded === layers.length;
 
@@ -192,7 +201,12 @@ function CardBody({
     counted.current.add(src);
     onImage();
   };
-  const eyebrow = template === "terrain" ? "Peta medan" : `Tutupan lahan ${peta.landcover?.year ?? ""}`;
+  const eyebrow =
+    template === "terrain"
+      ? "Peta medan"
+      : template === "nightlights"
+        ? `Cahaya malam ${peta.nightlights?.base_year}–${peta.nightlights?.latest_year}`
+        : `Tutupan lahan ${peta.landcover?.year ?? ""}`;
   const titleSize = title.length > 26 ? 60 : title.length > 18 ? 72 : 84;
   const top = SAFE.top + 100; // below the corner tag
 
@@ -217,7 +231,7 @@ function CardBody({
               width={vw}
               height={vh}
               preserveAspectRatio="none"
-              style={{ mixBlendMode: i === 1 ? "multiply" : "normal", imageRendering: template === "landcover" ? "pixelated" : "auto" }}
+              style={{ mixBlendMode: i === 1 ? "multiply" : "normal", imageRendering: template === "terrain" ? "auto" : "pixelated" }}
               onLoad={() => done(src)}
               onError={() => onImageError(src)}
             />
@@ -228,7 +242,13 @@ function CardBody({
         </svg>
       </div>
 
-      {template === "terrain" ? <TerrainFacts peta={peta} /> : <LandcoverFacts peta={peta} />}
+      {template === "terrain" ? (
+        <TerrainFacts peta={peta} />
+      ) : template === "nightlights" ? (
+        <NightlightsFacts peta={peta} />
+      ) : (
+        <LandcoverFacts peta={peta} />
+      )}
     </div>
   );
 }
@@ -300,6 +320,34 @@ function LandcoverFacts({ peta }: { peta: Peta }) {
         <p className="mt-6 text-[20px] text-coal-muted">Tutupan pohon termasuk hutan dan perkebunan (sawit, akasia).</p>
       )}
       <Footer source={`ESA WorldCover ${lc.year} v200 (CC BY 4.0)`} />
+    </div>
+  );
+}
+
+function NightlightsFacts({ peta }: { peta: Peta }) {
+  const nl = peta.nightlights!;
+  const years = Object.keys(nl.years).sort();
+  const base = nl.years[String(nl.base_year)];
+  const last = nl.years[String(nl.latest_year)];
+  const max = Math.max(...years.map((y) => nl.years[y].lit_pct), 0.1);
+  const x = nl.growth.lit_km2_x;
+  return (
+    <div className="mt-6 shrink-0">
+      <div className="flex h-[86px] items-end gap-3">
+        {years.map((y) => (
+          <div key={y} className="flex flex-1 flex-col items-center gap-2">
+            <div className="w-full rounded-t-md bg-kunyit-light" style={{ height: Math.max(4, (nl.years[y].lit_pct / max) * 60) }} />
+            <span className="font-mono text-[18px] text-coal-muted">{y}</span>
+          </div>
+        ))}
+      </div>
+      <div className="mt-6 grid grid-cols-3 gap-6">
+        <Fact value={pctInt(base.lit_pct)} label={`bercahaya ${nl.base_year}`} />
+        <Fact value={pctInt(last.lit_pct)} label={`bercahaya ${nl.latest_year}`} />
+        <Fact value={x ? `×${formatNumber(Math.round(x * 10) / 10)}` : "–"} label="luas bercahaya" />
+      </div>
+      <p className="mt-6 text-[20px] text-coal-muted">Cahaya malam menunjukkan permukiman dan aktivitas, bukan jumlah penduduk.</p>
+      <Footer source={`World Bank Light Every Night, VIIRS ${nl.base_year}–${nl.latest_year} (CC BY 4.0)`} />
     </div>
   );
 }

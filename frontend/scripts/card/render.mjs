@@ -18,7 +18,7 @@ const HERE = dirname(fileURLToPath(import.meta.url));
 const FRONTEND = join(HERE, "..", "..");
 const PETA = join(FRONTEND, "public", "peta");
 const OUT = join(FRONTEND, "..", "exports", "cards");
-const TEMPLATES = { terrain: "terrain.json", landcover: "landcover.json" };
+const TEMPLATES = { terrain: "terrain.json", landcover: "landcover.json", nightlights: "nightlights.json" };
 const LEVEL_LEN = { provinsi: 2, kabupaten: 4, kecamatan: 6 };
 
 function parse(argv) {

@@ -11,7 +11,7 @@ export type PetaBounds = {
   north: number;
   width: number;
   height: number;
-  layers: Partial<Record<"hillshade" | "elevation" | "landcover" | "lowland" | "relief", string>>;
+  layers: Partial<Record<"hillshade" | "elevation" | "landcover" | "lowland" | "relief" | "nightlights", string>>;
 };
 
 export type PetaProvinsi = { kode: string; name: string };
@@ -76,10 +76,33 @@ type LayerKey = keyof PetaBounds["layers"];
 // `present` = image layers whose file actually exists. Map images are generated
 // locally and not committed (only the stats JSON is), so a checkout can list a
 // layer in bounds.json without having its image.
+export type PetaNightlightsYear = {
+  mean_nw: number;
+  lit_pct: number;
+  lit_km2: number;
+  sum_lit: number;
+  nodata_pct: number;
+  months: number;
+};
+
+export type PetaNightlights = {
+  kode: string;
+  name: string;
+  provinsi: PetaProvinsi;
+  unit: string;
+  lit_threshold_nw: number;
+  base_year: number;
+  latest_year: number;
+  years: Record<string, PetaNightlightsYear>;
+  growth: { lit_km2_x: number | null; sum_lit_x: number | null; lit_pct_change_pp: number };
+  metadata: { dataset: string; attribution: string; license: string; note: string; colors: string[]; max_radiance_nw: number };
+};
+
 export type Peta = {
   bounds: PetaBounds;
   terrain: PetaTerrain | null;
   landcover: PetaLandcover | null;
+  nightlights: PetaNightlights | null;
   present: Partial<Record<LayerKey, boolean>>;
 };
 
@@ -94,10 +117,11 @@ async function optionalJson<T>(url: string): Promise<T | null> {
 
 /** null = not computed for this area (no bounds.json). Throws on real failures. */
 export async function loadPeta(kode: string): Promise<Peta | null> {
-  const [bounds, terrain, landcover] = await Promise.all([
+  const [bounds, terrain, landcover, nightlights] = await Promise.all([
     optionalJson<PetaBounds>(petaAsset(kode, "bounds.json")),
     optionalJson<PetaTerrain>(petaAsset(kode, "terrain.json")),
     optionalJson<PetaLandcover>(petaAsset(kode, "landcover.json")),
+    optionalJson<PetaNightlights>(petaAsset(kode, "nightlights.json")),
   ]);
   if (!bounds) return null;
   const keys = Object.keys(bounds.layers) as LayerKey[];
@@ -109,5 +133,5 @@ export async function loadPeta(kode: string): Promise<Peta | null> {
     )
   );
   const present = Object.fromEntries(keys.map((k, i) => [k, found[i]])) as Peta["present"];
-  return { bounds, terrain, landcover, present };
+  return { bounds, terrain, landcover, nightlights, present };
 }

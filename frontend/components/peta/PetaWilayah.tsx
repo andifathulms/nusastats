@@ -6,10 +6,10 @@ import { useRouter } from "next/navigation";
 import { ChoroplethMap, type MapLayer } from "@/components/ChoroplethMap";
 import { Badge, EmptyState, ErrorState, Panel, SectionTitle, Skeleton, SkeletonRows } from "@/components/ui";
 import { formatDecimal, formatNumber, petaApi, titleCase, type PetaRegionRanks } from "@/lib/api";
-import { loadPeta, petaAsset, type Peta, type PetaLandcover, type PetaTerrain } from "@/lib/peta";
+import { loadPeta, petaAsset, type Peta, type PetaLandcover, type PetaNightlights, type PetaTerrain } from "@/lib/peta";
 import { routes } from "@/lib/routes";
 
-type Layer = "batas" | "elevasi" | "rendah" | "relief" | "tutupan";
+type Layer = "batas" | "elevasi" | "rendah" | "relief" | "tutupan" | "malam";
 export type PetaFact = { label: string; value: string; source: string };
 
 // A real but tiny share must not round to "0,0%", which reads as absent.
@@ -61,12 +61,13 @@ export function PetaWilayah({
       />
     );
 
-  const { bounds, terrain, landcover, present } = peta;
+  const { bounds, terrain, landcover, nightlights, present } = peta;
   const has = (l: Layer) =>
     l === "batas" ||
     (l === "elevasi" ? !!(present.elevation && terrain)
       : l === "rendah" ? !!(present.lowland && terrain?.lowland_pct)
       : l === "relief" ? !!(present.relief && terrain?.local_relief)
+      : l === "malam" ? !!(present.nightlights && nightlights)
       : !!(present.landcover && landcover));
   // Stats exist but their image was not generated on this machine.
   const imagesMissing = (!!terrain && !present.elevation) || (!!landcover && !present.landcover);
@@ -89,13 +90,16 @@ export function PetaWilayah({
             ]
           : active === "tutupan"
             ? [{ href: petaAsset(kode, bounds.layers.landcover!), pixelated: true }]
-            : [];
+            : active === "malam"
+              ? [{ href: petaAsset(kode, bounds.layers.nightlights!), pixelated: true }]
+              : [];
   const opts: [Layer, string][] = [
     ["batas", "Batas"],
     ["elevasi", "Elevasi"],
     ["rendah", "Dataran rendah"],
     ["relief", "Relief"],
     ["tutupan", "Tutupan lahan"],
+    ["malam", "Cahaya malam"],
   ];
 
   return (
@@ -148,13 +152,14 @@ export function PetaWilayah({
               data/peta_wilayah untuk membuat gambarnya.
             </p>
           )}
-          <Legend layer={active} terrain={terrain} landcover={landcover} />
-          <Attribution terrain={terrain} landcover={landcover} />
+          <Legend layer={active} terrain={terrain} landcover={landcover} nightlights={nightlights} />
+          <Attribution terrain={terrain} landcover={landcover} nightlights={nightlights} />
         </Panel>
 
         <div className="min-w-0 space-y-6">
           {terrain ? <TerrainPanel t={terrain} ranks={ranks} /> : <Missing what="Statistik medan" />}
           {landcover ? <LandcoverPanel lc={landcover} ranks={ranks} /> : <Missing what="Tutupan lahan" />}
+          {nightlights && <NightlightsPanel nl={nightlights} ranks={ranks} />}
           {facts.length > 0 && (
             <Panel>
               <h3 className="text-[11px] font-bold uppercase tracking-[0.08em] text-ink-muted">Indikator lain</h3>
@@ -177,7 +182,32 @@ export function PetaWilayah({
   );
 }
 
-function Legend({ layer, terrain, landcover }: { layer: Layer; terrain: PetaTerrain | null; landcover: PetaLandcover | null }) {
+function Legend({
+  layer,
+  terrain,
+  landcover,
+  nightlights,
+}: {
+  layer: Layer;
+  terrain: PetaTerrain | null;
+  landcover: PetaLandcover | null;
+  nightlights: PetaNightlights | null;
+}) {
+  if (layer === "malam" && nightlights) {
+    const m = nightlights.metadata;
+    return (
+      <div className="mt-4">
+        <div className="text-[11px] font-bold uppercase tracking-[0.08em] text-ink-muted">
+          Cahaya malam {nightlights.latest_year} (median tahunan)
+        </div>
+        <div className="mt-2 h-2.5 w-full max-w-sm rounded-full" style={{ background: `linear-gradient(90deg, ${m.colors.join(", ")})` }} />
+        <div className="mt-1 flex w-full max-w-sm justify-between font-mono text-[11px] text-ink-muted">
+          <span>gelap</span>
+          <span>{formatNumber(m.max_radiance_nw)}+ nW/cm²/sr (skala log)</span>
+        </div>
+      </div>
+    );
+  }
   if (layer === "elevasi" && terrain) {
     // Show the tint up to the first stop at or above the area's highest point,
     // positioned linearly in metres, so the legend covers what the map shows.
@@ -272,11 +302,20 @@ function Legend({ layer, terrain, landcover }: { layer: Layer; terrain: PetaTerr
   );
 }
 
-function Attribution({ terrain, landcover }: { terrain: PetaTerrain | null; landcover: PetaLandcover | null }) {
+function Attribution({
+  terrain,
+  landcover,
+  nightlights,
+}: {
+  terrain: PetaTerrain | null;
+  landcover: PetaLandcover | null;
+  nightlights: PetaNightlights | null;
+}) {
   return (
     <p className="mt-4 border-t border-ink-border pt-3 text-[11.5px] leading-relaxed text-ink-muted">
       {terrain && <>Elevasi: {terrain.metadata.attribution}. </>}
       {landcover && <>Tutupan lahan: {landcover.metadata.attribution} (CC BY 4.0). </>}
+      {nightlights && <>Cahaya malam: {nightlights.metadata.attribution}. </>}
       Batas wilayah indikatif (BIG 1:10.000).
     </p>
   );
@@ -440,6 +479,45 @@ function LandcoverPanel({ lc, ranks }: { lc: PetaLandcover; ranks: Ranks }) {
       <p className="mt-4 text-xs leading-relaxed text-ink-muted">
         &ldquo;Tutupan pohon&rdquo; mencakup hutan dan perkebunan (sawit, akasia); citra satelit tidak membedakannya. Data {lc.year},
         bukan kondisi terkini.
+      </p>
+    </Panel>
+  );
+}
+
+function NightlightsPanel({ nl, ranks }: { nl: PetaNightlights; ranks: Ranks }) {
+  const years = Object.keys(nl.years).sort();
+  const maxPct = Math.max(...years.map((y) => nl.years[y].lit_pct), 0.1);
+  const base = nl.years[String(nl.base_year)];
+  const last = nl.years[String(nl.latest_year)];
+  const x = nl.growth.lit_km2_x;
+  return (
+    <Panel>
+      <h3 className="text-[11px] font-bold uppercase tracking-[0.08em] text-ink-muted">Cahaya malam</h3>
+      <p className="mt-2 text-sm text-ink-text">
+        <span className="font-semibold tabular-nums">{pct(last.lit_pct)}</span> luas wilayah bercahaya pada {nl.latest_year}
+        {base && (
+          <>
+            {" "}(dari {pct(base.lit_pct)} pada {nl.base_year}
+            {x && x !== 1 ? <>, luas bercahaya ×{formatDecimal(x, 1)}</> : null})
+          </>
+        )}
+        .
+      </p>
+      <div className="mt-4 flex h-24 items-end gap-1.5" role="img" aria-label="Luas bercahaya per tahun">
+        {years.map((y) => (
+          <div key={y} className="flex min-w-0 flex-1 flex-col items-center gap-1">
+            <div
+              className="w-full rounded-t-[3px] bg-ink-accent2"
+              style={{ height: `${Math.max(2, (nl.years[y].lit_pct / maxPct) * 72)}px` }}
+              title={`${y}: ${pct(nl.years[y].lit_pct)}`}
+            />
+            <span className="font-mono text-[10px] text-ink-muted">{y.slice(2)}</span>
+          </div>
+        ))}
+      </div>
+      <RankChip ranks={ranks} k="ntl_lit_pct" />
+      <p className="mt-3 text-xs leading-relaxed text-ink-muted">
+        Bercahaya = median tahunan ≥ {formatNumber(nl.lit_threshold_nw)} nW/cm²/sr (VIIRS, ~460 m). {nl.metadata.note}
       </p>
     </Panel>
   );
