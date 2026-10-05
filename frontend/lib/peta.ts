@@ -11,7 +11,7 @@ export type PetaBounds = {
   north: number;
   width: number;
   height: number;
-  layers: Partial<Record<"hillshade" | "elevation" | "landcover", string>>;
+  layers: Partial<Record<"hillshade" | "elevation" | "landcover" | "lowland" | "relief", string>>;
 };
 
 export type PetaProvinsi = { kode: string; name: string };
@@ -29,11 +29,26 @@ export type PetaTerrain = {
   slope_deg: { mean: number };
   slope_classes_pct: Record<string, number>;
   metrics_pct: Record<"share_elev_ge_1000" | "share_elev_ge_200" | "share_elev_lt_100" | "share_slope_ge_25" | "share_slope_ge_8" | "share_slope_lt_8", number>;
+  // Present once an area is computed with the lowland/relief step (absent in older outputs).
+  lowland_pct?: { lt_5: number; lt_10: number };
+  local_relief?: {
+    window_m: number;
+    mean_m: number;
+    breaks_m: number[];
+    classes_pct: { datar: number; bergelombang: number; berbukit: number; bergunung: number };
+  };
   terrain_class: string;
   terrain_class_label: string;
   terrain_class_reason: string;
   classification: { official: boolean; note: string };
-  metadata: { dataset: string; year: number; attribution: string; tint: [number, string][] };
+  metadata: {
+    dataset: string;
+    year: number;
+    attribution: string;
+    tint: [number, string][];
+    lowland_colors?: [string, string];
+    relief_colors?: [string, string, string, string];
+  };
 };
 
 export type PetaLandcoverClass = {

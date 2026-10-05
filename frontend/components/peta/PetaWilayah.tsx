@@ -9,7 +9,7 @@ import { formatDecimal, formatNumber, petaApi, titleCase, type PetaRegionRanks }
 import { loadPeta, petaAsset, type Peta, type PetaLandcover, type PetaTerrain } from "@/lib/peta";
 import { routes } from "@/lib/routes";
 
-type Layer = "batas" | "elevasi" | "tutupan";
+type Layer = "batas" | "elevasi" | "rendah" | "relief" | "tutupan";
 export type PetaFact = { label: string; value: string; source: string };
 
 // A real but tiny share must not round to "0,0%", which reads as absent.
@@ -63,7 +63,11 @@ export function PetaWilayah({
 
   const { bounds, terrain, landcover, present } = peta;
   const has = (l: Layer) =>
-    l === "batas" || (l === "elevasi" ? !!(present.elevation && terrain) : !!(present.landcover && landcover));
+    l === "batas" ||
+    (l === "elevasi" ? !!(present.elevation && terrain)
+      : l === "rendah" ? !!(present.lowland && terrain?.lowland_pct)
+      : l === "relief" ? !!(present.relief && terrain?.local_relief)
+      : !!(present.landcover && landcover));
   // Stats exist but their image was not generated on this machine.
   const imagesMissing = (!!terrain && !present.elevation) || (!!landcover && !present.landcover);
   const active: Layer = has(layer) ? layer : "batas";
@@ -73,12 +77,24 @@ export function PetaWilayah({
           { href: petaAsset(kode, bounds.layers.elevation!) },
           ...(present.hillshade ? [{ href: petaAsset(kode, bounds.layers.hillshade!), blend: "multiply" as const }] : []),
         ]
-      : active === "tutupan"
-        ? [{ href: petaAsset(kode, bounds.layers.landcover!), pixelated: true }]
-        : [];
+      : active === "rendah"
+        ? [
+            ...(present.hillshade ? [{ href: petaAsset(kode, bounds.layers.hillshade!), opacity: 0.55 }] : []),
+            { href: petaAsset(kode, bounds.layers.lowland!), pixelated: true },
+          ]
+        : active === "relief"
+          ? [
+              { href: petaAsset(kode, bounds.layers.relief!), pixelated: true },
+              ...(present.hillshade ? [{ href: petaAsset(kode, bounds.layers.hillshade!), blend: "multiply" as const }] : []),
+            ]
+          : active === "tutupan"
+            ? [{ href: petaAsset(kode, bounds.layers.landcover!), pixelated: true }]
+            : [];
   const opts: [Layer, string][] = [
     ["batas", "Batas"],
     ["elevasi", "Elevasi"],
+    ["rendah", "Dataran rendah"],
+    ["relief", "Relief"],
     ["tutupan", "Tutupan lahan"],
   ];
 
@@ -123,7 +139,7 @@ export function PetaWilayah({
             selectHint={level === "regency" ? "Klik untuk membuka profil kecamatan" : undefined}
             highlight={hover}
             onHover={setHover}
-            ariaLabel={`Peta ${active === "elevasi" ? "elevasi" : active === "tutupan" ? "tutupan lahan" : "batas"} wilayah`}
+            ariaLabel={`Peta ${opts.find(([v]) => v === active)?.[1].toLowerCase()} wilayah`}
           />
 
           {imagesMissing && (
@@ -196,6 +212,41 @@ function Legend({ layer, terrain, landcover }: { layer: Layer; terrain: PetaTerr
             </span>
           ))}
         </div>
+      </div>
+    );
+  }
+  if (layer === "rendah" && terrain?.metadata.lowland_colors) {
+    const [c5, c10] = terrain.metadata.lowland_colors;
+    return (
+      <div className="mt-4">
+        <div className="text-[11px] font-bold uppercase tracking-[0.08em] text-ink-muted">Dataran sangat rendah</div>
+        <ul className="mt-2 flex flex-wrap gap-x-4 gap-y-1.5 text-xs text-ink-muted">
+          <li className="inline-flex items-center gap-1.5"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: c5 }} /> di bawah 5 m</li>
+          <li className="inline-flex items-center gap-1.5"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: c10 }} /> 5–10 m</li>
+        </ul>
+        <p className="mt-1.5 text-xs text-ink-muted">
+          Batas bawah: hutan, mangrove dan bangunan terbaca lebih tinggi dari tanahnya, jadi daratan rendah yang sebenarnya bisa lebih luas.
+        </p>
+      </div>
+    );
+  }
+  if (layer === "relief" && terrain?.metadata.relief_colors && terrain.local_relief) {
+    const labels = ["Datar", "Bergelombang", "Berbukit", "Bergunung"];
+    const b = terrain.local_relief.breaks_m;
+    const ranges = [`< ${b[0]} m`, `${b[0]}–${b[1]} m`, `${b[1]}–${b[2]} m`, `≥ ${b[2]} m`];
+    return (
+      <div className="mt-4">
+        <div className="text-[11px] font-bold uppercase tracking-[0.08em] text-ink-muted">
+          Relief lokal (beda tinggi dalam {formatNumber(terrain.local_relief.window_m / 1000)} km)
+        </div>
+        <ul className="mt-2 flex flex-wrap gap-x-4 gap-y-1.5 text-xs text-ink-muted">
+          {labels.map((l, i) => (
+            <li key={l} className="inline-flex items-center gap-1.5">
+              <span className="inline-block h-2.5 w-2.5 rounded-sm ring-1 ring-ink-border" style={{ background: terrain.metadata.relief_colors![i] }} />
+              {l} <span className="font-mono">{ranges[i]}</span>
+            </li>
+          ))}
+        </ul>
       </div>
     );
   }
@@ -312,6 +363,33 @@ function TerrainPanel({ t, ranks }: { t: PetaTerrain; ranks: Ranks }) {
       <div className="mt-2">
         <Rows rows={Object.entries(t.slope_classes_pct).map(([k, v]) => [SLOPE_LABEL[k] ?? k, v])} />
       </div>
+      {t.local_relief && (
+        <>
+          <div className="mt-5 text-xs font-semibold text-ink-muted">
+            Relief lokal: rata-rata {metres(t.local_relief.mean_m)} beda tinggi per {formatNumber(t.local_relief.window_m / 1000)} km
+          </div>
+          <div className="mt-2">
+            <Rows
+              rows={[
+                ["Datar", t.local_relief.classes_pct.datar],
+                ["Bergelombang", t.local_relief.classes_pct.bergelombang],
+                ["Berbukit", t.local_relief.classes_pct.berbukit],
+                ["Bergunung", t.local_relief.classes_pct.bergunung],
+              ]}
+            />
+          </div>
+        </>
+      )}
+      {/* Nothing under 10 m (inland, mountainous): the "setidaknya" line would only say 0%. */}
+      {t.lowland_pct && t.lowland_pct.lt_10 > 0 && (
+        <p className="mt-5 text-sm text-ink-text">
+          Setidaknya <span className="font-semibold tabular-nums">{pct(t.lowland_pct.lt_10)}</span> luas wilayah berada di bawah 10 m
+          {t.lowland_pct.lt_5 > 0 && <> ({pct(t.lowland_pct.lt_5)} di bawah 5 m)</>}.
+          <span className="mt-1 block text-xs text-ink-muted">
+            Batas bawah: model permukaan mengukur puncak pohon dan atap, bukan tanah.
+          </span>
+        </p>
+      )}
       <p className="mt-4 text-xs leading-relaxed text-ink-muted">
         {t.classification.note} Elevasi dari model permukaan ({t.metadata.dataset}), termasuk tajuk pohon dan bangunan.
       </p>
