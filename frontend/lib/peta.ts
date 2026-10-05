@@ -1,0 +1,72 @@
+// Peta Wilayah: terrain & land cover outputs written by the data/peta_wilayah
+// pipeline to public/peta/{kode}/ (Kemendagri kode, 2/4/6 digits). Static files,
+// not an API: an area that has not been computed simply has no bounds.json.
+
+export type PetaBounds = {
+  kode: string;
+  crs: "EPSG:4326";
+  west: number;
+  south: number;
+  east: number;
+  north: number;
+  width: number;
+  height: number;
+  layers: Partial<Record<"hillshade" | "elevation" | "landcover", string>>;
+};
+
+export type PetaTerrain = {
+  kode: string;
+  name: string;
+  level: string;
+  area_km2: number;
+  elevation_m: { min: number; max: number; mean: number; median: number; p5: number; p95: number };
+  relief_m: number;
+  highest_point: { elevation_m: number; lon: number; lat: number };
+  elevation_bands_pct: Record<string, number>;
+  slope_deg: { mean: number };
+  slope_classes_pct: Record<string, number>;
+  terrain_class: string;
+  terrain_class_label: string;
+  terrain_class_reason: string;
+  classification: { official: boolean; note: string };
+  metadata: { dataset: string; year: number; attribution: string; tint: [number, string][] };
+};
+
+export type PetaLandcoverClass = {
+  code: number;
+  name: string;
+  label: string;
+  color: string;
+  share_pct: number;
+  area_km2: number;
+};
+
+export type PetaLandcover = {
+  kode: string;
+  year: number;
+  area_km2: number;
+  dominant: { code: number; label: string; share_pct: number };
+  classes: PetaLandcoverClass[];
+  metadata: { dataset: string; version: string; attribution: string; caveat: string };
+};
+
+export type Peta = { bounds: PetaBounds; terrain: PetaTerrain | null; landcover: PetaLandcover | null };
+
+export const petaAsset = (kode: string, file: string) => `/peta/${kode}/${file}`;
+
+async function optionalJson<T>(url: string): Promise<T | null> {
+  const r = await fetch(url);
+  if (r.status === 404) return null;
+  if (!r.ok) throw new Error(`${url} -> ${r.status}`);
+  return r.json();
+}
+
+/** null = not computed for this area (no bounds.json). Throws on real failures. */
+export async function loadPeta(kode: string): Promise<Peta | null> {
+  const [bounds, terrain, landcover] = await Promise.all([
+    optionalJson<PetaBounds>(petaAsset(kode, "bounds.json")),
+    optionalJson<PetaTerrain>(petaAsset(kode, "terrain.json")),
+    optionalJson<PetaLandcover>(petaAsset(kode, "landcover.json")),
+  ]);
+  return bounds ? { bounds, terrain, landcover } : null;
+}
