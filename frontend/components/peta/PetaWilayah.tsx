@@ -53,15 +53,17 @@ export function PetaWilayah({
       />
     );
 
-  const { bounds, terrain, landcover } = peta;
+  const { bounds, terrain, landcover, present } = peta;
   const has = (l: Layer) =>
-    l === "batas" || (l === "elevasi" ? !!(bounds.layers.elevation && terrain) : !!(bounds.layers.landcover && landcover));
+    l === "batas" || (l === "elevasi" ? !!(present.elevation && terrain) : !!(present.landcover && landcover));
+  // Stats exist but their image was not generated on this machine.
+  const imagesMissing = (!!terrain && !present.elevation) || (!!landcover && !present.landcover);
   const active: Layer = has(layer) ? layer : "batas";
   const mapLayers: MapLayer[] =
     active === "elevasi"
       ? [
           { href: petaAsset(kode, bounds.layers.elevation!) },
-          ...(bounds.layers.hillshade ? [{ href: petaAsset(kode, bounds.layers.hillshade), blend: "multiply" as const }] : []),
+          ...(present.hillshade ? [{ href: petaAsset(kode, bounds.layers.hillshade!), blend: "multiply" as const }] : []),
         ]
       : active === "tutupan"
         ? [{ href: petaAsset(kode, bounds.layers.landcover!), pixelated: true }]
@@ -116,6 +118,12 @@ export function PetaWilayah({
             ariaLabel={`Peta ${active === "elevasi" ? "elevasi" : active === "tutupan" ? "tutupan lahan" : "batas"} wilayah`}
           />
 
+          {imagesMissing && (
+            <p className="mt-3 text-xs text-ink-muted">
+              Gambar lapisan peta belum dibuat di perangkat ini. Statistik di samping tetap berlaku; jalankan pipeline
+              data/peta_wilayah untuk membuat gambarnya.
+            </p>
+          )}
           <Legend layer={active} terrain={terrain} landcover={landcover} />
           <Attribution terrain={terrain} landcover={landcover} />
         </Panel>

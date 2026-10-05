@@ -50,7 +50,17 @@ export type PetaLandcover = {
   metadata: { dataset: string; version: string; attribution: string; caveat: string };
 };
 
-export type Peta = { bounds: PetaBounds; terrain: PetaTerrain | null; landcover: PetaLandcover | null };
+type LayerKey = keyof PetaBounds["layers"];
+
+// `present` = image layers whose file actually exists. Map images are generated
+// locally and not committed (only the stats JSON is), so a checkout can list a
+// layer in bounds.json without having its image.
+export type Peta = {
+  bounds: PetaBounds;
+  terrain: PetaTerrain | null;
+  landcover: PetaLandcover | null;
+  present: Partial<Record<LayerKey, boolean>>;
+};
 
 export const petaAsset = (kode: string, file: string) => `/peta/${kode}/${file}`;
 
@@ -68,5 +78,15 @@ export async function loadPeta(kode: string): Promise<Peta | null> {
     optionalJson<PetaTerrain>(petaAsset(kode, "terrain.json")),
     optionalJson<PetaLandcover>(petaAsset(kode, "landcover.json")),
   ]);
-  return bounds ? { bounds, terrain, landcover } : null;
+  if (!bounds) return null;
+  const keys = Object.keys(bounds.layers) as LayerKey[];
+  const found = await Promise.all(
+    keys.map((k) =>
+      fetch(petaAsset(kode, bounds.layers[k]!), { method: "HEAD" })
+        .then((r) => r.ok)
+        .catch(() => false)
+    )
+  );
+  const present = Object.fromEntries(keys.map((k, i) => [k, found[i]])) as Peta["present"];
+  return { bounds, terrain, landcover, present };
 }
