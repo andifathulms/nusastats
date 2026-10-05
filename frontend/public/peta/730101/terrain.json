@@ -32,8 +32,8 @@
     "mean": 6.71
   },
   "slope_classes_pct": {
-    "<8": 68.09,
-    "8-25": 30.14,
+    "<8": 68.07,
+    "8-25": 30.16,
     ">=25": 1.77
   },
   "metrics_pct": {
@@ -41,8 +41,27 @@
     "share_elev_ge_200": 0.0,
     "share_elev_lt_100": 97.66,
     "share_slope_ge_25": 1.77,
-    "share_slope_ge_8": 31.91,
-    "share_slope_lt_8": 68.09
+    "share_slope_ge_8": 31.93,
+    "share_slope_lt_8": 68.07
+  },
+  "lowland_pct": {
+    "lt_5": 15.92,
+    "lt_10": 48.13
+  },
+  "local_relief": {
+    "window_m": 1000,
+    "mean_m": 79.2,
+    "classes_pct": {
+      "datar": 25.85,
+      "bergelombang": 31.73,
+      "berbukit": 42.42,
+      "bergunung": 0.0
+    },
+    "breaks_m": [
+      30,
+      100,
+      300
+    ]
   },
   "terrain_class": "dataran_rendah",
   "terrain_class_label": "Dataran rendah",
@@ -122,7 +141,19 @@
         "#ffffff"
       ]
     ],
-    "config_sha256": "4c52051153ac0e8c752e2b1604867cbd872548b06921c11b37052e8f6d63279e",
-    "computed_at": "2026-10-05T05:10:31+00:00"
+    "lowland_colors": [
+      "#1d4f91",
+      "#6fa8dc"
+    ],
+    "relief_colors": [
+      "#eef0dc",
+      "#c9d7a0",
+      "#c99a5b",
+      "#7a4b2e"
+    ],
+    "lowland_note": "Batas bawah: model permukaan (tajuk pohon, bangunan) terbaca lebih tinggi dari tanah.",
+    "local_relief_method": "max - min elevation in a 33x33 px (990 m) window on the UTM grid; NusaStats classes, shown alongside (not replacing) the terrain class",
+    "config_sha256": "bc1b902c8fa23d79936518aa2cb1fa9a1a01e3fba4c13ac3c5ce884e190c482d",
+    "computed_at": "2026-10-05T10:30:15+00:00"
   }
 }

@@ -15,7 +15,7 @@
     "p5": 15.1,
     "p95": 1208.9
   },
-  "relief_m": 1193.8,
+  "relief_m": 1193.7,
   "highest_point": {
     "elevation_m": 1686.6,
     "lon": 121.09917,
@@ -24,7 +24,7 @@
   "elevation_bands_pct": {
     "<100": 18.22,
     "100-500": 50.54,
-    "500-1000": 21.38,
+    "500-1000": 21.39,
     "1000-2000": 9.86,
     ">=2000": 0.0
   },
@@ -34,19 +34,38 @@
   "slope_classes_pct": {
     "<8": 13.35,
     "8-25": 60.76,
-    ">=25": 25.89
+    ">=25": 25.88
   },
   "metrics_pct": {
     "share_elev_ge_1000": 9.86,
-    "share_elev_ge_200": 67.57,
+    "share_elev_ge_200": 67.58,
     "share_elev_lt_100": 18.22,
-    "share_slope_ge_25": 25.89,
+    "share_slope_ge_25": 25.88,
     "share_slope_ge_8": 86.65,
     "share_slope_lt_8": 13.35
   },
+  "lowland_pct": {
+    "lt_5": 1.61,
+    "lt_10": 3.42
+  },
+  "local_relief": {
+    "window_m": 1000,
+    "mean_m": 271.5,
+    "classes_pct": {
+      "datar": 1.41,
+      "bergelombang": 4.01,
+      "berbukit": 54.22,
+      "bergunung": 40.36
+    },
+    "breaks_m": [
+      30,
+      100,
+      300
+    ]
+  },
   "terrain_class": "perbukitan",
   "terrain_class_label": "Perbukitan",
-  "terrain_class_reason": "Perbukitan: 86,7% area lereng ≥8° dan 67,6% area ≥200 m",
+  "terrain_class_reason": "Perbukitan: 86,6% area lereng ≥8° dan 67,6% area ≥200 m",
   "classification": {
     "official": false,
     "note": "Klasifikasi NusaStats (aturan di config/terrain_rules.yaml), bukan klasifikasi resmi.",
@@ -122,7 +141,19 @@
         "#ffffff"
       ]
     ],
-    "config_sha256": "4c52051153ac0e8c752e2b1604867cbd872548b06921c11b37052e8f6d63279e",
-    "computed_at": "2026-10-05T07:50:43+00:00"
+    "lowland_colors": [
+      "#1d4f91",
+      "#6fa8dc"
+    ],
+    "relief_colors": [
+      "#eef0dc",
+      "#c9d7a0",
+      "#c99a5b",
+      "#7a4b2e"
+    ],
+    "lowland_note": "Batas bawah: model permukaan (tajuk pohon, bangunan) terbaca lebih tinggi dari tanah.",
+    "local_relief_method": "max - min elevation in a 33x33 px (990 m) window on the UTM grid; NusaStats classes, shown alongside (not replacing) the terrain class",
+    "config_sha256": "bc1b902c8fa23d79936518aa2cb1fa9a1a01e3fba4c13ac3c5ce884e190c482d",
+    "computed_at": "2026-10-05T17:08:31+00:00"
   }
 }
