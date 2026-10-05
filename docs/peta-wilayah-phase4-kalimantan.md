@@ -1,4 +1,4 @@
-# Peta Wilayah Phase 4, step 1: all kabupaten/kota in Kalimantan
+# Peta Wilayah Phase 4: Kalimantan (kabupaten/kota and kecamatan)
 
 Run: 2026-10-05, 02:10–03:03 UTC.
 Command: `uv run python -m all --level kabupaten --prov 61 --prov 62 --prov 63 --prov 64 --prov 65`.
@@ -103,8 +103,30 @@ Mean elevation and maximum in metres; shares of the area.
 | 6504 | Tana Tidung | Dataran rendah | 29 | 735 | 70,9% | 0,3% | 0,1% |
 | 6571 | Kota Tarakan | Dataran rendah | 27 | 121 | 67,3% | 0,2% | 7,6% |
 
+## Step 2: kecamatan (626)
+
+Run 03:12–04:41 UTC: `uv run python -m all --level kecamatan --prov 61 --prov 62 --prov 63 --prov 64 --prov 65`
+(log `batch-20261005T031225Z.jsonl`). **1,244 jobs computed and 8 up to date** (PPU's four kecamatan from Phase 3).
+**0 failed checks, 0 errors.** No new tiles: everything came from the kabupaten run's cache.
+
+| Check | Result |
+|---|---|
+| Kecamatan guardrails | areas within 0.19% (UTM vs geodesic) and 0.17% (pixels vs UTM); no nodata; shares 99,98–100,02% |
+| **Kabupaten max = highest kecamatan max** | exact in **56 of 56** |
+| **Kabupaten min = lowest kecamatan min** | exact in **56 of 56** |
+| Kecamatan areas sum to the kabupaten area | within 0.066% |
+| Area-weighted kecamatan land cover = kabupaten shares | within 0.018 percentage points |
+
+Each kabupaten is computed from its own polygon, not aggregated from kecamatan (spec §5.4). The nesting checks show
+the two levels agree.
+
+## Backend
+
+`backend/peta/data/peta_export.json` (682 areas) is loaded by `manage.py load_peta` into the `peta` app: 12,276
+values, served at `/api/peta/indicators/`, `/api/peta/regions/{code}/` (with peer ranks) and `/api/peta/rank/`.
+The map panel shows those ranks.
+
 ## Not done yet in Phase 4
 
-- Kecamatan level for Kalimantan, and the other regions of Indonesia.
-- The backend terrain/land-cover app (spec §5.4), so these values appear alongside the other NusaStats indicators.
+- The other regions of Indonesia (Sulawesi Selatan kabupaten next).
 - Provinsi 96, via the old→new code remap noted in `docs/peta-wilayah-crosswalk.md`.
