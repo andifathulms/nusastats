@@ -16,10 +16,11 @@ import {
   type RegionProfile,
   type RegionVariables,
 } from "@/lib/api";
-import { Badge, ErrorState, Panel, SectionTitle, Skeleton, SkeletonRows, SkeletonTile } from "@/components/ui";
+import { Badge, EmptyState, ErrorState, Panel, SectionTitle, Skeleton, SkeletonRows, SkeletonTile } from "@/components/ui";
 import { DukcapilDrilldown } from "@/components/DukcapilDrilldown";
 import { DukcapilRegionProfile } from "@/components/DukcapilRegionProfile";
 import { ProvinceInsight, RegencyInsight } from "@/components/RegionInsight";
+import { PetaWilayah, type PetaFact } from "@/components/peta/PetaWilayah";
 import { Breadcrumbs, RegionHero, StickyTabs, type Crumb, type HeroFact } from "@/components/explore/RegionHero";
 import { provinceHref, routes } from "@/lib/routes";
 
@@ -65,7 +66,7 @@ export default function RegionDetailPage({ params }: { params: { domainId: strin
 
 // --- Nasional / Provinsi / Kab-Kota: BPS-backed + Dukcapil demographics -----
 
-type Tab = "insight" | "indicators" | "profile" | "demografi" | "wilayah";
+type Tab = "insight" | "indicators" | "profile" | "demografi" | "wilayah" | "peta";
 
 function BpsRegion({ domainId, kind }: { domainId: string; kind: Kind }) {
   const [data, setData] = useState<RegionVariables | null>(null);
@@ -127,6 +128,7 @@ function BpsRegion({ domainId, kind }: { domainId: string; kind: Kind }) {
     ...(kind !== "national" ? ([["profile", "Peringkat BPS"]] as [Tab, string][]) : []),
     ...(kind === "province" || kind === "regency" ? ([["demografi", "Demografi (Dukcapil)"]] as [Tab, string][]) : []),
     ...(kind === "regency" ? ([["wilayah", "Wilayah (Dukcapil)"]] as [Tab, string][]) : []),
+    ...(kind === "regency" ? ([["peta", "Peta wilayah"]] as [Tab, string][]) : []),
   ];
 
   const crumbs: Crumb[] = [{ label: "Indonesia", href: routes.region("0000") }];
@@ -138,6 +140,10 @@ function BpsRegion({ domainId, kind }: { domainId: string; kind: Kind }) {
   const pop = ind("jumlah_penduduk");
   const dens = ind("pop_density_big");
   const dukPending = kind !== "national" && !duk && dukState !== "empty";
+  const petaFacts: PetaFact[] = [
+    ...(pop ? [{ label: "Penduduk", value: formatCompact(pop.value), source: "Dukcapil" }] : []),
+    ...(dens ? [{ label: "Kepadatan", value: `${formatDecimal(dens.value, dens.value < 100 ? 1 : 0)} jiwa/km²`, source: "Dukcapil" }] : []),
+  ];
   const peers = kind === "province" ? "" : " di provinsi";
   const facts: HeroFact[] = [
     ...(kind === "national" || dukState === "empty"
@@ -195,6 +201,16 @@ function BpsRegion({ domainId, kind }: { domainId: string; kind: Kind }) {
         <RegencyInsight domainId={domainId} regionName={regionName} />
       ) : tab === "wilayah" && kind === "regency" ? (
         <DukcapilDrilldown domainId={domainId} />
+      ) : tab === "peta" && kind === "regency" ? (
+        // The pipeline is keyed on the Kemendagri code; the BPS id resolves to it
+        // through the server-side crosswalk behind `duk` (never by code identity).
+        duk ? (
+          <PetaWilayah kode={duk.region.code} level="regency" facts={petaFacts} />
+        ) : dukState === "empty" ? (
+          <EmptyState title="Tidak ada padanan wilayah Kemendagri" hint="Peta wilayah memakai kode Kemendagri; kabupaten/kota BPS ini belum terpadankan." />
+        ) : (
+          <Panel><Skeleton className="h-[420px] w-full rounded-[20px]" /></Panel>
+        )
       ) : tab === "demografi" ? (
         <DemografiView state={dukState} detail={duk} />
       ) : tab === "profile" && kind !== "national" ? (
@@ -392,6 +408,16 @@ function DukcapilRegion({ code, kind }: { code: string; kind: Kind }) {
         ]}
         silhouette={kind === "province" ? { kind: "provinces", code } : null}
       />
+      {kind === "district" && (
+        <PetaWilayah
+          kode={r.code}
+          level="district"
+          facts={[
+            ...(pop ? [{ label: "Penduduk", value: formatCompact(pop.value), source: "Dukcapil" }] : []),
+            ...(dens ? [{ label: "Kepadatan", value: `${formatDecimal(dens.value, dens.value < 100 ? 1 : 0)} jiwa/km²`, source: "Dukcapil" }] : []),
+          ]}
+        />
+      )}
       <p className="text-sm text-ink-muted">
         Peringkat & persentil terhadap {detail.peer_scope}. BPS tidak menyediakan data pada tingkat ini.
       </p>
