@@ -1,0 +1,128 @@
+{
+  "kode": "731703",
+  "name": "SULI",
+  "level": "kecamatan",
+  "provinsi": {
+    "kode": "73",
+    "name": "SULAWESI SELATAN"
+  },
+  "area_km2": 82.5,
+  "elevation_m": {
+    "min": 0.0,
+    "max": 596.7,
+    "mean": 66.5,
+    "median": 16.9,
+    "p5": 1.5,
+    "p95": 300.5
+  },
+  "relief_m": 299.0,
+  "highest_point": {
+    "elevation_m": 596.7,
+    "lon": 120.3,
+    "lat": -3.42028
+  },
+  "elevation_bands_pct": {
+    "<100": 77.56,
+    "100-500": 22.28,
+    "500-1000": 0.15,
+    "1000-2000": 0.0,
+    ">=2000": 0.0
+  },
+  "slope_deg": {
+    "mean": 8.41
+  },
+  "slope_classes_pct": {
+    "<8": 64.78,
+    "8-25": 25.8,
+    ">=25": 9.43
+  },
+  "metrics_pct": {
+    "share_elev_ge_1000": 0.0,
+    "share_elev_ge_200": 11.07,
+    "share_elev_lt_100": 77.56,
+    "share_slope_ge_25": 9.43,
+    "share_slope_ge_8": 35.22,
+    "share_slope_lt_8": 64.78
+  },
+  "terrain_class": "dataran_rendah",
+  "terrain_class_label": "Dataran rendah",
+  "terrain_class_reason": "Dataran rendah: 77,6% area <100 m dan 64,8% area lereng <8°",
+  "classification": {
+    "official": false,
+    "note": "Klasifikasi NusaStats (aturan di config/terrain_rules.yaml), bukan klasifikasi resmi.",
+    "rules_sha256": "46978aef2bbd47b075cb7feebba2e50524c63ce4f39271053ce4d2aaaf8fb479"
+  },
+  "checks": {
+    "area_geodesic_km2": 82.47,
+    "area_utm_polygon_km2": 82.58,
+    "area_utm_pixels_km2": 82.58,
+    "utm_vs_geodesic_pct": 0.135,
+    "pixels_vs_utm_pct": -0.001,
+    "nodata_pct": 0.0,
+    "polygon_pixels_utm": 91754
+  },
+  "metadata": {
+    "dataset": "Copernicus DEM GLO-30 Public",
+    "dataset_type": "DSM (surface model: includes canopy and buildings)",
+    "vertical_datum": "EGM2008 geoid (EPSG:3855), metres",
+    "year": 2015,
+    "attribution": "produced using Copernicus WorldDEM-30 © DLR e.V. 2010-2014 and © Airbus Defence and Space GmbH 2014-2018 provided under COPERNICUS by the European Union and ESA; all rights reserved",
+    "tile_version_tag": null,
+    "tiles": {
+      "Copernicus_DSM_COG_10_S04_00_E120_00_DEM": "d165abfa6f613ca321781f0fd8b72c0353939bce4eb1ca82c09202b0dcd4962f"
+    },
+    "ocean_tiles_absent": [],
+    "boundary": {
+      "source": "data/big_boundaries/big-villages-73.geojson",
+      "sha256": "81271a07cc15531cf0bd38b7fcd3ae8536dc91124adf3fcc453b72a13962a407",
+      "method": "shapely.union_all(grid_size=1e-8) per code prefix; no simplify, no island/hole dropping (data/big_boundaries/dissolve.py:dissolve)"
+    },
+    "crs_stats": "EPSG:32751",
+    "pixel_size_m": 30.0,
+    "resampling_to_utm": "bilinear",
+    "min_max_from": "native DEM pixels (EPSG:4326, 1 arc-second) inside the polygon",
+    "shares_from": "30 m UTM pixels (EPSG:32751) whose centre lies inside the polygon",
+    "slope_method": "Horn 3x3 on the UTM grid",
+    "hillshade": {
+      "azimuth_deg": 315,
+      "altitude_deg": 45,
+      "z_factor": 1.0
+    },
+    "tint": [
+      [
+        0,
+        "#4f8f4a"
+      ],
+      [
+        100,
+        "#8fb36a"
+      ],
+      [
+        300,
+        "#cfd28c"
+      ],
+      [
+        500,
+        "#e3cf98"
+      ],
+      [
+        1000,
+        "#c8a06a"
+      ],
+      [
+        2000,
+        "#9a6a43"
+      ],
+      [
+        3000,
+        "#7b5a4a"
+      ],
+      [
+        4000,
+        "#ffffff"
+      ]
+    ],
+    "config_sha256": "4c52051153ac0e8c752e2b1604867cbd872548b06921c11b37052e8f6d63279e",
+    "computed_at": "2026-10-05T05:28:13+00:00"
+  }
+}

@@ -1,0 +1,110 @@
+{
+  "kode": "730709",
+  "name": "PULAU SEMBILAN",
+  "level": "kecamatan",
+  "provinsi": {
+    "kode": "73",
+    "name": "SULAWESI SELATAN"
+  },
+  "year": 2021,
+  "area_km2": 2.0,
+  "dominant": {
+    "code": 10,
+    "label": "Tutupan pohon",
+    "share_pct": 70.32
+  },
+  "classes": [
+    {
+      "code": 10,
+      "name": "Tree cover",
+      "label": "Tutupan pohon",
+      "color": "#006400",
+      "pixels": 13784,
+      "share_pct": 70.32,
+      "area_km2": 1.38
+    },
+    {
+      "code": 50,
+      "name": "Built-up",
+      "label": "Lahan terbangun",
+      "color": "#fa0000",
+      "pixels": 3222,
+      "share_pct": 16.44,
+      "area_km2": 0.32
+    },
+    {
+      "code": 80,
+      "name": "Permanent water bodies",
+      "label": "Badan air",
+      "color": "#0064c8",
+      "pixels": 2032,
+      "share_pct": 10.37,
+      "area_km2": 0.2
+    },
+    {
+      "code": 30,
+      "name": "Grassland",
+      "label": "Padang rumput",
+      "color": "#ffff4c",
+      "pixels": 368,
+      "share_pct": 1.88,
+      "area_km2": 0.04
+    },
+    {
+      "code": 60,
+      "name": "Bare / sparse vegetation",
+      "label": "Lahan terbuka",
+      "color": "#b4b4b4",
+      "pixels": 190,
+      "share_pct": 0.97,
+      "area_km2": 0.02
+    },
+    {
+      "code": 40,
+      "name": "Cropland",
+      "label": "Lahan pertanian",
+      "color": "#f096ff",
+      "pixels": 6,
+      "share_pct": 0.03,
+      "area_km2": 0.0
+    }
+  ],
+  "checks": {
+    "share_sum_pct": 100.01,
+    "area_geodesic_km2": 1.96,
+    "area_utm_polygon_km2": 1.96,
+    "area_utm_pixels_km2": 1.96,
+    "utm_vs_geodesic_pct": 0.125,
+    "pixels_vs_utm_pct": 0.018,
+    "nodata_pct": 0.0,
+    "polygon_pixels_utm": 19602,
+    "render_palette_colours": 5,
+    "render_palette_exact": true
+  },
+  "metadata": {
+    "dataset": "ESA WorldCover 10 m 2021 v200",
+    "version": "v200",
+    "year": 2021,
+    "license": "CC BY 4.0 (Creative Commons Attribution 4.0 International)",
+    "attribution": "© ESA WorldCover project 2021 / Contains modified Copernicus Sentinel data (2021) processed by ESA WorldCover consortium",
+    "product_version_tag": "V2.0.0",
+    "tiles": {
+      "S06E120": "3327cb3f11d4e2fe0e0353c13c51d5e6b09dd46be34cbacb40c90f8fa895e7b0"
+    },
+    "tiles_absent": [],
+    "boundary": {
+      "source": "data/big_boundaries/big-villages-73.geojson",
+      "sha256": "81271a07cc15531cf0bd38b7fcd3ae8536dc91124adf3fcc453b72a13962a407",
+      "method": "shapely.union_all(grid_size=1e-8) per code prefix; no simplify, no island/hole dropping (data/big_boundaries/dissolve.py:dissolve)"
+    },
+    "crs_stats": "EPSG:32751",
+    "pixel_size_m": 10.0,
+    "resampling_to_utm": "nearest",
+    "shares_from": "10 m UTM pixels (EPSG:32751) whose centre lies inside the polygon; shares are of classified pixels",
+    "area_km2_method": "share × geodesic polygon area (WGS84 ellipsoid)",
+    "display_resampling": "mode",
+    "caveat": "Kelas 10 'Tutupan pohon' mencakup perkebunan (sawit, akasia); jangan sebut 'hutan'.",
+    "config_sha256": "cf0713550fb2fc58b2fae33bf270d90afc44a31c24d2d51990d7ca6d1811c0a5",
+    "computed_at": "2026-10-05T05:16:46+00:00"
+  }
+}
