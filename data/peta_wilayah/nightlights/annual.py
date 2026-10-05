@@ -42,6 +42,13 @@ def load_cfg():
     return yaml.safe_load(raw), hashlib.sha256(raw).hexdigest()
 
 
+def annual_key(cfg) -> str:
+    """Cache key for annual rasters: only the settings that shape them (the
+    `annual` section). Editing stats/render settings must not throw away hours
+    of remote window reads."""
+    return hashlib.sha256(json.dumps(cfg["annual"], sort_keys=True).encode()).hexdigest()
+
+
 def province_bounds(prov: str, pad: float):
     build(prov)
     g = shape(json.loads((OUTLINES / prov / "provinsi.geojson").read_text())["features"][0]["geometry"])
@@ -65,12 +72,13 @@ def annual_median(radiance: np.ndarray, cloud_free: np.ndarray):
 
 def ensure(prov: str, year: int, data: dict, force: bool = False) -> Path:
     """Path to the annual raster for (prov, year), building it if missing or stale."""
-    cfg, cfg_sha = load_cfg()
+    cfg, _cfg_sha = load_cfg()
+    key = annual_key(cfg)
     d = ANNUAL / prov
     tif, meta_p = d / f"{year}.tif", d / f"{year}.json"
     if not force and tif.exists() and meta_p.exists():
         meta = json.loads(meta_p.read_text())
-        if meta.get("config_sha256") == cfg_sha:
+        if meta.get("annual_config_sha256") == key:
             return tif
     bounds = province_bounds(prov, cfg["annual"]["window_pad_deg"])
     month_dirs = source.months(year)
@@ -106,6 +114,6 @@ def ensure(prov: str, year: int, data: dict, force: bool = False) -> Path:
             "source_records": [f"{ym}/{b}@{prov}" for ym in used for b in ("avg_rade9", "n_cf")],
             "sha256_annual": hashlib.sha256(med.tobytes()).hexdigest(),
             "pixels_no_cloud_free_month_pct": round(float((n == 0).mean() * 100), 3),
-            "config_sha256": cfg_sha, "built_at": manifest.now_iso()}
+            "annual_config_sha256": key, "built_at": manifest.now_iso()}
     meta_p.write_text(json.dumps(meta, indent=2) + "\n")
     return tif

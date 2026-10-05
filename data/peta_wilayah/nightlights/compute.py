@@ -91,17 +91,21 @@ def compute(kode: str) -> dict:
         nod = wgt[~valid].sum() / total * 100
         if nod > cfg["stats"]["max_nodata_pct"]:
             raise NightlightsCheckFailed(f"{kode} {year}: {nod:.2f}% of the area has no cloud-free month")
-        rv = np.where(valid, r, 0.0)
+        floor = cfg["stats"]["noise_floor_nw"]
+        if (valid & (r < floor) & (wgt > 0)).any():
+            raise NightlightsCheckFailed(
+                f"{kode} {year}: annual median below the noise floor ({float(np.nanmin(r)):.3f} < {floor} nW)")
+        noise = valid & (r < 0) & (wgt > 0)
+        rv = np.where(valid, np.clip(r, 0.0, None), 0.0)  # noise-floor negatives = no light
         wv = np.where(valid, wgt, 0.0)
         lit = valid & (r >= thr)
-        if (rv < 0).any():
-            raise NightlightsCheckFailed(f"{kode} {year}: negative radiance in an annual median")
         years[str(year)] = {
             "mean_nw": round(float((rv * wv).sum() / wv.sum()), 4),
             "lit_pct": round(float(wgt[lit].sum() / wv.sum() * 100), 3),
             "lit_km2": round(float(wgt[lit].sum()), 3),
             "sum_lit": round(float((rv * wgt)[lit].sum()), 2),
             "nodata_pct": round(float(nod), 3),
+            "noise_negative_pct": round(float(wgt[noise].sum() / total * 100), 4),
             "months": len(meta["months_used"]),
         }
         provenance[str(year)] = {"annual_sha256": meta["sha256_annual"], "months_used": meta["months_used"],

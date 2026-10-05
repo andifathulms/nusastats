@@ -9,6 +9,9 @@ stats:
   lit_threshold_nw: 1.0      # nW/cm2/sr: a pixel is "lit" at or above this annual median
   coverage_supersample: 8    # sub-pixel polygon coverage (handles small kecamatan vs ~460 m pixels)
   max_nodata_pct: 1.0        # fail if more of the polygon has no annual value
+  # Calibrated radiance has a noise floor around 0 (seen: >= -0.19 nW, <= 0.012% of
+  # pixels). Values down to this floor count as no light; anything lower fails.
+  noise_floor_nw: -0.5
   max_area_diff_pct: 3.0     # covered-pixel area vs geodesic polygon area (sub-pixel coverage of tiny islets)
 render:
   max_radiance_nw: 60        # top of the log colour scale

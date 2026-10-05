@@ -29,3 +29,11 @@ def test_row_areas_shrink_away_from_equator():
     a = row_areas_km2(tr, 1)[0]
     eq = row_areas_km2(from_origin(100, 0.0041666667, 0.0041666667, 0.0041666667), 1)[0]
     assert 0.2 < a < eq < 0.22                            # ~0.213 km² at the equator
+
+
+def test_annual_cache_key_ignores_stats_and_render_settings():
+    from nightlights.annual import annual_key
+    a = {"annual": {"statistic": "median", "min_months": 6, "window_pad_deg": 0.02}, "stats": {"x": 1}}
+    b = {**a, "stats": {"x": 2}, "render": {"y": 3}}
+    assert annual_key(a) == annual_key(b)
+    assert annual_key(a) != annual_key({"annual": {**a["annual"], "min_months": 7}})
