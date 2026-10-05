@@ -191,6 +191,19 @@ npm run card -- --template landcover --level kabupaten --provinsi 64   # batch
 
 Output to `exports/cards/{template}/{kode}.png` (git-ignored).
 
+**[Decided] Built in Phase 5:**
+- **Route:** `app/card/[template]/[kode]`. `AppShell` leaves the site chrome off under `/card/`.
+- **Exporter:** `frontend/scripts/card/render.mjs`, a small package with its own pinned Playwright (the app's
+  `node_modules` live in Docker). One-time setup: `cd frontend/scripts/card && npm ci && npx playwright install
+  chromium`. `--debug` adds the safe-zone overlay and saves `{kode}.debug.png`.
+- **Page contract:** `#card` gets `data-card-ready` only after fonts, data and every image have loaded. On any §8
+  guardrail failure it gets `data-card-error` and renders no figures, and the exporter does not save it.
+- **Layout:** text sits in a fixed-height column ending where the bottom UI zone begins, so it can never enter a
+  zone. The map takes the remaining height.
+- **Peak heights round to 10 m.** They are 30 m model pixels from a surface model: canopy reads high, sharp summits
+  read low.
+- **Determinism:** rendering the same card twice gives byte-identical PNGs on the same machine and browser build.
+
 Templates for v1:
 
 1. **terrain** — elevation map, terrain class, mean elevation, highest point, share above 1000 m.
