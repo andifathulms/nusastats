@@ -1,0 +1,9 @@
+{
+  "name": "nusastats-card-exporter",
+  "private": true,
+  "description": "Screenshots /card/{template}/{kode} to 1080x1920 PNGs (Peta Wilayah Phase 5).",
+  "type": "module",
+  "dependencies": {
+    "playwright": "1.63.0"
+  }
+}

@@ -83,7 +83,8 @@ export function ShareCard({ template, kode, debug }: { template: Template; kode:
   }, [kode]);
 
   const issues = peta === undefined ? [] : problems(peta, template);
-  const error = fatal ?? (issues.length ? issues.join("; ") : null);
+  // "Not computed" explains everything else that 404s, so it wins.
+  const error = peta === null ? issues.join("; ") : fatal ?? (issues.length ? issues.join("; ") : null);
 
   const layers =
     peta && !error
