@@ -831,3 +831,26 @@ export type SearchResults = {
 export const searchApi = {
   search: (q: string) => get<SearchResults>(`/search/?q=${encodeURIComponent(q)}`),
 };
+
+// --- Peta Wilayah (terrain & land cover, Kemendagri-keyed) -------------------
+
+export type PetaIndicatorRank = {
+  key: string;
+  label: string;
+  group: string;
+  unit: string;
+  value: number;
+  rank: number | null;
+  of: number;
+  percentile: number | null;
+};
+
+export type PetaRegionRanks = {
+  region: { code: string; level: string; name: string; prov_code: string; parent_code: string };
+  peer_scope: string;
+  indicators: PetaIndicatorRank[];
+};
+
+export const petaApi = {
+  region: (code: string) => get<PetaRegionRanks>(`/peta/regions/${code}/`),
+};

@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ChoroplethMap, type MapLayer } from "@/components/ChoroplethMap";
 import { Badge, EmptyState, ErrorState, Panel, SectionTitle, Skeleton, SkeletonRows } from "@/components/ui";
-import { formatDecimal, formatNumber, titleCase } from "@/lib/api";
+import { formatDecimal, formatNumber, petaApi, titleCase, type PetaRegionRanks } from "@/lib/api";
 import { loadPeta, petaAsset, type Peta, type PetaLandcover, type PetaTerrain } from "@/lib/peta";
 import { routes } from "@/lib/routes";
 
@@ -35,7 +35,15 @@ export function PetaWilayah({
   const [error, setError] = useState<string | null>(null);
   const [layer, setLayer] = useState<Layer>("elevasi");
   const [hover, setHover] = useState<string | null>(null);
+  // Peer ranks come from the backend `peta` app; without them the panel still
+  // shows every figure (the static JSON), just without the rank chips.
+  const [ranks, setRanks] = useState<PetaRegionRanks | null>(null);
   const router = useRouter();
+
+  useEffect(() => {
+    setRanks(null);
+    petaApi.region(kode).then(setRanks).catch(() => setRanks(null));
+  }, [kode]);
 
   useEffect(() => {
     setPeta(undefined);
@@ -129,8 +137,8 @@ export function PetaWilayah({
         </Panel>
 
         <div className="min-w-0 space-y-6">
-          {terrain ? <TerrainPanel t={terrain} /> : <Missing what="Statistik medan" />}
-          {landcover ? <LandcoverPanel lc={landcover} /> : <Missing what="Tutupan lahan" />}
+          {terrain ? <TerrainPanel t={terrain} ranks={ranks} /> : <Missing what="Statistik medan" />}
+          {landcover ? <LandcoverPanel lc={landcover} ranks={ranks} /> : <Missing what="Tutupan lahan" />}
           {facts.length > 0 && (
             <Panel>
               <h3 className="text-[11px] font-bold uppercase tracking-[0.08em] text-ink-muted">Indikator lain</h3>
@@ -256,12 +264,25 @@ const BAND_LABEL: Record<string, string> = {
 };
 const SLOPE_LABEL: Record<string, string> = { "<8": "Landai (< 8°)", "8-25": "Miring (8–25°)", ">=25": "Curam (≥ 25°)" };
 
-function TerrainPanel({ t }: { t: PetaTerrain }) {
-  const stats: [string, string][] = [
-    ["Rata-rata elevasi", metres(t.elevation_m.mean)],
-    ["Titik tertinggi", metres(t.highest_point.elevation_m)],
-    ["Relief (p95 − p5)", metres(t.relief_m)],
-    ["Lereng rata-rata", `${formatDecimal(t.slope_deg.mean, 1)}°`],
+type Ranks = PetaRegionRanks | null;
+
+function rankOf(ranks: Ranks, key: string) {
+  const r = ranks?.indicators.find((i) => i.key === key);
+  return r && r.rank && r.of > 1 ? r : null;
+}
+
+function RankChip({ ranks, k }: { ranks: Ranks; k: string }) {
+  const r = rankOf(ranks, k);
+  if (!r) return null;
+  return <span className="font-mono text-[11px] text-ink-muted">#{r.rank} dari {r.of}</span>;
+}
+
+function TerrainPanel({ t, ranks }: { t: PetaTerrain; ranks: Ranks }) {
+  const stats: [string, string, string][] = [
+    ["Rata-rata elevasi", metres(t.elevation_m.mean), "elevation_mean"],
+    ["Titik tertinggi", metres(t.highest_point.elevation_m), "elevation_max"],
+    ["Relief (p95 − p5)", metres(t.relief_m), "relief"],
+    ["Lereng rata-rata", `${formatDecimal(t.slope_deg.mean, 1)}°`, "slope_mean"],
   ];
   return (
     <Panel>
@@ -272,13 +293,17 @@ function TerrainPanel({ t }: { t: PetaTerrain }) {
       </div>
       <p className="mt-1.5 text-sm text-ink-muted">{t.terrain_class_reason}</p>
       <dl className="mt-4 grid grid-cols-2 gap-x-4 gap-y-3">
-        {stats.map(([k, v]) => (
+        {stats.map(([k, v, key]) => (
           <div key={k}>
             <dt className="text-xs text-ink-muted">{k}</dt>
             <dd className="whitespace-nowrap text-lg font-extrabold tabular-nums tracking-[-0.01em] text-ink-text">{v}</dd>
+            <dd><RankChip ranks={ranks} k={key} /></dd>
           </div>
         ))}
       </dl>
+      {ranks && ranks.indicators.some((i) => i.rank && i.of > 1) && (
+        <p className="mt-2 text-xs text-ink-muted">Peringkat dari tertinggi, terhadap {ranks.peer_scope}.</p>
+      )}
       <div className="mt-5 text-xs font-semibold text-ink-muted">Luas menurut elevasi</div>
       <div className="mt-2">
         <Rows rows={Object.entries(t.elevation_bands_pct).map(([k, v]) => [BAND_LABEL[k] ?? k, v])} />
@@ -294,7 +319,14 @@ function TerrainPanel({ t }: { t: PetaTerrain }) {
   );
 }
 
-function LandcoverPanel({ lc }: { lc: PetaLandcover }) {
+const LC_RANKED: [string, string][] = [
+  ["lc_tree", "Tutupan pohon"],
+  ["lc_cropland", "Lahan pertanian"],
+  ["lc_builtup", "Lahan terbangun"],
+];
+
+function LandcoverPanel({ lc, ranks }: { lc: PetaLandcover; ranks: Ranks }) {
+  const ranked = LC_RANKED.map(([k, label]) => [label, rankOf(ranks, k)] as const).filter(([, r]) => r);
   return (
     <Panel>
       <h3 className="text-[11px] font-bold uppercase tracking-[0.08em] text-ink-muted">Tutupan lahan {lc.year}</h3>
@@ -315,6 +347,18 @@ function LandcoverPanel({ lc }: { lc: PetaLandcover }) {
           </li>
         ))}
       </ul>
+      {ranked.length > 0 && (
+        <p className="mt-3 text-xs text-ink-muted">
+          Peringkat porsi luas terhadap {ranks!.peer_scope}:{" "}
+          {ranked.map(([label, r], i) => (
+            <span key={label}>
+              {i > 0 && " · "}
+              {label} <span className="font-mono">#{r!.rank}</span>
+            </span>
+          ))}
+          {ranked[0][1] && <> dari {ranked[0][1]!.of}</>}.
+        </p>
+      )}
       <p className="mt-4 text-xs leading-relaxed text-ink-muted">
         &ldquo;Tutupan pohon&rdquo; mencakup hutan dan perkebunan (sawit, akasia); citra satelit tidak membedakannya. Data {lc.year},
         bukan kondisi terkini.
