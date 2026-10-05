@@ -1,65 +1,65 @@
 {
-  "kode": "6409",
-  "name": "PENAJAM PASER UTARA",
-  "level": "kabupaten",
+  "kode": "640903",
+  "name": "BABULU",
+  "level": "kecamatan",
   "provinsi": {
     "kode": "64",
     "name": "KALIMANTAN TIMUR"
   },
-  "area_km2": 3211.8,
+  "area_km2": 426.9,
   "elevation_m": {
-    "min": -19.0,
-    "max": 750.7,
-    "mean": 89.2,
-    "median": 41.4,
-    "p5": 2.8,
-    "p95": 372.9
+    "min": -3.2,
+    "max": 176.4,
+    "mean": 26.5,
+    "median": 20.4,
+    "p5": 1.5,
+    "p95": 76.7
   },
-  "relief_m": 370.1,
+  "relief_m": 75.2,
   "highest_point": {
-    "elevation_m": 750.7,
-    "lon": 116.47944,
-    "lat": -0.94472
+    "elevation_m": 176.4,
+    "lon": 116.46667,
+    "lat": -1.43917
   },
   "elevation_bands_pct": {
-    "<100": 76.68,
-    "100-500": 22.01,
-    "500-1000": 1.3,
+    "<100": 98.63,
+    "100-500": 1.37,
+    "500-1000": 0.0,
     "1000-2000": 0.0,
     ">=2000": 0.0
   },
   "slope_deg": {
-    "mean": 6.95
+    "mean": 4.29
   },
   "slope_classes_pct": {
-    "<8": 63.96,
-    "8-25": 35.33,
-    ">=25": 0.71
+    "<8": 80.96,
+    "8-25": 18.82,
+    ">=25": 0.22
   },
   "metrics_pct": {
     "share_elev_ge_1000": 0.0,
-    "share_elev_ge_200": 15.36,
-    "share_elev_lt_100": 76.68,
-    "share_slope_ge_25": 0.71,
-    "share_slope_ge_8": 36.04,
-    "share_slope_lt_8": 63.96
+    "share_elev_ge_200": 0.0,
+    "share_elev_lt_100": 98.63,
+    "share_slope_ge_25": 0.22,
+    "share_slope_ge_8": 19.04,
+    "share_slope_lt_8": 80.96
   },
   "terrain_class": "dataran_rendah",
   "terrain_class_label": "Dataran rendah",
-  "terrain_class_reason": "Dataran rendah: 76,7% area <100 m dan 64,0% area slope <8°",
+  "terrain_class_reason": "Dataran rendah: 98,6% area <100 m dan 81,0% area slope <8°",
   "classification": {
     "official": false,
     "note": "Klasifikasi NusaStats (aturan di config/terrain_rules.yaml), bukan klasifikasi resmi.",
     "rules_sha256": "f32e245822e8383b38d8e2400c8167ab04d8c309f146a79055162428ec58f78a"
   },
   "checks": {
-    "area_geodesic_km2": 3211.75,
-    "area_utm_polygon_km2": 3209.37,
-    "area_utm_pixels_km2": 3209.38,
-    "utm_vs_geodesic_pct": -0.074,
-    "pixels_vs_utm_pct": 0.0,
+    "area_geodesic_km2": 426.87,
+    "area_utm_polygon_km2": 426.57,
+    "area_utm_pixels_km2": 426.57,
+    "utm_vs_geodesic_pct": -0.07,
+    "pixels_vs_utm_pct": 0.001,
     "nodata_pct": 0.0,
-    "polygon_pixels_utm": 3565977
+    "polygon_pixels_utm": 473970
   },
   "metadata": {
     "dataset": "Copernicus DEM GLO-30 Public",
@@ -69,8 +69,7 @@
     "attribution": "produced using Copernicus WorldDEM-30 © DLR e.V. 2010-2014 and © Airbus Defence and Space GmbH 2014-2018 provided under COPERNICUS by the European Union and ESA; all rights reserved",
     "tile_version_tag": null,
     "tiles": {
-      "Copernicus_DSM_COG_10_S02_00_E116_00_DEM": "2add2fbb4ce33893c5d2c50b953e88ce8cd2a92f3fb45c1354e19ae3efd86ce9",
-      "Copernicus_DSM_COG_10_S01_00_E116_00_DEM": "6984a6fbd5b3aa1939165ddac829cf5971868f81efa29bacf0085692bf3858cb"
+      "Copernicus_DSM_COG_10_S02_00_E116_00_DEM": "2add2fbb4ce33893c5d2c50b953e88ce8cd2a92f3fb45c1354e19ae3efd86ce9"
     },
     "ocean_tiles_absent": [],
     "boundary": {
@@ -124,6 +123,6 @@
       ]
     ],
     "config_sha256": "4c52051153ac0e8c752e2b1604867cbd872548b06921c11b37052e8f6d63279e",
-    "computed_at": "2026-10-05T00:33:34+00:00"
+    "computed_at": "2026-10-05T00:33:48+00:00"
   }
 }

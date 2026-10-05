@@ -1,65 +1,65 @@
 {
-  "kode": "6409",
-  "name": "PENAJAM PASER UTARA",
-  "level": "kabupaten",
+  "kode": "640904",
+  "name": "SEPAKU",
+  "level": "kecamatan",
   "provinsi": {
     "kode": "64",
     "name": "KALIMANTAN TIMUR"
   },
-  "area_km2": 3211.8,
+  "area_km2": 1279.3,
   "elevation_m": {
-    "min": -19.0,
+    "min": -3.1,
     "max": 750.7,
-    "mean": 89.2,
-    "median": 41.4,
-    "p5": 2.8,
-    "p95": 372.9
+    "mean": 144.5,
+    "median": 64.2,
+    "p5": 6.4,
+    "p95": 446.0
   },
-  "relief_m": 370.1,
+  "relief_m": 439.6,
   "highest_point": {
     "elevation_m": 750.7,
     "lon": 116.47944,
     "lat": -0.94472
   },
   "elevation_bands_pct": {
-    "<100": 76.68,
-    "100-500": 22.01,
-    "500-1000": 1.3,
+    "<100": 59.34,
+    "100-500": 37.56,
+    "500-1000": 3.1,
     "1000-2000": 0.0,
     ">=2000": 0.0
   },
   "slope_deg": {
-    "mean": 6.95
+    "mean": 8.51
   },
   "slope_classes_pct": {
-    "<8": 63.96,
-    "8-25": 35.33,
-    ">=25": 0.71
+    "<8": 54.03,
+    "8-25": 44.4,
+    ">=25": 1.57
   },
   "metrics_pct": {
     "share_elev_ge_1000": 0.0,
-    "share_elev_ge_200": 15.36,
-    "share_elev_lt_100": 76.68,
-    "share_slope_ge_25": 0.71,
-    "share_slope_ge_8": 36.04,
-    "share_slope_lt_8": 63.96
+    "share_elev_ge_200": 31.12,
+    "share_elev_lt_100": 59.34,
+    "share_slope_ge_25": 1.57,
+    "share_slope_ge_8": 45.97,
+    "share_slope_lt_8": 54.03
   },
-  "terrain_class": "dataran_rendah",
-  "terrain_class_label": "Dataran rendah",
-  "terrain_class_reason": "Dataran rendah: 76,7% area <100 m dan 64,0% area slope <8°",
+  "terrain_class": "campuran",
+  "terrain_class_label": "Campuran",
+  "terrain_class_reason": "Campuran: tidak memenuhi aturan lain (0,0% area ≥1000 m, 46,0% area slope ≥8°, 59,3% area <100 m)",
   "classification": {
     "official": false,
     "note": "Klasifikasi NusaStats (aturan di config/terrain_rules.yaml), bukan klasifikasi resmi.",
     "rules_sha256": "f32e245822e8383b38d8e2400c8167ab04d8c309f146a79055162428ec58f78a"
   },
   "checks": {
-    "area_geodesic_km2": 3211.75,
-    "area_utm_polygon_km2": 3209.37,
-    "area_utm_pixels_km2": 3209.38,
-    "utm_vs_geodesic_pct": -0.074,
-    "pixels_vs_utm_pct": 0.0,
+    "area_geodesic_km2": 1279.27,
+    "area_utm_polygon_km2": 1278.3,
+    "area_utm_pixels_km2": 1278.27,
+    "utm_vs_geodesic_pct": -0.076,
+    "pixels_vs_utm_pct": -0.002,
     "nodata_pct": 0.0,
-    "polygon_pixels_utm": 3565977
+    "polygon_pixels_utm": 1420302
   },
   "metadata": {
     "dataset": "Copernicus DEM GLO-30 Public",
@@ -124,6 +124,6 @@
       ]
     ],
     "config_sha256": "4c52051153ac0e8c752e2b1604867cbd872548b06921c11b37052e8f6d63279e",
-    "computed_at": "2026-10-05T00:33:34+00:00"
+    "computed_at": "2026-10-05T00:33:54+00:00"
   }
 }
