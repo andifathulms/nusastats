@@ -46,11 +46,11 @@
   },
   "terrain_class": "dataran_rendah",
   "terrain_class_label": "Dataran rendah",
-  "terrain_class_reason": "Dataran rendah: 83,2% area <100 m dan 69,6% area slope <8°",
+  "terrain_class_reason": "Dataran rendah: 83,2% area <100 m dan 69,6% area lereng <8°",
   "classification": {
     "official": false,
     "note": "Klasifikasi NusaStats (aturan di config/terrain_rules.yaml), bukan klasifikasi resmi.",
-    "rules_sha256": "f32e245822e8383b38d8e2400c8167ab04d8c309f146a79055162428ec58f78a"
+    "rules_sha256": "46978aef2bbd47b075cb7feebba2e50524c63ce4f39271053ce4d2aaaf8fb479"
   },
   "checks": {
     "area_geodesic_km2": 892.21,
@@ -123,6 +123,6 @@
       ]
     ],
     "config_sha256": "4c52051153ac0e8c752e2b1604867cbd872548b06921c11b37052e8f6d63279e",
-    "computed_at": "2026-10-05T00:33:40+00:00"
+    "computed_at": "2026-10-05T00:40:39+00:00"
   }
 }

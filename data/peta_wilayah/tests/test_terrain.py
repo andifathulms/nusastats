@@ -61,9 +61,9 @@ def _m(**kw):
 def test_rules_order_and_reason(cfg):
     assert rules.classify(_m(share_elev_ge_1000=45, share_slope_ge_8=90), cfg)[0] == "pegunungan"
     c, _, reason = rules.classify(_m(share_slope_ge_8=58.04, share_slope_lt_8=41.96), cfg)
-    assert c == "perbukitan" and reason == "Perbukitan: 58,0% area slope ≥8°"
+    assert c == "perbukitan" and reason == "Perbukitan: 58,0% area lereng ≥8°"
     c, _, reason = rules.classify(_m(share_elev_lt_100=70, share_slope_lt_8=80), cfg)
-    assert c == "dataran_rendah" and reason == "Dataran rendah: 70,0% area <100 m dan 80,0% area slope <8°"
+    assert c == "dataran_rendah" and reason == "Dataran rendah: 70,0% area <100 m dan 80,0% area lereng <8°"
     assert rules.classify(_m(share_elev_lt_100=50, share_slope_lt_8=80), cfg)[0] == "campuran"
 
 

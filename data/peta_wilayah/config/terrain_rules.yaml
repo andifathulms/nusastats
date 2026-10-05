@@ -7,9 +7,9 @@ metrics:
   share_elev_ge_1000: "area ≥1000 m"
   share_elev_ge_200: "area ≥200 m"
   share_elev_lt_100: "area <100 m"
-  share_slope_ge_25: "area slope ≥25°"
-  share_slope_ge_8: "area slope ≥8°"
-  share_slope_lt_8: "area slope <8°"
+  share_slope_ge_25: "area lereng ≥25°"
+  share_slope_ge_8: "area lereng ≥8°"
+  share_slope_lt_8: "area lereng <8°"
 rules:
   - class: pegunungan
     label: Pegunungan

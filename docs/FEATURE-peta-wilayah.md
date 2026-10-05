@@ -144,7 +144,7 @@ Thresholds live in `config/terrain_rules.yaml`, not in code. Rules are checked i
 3. **Dataran rendah** — ≥60% of area at <100 m AND ≥60% of area with slope <8°.
 4. **Campuran** — anything else.
 
-`terrain_class_reason` must state which rule matched and the actual values, e.g. `"Perbukitan: 58% area slope ≥8°"`. The UI and cards label this as a NusaStats classification, not an official one.
+`terrain_class_reason` must state which rule matched and the actual values, e.g. `"Perbukitan: 58,0% area lereng ≥8°"` (Indonesian copy and number format). The UI and cards label this as a NusaStats classification, not an official one.
 
 ### 5.3 Land cover stats (`frontend/public/peta/{kode}/landcover.json`)
 
