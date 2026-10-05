@@ -384,6 +384,18 @@
         "sha256": "963591462a968ca1c331e5902b25bc51f8141873cb90fdfa1c09e541405ee8ac",
         "url": "https://copernicus-dem-30m.s3.amazonaws.com/Copernicus_DSM_COG_10_S02_00_E117_00_DEM/Copernicus_DSM_COG_10_S02_00_E117_00_DEM.tif"
       },
+      "Copernicus_DSM_COG_10_S02_00_E119_00_DEM": {
+        "bytes": 32446064,
+        "downloaded_at": "2026-10-05T05:02:04+00:00",
+        "sha256": "1e4800e681c43e0eac23202f5bc1b40647621fd8b86d558f67cbc4cb3be29973",
+        "url": "https://copernicus-dem-30m.s3.amazonaws.com/Copernicus_DSM_COG_10_S02_00_E119_00_DEM/Copernicus_DSM_COG_10_S02_00_E119_00_DEM.tif"
+      },
+      "Copernicus_DSM_COG_10_S02_00_E120_00_DEM": {
+        "bytes": 36702837,
+        "downloaded_at": "2026-10-05T05:02:12+00:00",
+        "sha256": "c69d184fa65f57b4d1a297388415521734edd138d74d2b3a1b27e53b5dec0d2e",
+        "url": "https://copernicus-dem-30m.s3.amazonaws.com/Copernicus_DSM_COG_10_S02_00_E120_00_DEM/Copernicus_DSM_COG_10_S02_00_E120_00_DEM.tif"
+      },
       "Copernicus_DSM_COG_10_S03_00_E109_00_DEM": {
         "bytes": 91574,
         "downloaded_at": "2026-10-05T02:25:07+00:00",
@@ -438,6 +450,24 @@
         "sha256": "0d987403eefa798f90209f40cf3264ce2f2eaca212fc094103c215ba4f684e1c",
         "url": "https://copernicus-dem-30m.s3.amazonaws.com/Copernicus_DSM_COG_10_S03_00_E117_00_DEM/Copernicus_DSM_COG_10_S03_00_E117_00_DEM.tif"
       },
+      "Copernicus_DSM_COG_10_S03_00_E119_00_DEM": {
+        "bytes": 42790134,
+        "downloaded_at": "2026-10-05T04:56:34+00:00",
+        "sha256": "9a483db7da85d8381bed7cf9d23eccef57c7e9f3c7b423b3042caecba028ead9",
+        "url": "https://copernicus-dem-30m.s3.amazonaws.com/Copernicus_DSM_COG_10_S03_00_E119_00_DEM/Copernicus_DSM_COG_10_S03_00_E119_00_DEM.tif"
+      },
+      "Copernicus_DSM_COG_10_S03_00_E120_00_DEM": {
+        "bytes": 36823081,
+        "downloaded_at": "2026-10-05T04:56:39+00:00",
+        "sha256": "f040d07c6b5b840c9cff5e2af8b174d23661dae9e7f3f20ee8aafed1054ee107",
+        "url": "https://copernicus-dem-30m.s3.amazonaws.com/Copernicus_DSM_COG_10_S03_00_E120_00_DEM/Copernicus_DSM_COG_10_S03_00_E120_00_DEM.tif"
+      },
+      "Copernicus_DSM_COG_10_S03_00_E121_00_DEM": {
+        "bytes": 37465816,
+        "downloaded_at": "2026-10-05T05:01:15+00:00",
+        "sha256": "c26e36637564a5aa6ecea1c9277487661072796dd531a29c7c2ed10cf8cd4e7d",
+        "url": "https://copernicus-dem-30m.s3.amazonaws.com/Copernicus_DSM_COG_10_S03_00_E121_00_DEM/Copernicus_DSM_COG_10_S03_00_E121_00_DEM.tif"
+      },
       "Copernicus_DSM_COG_10_S04_00_E110_00_DEM": {
         "bytes": 545636,
         "downloaded_at": "2026-10-05T02:19:03+00:00",
@@ -486,6 +516,24 @@
         "sha256": "e2e070204b1e5fe84335836994a620bb7c7fc53bb3071b72e3d9ee6a0bdd5baa",
         "url": "https://copernicus-dem-30m.s3.amazonaws.com/Copernicus_DSM_COG_10_S04_00_E117_00_DEM/Copernicus_DSM_COG_10_S04_00_E117_00_DEM.tif"
       },
+      "Copernicus_DSM_COG_10_S04_00_E119_00_DEM": {
+        "bytes": 35285427,
+        "downloaded_at": "2026-10-05T04:54:55+00:00",
+        "sha256": "be4a25934a8d94a7805e0e56a22391be603593a176226a40f3feacf2de84e806",
+        "url": "https://copernicus-dem-30m.s3.amazonaws.com/Copernicus_DSM_COG_10_S04_00_E119_00_DEM/Copernicus_DSM_COG_10_S04_00_E119_00_DEM.tif"
+      },
+      "Copernicus_DSM_COG_10_S04_00_E120_00_DEM": {
+        "bytes": 19704190,
+        "downloaded_at": "2026-10-05T04:55:15+00:00",
+        "sha256": "d165abfa6f613ca321781f0fd8b72c0353939bce4eb1ca82c09202b0dcd4962f",
+        "url": "https://copernicus-dem-30m.s3.amazonaws.com/Copernicus_DSM_COG_10_S04_00_E120_00_DEM/Copernicus_DSM_COG_10_S04_00_E120_00_DEM.tif"
+      },
+      "Copernicus_DSM_COG_10_S04_00_E121_00_DEM": {
+        "bytes": 43381669,
+        "downloaded_at": "2026-10-05T05:00:10+00:00",
+        "sha256": "662d9f7e5421a1215b2a47b83d3e359f689c1049923413dd4255f927db7ad7cf",
+        "url": "https://copernicus-dem-30m.s3.amazonaws.com/Copernicus_DSM_COG_10_S04_00_E121_00_DEM/Copernicus_DSM_COG_10_S04_00_E121_00_DEM.tif"
+      },
       "Copernicus_DSM_COG_10_S05_00_E114_00_DEM": {
         "bytes": 2333959,
         "downloaded_at": "2026-10-05T02:11:42+00:00",
@@ -503,6 +551,120 @@
         "downloaded_at": "2026-10-05T02:13:30+00:00",
         "sha256": "a08a5f1369cbfcbef1ae57b93d4ab74503cdefc9d70353e906d7ac3abea4f8dd",
         "url": "https://copernicus-dem-30m.s3.amazonaws.com/Copernicus_DSM_COG_10_S05_00_E116_00_DEM/Copernicus_DSM_COG_10_S05_00_E116_00_DEM.tif"
+      },
+      "Copernicus_DSM_COG_10_S05_00_E118_00_DEM": {
+        "bytes": 96834,
+        "downloaded_at": "2026-10-05T04:48:49+00:00",
+        "sha256": "673020b73e8907456db4353da61560f866cd59eaa5e4ffc8fdd10640016ed935",
+        "url": "https://copernicus-dem-30m.s3.amazonaws.com/Copernicus_DSM_COG_10_S05_00_E118_00_DEM/Copernicus_DSM_COG_10_S05_00_E118_00_DEM.tif"
+      },
+      "Copernicus_DSM_COG_10_S05_00_E119_00_DEM": {
+        "bytes": 21060425,
+        "downloaded_at": "2026-10-05T04:49:07+00:00",
+        "sha256": "c374d150ae4dcc68595008473746da78a8fc2259be8eca26211dbac00aa8bf1d",
+        "url": "https://copernicus-dem-30m.s3.amazonaws.com/Copernicus_DSM_COG_10_S05_00_E119_00_DEM/Copernicus_DSM_COG_10_S05_00_E119_00_DEM.tif"
+      },
+      "Copernicus_DSM_COG_10_S05_00_E120_00_DEM": {
+        "bytes": 18468044,
+        "downloaded_at": "2026-10-05T04:53:27+00:00",
+        "sha256": "b13acf22325a4e34222714b2ad0a6983b8dc882d123d30a86b4863da794bce04",
+        "url": "https://copernicus-dem-30m.s3.amazonaws.com/Copernicus_DSM_COG_10_S05_00_E120_00_DEM/Copernicus_DSM_COG_10_S05_00_E120_00_DEM.tif"
+      },
+      "Copernicus_DSM_COG_10_S06_00_E117_00_DEM": {
+        "bytes": 294280,
+        "downloaded_at": "2026-10-05T04:48:37+00:00",
+        "sha256": "51a689268fcf7b53a6864aba8e971804c3f3874dee1ff2ceb464d7e1bf3b89c7",
+        "url": "https://copernicus-dem-30m.s3.amazonaws.com/Copernicus_DSM_COG_10_S06_00_E117_00_DEM/Copernicus_DSM_COG_10_S06_00_E117_00_DEM.tif"
+      },
+      "Copernicus_DSM_COG_10_S06_00_E118_00_DEM": {
+        "bytes": 130928,
+        "downloaded_at": "2026-10-05T04:48:39+00:00",
+        "sha256": "58923d6a5758784f4fef0f282bbeb5b35408582fdb58397bce87118dc8acac41",
+        "url": "https://copernicus-dem-30m.s3.amazonaws.com/Copernicus_DSM_COG_10_S06_00_E118_00_DEM/Copernicus_DSM_COG_10_S06_00_E118_00_DEM.tif"
+      },
+      "Copernicus_DSM_COG_10_S06_00_E119_00_DEM": {
+        "bytes": 18712500,
+        "downloaded_at": "2026-10-05T04:48:44+00:00",
+        "sha256": "70ee82eb787725dee42cc3e0d5544befaa2ed2c338ef83f708728c824ea01c17",
+        "url": "https://copernicus-dem-30m.s3.amazonaws.com/Copernicus_DSM_COG_10_S06_00_E119_00_DEM/Copernicus_DSM_COG_10_S06_00_E119_00_DEM.tif"
+      },
+      "Copernicus_DSM_COG_10_S06_00_E120_00_DEM": {
+        "bytes": 11011400,
+        "downloaded_at": "2026-10-05T04:46:43+00:00",
+        "sha256": "5ef482e81d70c6b8c30acc71ac5014579e84c1fb32ab9cdd52a9559fad103ab0",
+        "url": "https://copernicus-dem-30m.s3.amazonaws.com/Copernicus_DSM_COG_10_S06_00_E120_00_DEM/Copernicus_DSM_COG_10_S06_00_E120_00_DEM.tif"
+      },
+      "Copernicus_DSM_COG_10_S06_00_E121_00_DEM": {
+        "bytes": 3132669,
+        "downloaded_at": "2026-10-05T04:47:01+00:00",
+        "sha256": "ec0c87cb15262355482654972f3058b2f06977752786e2f695695bff23dfeff7",
+        "url": "https://copernicus-dem-30m.s3.amazonaws.com/Copernicus_DSM_COG_10_S06_00_E121_00_DEM/Copernicus_DSM_COG_10_S06_00_E121_00_DEM.tif"
+      },
+      "Copernicus_DSM_COG_10_S06_00_E122_00_DEM": {
+        "bytes": 16488976,
+        "downloaded_at": "2026-10-05T04:47:18+00:00",
+        "sha256": "50ee0bdf77e6fe894b68cce61c96171680ad70178f56b6d21211695afadc89f8",
+        "url": "https://copernicus-dem-30m.s3.amazonaws.com/Copernicus_DSM_COG_10_S06_00_E122_00_DEM/Copernicus_DSM_COG_10_S06_00_E122_00_DEM.tif"
+      },
+      "Copernicus_DSM_COG_10_S07_00_E118_00_DEM": {
+        "bytes": 151783,
+        "downloaded_at": "2026-10-05T04:48:34+00:00",
+        "sha256": "36eabcddbfa17beb08f15e22e9ad80a94761797d2a380c33834feabfe9afb775",
+        "url": "https://copernicus-dem-30m.s3.amazonaws.com/Copernicus_DSM_COG_10_S07_00_E118_00_DEM/Copernicus_DSM_COG_10_S07_00_E118_00_DEM.tif"
+      },
+      "Copernicus_DSM_COG_10_S07_00_E119_00_DEM": {
+        "bytes": 170352,
+        "downloaded_at": "2026-10-05T04:48:35+00:00",
+        "sha256": "697ab74b8af6ad47921f8d45975b1fe596b262ea623c0fc7e431c651d2b37256",
+        "url": "https://copernicus-dem-30m.s3.amazonaws.com/Copernicus_DSM_COG_10_S07_00_E119_00_DEM/Copernicus_DSM_COG_10_S07_00_E119_00_DEM.tif"
+      },
+      "Copernicus_DSM_COG_10_S07_00_E120_00_DEM": {
+        "bytes": 2366568,
+        "downloaded_at": "2026-10-05T04:46:36+00:00",
+        "sha256": "7e220f765776c726a2781fce81731c798312ff90865c9d326fd2a52f7f734f4d",
+        "url": "https://copernicus-dem-30m.s3.amazonaws.com/Copernicus_DSM_COG_10_S07_00_E120_00_DEM/Copernicus_DSM_COG_10_S07_00_E120_00_DEM.tif"
+      },
+      "Copernicus_DSM_COG_10_S07_00_E121_00_DEM": {
+        "bytes": 106977,
+        "downloaded_at": "2026-10-05T04:46:37+00:00",
+        "sha256": "f728822ff1bef00dc19800bf47f996b30bad2a7d60c66f4700e9b0854af3a461",
+        "url": "https://copernicus-dem-30m.s3.amazonaws.com/Copernicus_DSM_COG_10_S07_00_E121_00_DEM/Copernicus_DSM_COG_10_S07_00_E121_00_DEM.tif"
+      },
+      "Copernicus_DSM_COG_10_S07_00_E122_00_DEM": {
+        "bytes": 142970,
+        "downloaded_at": "2026-10-05T04:46:39+00:00",
+        "sha256": "188e31dfed65124e64398604473c3b4064734d228b70e4eb9f20441620f62979",
+        "url": "https://copernicus-dem-30m.s3.amazonaws.com/Copernicus_DSM_COG_10_S07_00_E122_00_DEM/Copernicus_DSM_COG_10_S07_00_E122_00_DEM.tif"
+      },
+      "Copernicus_DSM_COG_10_S08_00_E117_00_DEM": {
+        "bytes": 237977,
+        "downloaded_at": "2026-10-05T04:48:28+00:00",
+        "sha256": "05e3b814ea21f15703af004244b78418dddcbd93eb023b4e0a70c989ed5d4f9f",
+        "url": "https://copernicus-dem-30m.s3.amazonaws.com/Copernicus_DSM_COG_10_S08_00_E117_00_DEM/Copernicus_DSM_COG_10_S08_00_E117_00_DEM.tif"
+      },
+      "Copernicus_DSM_COG_10_S08_00_E118_00_DEM": {
+        "bytes": 145872,
+        "downloaded_at": "2026-10-05T04:48:32+00:00",
+        "sha256": "bae366eb985bc44aec7c6e6f2bb06177df17d84d7f23edd7261b77051e60a08e",
+        "url": "https://copernicus-dem-30m.s3.amazonaws.com/Copernicus_DSM_COG_10_S08_00_E118_00_DEM/Copernicus_DSM_COG_10_S08_00_E118_00_DEM.tif"
+      },
+      "Copernicus_DSM_COG_10_S08_00_E120_00_DEM": {
+        "bytes": 1271060,
+        "downloaded_at": "2026-10-05T04:46:29+00:00",
+        "sha256": "9b3b46126d6bf4c9977d684342841e60ab8b8e00ebff702f74f65b48648d6897",
+        "url": "https://copernicus-dem-30m.s3.amazonaws.com/Copernicus_DSM_COG_10_S08_00_E120_00_DEM/Copernicus_DSM_COG_10_S08_00_E120_00_DEM.tif"
+      },
+      "Copernicus_DSM_COG_10_S08_00_E121_00_DEM": {
+        "bytes": 980814,
+        "downloaded_at": "2026-10-05T04:46:32+00:00",
+        "sha256": "b7de092596075e2b190a2cfc9c58f6a936ac2e164b90eecddb65a62dded268c4",
+        "url": "https://copernicus-dem-30m.s3.amazonaws.com/Copernicus_DSM_COG_10_S08_00_E121_00_DEM/Copernicus_DSM_COG_10_S08_00_E121_00_DEM.tif"
+      },
+      "Copernicus_DSM_COG_10_S08_00_E122_00_DEM": {
+        "bytes": 95148,
+        "downloaded_at": "2026-10-05T04:46:33+00:00",
+        "sha256": "8183836b3cdf5edbd4c0cfc872ab806507701ce5fafe39c8e5dbd8cce086d9bf",
+        "url": "https://copernicus-dem-30m.s3.amazonaws.com/Copernicus_DSM_COG_10_S08_00_E122_00_DEM/Copernicus_DSM_COG_10_S08_00_E122_00_DEM.tif"
       },
       "tileList.txt": {
         "bytes": 1110900,
@@ -572,6 +734,12 @@
         "sha256": "9a7544a5689114a6e1b26b80f0773a6a21c39d08749030ca9ffd4f8d361b755e",
         "url": "https://esa-worldcover.s3.eu-central-1.amazonaws.com/v200/2021/map/ESA_WorldCover_10m_2021_v200_S03E117_Map.tif"
       },
+      "S03E120": {
+        "bytes": 22057394,
+        "downloaded_at": "2026-10-05T04:56:17+00:00",
+        "sha256": "38ec2102fe83e7d7f5013a0f38047ba8f6711098b93d2c67445e874310bb1228",
+        "url": "https://esa-worldcover.s3.eu-central-1.amazonaws.com/v200/2021/map/ESA_WorldCover_10m_2021_v200_S03E120_Map.tif"
+      },
       "S06E108": {
         "bytes": 3065068,
         "downloaded_at": "2026-10-05T02:14:41+00:00",
@@ -595,6 +763,24 @@
         "downloaded_at": "2026-10-05T02:12:39+00:00",
         "sha256": "94f97e442bfb63d1bcc293208da00386bff63674d774d492519fd483d3a44385",
         "url": "https://esa-worldcover.s3.eu-central-1.amazonaws.com/v200/2021/map/ESA_WorldCover_10m_2021_v200_S06E117_Map.tif"
+      },
+      "S06E120": {
+        "bytes": 29162800,
+        "downloaded_at": "2026-10-05T04:46:00+00:00",
+        "sha256": "3327cb3f11d4e2fe0e0353c13c51d5e6b09dd46be34cbacb40c90f8fa895e7b0",
+        "url": "https://esa-worldcover.s3.eu-central-1.amazonaws.com/v200/2021/map/ESA_WorldCover_10m_2021_v200_S06E120_Map.tif"
+      },
+      "S09E117": {
+        "bytes": 13750255,
+        "downloaded_at": "2026-10-05T04:47:37+00:00",
+        "sha256": "36fea99abd0e16926460952234ef910be66999ce709b3839b4a02785a3c576f5",
+        "url": "https://esa-worldcover.s3.eu-central-1.amazonaws.com/v200/2021/map/ESA_WorldCover_10m_2021_v200_S09E117_Map.tif"
+      },
+      "S09E120": {
+        "bytes": 10684365,
+        "downloaded_at": "2026-10-05T04:45:54+00:00",
+        "sha256": "49c7fcf7a8a31d7ba62bc706ae8665b3a1f4e6b2350566b8943de24dab67c0df",
+        "url": "https://esa-worldcover.s3.eu-central-1.amazonaws.com/v200/2021/map/ESA_WorldCover_10m_2021_v200_S09E120_Map.tif"
       },
       "esa_worldcover_grid.geojson": {
         "bytes": 543674,
