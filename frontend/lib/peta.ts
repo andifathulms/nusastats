@@ -14,10 +14,13 @@ export type PetaBounds = {
   layers: Partial<Record<"hillshade" | "elevation" | "landcover", string>>;
 };
 
+export type PetaProvinsi = { kode: string; name: string };
+
 export type PetaTerrain = {
   kode: string;
   name: string;
   level: string;
+  provinsi: PetaProvinsi;
   area_km2: number;
   elevation_m: { min: number; max: number; mean: number; median: number; p5: number; p95: number };
   relief_m: number;
@@ -25,6 +28,7 @@ export type PetaTerrain = {
   elevation_bands_pct: Record<string, number>;
   slope_deg: { mean: number };
   slope_classes_pct: Record<string, number>;
+  metrics_pct: Record<"share_elev_ge_1000" | "share_elev_ge_200" | "share_elev_lt_100" | "share_slope_ge_25" | "share_slope_ge_8" | "share_slope_lt_8", number>;
   terrain_class: string;
   terrain_class_label: string;
   terrain_class_reason: string;
@@ -43,6 +47,8 @@ export type PetaLandcoverClass = {
 
 export type PetaLandcover = {
   kode: string;
+  name: string;
+  provinsi: PetaProvinsi;
   year: number;
   area_km2: number;
   dominant: { code: number; label: string; share_pct: number };
