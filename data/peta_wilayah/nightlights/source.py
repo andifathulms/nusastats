@@ -31,15 +31,20 @@ GDAL_ENV = {"GDAL_DISABLE_READDIR_ON_OPEN": "EMPTY_DIR", "CPL_VSIL_CURL_ALLOWED_
 TRIES = 4
 
 
+LIST_TRIES = 7  # backoff 2, 4, 8, 16, 32, 60 s: rides out a ~2 minute network/DNS outage
+
+
 def _get(url: str) -> str:
     last = None
-    for i in range(TRIES):
+    for i in range(LIST_TRIES):
         try:
             with urllib.request.urlopen(urllib.request.Request(url, headers=UA), timeout=120) as r:
                 return r.read().decode()
         except Exception as e:  # noqa: BLE001
             last = e
-            time.sleep(2 ** i)
+            wait = min(60, 2 ** (i + 1))
+            sys.stderr.write(f"  listing retry {i + 1}/{LIST_TRIES} in {wait}s: {e}\n")
+            time.sleep(wait)
     raise RuntimeError(f"listing failed: {url}: {last}")
 
 
