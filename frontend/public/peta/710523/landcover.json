@@ -1,0 +1,92 @@
+{
+  "kode": "710523",
+  "name": "SULUUN TARERAN",
+  "level": "kecamatan",
+  "provinsi": {
+    "kode": "71",
+    "name": "SULAWESI UTARA"
+  },
+  "year": 2021,
+  "area_km2": 40.5,
+  "dominant": {
+    "code": 10,
+    "label": "Tutupan pohon",
+    "share_pct": 98.14
+  },
+  "classes": [
+    {
+      "code": 10,
+      "name": "Tree cover",
+      "label": "Tutupan pohon",
+      "color": "#006400",
+      "pixels": 397862,
+      "share_pct": 98.14,
+      "area_km2": 39.78
+    },
+    {
+      "code": 50,
+      "name": "Built-up",
+      "label": "Lahan terbangun",
+      "color": "#fa0000",
+      "pixels": 6653,
+      "share_pct": 1.64,
+      "area_km2": 0.67
+    },
+    {
+      "code": 30,
+      "name": "Grassland",
+      "label": "Padang rumput",
+      "color": "#ffff4c",
+      "pixels": 881,
+      "share_pct": 0.22,
+      "area_km2": 0.09
+    },
+    {
+      "code": 60,
+      "name": "Bare / sparse vegetation",
+      "label": "Lahan terbuka",
+      "color": "#b4b4b4",
+      "pixels": 19,
+      "share_pct": 0.0,
+      "area_km2": 0.0
+    }
+  ],
+  "checks": {
+    "share_sum_pct": 100.0,
+    "area_geodesic_km2": 40.54,
+    "area_utm_polygon_km2": 40.54,
+    "area_utm_pixels_km2": 40.54,
+    "utm_vs_geodesic_pct": 0.008,
+    "pixels_vs_utm_pct": -0.004,
+    "nodata_pct": 0.0,
+    "polygon_pixels_utm": 405415,
+    "render_palette_colours": 4,
+    "render_palette_exact": true
+  },
+  "metadata": {
+    "dataset": "ESA WorldCover 10 m 2021 v200",
+    "version": "v200",
+    "year": 2021,
+    "license": "CC BY 4.0 (Creative Commons Attribution 4.0 International)",
+    "attribution": "© ESA WorldCover project 2021 / Contains modified Copernicus Sentinel data (2021) processed by ESA WorldCover consortium",
+    "product_version_tag": "V2.0.0",
+    "tiles": {
+      "N00E123": "0982e11b5e06c3b9e1f5dd65a6cf83a156790e3809ab2705fb7d63bda65e7b0f"
+    },
+    "tiles_absent": [],
+    "boundary": {
+      "source": "data/big_boundaries/big-villages-71.geojson",
+      "sha256": "8c2851b868c18c0d206f8c80540b729c88e5c6f33a32ba88f10fd755c8e09252",
+      "method": "shapely.union_all(grid_size=1e-8) per code prefix; no simplify, no island/hole dropping (data/big_boundaries/dissolve.py:dissolve)"
+    },
+    "crs_stats": "EPSG:32651",
+    "pixel_size_m": 10.0,
+    "resampling_to_utm": "nearest",
+    "shares_from": "10 m UTM pixels (EPSG:32651) whose centre lies inside the polygon; shares are of classified pixels",
+    "area_km2_method": "share × geodesic polygon area (WGS84 ellipsoid)",
+    "display_resampling": "mode",
+    "caveat": "Kelas 10 'Tutupan pohon' mencakup perkebunan (sawit, akasia); jangan sebut 'hutan'.",
+    "config_sha256": "cf0713550fb2fc58b2fae33bf270d90afc44a31c24d2d51990d7ca6d1811c0a5",
+    "computed_at": "2026-10-06T03:04:09+00:00"
+  }
+}
