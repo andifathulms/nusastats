@@ -36,7 +36,7 @@ Sources: [Tirto (Klabat)](https://tirto.id/6-wisata-alam-di-minahasa-gunung-klab
 
 ## Findings
 
-- All 14 kabupaten and three of the four cities are *Perbukitan*; Kota Manado is *Dataran rendah*. Among kecamatan:
+- All 11 kabupaten and three of the four cities are *Perbukitan*; Kota Manado is *Dataran rendah*. Among kecamatan:
   139 Perbukitan, 12 Dataran rendah, 11 Pegunungan, 9 Campuran.
 - **Kep. Siau Tagulandang Biaro is 55,3% *bergunung*** by local relief (volcanic islands rising from the sea).
   Bolaang Mongondow Selatan is 44,3%.
