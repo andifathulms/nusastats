@@ -73,9 +73,19 @@ def keys(prefix: str):
 
 
 def _head(url: str) -> dict:
-    req = urllib.request.Request(url, method="HEAD", headers=UA)
-    with urllib.request.urlopen(req, timeout=60) as r:
-        return {"etag": r.headers.get("ETag", "").strip('"'), "last_modified": r.headers.get("Last-Modified", "")}
+    last = None
+    for i in range(LIST_TRIES):  # same patience as listings: resets/disconnects happen
+        try:
+            req = urllib.request.Request(url, method="HEAD", headers=UA)
+            with urllib.request.urlopen(req, timeout=60) as r:
+                return {"etag": r.headers.get("ETag", "").strip('"'),
+                        "last_modified": r.headers.get("Last-Modified", "")}
+        except Exception as e:  # noqa: BLE001
+            last = e
+            wait = min(60, 2 ** (i + 1))
+            sys.stderr.write(f"  HEAD retry {i + 1}/{LIST_TRIES} in {wait}s: {e}\n")
+            time.sleep(wait)
+    raise RuntimeError(f"HEAD failed: {url}: {last}")
 
 
 def read_window(key: str, bounds, record_key: str, data: dict):
