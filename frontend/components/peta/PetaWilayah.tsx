@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { ChoroplethMap, type MapLayer } from "@/components/ChoroplethMap";
 import { Badge, EmptyState, ErrorState, Panel, SectionTitle, Skeleton, SkeletonRows } from "@/components/ui";
 import { formatDecimal, formatNumber, petaApi, titleCase, type PetaRegionRanks } from "@/lib/api";
-import { loadPeta, petaAsset, type Peta, type PetaLandcover, type PetaNightlights, type PetaTerrain } from "@/lib/peta";
+import { litGrowth, loadPeta, MIN_BASE_LIT_KM2, petaAsset, type Peta, type PetaLandcover, type PetaNightlights, type PetaTerrain } from "@/lib/peta";
 import { routes } from "@/lib/routes";
 
 type Layer = "batas" | "elevasi" | "rendah" | "relief" | "tutupan" | "malam";
@@ -489,7 +489,8 @@ function NightlightsPanel({ nl, ranks }: { nl: PetaNightlights; ranks: Ranks }) 
   const maxPct = Math.max(...years.map((y) => nl.years[y].lit_pct), 0.1);
   const base = nl.years[String(nl.base_year)];
   const last = nl.years[String(nl.latest_year)];
-  const x = nl.growth.lit_km2_x;
+  const x = litGrowth(nl);
+  const smallBase = !!base && base.lit_km2 < MIN_BASE_LIT_KM2;
   return (
     <Panel>
       <h3 className="text-[11px] font-bold uppercase tracking-[0.08em] text-ink-muted">Cahaya malam</h3>
@@ -498,7 +499,8 @@ function NightlightsPanel({ nl, ranks }: { nl: PetaNightlights; ranks: Ranks }) 
         {base && (
           <>
             {" "}(dari {pct(base.lit_pct)} pada {nl.base_year}
-            {x && x !== 1 ? <>, luas bercahaya ×{formatDecimal(x, 1)}</> : null})
+            {x && x !== 1 ? <>, luas bercahaya ×{formatDecimal(x, 1)}</> : null}
+            {smallBase ? <>, dari luas bercahaya &lt;{formatNumber(MIN_BASE_LIT_KM2)} km²</> : null})
           </>
         )}
         .

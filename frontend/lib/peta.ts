@@ -109,6 +109,17 @@ export type Peta = {
 
 export const petaAsset = (kode: string, file: string) => `/peta/${kode}/${file}`;
 
+// A growth ratio over an almost-dark base (e.g. 0,08 → 5 km², "×55") is real light
+// but a misleading headline. Below this base lit area, show "dari <1 km²" instead.
+export const MIN_BASE_LIT_KM2 = 1;
+
+/** Lit-area growth multiplier, or null when there is no fair base to divide by. */
+export function litGrowth(nl: PetaNightlights): number | null {
+  const base = nl.years[String(nl.base_year)];
+  if (!base || nl.growth.lit_km2_x === null || base.lit_km2 < MIN_BASE_LIT_KM2) return null;
+  return nl.growth.lit_km2_x;
+}
+
 async function optionalJson<T>(url: string): Promise<T | null> {
   const r = await fetch(url);
   if (r.status === 404) return null;

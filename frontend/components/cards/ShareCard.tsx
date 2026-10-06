@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { formatNumber, regionLabel, titleCase } from "@/lib/api";
-import { loadPeta, petaAsset, type Peta } from "@/lib/peta";
+import { litGrowth, loadPeta, MIN_BASE_LIT_KM2, petaAsset, type Peta } from "@/lib/peta";
 
 /**
  * 1080×1920 share card (docs/FEATURE-peta-wilayah.md §6.2), rendered for the PNG
@@ -331,7 +331,7 @@ function NightlightsFacts({ peta }: { peta: Peta }) {
   const base = nl.years[String(nl.base_year)];
   const last = nl.years[String(nl.latest_year)];
   const max = Math.max(...years.map((y) => nl.years[y].lit_pct), 0.1);
-  const x = nl.growth.lit_km2_x;
+  const x = litGrowth(nl);
   return (
     <div className="mt-6 shrink-0">
       <div className="flex h-[86px] items-end gap-3">
@@ -345,7 +345,11 @@ function NightlightsFacts({ peta }: { peta: Peta }) {
       <div className="mt-6 grid grid-cols-3 gap-6">
         <Fact value={pctInt(base.lit_pct)} label={`bercahaya ${nl.base_year}`} />
         <Fact value={pctInt(last.lit_pct)} label={`bercahaya ${nl.latest_year}`} />
-        <Fact value={x ? `×${formatNumber(Math.round(x * 10) / 10)}` : "–"} label="luas bercahaya" />
+        {x ? (
+          <Fact value={`×${formatNumber(Math.round(x * 10) / 10)}`} label="luas bercahaya" />
+        ) : (
+          <Fact value={`${formatNumber(Math.round(last.lit_km2))} km²`} label={`bercahaya ${nl.latest_year} (dari <${MIN_BASE_LIT_KM2} km²)`} />
+        )}
       </div>
       <p className="mt-6 text-[20px] text-coal-muted">Cahaya malam menunjukkan permukiman dan aktivitas, bukan jumlah penduduk.</p>
       <Footer source={`World Bank Light Every Night, VIIRS ${nl.base_year}–${nl.latest_year} (CC BY 4.0)`} />
