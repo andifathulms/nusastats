@@ -1,0 +1,159 @@
+{
+  "kode": "750301",
+  "name": "TAPA",
+  "level": "kecamatan",
+  "provinsi": {
+    "kode": "75",
+    "name": "GORONTALO"
+  },
+  "area_km2": 13.4,
+  "elevation_m": {
+    "min": 12.5,
+    "max": 450.0,
+    "mean": 139.8,
+    "median": 108.1,
+    "p5": 23.9,
+    "p95": 347.4
+  },
+  "relief_m": 323.4,
+  "highest_point": {
+    "elevation_m": 450.0,
+    "lon": 123.12306,
+    "lat": 0.63306
+  },
+  "elevation_bands_pct": {
+    "<100": 47.56,
+    "100-500": 52.44,
+    "500-1000": 0.0,
+    "1000-2000": 0.0,
+    ">=2000": 0.0
+  },
+  "slope_deg": {
+    "mean": 15.84
+  },
+  "slope_classes_pct": {
+    "<8": 30.97,
+    "8-25": 45.22,
+    ">=25": 23.81
+  },
+  "metrics_pct": {
+    "share_elev_ge_1000": 0.0,
+    "share_elev_ge_200": 27.48,
+    "share_elev_lt_100": 47.56,
+    "share_slope_ge_25": 23.81,
+    "share_slope_ge_8": 69.03,
+    "share_slope_lt_8": 30.97
+  },
+  "lowland_pct": {
+    "lt_5": 0.0,
+    "lt_10": 0.0
+  },
+  "local_relief": {
+    "window_m": 1000,
+    "mean_m": 189.1,
+    "classes_pct": {
+      "datar": 5.07,
+      "bergelombang": 15.61,
+      "berbukit": 71.01,
+      "bergunung": 8.31
+    },
+    "breaks_m": [
+      30,
+      100,
+      300
+    ]
+  },
+  "terrain_class": "perbukitan",
+  "terrain_class_label": "Perbukitan",
+  "terrain_class_reason": "Perbukitan: 69,0% area lereng ≥8°",
+  "classification": {
+    "official": false,
+    "note": "Klasifikasi NusaStats (aturan di config/terrain_rules.yaml), bukan klasifikasi resmi.",
+    "rules_sha256": "46978aef2bbd47b075cb7feebba2e50524c63ce4f39271053ce4d2aaaf8fb479"
+  },
+  "checks": {
+    "area_geodesic_km2": 13.45,
+    "area_utm_polygon_km2": 13.43,
+    "area_utm_pixels_km2": 13.43,
+    "utm_vs_geodesic_pct": -0.08,
+    "pixels_vs_utm_pct": -0.022,
+    "nodata_pct": 0.0,
+    "polygon_pixels_utm": 14924
+  },
+  "metadata": {
+    "dataset": "Copernicus DEM GLO-30 Public",
+    "dataset_type": "DSM (surface model: includes canopy and buildings)",
+    "vertical_datum": "EGM2008 geoid (EPSG:3855), metres",
+    "year": 2015,
+    "attribution": "produced using Copernicus WorldDEM-30 © DLR e.V. 2010-2014 and © Airbus Defence and Space GmbH 2014-2018 provided under COPERNICUS by the European Union and ESA; all rights reserved",
+    "tile_version_tag": null,
+    "tiles": {
+      "Copernicus_DSM_COG_10_N00_00_E123_00_DEM": "b8c15a636556ec9c68d9f428b375b18443ad6abdab917c2b933ba3539915854c"
+    },
+    "ocean_tiles_absent": [],
+    "boundary": {
+      "source": "data/big_boundaries/big-villages-75.geojson",
+      "sha256": "7cd86fa491602582f756be9bf3f39126ad4cb70a455c6e5f004270fbafcd73b5",
+      "method": "shapely.union_all(grid_size=1e-8) per code prefix; no simplify, no island/hole dropping (data/big_boundaries/dissolve.py:dissolve)"
+    },
+    "crs_stats": "EPSG:32651",
+    "pixel_size_m": 30.0,
+    "resampling_to_utm": "bilinear",
+    "min_max_from": "native DEM pixels (EPSG:4326, 1 arc-second) inside the polygon",
+    "shares_from": "30 m UTM pixels (EPSG:32651) whose centre lies inside the polygon",
+    "slope_method": "Horn 3x3 on the UTM grid",
+    "hillshade": {
+      "azimuth_deg": 315,
+      "altitude_deg": 45,
+      "z_factor": 1.0
+    },
+    "tint": [
+      [
+        0,
+        "#4f8f4a"
+      ],
+      [
+        100,
+        "#8fb36a"
+      ],
+      [
+        300,
+        "#cfd28c"
+      ],
+      [
+        500,
+        "#e3cf98"
+      ],
+      [
+        1000,
+        "#c8a06a"
+      ],
+      [
+        2000,
+        "#9a6a43"
+      ],
+      [
+        3000,
+        "#7b5a4a"
+      ],
+      [
+        4000,
+        "#ffffff"
+      ]
+    ],
+    "lowland_colors": [
+      "#1d4f91",
+      "#6fa8dc"
+    ],
+    "relief_colors": [
+      "#eef0dc",
+      "#c9d7a0",
+      "#c99a5b",
+      "#7a4b2e"
+    ],
+    "lowland_note": "Batas bawah: model permukaan (tajuk pohon, bangunan) terbaca lebih tinggi dari tanah.",
+    "local_relief_method": "max - min elevation in a 33x33 px (990 m) window on the UTM grid; NusaStats classes, shown alongside (not replacing) the terrain class",
+    "config_sha256": "bc1b902c8fa23d79936518aa2cb1fa9a1a01e3fba4c13ac3c5ce884e190c482d",
+    "computed_at": "2026-10-06T02:23:08+00:00"
+  }
+}

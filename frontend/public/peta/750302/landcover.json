@@ -1,0 +1,110 @@
+{
+  "kode": "750302",
+  "name": "KABILA",
+  "level": "kecamatan",
+  "provinsi": {
+    "kode": "75",
+    "name": "GORONTALO"
+  },
+  "year": 2021,
+  "area_km2": 12.8,
+  "dominant": {
+    "code": 40,
+    "label": "Lahan pertanian",
+    "share_pct": 44.5
+  },
+  "classes": [
+    {
+      "code": 40,
+      "name": "Cropland",
+      "label": "Lahan pertanian",
+      "color": "#f096ff",
+      "pixels": 56970,
+      "share_pct": 44.5,
+      "area_km2": 5.7
+    },
+    {
+      "code": 10,
+      "name": "Tree cover",
+      "label": "Tutupan pohon",
+      "color": "#006400",
+      "pixels": 28572,
+      "share_pct": 22.32,
+      "area_km2": 2.86
+    },
+    {
+      "code": 50,
+      "name": "Built-up",
+      "label": "Lahan terbangun",
+      "color": "#fa0000",
+      "pixels": 27749,
+      "share_pct": 21.67,
+      "area_km2": 2.78
+    },
+    {
+      "code": 30,
+      "name": "Grassland",
+      "label": "Padang rumput",
+      "color": "#ffff4c",
+      "pixels": 9514,
+      "share_pct": 7.43,
+      "area_km2": 0.95
+    },
+    {
+      "code": 80,
+      "name": "Permanent water bodies",
+      "label": "Badan air",
+      "color": "#0064c8",
+      "pixels": 3096,
+      "share_pct": 2.42,
+      "area_km2": 0.31
+    },
+    {
+      "code": 60,
+      "name": "Bare / sparse vegetation",
+      "label": "Lahan terbuka",
+      "color": "#b4b4b4",
+      "pixels": 2129,
+      "share_pct": 1.66,
+      "area_km2": 0.21
+    }
+  ],
+  "checks": {
+    "share_sum_pct": 100.0,
+    "area_geodesic_km2": 12.81,
+    "area_utm_polygon_km2": 12.8,
+    "area_utm_pixels_km2": 12.8,
+    "utm_vs_geodesic_pct": -0.08,
+    "pixels_vs_utm_pct": 0.011,
+    "nodata_pct": 0.0,
+    "polygon_pixels_utm": 128030,
+    "render_palette_colours": 6,
+    "render_palette_exact": true
+  },
+  "metadata": {
+    "dataset": "ESA WorldCover 10 m 2021 v200",
+    "version": "v200",
+    "year": 2021,
+    "license": "CC BY 4.0 (Creative Commons Attribution 4.0 International)",
+    "attribution": "© ESA WorldCover project 2021 / Contains modified Copernicus Sentinel data (2021) processed by ESA WorldCover consortium",
+    "product_version_tag": "V2.0.0",
+    "tiles": {
+      "N00E123": "0982e11b5e06c3b9e1f5dd65a6cf83a156790e3809ab2705fb7d63bda65e7b0f"
+    },
+    "tiles_absent": [],
+    "boundary": {
+      "source": "data/big_boundaries/big-villages-75.geojson",
+      "sha256": "7cd86fa491602582f756be9bf3f39126ad4cb70a455c6e5f004270fbafcd73b5",
+      "method": "shapely.union_all(grid_size=1e-8) per code prefix; no simplify, no island/hole dropping (data/big_boundaries/dissolve.py:dissolve)"
+    },
+    "crs_stats": "EPSG:32651",
+    "pixel_size_m": 10.0,
+    "resampling_to_utm": "nearest",
+    "shares_from": "10 m UTM pixels (EPSG:32651) whose centre lies inside the polygon; shares are of classified pixels",
+    "area_km2_method": "share × geodesic polygon area (WGS84 ellipsoid)",
+    "display_resampling": "mode",
+    "caveat": "Kelas 10 'Tutupan pohon' mencakup perkebunan (sawit, akasia); jangan sebut 'hutan'.",
+    "config_sha256": "cf0713550fb2fc58b2fae33bf270d90afc44a31c24d2d51990d7ca6d1811c0a5",
+    "computed_at": "2026-10-06T02:23:09+00:00"
+  }
+}
