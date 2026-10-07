@@ -1,0 +1,128 @@
+{
+  "kode": "517101",
+  "name": "DENPASAR SELATAN",
+  "level": "kecamatan",
+  "provinsi": {
+    "kode": "51",
+    "name": "BALI"
+  },
+  "year": 2021,
+  "area_km2": 49.4,
+  "dominant": {
+    "code": 50,
+    "label": "Lahan terbangun",
+    "share_pct": 51.3
+  },
+  "classes": [
+    {
+      "code": 50,
+      "name": "Built-up",
+      "label": "Lahan terbangun",
+      "color": "#fa0000",
+      "pixels": 253672,
+      "share_pct": 51.3,
+      "area_km2": 25.36
+    },
+    {
+      "code": 10,
+      "name": "Tree cover",
+      "label": "Tutupan pohon",
+      "color": "#006400",
+      "pixels": 64504,
+      "share_pct": 13.04,
+      "area_km2": 6.45
+    },
+    {
+      "code": 30,
+      "name": "Grassland",
+      "label": "Padang rumput",
+      "color": "#ffff4c",
+      "pixels": 53344,
+      "share_pct": 10.79,
+      "area_km2": 5.33
+    },
+    {
+      "code": 95,
+      "name": "Mangroves",
+      "label": "Mangrove",
+      "color": "#00cf75",
+      "pixels": 52456,
+      "share_pct": 10.61,
+      "area_km2": 5.24
+    },
+    {
+      "code": 40,
+      "name": "Cropland",
+      "label": "Lahan pertanian",
+      "color": "#f096ff",
+      "pixels": 37028,
+      "share_pct": 7.49,
+      "area_km2": 3.7
+    },
+    {
+      "code": 80,
+      "name": "Permanent water bodies",
+      "label": "Badan air",
+      "color": "#0064c8",
+      "pixels": 20824,
+      "share_pct": 4.21,
+      "area_km2": 2.08
+    },
+    {
+      "code": 60,
+      "name": "Bare / sparse vegetation",
+      "label": "Lahan terbuka",
+      "color": "#b4b4b4",
+      "pixels": 9742,
+      "share_pct": 1.97,
+      "area_km2": 0.97
+    },
+    {
+      "code": 90,
+      "name": "Herbaceous wetland",
+      "label": "Lahan basah",
+      "color": "#0096a0",
+      "pixels": 2909,
+      "share_pct": 0.59,
+      "area_km2": 0.29
+    }
+  ],
+  "checks": {
+    "share_sum_pct": 100.0,
+    "area_geodesic_km2": 49.44,
+    "area_utm_polygon_km2": 49.45,
+    "area_utm_pixels_km2": 49.45,
+    "utm_vs_geodesic_pct": 0.014,
+    "pixels_vs_utm_pct": 0.005,
+    "nodata_pct": 0.0,
+    "polygon_pixels_utm": 494479,
+    "render_palette_colours": 8,
+    "render_palette_exact": true
+  },
+  "metadata": {
+    "dataset": "ESA WorldCover 10 m 2021 v200",
+    "version": "v200",
+    "year": 2021,
+    "license": "CC BY 4.0 (Creative Commons Attribution 4.0 International)",
+    "attribution": "© ESA WorldCover project 2021 / Contains modified Copernicus Sentinel data (2021) processed by ESA WorldCover consortium",
+    "product_version_tag": "V2.0.0",
+    "tiles": {
+      "S09E114": "4e13cbbf0ddbd0d71598d75e10c48a84de7e6c244e888026310eb7dbf7c262c8"
+    },
+    "tiles_absent": [],
+    "boundary": {
+      "source": "data/big_boundaries/big-villages-51.geojson",
+      "sha256": "5424adbe15bcb30742e99ac1b9ee5289712e68dceb6f8a0b6b49af47439c994c",
+      "method": "shapely.union_all(grid_size=1e-8) per code prefix; no simplify, no island/hole dropping (data/big_boundaries/dissolve.py:dissolve)"
+    },
+    "crs_stats": "EPSG:32750",
+    "pixel_size_m": 10.0,
+    "resampling_to_utm": "nearest",
+    "shares_from": "10 m UTM pixels (EPSG:32750) whose centre lies inside the polygon; shares are of classified pixels",
+    "area_km2_method": "share × geodesic polygon area (WGS84 ellipsoid)",
+    "display_resampling": "mode",
+    "caveat": "Kelas 10 'Tutupan pohon' mencakup perkebunan (sawit, akasia); jangan sebut 'hutan'.",
+    "config_sha256": "cf0713550fb2fc58b2fae33bf270d90afc44a31c24d2d51990d7ca6d1811c0a5",
+    "computed_at": "2026-10-07T03:59:07+00:00"
+  }
+}
