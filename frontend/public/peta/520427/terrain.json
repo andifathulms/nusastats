@@ -1,0 +1,159 @@
+{
+  "kode": "520427",
+  "name": "LENANGGUAR",
+  "level": "kecamatan",
+  "provinsi": {
+    "kode": "52",
+    "name": "NUSA TENGGARA BARAT"
+  },
+  "area_km2": 322.0,
+  "elevation_m": {
+    "min": 122.1,
+    "max": 1003.4,
+    "mean": 443.6,
+    "median": 426.5,
+    "p5": 204.3,
+    "p95": 737.3
+  },
+  "relief_m": 533.0,
+  "highest_point": {
+    "elevation_m": 1003.4,
+    "lon": 117.39528,
+    "lat": -8.90417
+  },
+  "elevation_bands_pct": {
+    "<100": 0.0,
+    "100-500": 63.88,
+    "500-1000": 36.12,
+    "1000-2000": 0.0,
+    ">=2000": 0.0
+  },
+  "slope_deg": {
+    "mean": 14.91
+  },
+  "slope_classes_pct": {
+    "<8": 23.74,
+    "8-25": 62.59,
+    ">=25": 13.67
+  },
+  "metrics_pct": {
+    "share_elev_ge_1000": 0.0,
+    "share_elev_ge_200": 95.71,
+    "share_elev_lt_100": 0.0,
+    "share_slope_ge_25": 13.67,
+    "share_slope_ge_8": 76.26,
+    "share_slope_lt_8": 23.74
+  },
+  "lowland_pct": {
+    "lt_5": 0.0,
+    "lt_10": 0.0
+  },
+  "local_relief": {
+    "window_m": 1000,
+    "mean_m": 211.8,
+    "classes_pct": {
+      "datar": 0.0,
+      "bergelombang": 4.42,
+      "berbukit": 82.24,
+      "bergunung": 13.34
+    },
+    "breaks_m": [
+      30,
+      100,
+      300
+    ]
+  },
+  "terrain_class": "perbukitan",
+  "terrain_class_label": "Perbukitan",
+  "terrain_class_reason": "Perbukitan: 76,3% area lereng ≥8° dan 95,7% area ≥200 m",
+  "classification": {
+    "official": false,
+    "note": "Klasifikasi NusaStats (aturan di config/terrain_rules.yaml), bukan klasifikasi resmi.",
+    "rules_sha256": "46978aef2bbd47b075cb7feebba2e50524c63ce4f39271053ce4d2aaaf8fb479"
+  },
+  "checks": {
+    "area_geodesic_km2": 322.02,
+    "area_utm_polygon_km2": 321.78,
+    "area_utm_pixels_km2": 321.79,
+    "utm_vs_geodesic_pct": -0.076,
+    "pixels_vs_utm_pct": 0.002,
+    "nodata_pct": 0.0,
+    "polygon_pixels_utm": 357539
+  },
+  "metadata": {
+    "dataset": "Copernicus DEM GLO-30 Public",
+    "dataset_type": "DSM (surface model: includes canopy and buildings)",
+    "vertical_datum": "EGM2008 geoid (EPSG:3855), metres",
+    "year": 2015,
+    "attribution": "produced using Copernicus WorldDEM-30 © DLR e.V. 2010-2014 and © Airbus Defence and Space GmbH 2014-2018 provided under COPERNICUS by the European Union and ESA; all rights reserved",
+    "tile_version_tag": null,
+    "tiles": {
+      "Copernicus_DSM_COG_10_S09_00_E117_00_DEM": "59e1fcdb1dea9dd39e02c162b14642cc9cec0f1e9a6924109001ec39427c5c2c"
+    },
+    "ocean_tiles_absent": [],
+    "boundary": {
+      "source": "data/big_boundaries/big-villages-52.geojson",
+      "sha256": "c250c4b7af3e064c41645e3e16f60670d04b6f3108fcc5dd6c0966cd265bded7",
+      "method": "shapely.union_all(grid_size=1e-8) per code prefix; no simplify, no island/hole dropping (data/big_boundaries/dissolve.py:dissolve)"
+    },
+    "crs_stats": "EPSG:32750",
+    "pixel_size_m": 30.0,
+    "resampling_to_utm": "bilinear",
+    "min_max_from": "native DEM pixels (EPSG:4326, 1 arc-second) inside the polygon",
+    "shares_from": "30 m UTM pixels (EPSG:32750) whose centre lies inside the polygon",
+    "slope_method": "Horn 3x3 on the UTM grid",
+    "hillshade": {
+      "azimuth_deg": 315,
+      "altitude_deg": 45,
+      "z_factor": 1.0
+    },
+    "tint": [
+      [
+        0,
+        "#4f8f4a"
+      ],
+      [
+        100,
+        "#8fb36a"
+      ],
+      [
+        300,
+        "#cfd28c"
+      ],
+      [
+        500,
+        "#e3cf98"
+      ],
+      [
+        1000,
+        "#c8a06a"
+      ],
+      [
+        2000,
+        "#9a6a43"
+      ],
+      [
+        3000,
+        "#7b5a4a"
+      ],
+      [
+        4000,
+        "#ffffff"
+      ]
+    ],
+    "lowland_colors": [
+      "#1d4f91",
+      "#6fa8dc"
+    ],
+    "relief_colors": [
+      "#eef0dc",
+      "#c9d7a0",
+      "#c99a5b",
+      "#7a4b2e"
+    ],
+    "lowland_note": "Batas bawah: model permukaan (tajuk pohon, bangunan) terbaca lebih tinggi dari tanah.",
+    "local_relief_method": "max - min elevation in a 33x33 px (990 m) window on the UTM grid; NusaStats classes, shown alongside (not replacing) the terrain class",
+    "config_sha256": "bc1b902c8fa23d79936518aa2cb1fa9a1a01e3fba4c13ac3c5ce884e190c482d",
+    "computed_at": "2026-10-07T09:10:30+00:00"
+  }
+}
