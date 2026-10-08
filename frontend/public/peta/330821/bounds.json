@@ -1,0 +1,22 @@
+{
+  "kode": "330821",
+  "crs": "EPSG:4326",
+  "west": 110.07555556,
+  "north": -7.38055556,
+  "east": 110.21777778,
+  "south": -7.44916667,
+  "width": 512,
+  "height": 247,
+  "pixel_deg": 0.0002777777777777778,
+  "downsample_factor": 1,
+  "base_pixel_deg": 0.0002777777777777778,
+  "note": "Pixel-edge bounds. Stretch each layer over this lon/lat box (linear lon/lat, same as ChoroplethMap's projection).",
+  "layers": {
+    "elevation": "elevation.webp",
+    "hillshade": "hillshade.webp",
+    "landcover": "landcover.webp",
+    "lowland": "lowland.webp",
+    "nightlights": "nightlights.webp",
+    "relief": "relief.webp"
+  }
+}

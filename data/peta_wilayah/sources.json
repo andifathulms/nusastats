@@ -997,6 +997,12 @@
         "sha256": "5652ecf603a352610ba215f3170fb52dac4914693c9ac3b6ff653dd02a4f29b5",
         "url": "https://copernicus-dem-30m.s3.amazonaws.com/Copernicus_DSM_COG_10_S05_00_E131_00_DEM/Copernicus_DSM_COG_10_S05_00_E131_00_DEM.tif"
       },
+      "Copernicus_DSM_COG_10_S06_00_E110_00_DEM": {
+        "bytes": 363142,
+        "downloaded_at": "2026-10-08T02:04:43+00:00",
+        "sha256": "c62ecaf0dafd82956aa596d4c9e42b779a1be404cfd7b68c7109dd37650470d4",
+        "url": "https://copernicus-dem-30m.s3.amazonaws.com/Copernicus_DSM_COG_10_S06_00_E110_00_DEM/Copernicus_DSM_COG_10_S06_00_E110_00_DEM.tif"
+      },
       "Copernicus_DSM_COG_10_S06_00_E112_00_DEM": {
         "bytes": 1001069,
         "downloaded_at": "2026-10-07T14:58:40+00:00",
@@ -1092,6 +1098,24 @@
         "downloaded_at": "2026-10-06T17:30:59+00:00",
         "sha256": "cf39a4d901df5c2edddbf3bd6f39b768babbaeb8385ff7b5e0d1e044d206a028",
         "url": "https://copernicus-dem-30m.s3.amazonaws.com/Copernicus_DSM_COG_10_S06_00_E134_00_DEM/Copernicus_DSM_COG_10_S06_00_E134_00_DEM.tif"
+      },
+      "Copernicus_DSM_COG_10_S07_00_E108_00_DEM": {
+        "bytes": 22485201,
+        "downloaded_at": "2026-10-08T01:58:15+00:00",
+        "sha256": "b52f023a628d0760866627ddf0963b5508be5fc607611029af318a95d12e17ac",
+        "url": "https://copernicus-dem-30m.s3.amazonaws.com/Copernicus_DSM_COG_10_S07_00_E108_00_DEM/Copernicus_DSM_COG_10_S07_00_E108_00_DEM.tif"
+      },
+      "Copernicus_DSM_COG_10_S07_00_E109_00_DEM": {
+        "bytes": 7362138,
+        "downloaded_at": "2026-10-08T01:57:26+00:00",
+        "sha256": "a7831917548fea5f52b33ceb7b8b55fba6fb1a1b4654f2023841dbac621d8032",
+        "url": "https://copernicus-dem-30m.s3.amazonaws.com/Copernicus_DSM_COG_10_S07_00_E109_00_DEM/Copernicus_DSM_COG_10_S07_00_E109_00_DEM.tif"
+      },
+      "Copernicus_DSM_COG_10_S07_00_E110_00_DEM": {
+        "bytes": 14371834,
+        "downloaded_at": "2026-10-08T02:00:33+00:00",
+        "sha256": "f29c88bda8e9de2b8b3de67576a1cb8c551099150b1128c2ffc103abba31402f",
+        "url": "https://copernicus-dem-30m.s3.amazonaws.com/Copernicus_DSM_COG_10_S07_00_E110_00_DEM/Copernicus_DSM_COG_10_S07_00_E110_00_DEM.tif"
       },
       "Copernicus_DSM_COG_10_S07_00_E111_00_DEM": {
         "bytes": 15479805,
@@ -1194,6 +1218,12 @@
         "downloaded_at": "2026-10-06T17:30:56+00:00",
         "sha256": "df8c643d646d9dc82be8a2569b1c5030240d092d18620b220fdde416c92a629a",
         "url": "https://copernicus-dem-30m.s3.amazonaws.com/Copernicus_DSM_COG_10_S07_00_E134_00_DEM/Copernicus_DSM_COG_10_S07_00_E134_00_DEM.tif"
+      },
+      "Copernicus_DSM_COG_10_S08_00_E108_00_DEM": {
+        "bytes": 37205267,
+        "downloaded_at": "2026-10-08T01:55:45+00:00",
+        "sha256": "f527550244fcb06da3de8804d9c483b4406b776f9ebb0c52bab5173b8422cdc6",
+        "url": "https://copernicus-dem-30m.s3.amazonaws.com/Copernicus_DSM_COG_10_S08_00_E108_00_DEM/Copernicus_DSM_COG_10_S08_00_E108_00_DEM.tif"
       },
       "Copernicus_DSM_COG_10_S08_00_E109_00_DEM": {
         "bytes": 37366881,
@@ -1811,6 +1841,24 @@
       }
     },
     "wb_len_viirs_monthly": {
+      "201801/avg_rade9@33": {
+        "dtype": "float32",
+        "etag": "065af71c3e9c4206a33231591b27b39b-495",
+        "last_modified": "Wed, 11 Jan 2023 16:51:03 GMT",
+        "read_at": "2026-10-08T03:11:44+00:00",
+        "sha256_window": "894427c4009f3beb7df61ac58f1f7c98f201d2d5ceb970483b5ff8645744f7cd",
+        "shape": [
+          608,
+          763
+        ],
+        "url": "https://globalnightlight.s3.amazonaws.com/composites/npp_201801_ops/DNB_npp_20180101-20180131_global_ecm-slcorr_v10_ops.avg_rade9.tif",
+        "window_bounds": [
+          108.53541897,
+          -8.23541733,
+          111.71458567,
+          -5.70208398
+        ]
+      },
       "201801/avg_rade9@34": {
         "dtype": "float32",
         "etag": "065af71c3e9c4206a33231591b27b39b-495",
@@ -2133,6 +2181,24 @@
           -2.49791729,
           129.94375248,
           2.66874942
+        ]
+      },
+      "201801/n_cf@33": {
+        "dtype": "uint16",
+        "etag": "3cc18d5a9806be02a0a0a80972e52d45-134",
+        "last_modified": "Wed, 11 Jan 2023 16:51:03 GMT",
+        "read_at": "2026-10-08T03:11:49+00:00",
+        "sha256_window": "70cd9af3feeb0a67e48fb848e9bff5d9f87209285b176dc40c75ed3f9d09bdd6",
+        "shape": [
+          608,
+          763
+        ],
+        "url": "https://globalnightlight.s3.amazonaws.com/composites/npp_201801_ops/DNB_npp_20180101-20180131_global_ecm-slcorr_v10_ops.n_cf.tif",
+        "window_bounds": [
+          108.53541897,
+          -8.23541733,
+          111.71458567,
+          -5.70208398
         ]
       },
       "201801/n_cf@34": {
@@ -2459,6 +2525,24 @@
           2.66874942
         ]
       },
+      "201802/avg_rade9@33": {
+        "dtype": "float32",
+        "etag": "9b06f530aeec66b5a4cbcc7ccf83895c-539",
+        "last_modified": "Wed, 11 Jan 2023 16:52:19 GMT",
+        "read_at": "2026-10-08T03:11:54+00:00",
+        "sha256_window": "98db6f391564b0f3154cfb3b4bb4b269da544917dfc5c5bae031c75dcb21ff61",
+        "shape": [
+          608,
+          763
+        ],
+        "url": "https://globalnightlight.s3.amazonaws.com/composites/npp_201802_ops/DNB_npp_20180201-20180228_global_ecm-slcorr_v10_ops.avg_rade9.tif",
+        "window_bounds": [
+          108.53541897,
+          -8.23541733,
+          111.71458567,
+          -5.70208398
+        ]
+      },
       "201802/avg_rade9@34": {
         "dtype": "float32",
         "etag": "9b06f530aeec66b5a4cbcc7ccf83895c-539",
@@ -2781,6 +2865,24 @@
           -2.49791729,
           129.94375248,
           2.66874942
+        ]
+      },
+      "201802/n_cf@33": {
+        "dtype": "uint16",
+        "etag": "84d2921a99780d8cf584717cf7c6054a-139",
+        "last_modified": "Wed, 11 Jan 2023 16:52:19 GMT",
+        "read_at": "2026-10-08T03:11:59+00:00",
+        "sha256_window": "5db1ceacbed8b6937aa3e6392b96d9ff371ca31881b2c71649ca4f78398f5c07",
+        "shape": [
+          608,
+          763
+        ],
+        "url": "https://globalnightlight.s3.amazonaws.com/composites/npp_201802_ops/DNB_npp_20180201-20180228_global_ecm-slcorr_v10_ops.n_cf.tif",
+        "window_bounds": [
+          108.53541897,
+          -8.23541733,
+          111.71458567,
+          -5.70208398
         ]
       },
       "201802/n_cf@34": {
@@ -3107,6 +3209,24 @@
           2.66874942
         ]
       },
+      "201803/avg_rade9@33": {
+        "dtype": "float32",
+        "etag": "3f10646744649dafe18e05cd366d944d-547",
+        "last_modified": "Wed, 11 Jan 2023 16:53:52 GMT",
+        "read_at": "2026-10-08T03:12:04+00:00",
+        "sha256_window": "8f73d4139fa527ba2c5d4c048dcc4d3d8add2bac9e32662510cd8a1446ee9414",
+        "shape": [
+          608,
+          763
+        ],
+        "url": "https://globalnightlight.s3.amazonaws.com/composites/npp_201803_ops/DNB_npp_20180301-20180331_global_ecm-slcorr_v10_ops.avg_rade9.tif",
+        "window_bounds": [
+          108.53541897,
+          -8.23541733,
+          111.71458567,
+          -5.70208398
+        ]
+      },
       "201803/avg_rade9@34": {
         "dtype": "float32",
         "etag": "3f10646744649dafe18e05cd366d944d-547",
@@ -3429,6 +3549,24 @@
           -2.49791729,
           129.94375248,
           2.66874942
+        ]
+      },
+      "201803/n_cf@33": {
+        "dtype": "uint16",
+        "etag": "e193b79cec01407e7cb72f1df66aceb0-135",
+        "last_modified": "Wed, 11 Jan 2023 16:53:52 GMT",
+        "read_at": "2026-10-08T03:12:09+00:00",
+        "sha256_window": "f2bf27bd7232472f20d510ba820188e35acb486b13d196cddc2bc391c32b58fb",
+        "shape": [
+          608,
+          763
+        ],
+        "url": "https://globalnightlight.s3.amazonaws.com/composites/npp_201803_ops/DNB_npp_20180301-20180331_global_ecm-slcorr_v10_ops.n_cf.tif",
+        "window_bounds": [
+          108.53541897,
+          -8.23541733,
+          111.71458567,
+          -5.70208398
         ]
       },
       "201803/n_cf@34": {
@@ -3755,6 +3893,24 @@
           2.66874942
         ]
       },
+      "201804/avg_rade9@33": {
+        "dtype": "float32",
+        "etag": "028abf28d487c3e7fe08ec111033c9a1-546",
+        "last_modified": "Wed, 11 Jan 2023 16:55:22 GMT",
+        "read_at": "2026-10-08T03:12:27+00:00",
+        "sha256_window": "be46887b628aeb4eeeaf5659687ec3de7ae6130a2b5d1a5152143802659db237",
+        "shape": [
+          608,
+          763
+        ],
+        "url": "https://globalnightlight.s3.amazonaws.com/composites/npp_201804_ops/DNB_npp_20180401-20180430_global_ecm-slcorr_v10_ops.avg_rade9.tif",
+        "window_bounds": [
+          108.53541897,
+          -8.23541733,
+          111.71458567,
+          -5.70208398
+        ]
+      },
       "201804/avg_rade9@34": {
         "dtype": "float32",
         "etag": "028abf28d487c3e7fe08ec111033c9a1-546",
@@ -4077,6 +4233,24 @@
           -2.49791729,
           129.94375248,
           2.66874942
+        ]
+      },
+      "201804/n_cf@33": {
+        "dtype": "uint16",
+        "etag": "534f8b74d120dfd139f452e7c5677d53-125",
+        "last_modified": "Wed, 11 Jan 2023 16:55:22 GMT",
+        "read_at": "2026-10-08T03:12:32+00:00",
+        "sha256_window": "5923eb1aa6bd27bdb75e707db8f1b7795c3f03aa2f6a1bcdce498264ecae68bf",
+        "shape": [
+          608,
+          763
+        ],
+        "url": "https://globalnightlight.s3.amazonaws.com/composites/npp_201804_ops/DNB_npp_20180401-20180430_global_ecm-slcorr_v10_ops.n_cf.tif",
+        "window_bounds": [
+          108.53541897,
+          -8.23541733,
+          111.71458567,
+          -5.70208398
         ]
       },
       "201804/n_cf@34": {
@@ -4403,6 +4577,24 @@
           2.66874942
         ]
       },
+      "201805/avg_rade9@33": {
+        "dtype": "float32",
+        "etag": "377e326a2fcbee126fc0872f4d20799d-499",
+        "last_modified": "Wed, 11 Jan 2023 16:56:58 GMT",
+        "read_at": "2026-10-08T03:12:42+00:00",
+        "sha256_window": "58c6999cf96486be70c7f2c4ddd00b329cb43748e57b0bdcbb4b0f5f2c5da88d",
+        "shape": [
+          608,
+          763
+        ],
+        "url": "https://globalnightlight.s3.amazonaws.com/composites/npp_201805_ops/DNB_npp_20180501-20180531_global_ecm-slcorr_v10_ops.avg_rade9.tif",
+        "window_bounds": [
+          108.53541897,
+          -8.23541733,
+          111.71458567,
+          -5.70208398
+        ]
+      },
       "201805/avg_rade9@34": {
         "dtype": "float32",
         "etag": "377e326a2fcbee126fc0872f4d20799d-499",
@@ -4725,6 +4917,24 @@
           -2.49791729,
           129.94375248,
           2.66874942
+        ]
+      },
+      "201805/n_cf@33": {
+        "dtype": "uint16",
+        "etag": "7ff22708c16a8d2bf4ad05a5ecd20ed2-114",
+        "last_modified": "Wed, 11 Jan 2023 16:56:58 GMT",
+        "read_at": "2026-10-08T03:12:47+00:00",
+        "sha256_window": "99024efc655e4f01071e189b8df954df823ed0e4da4ef99c014bc0b19eb71395",
+        "shape": [
+          608,
+          763
+        ],
+        "url": "https://globalnightlight.s3.amazonaws.com/composites/npp_201805_ops/DNB_npp_20180501-20180531_global_ecm-slcorr_v10_ops.n_cf.tif",
+        "window_bounds": [
+          108.53541897,
+          -8.23541733,
+          111.71458567,
+          -5.70208398
         ]
       },
       "201805/n_cf@34": {
@@ -5051,6 +5261,24 @@
           2.66874942
         ]
       },
+      "201806/avg_rade9@33": {
+        "dtype": "float32",
+        "etag": "a86f9fc17e4c03f0c4221b471bc46502-460",
+        "last_modified": "Wed, 11 Jan 2023 16:58:22 GMT",
+        "read_at": "2026-10-08T03:12:53+00:00",
+        "sha256_window": "0af5a773b921a2806c5e4ff75adc744cb989ea4118090eb74c8bbf4444a96e73",
+        "shape": [
+          608,
+          763
+        ],
+        "url": "https://globalnightlight.s3.amazonaws.com/composites/npp_201806_ops/DNB_npp_20180601-20180630_global_ecm-slcorr_v10_ops.avg_rade9.tif",
+        "window_bounds": [
+          108.53541897,
+          -8.23541733,
+          111.71458567,
+          -5.70208398
+        ]
+      },
       "201806/avg_rade9@34": {
         "dtype": "float32",
         "etag": "a86f9fc17e4c03f0c4221b471bc46502-460",
@@ -5373,6 +5601,24 @@
           -2.49791729,
           129.94375248,
           2.66874942
+        ]
+      },
+      "201806/n_cf@33": {
+        "dtype": "uint16",
+        "etag": "50eb88f3b6620661e108b40e18c9bedc-108",
+        "last_modified": "Wed, 11 Jan 2023 16:58:22 GMT",
+        "read_at": "2026-10-08T03:12:58+00:00",
+        "sha256_window": "a6bd199d150d8227f898c60bf029d011cb141248de367d8d2a881b06a9a8eb4e",
+        "shape": [
+          608,
+          763
+        ],
+        "url": "https://globalnightlight.s3.amazonaws.com/composites/npp_201806_ops/DNB_npp_20180601-20180630_global_ecm-slcorr_v10_ops.n_cf.tif",
+        "window_bounds": [
+          108.53541897,
+          -8.23541733,
+          111.71458567,
+          -5.70208398
         ]
       },
       "201806/n_cf@34": {
@@ -5699,6 +5945,24 @@
           2.66874942
         ]
       },
+      "201807/avg_rade9@33": {
+        "dtype": "float32",
+        "etag": "f7f1079066a5a203211a5668eb4ab9b6-465",
+        "last_modified": "Wed, 11 Jan 2023 16:59:31 GMT",
+        "read_at": "2026-10-08T03:13:03+00:00",
+        "sha256_window": "d08c29b03b2bc9e2fe51f087695fb0c252cc4091f0c2151c9b800ca7ac9378a4",
+        "shape": [
+          608,
+          763
+        ],
+        "url": "https://globalnightlight.s3.amazonaws.com/composites/npp_201807_ops/DNB_npp_20180701-20180731_global_ecm-slcorr_v10_ops.avg_rade9.tif",
+        "window_bounds": [
+          108.53541897,
+          -8.23541733,
+          111.71458567,
+          -5.70208398
+        ]
+      },
       "201807/avg_rade9@34": {
         "dtype": "float32",
         "etag": "f7f1079066a5a203211a5668eb4ab9b6-465",
@@ -6021,6 +6285,24 @@
           -2.49791729,
           129.94375248,
           2.66874942
+        ]
+      },
+      "201807/n_cf@33": {
+        "dtype": "uint16",
+        "etag": "a741a51caf216ef946ee63d24892714f-110",
+        "last_modified": "Wed, 11 Jan 2023 16:59:31 GMT",
+        "read_at": "2026-10-08T03:13:08+00:00",
+        "sha256_window": "ed922598cd2cf0a23c71f4b08514015e6a8df9f0b34f37ac34a99f6b2e7caeb5",
+        "shape": [
+          608,
+          763
+        ],
+        "url": "https://globalnightlight.s3.amazonaws.com/composites/npp_201807_ops/DNB_npp_20180701-20180731_global_ecm-slcorr_v10_ops.n_cf.tif",
+        "window_bounds": [
+          108.53541897,
+          -8.23541733,
+          111.71458567,
+          -5.70208398
         ]
       },
       "201807/n_cf@34": {
@@ -6347,6 +6629,24 @@
           2.66874942
         ]
       },
+      "201808/avg_rade9@33": {
+        "dtype": "float32",
+        "etag": "f2646d804f3a01a64b8f4821e3c700c8-494",
+        "last_modified": "Wed, 11 Jan 2023 17:00:44 GMT",
+        "read_at": "2026-10-08T03:13:13+00:00",
+        "sha256_window": "e21f88dbd891e528875f8602d2b637abaec635f72b90cb290345ded26099e623",
+        "shape": [
+          608,
+          763
+        ],
+        "url": "https://globalnightlight.s3.amazonaws.com/composites/npp_201808_ops/DNB_npp_20180801-20180831_global_ecm-slcorr_v10_ops.avg_rade9.tif",
+        "window_bounds": [
+          108.53541897,
+          -8.23541733,
+          111.71458567,
+          -5.70208398
+        ]
+      },
       "201808/avg_rade9@34": {
         "dtype": "float32",
         "etag": "f2646d804f3a01a64b8f4821e3c700c8-494",
@@ -6669,6 +6969,24 @@
           -2.49791729,
           129.94375248,
           2.66874942
+        ]
+      },
+      "201808/n_cf@33": {
+        "dtype": "uint16",
+        "etag": "5f856dad2f80039dd5801465f351faed-122",
+        "last_modified": "Wed, 11 Jan 2023 17:00:44 GMT",
+        "read_at": "2026-10-08T03:13:18+00:00",
+        "sha256_window": "69fe2f9a0177c0faba8b7422f8bcd435f512a320f8b7877dc4a002406a6fd984",
+        "shape": [
+          608,
+          763
+        ],
+        "url": "https://globalnightlight.s3.amazonaws.com/composites/npp_201808_ops/DNB_npp_20180801-20180831_global_ecm-slcorr_v10_ops.n_cf.tif",
+        "window_bounds": [
+          108.53541897,
+          -8.23541733,
+          111.71458567,
+          -5.70208398
         ]
       },
       "201808/n_cf@34": {
@@ -6995,6 +7313,24 @@
           2.66874942
         ]
       },
+      "201809/avg_rade9@33": {
+        "dtype": "float32",
+        "etag": "9f951e8c073e808f07c3ac294d61a4a0-526",
+        "last_modified": "Wed, 11 Jan 2023 17:02:01 GMT",
+        "read_at": "2026-10-08T03:13:24+00:00",
+        "sha256_window": "9878aaee4437312ffa755e5c3f9fd997b1984d6105eb1bc0e9417ce2d79b7555",
+        "shape": [
+          608,
+          763
+        ],
+        "url": "https://globalnightlight.s3.amazonaws.com/composites/npp_201809_ops/DNB_npp_20180901-20180930_global_ecm-slcorr_v10_ops.avg_rade9.tif",
+        "window_bounds": [
+          108.53541897,
+          -8.23541733,
+          111.71458567,
+          -5.70208398
+        ]
+      },
       "201809/avg_rade9@34": {
         "dtype": "float32",
         "etag": "9f951e8c073e808f07c3ac294d61a4a0-526",
@@ -7317,6 +7653,24 @@
           -2.49791729,
           129.94375248,
           2.66874942
+        ]
+      },
+      "201809/n_cf@33": {
+        "dtype": "uint16",
+        "etag": "9a4d91de1643a7c08b73afae1126f355-142",
+        "last_modified": "Wed, 11 Jan 2023 17:02:01 GMT",
+        "read_at": "2026-10-08T03:13:28+00:00",
+        "sha256_window": "2b40191eb0a92fe93b16445d0de31cb9b000f7593a98b802d5c277996ad15eb8",
+        "shape": [
+          608,
+          763
+        ],
+        "url": "https://globalnightlight.s3.amazonaws.com/composites/npp_201809_ops/DNB_npp_20180901-20180930_global_ecm-slcorr_v10_ops.n_cf.tif",
+        "window_bounds": [
+          108.53541897,
+          -8.23541733,
+          111.71458567,
+          -5.70208398
         ]
       },
       "201809/n_cf@34": {
@@ -7643,6 +7997,24 @@
           2.66874942
         ]
       },
+      "201810/avg_rade9@33": {
+        "dtype": "float32",
+        "etag": "c89e21bff433aedaa5d99dc43e7d3a70-527",
+        "last_modified": "Wed, 11 Jan 2023 17:03:19 GMT",
+        "read_at": "2026-10-08T03:13:33+00:00",
+        "sha256_window": "22d1ee3ee977029bc02e33930c1b9687a76c53069d7fa4c2a2523ac3176fcc4b",
+        "shape": [
+          608,
+          763
+        ],
+        "url": "https://globalnightlight.s3.amazonaws.com/composites/npp_201810_ops/DNB_npp_20181001-20181031_global_ecm-slcorr_v10_ops.avg_rade9.tif",
+        "window_bounds": [
+          108.53541897,
+          -8.23541733,
+          111.71458567,
+          -5.70208398
+        ]
+      },
       "201810/avg_rade9@34": {
         "dtype": "float32",
         "etag": "c89e21bff433aedaa5d99dc43e7d3a70-527",
@@ -7965,6 +8337,24 @@
           -2.49791729,
           129.94375248,
           2.66874942
+        ]
+      },
+      "201810/n_cf@33": {
+        "dtype": "uint16",
+        "etag": "6269357c7e547c70784b67fa0e2c3534-152",
+        "last_modified": "Wed, 11 Jan 2023 17:03:19 GMT",
+        "read_at": "2026-10-08T03:13:37+00:00",
+        "sha256_window": "d8c627e830999d42357a6b5e660d108c9f63fee267ab34c88a10bd392d765a34",
+        "shape": [
+          608,
+          763
+        ],
+        "url": "https://globalnightlight.s3.amazonaws.com/composites/npp_201810_ops/DNB_npp_20181001-20181031_global_ecm-slcorr_v10_ops.n_cf.tif",
+        "window_bounds": [
+          108.53541897,
+          -8.23541733,
+          111.71458567,
+          -5.70208398
         ]
       },
       "201810/n_cf@34": {
@@ -8291,6 +8681,24 @@
           2.66874942
         ]
       },
+      "201811/avg_rade9@33": {
+        "dtype": "float32",
+        "etag": "125c3a53e265a7a1c778dceeba22613e-532",
+        "last_modified": "Wed, 11 Jan 2023 17:04:46 GMT",
+        "read_at": "2026-10-08T03:13:42+00:00",
+        "sha256_window": "81971956a1bdb9f6ccf613202c4c65ce0bbee402dca1269ba5247ee25660f88f",
+        "shape": [
+          608,
+          763
+        ],
+        "url": "https://globalnightlight.s3.amazonaws.com/composites/npp_201811_ops/DNB_npp_20181101-20181130_global_ecm-slcorr_v10_ops.avg_rade9.tif",
+        "window_bounds": [
+          108.53541897,
+          -8.23541733,
+          111.71458567,
+          -5.70208398
+        ]
+      },
       "201811/avg_rade9@34": {
         "dtype": "float32",
         "etag": "125c3a53e265a7a1c778dceeba22613e-532",
@@ -8613,6 +9021,24 @@
           -2.49791729,
           129.94375248,
           2.66874942
+        ]
+      },
+      "201811/n_cf@33": {
+        "dtype": "uint16",
+        "etag": "5ae5a374a05b7fe6da0a5f9aaee20dd2-148",
+        "last_modified": "Wed, 11 Jan 2023 17:04:46 GMT",
+        "read_at": "2026-10-08T03:13:46+00:00",
+        "sha256_window": "99da705947393e559798ff3e54b932e3e12cbe7cd005331f65da7aaed5dc5a61",
+        "shape": [
+          608,
+          763
+        ],
+        "url": "https://globalnightlight.s3.amazonaws.com/composites/npp_201811_ops/DNB_npp_20181101-20181130_global_ecm-slcorr_v10_ops.n_cf.tif",
+        "window_bounds": [
+          108.53541897,
+          -8.23541733,
+          111.71458567,
+          -5.70208398
         ]
       },
       "201811/n_cf@34": {
@@ -8939,6 +9365,24 @@
           2.66874942
         ]
       },
+      "201812/avg_rade9@33": {
+        "dtype": "float32",
+        "etag": "7d7162ea583f3d614f9d20a1cd9f4e3d-490",
+        "last_modified": "Wed, 11 Jan 2023 17:06:02 GMT",
+        "read_at": "2026-10-08T03:13:51+00:00",
+        "sha256_window": "0aa3143942612aba86cf1a05adf987187605f0d472cd2c527af67af38b758f79",
+        "shape": [
+          608,
+          763
+        ],
+        "url": "https://globalnightlight.s3.amazonaws.com/composites/npp_201812_ops/DNB_npp_20181201-20181231_global_ecm-slcorr_v10_ops.avg_rade9.tif",
+        "window_bounds": [
+          108.53541897,
+          -8.23541733,
+          111.71458567,
+          -5.70208398
+        ]
+      },
       "201812/avg_rade9@34": {
         "dtype": "float32",
         "etag": "7d7162ea583f3d614f9d20a1cd9f4e3d-490",
@@ -9261,6 +9705,24 @@
           -2.49791729,
           129.94375248,
           2.66874942
+        ]
+      },
+      "201812/n_cf@33": {
+        "dtype": "uint16",
+        "etag": "28545bb1c5f35dd1d78f19cf7190840a-144",
+        "last_modified": "Wed, 11 Jan 2023 17:06:02 GMT",
+        "read_at": "2026-10-08T03:13:55+00:00",
+        "sha256_window": "baa8c0ddb70d33de4322aaebf536ec47600cb0bbbbaad22d8be7f9c5005913a7",
+        "shape": [
+          608,
+          763
+        ],
+        "url": "https://globalnightlight.s3.amazonaws.com/composites/npp_201812_ops/DNB_npp_20181201-20181231_global_ecm-slcorr_v10_ops.n_cf.tif",
+        "window_bounds": [
+          108.53541897,
+          -8.23541733,
+          111.71458567,
+          -5.70208398
         ]
       },
       "201812/n_cf@34": {
@@ -9587,6 +10049,24 @@
           2.66874942
         ]
       },
+      "201901/avg_rade9@33": {
+        "dtype": "float32",
+        "etag": "8bd84b44ac930766fd7097786e4d4a46-488",
+        "last_modified": "Wed, 11 Jan 2023 20:25:02 GMT",
+        "read_at": "2026-10-08T03:14:14+00:00",
+        "sha256_window": "db7389e5ca1b7148cf9f2e58ef2154c3dc59a913d8d37ebc8245373dbea69dba",
+        "shape": [
+          608,
+          763
+        ],
+        "url": "https://globalnightlight.s3.amazonaws.com/composites/npp_201901_ops/DNB_npp_20190101-20190131_global_ecm-slcorr_v10_ops.avg_rade9.tif",
+        "window_bounds": [
+          108.53541897,
+          -8.23541733,
+          111.71458567,
+          -5.70208398
+        ]
+      },
       "201901/avg_rade9@34": {
         "dtype": "float32",
         "etag": "8bd84b44ac930766fd7097786e4d4a46-488",
@@ -9909,6 +10389,24 @@
           -2.49791729,
           129.94375248,
           2.66874942
+        ]
+      },
+      "201901/n_cf@33": {
+        "dtype": "uint16",
+        "etag": "703434651799e4247bd4d6e1a4ad3293-148",
+        "last_modified": "Wed, 11 Jan 2023 20:25:02 GMT",
+        "read_at": "2026-10-08T03:14:18+00:00",
+        "sha256_window": "547ee17e72e847db478b2acc7f976f774f5d491656bac25fc51f9304cf95bce0",
+        "shape": [
+          608,
+          763
+        ],
+        "url": "https://globalnightlight.s3.amazonaws.com/composites/npp_201901_ops/DNB_npp_20190101-20190131_global_ecm-slcorr_v10_ops.n_cf.tif",
+        "window_bounds": [
+          108.53541897,
+          -8.23541733,
+          111.71458567,
+          -5.70208398
         ]
       },
       "201901/n_cf@34": {
@@ -10235,6 +10733,24 @@
           2.66874942
         ]
       },
+      "201902/avg_rade9@33": {
+        "dtype": "float32",
+        "etag": "de576ba80f2cc87669d988150be6fbbb-522",
+        "last_modified": "Wed, 11 Jan 2023 20:26:55 GMT",
+        "read_at": "2026-10-08T03:14:23+00:00",
+        "sha256_window": "fb292e4056bdda90b4fb95fd7019a63c0d8fb8b79d9150f1445a91aa1b54313e",
+        "shape": [
+          608,
+          763
+        ],
+        "url": "https://globalnightlight.s3.amazonaws.com/composites/npp_201902_ops/DNB_npp_20190201-20190228_global_ecm-slcorr_v10_ops.avg_rade9.tif",
+        "window_bounds": [
+          108.53541897,
+          -8.23541733,
+          111.71458567,
+          -5.70208398
+        ]
+      },
       "201902/avg_rade9@34": {
         "dtype": "float32",
         "etag": "de576ba80f2cc87669d988150be6fbbb-522",
@@ -10557,6 +11073,24 @@
           -2.49791729,
           129.94375248,
           2.66874942
+        ]
+      },
+      "201902/n_cf@33": {
+        "dtype": "uint16",
+        "etag": "1ce656361294c3e06394752ee39f9ddd-134",
+        "last_modified": "Wed, 11 Jan 2023 20:26:55 GMT",
+        "read_at": "2026-10-08T03:14:28+00:00",
+        "sha256_window": "ed56ca07dc561f58886bf49248698a98297921ef61067cf805ccf0ab88a41ee8",
+        "shape": [
+          608,
+          763
+        ],
+        "url": "https://globalnightlight.s3.amazonaws.com/composites/npp_201902_ops/DNB_npp_20190201-20190228_global_ecm-slcorr_v10_ops.n_cf.tif",
+        "window_bounds": [
+          108.53541897,
+          -8.23541733,
+          111.71458567,
+          -5.70208398
         ]
       },
       "201902/n_cf@34": {
@@ -10883,6 +11417,24 @@
           2.66874942
         ]
       },
+      "201903/avg_rade9@33": {
+        "dtype": "float32",
+        "etag": "2469b533fb0dc57a24ac156f1457a6cc-527",
+        "last_modified": "Wed, 11 Jan 2023 20:28:43 GMT",
+        "read_at": "2026-10-08T03:14:33+00:00",
+        "sha256_window": "5fe72a66b624ee72a398dcb7477bd7d0132ded6cbcb46f583a78919e1b3f53e6",
+        "shape": [
+          608,
+          763
+        ],
+        "url": "https://globalnightlight.s3.amazonaws.com/composites/npp_201903_ops/DNB_npp_20190301-20190331_global_ecm-slcorr_v10_ops.avg_rade9.tif",
+        "window_bounds": [
+          108.53541897,
+          -8.23541733,
+          111.71458567,
+          -5.70208398
+        ]
+      },
       "201903/avg_rade9@34": {
         "dtype": "float32",
         "etag": "2469b533fb0dc57a24ac156f1457a6cc-527",
@@ -11205,6 +11757,24 @@
           -2.49791729,
           129.94375248,
           2.66874942
+        ]
+      },
+      "201903/n_cf@33": {
+        "dtype": "uint16",
+        "etag": "f829901122e871b18230fa85d3e1fdf0-145",
+        "last_modified": "Wed, 11 Jan 2023 20:28:43 GMT",
+        "read_at": "2026-10-08T03:14:37+00:00",
+        "sha256_window": "61efa5596746e8a99bfa0512c28889742f9fad57e91ef50de603820d0447e9eb",
+        "shape": [
+          608,
+          763
+        ],
+        "url": "https://globalnightlight.s3.amazonaws.com/composites/npp_201903_ops/DNB_npp_20190301-20190331_global_ecm-slcorr_v10_ops.n_cf.tif",
+        "window_bounds": [
+          108.53541897,
+          -8.23541733,
+          111.71458567,
+          -5.70208398
         ]
       },
       "201903/n_cf@34": {
@@ -11531,6 +12101,24 @@
           2.66874942
         ]
       },
+      "201904/avg_rade9@33": {
+        "dtype": "float32",
+        "etag": "a9354943d1b8253753838ecde8a9d1e5-541",
+        "last_modified": "Wed, 11 Jan 2023 20:30:34 GMT",
+        "read_at": "2026-10-08T03:14:42+00:00",
+        "sha256_window": "78ae13aa89211f79cae32b461b2446c40095a1a8ae42aa8e5e40e7e69caf8614",
+        "shape": [
+          608,
+          763
+        ],
+        "url": "https://globalnightlight.s3.amazonaws.com/composites/npp_201904_ops/DNB_npp_20190401-20190430_global_ecm-slcorr_v10_ops.avg_rade9.tif",
+        "window_bounds": [
+          108.53541897,
+          -8.23541733,
+          111.71458567,
+          -5.70208398
+        ]
+      },
       "201904/avg_rade9@34": {
         "dtype": "float32",
         "etag": "a9354943d1b8253753838ecde8a9d1e5-541",
@@ -11853,6 +12441,24 @@
           -2.49791729,
           129.94375248,
           2.66874942
+        ]
+      },
+      "201904/n_cf@33": {
+        "dtype": "uint16",
+        "etag": "b32aff5d7285dd0e256c56db9e06fb0e-134",
+        "last_modified": "Wed, 11 Jan 2023 20:30:34 GMT",
+        "read_at": "2026-10-08T03:14:47+00:00",
+        "sha256_window": "a8839c756eaab6da3829abdaf8af4a3974c86f658014f0c15377b4162d2b9e1d",
+        "shape": [
+          608,
+          763
+        ],
+        "url": "https://globalnightlight.s3.amazonaws.com/composites/npp_201904_ops/DNB_npp_20190401-20190430_global_ecm-slcorr_v10_ops.n_cf.tif",
+        "window_bounds": [
+          108.53541897,
+          -8.23541733,
+          111.71458567,
+          -5.70208398
         ]
       },
       "201904/n_cf@34": {
@@ -12179,6 +12785,24 @@
           2.66874942
         ]
       },
+      "201905/avg_rade9@33": {
+        "dtype": "float32",
+        "etag": "aa5346dfffd109b37cd34adf7303df40-491",
+        "last_modified": "Wed, 11 Jan 2023 20:32:42 GMT",
+        "read_at": "2026-10-08T03:14:52+00:00",
+        "sha256_window": "735ff03834b1f46c55bdad389e77eb9830de2044b45d8577fab1b628a913c69b",
+        "shape": [
+          608,
+          763
+        ],
+        "url": "https://globalnightlight.s3.amazonaws.com/composites/npp_201905_ops/DNB_npp_20190501-20190531_global_ecm-slcorr_v10_ops.avg_rade9.tif",
+        "window_bounds": [
+          108.53541897,
+          -8.23541733,
+          111.71458567,
+          -5.70208398
+        ]
+      },
       "201905/avg_rade9@34": {
         "dtype": "float32",
         "etag": "aa5346dfffd109b37cd34adf7303df40-491",
@@ -12501,6 +13125,24 @@
           -2.49791729,
           129.94375248,
           2.66874942
+        ]
+      },
+      "201905/n_cf@33": {
+        "dtype": "uint16",
+        "etag": "1207e72c3913bfac72133aa96912939b-123",
+        "last_modified": "Wed, 11 Jan 2023 20:32:42 GMT",
+        "read_at": "2026-10-08T03:14:58+00:00",
+        "sha256_window": "8c63c6072cc5ff6a49d5794cf91e3cd8c96c391c32661b1082ef3254ac73e267",
+        "shape": [
+          608,
+          763
+        ],
+        "url": "https://globalnightlight.s3.amazonaws.com/composites/npp_201905_ops/DNB_npp_20190501-20190531_global_ecm-slcorr_v10_ops.n_cf.tif",
+        "window_bounds": [
+          108.53541897,
+          -8.23541733,
+          111.71458567,
+          -5.70208398
         ]
       },
       "201905/n_cf@34": {
@@ -12827,6 +13469,24 @@
           2.66874942
         ]
       },
+      "201906/avg_rade9@33": {
+        "dtype": "float32",
+        "etag": "0b18e650f21721c1900f88ea76b93e2d-453",
+        "last_modified": "Wed, 11 Jan 2023 20:34:37 GMT",
+        "read_at": "2026-10-08T03:15:03+00:00",
+        "sha256_window": "a91b970506dc68152a46494545474f5adeaffa6dc51f6f6045d12c430f883657",
+        "shape": [
+          608,
+          763
+        ],
+        "url": "https://globalnightlight.s3.amazonaws.com/composites/npp_201906_ops/DNB_npp_20190601-20190630_global_ecm-slcorr_v10_ops.avg_rade9.tif",
+        "window_bounds": [
+          108.53541897,
+          -8.23541733,
+          111.71458567,
+          -5.70208398
+        ]
+      },
       "201906/avg_rade9@34": {
         "dtype": "float32",
         "etag": "0b18e650f21721c1900f88ea76b93e2d-453",
@@ -13149,6 +13809,24 @@
           -2.49791729,
           129.94375248,
           2.66874942
+        ]
+      },
+      "201906/n_cf@33": {
+        "dtype": "uint16",
+        "etag": "f8d5c0ae01aa47d42f8daefd45663761-114",
+        "last_modified": "Wed, 11 Jan 2023 20:34:37 GMT",
+        "read_at": "2026-10-08T03:15:10+00:00",
+        "sha256_window": "9d3a67f8b37e062e524412a137d95f64aad1eb5f5665fc570fab1623769a7d16",
+        "shape": [
+          608,
+          763
+        ],
+        "url": "https://globalnightlight.s3.amazonaws.com/composites/npp_201906_ops/DNB_npp_20190601-20190630_global_ecm-slcorr_v10_ops.n_cf.tif",
+        "window_bounds": [
+          108.53541897,
+          -8.23541733,
+          111.71458567,
+          -5.70208398
         ]
       },
       "201906/n_cf@34": {
@@ -13475,6 +14153,24 @@
           2.66874942
         ]
       },
+      "201907/avg_rade9@33": {
+        "dtype": "float32",
+        "etag": "9e8fae414ebaa9e1127be0e6120510f0-458",
+        "last_modified": "Wed, 11 Jan 2023 20:36:25 GMT",
+        "read_at": "2026-10-08T03:15:16+00:00",
+        "sha256_window": "d1c66b127c376c6316188a8709d4d1a0d641d5afd8272fdbc4bb079eccc27661",
+        "shape": [
+          608,
+          763
+        ],
+        "url": "https://globalnightlight.s3.amazonaws.com/composites/npp_201907_ops/DNB_npp_20190701-20190731_global_ecm-slcorr_v10_ops.avg_rade9.tif",
+        "window_bounds": [
+          108.53541897,
+          -8.23541733,
+          111.71458567,
+          -5.70208398
+        ]
+      },
       "201907/avg_rade9@34": {
         "dtype": "float32",
         "etag": "9e8fae414ebaa9e1127be0e6120510f0-458",
@@ -13797,6 +14493,24 @@
           -2.49791729,
           129.94375248,
           2.66874942
+        ]
+      },
+      "201907/n_cf@33": {
+        "dtype": "uint16",
+        "etag": "7803c10fd34ed7e3e9372f5dde7fe2ff-117",
+        "last_modified": "Wed, 11 Jan 2023 20:36:26 GMT",
+        "read_at": "2026-10-08T03:15:21+00:00",
+        "sha256_window": "2b98f2ae20988810c80f14b0d98f7c0d9d6ddd546e769bbf1d9e78e18dbb0dae",
+        "shape": [
+          608,
+          763
+        ],
+        "url": "https://globalnightlight.s3.amazonaws.com/composites/npp_201907_ops/DNB_npp_20190701-20190731_global_ecm-slcorr_v10_ops.n_cf.tif",
+        "window_bounds": [
+          108.53541897,
+          -8.23541733,
+          111.71458567,
+          -5.70208398
         ]
       },
       "201907/n_cf@34": {
@@ -14123,6 +14837,24 @@
           2.66874942
         ]
       },
+      "201908/avg_rade9@33": {
+        "dtype": "float32",
+        "etag": "3e98d80b38e811e9412d37113f69fb0c-496",
+        "last_modified": "Wed, 11 Jan 2023 20:38:46 GMT",
+        "read_at": "2026-10-08T03:15:26+00:00",
+        "sha256_window": "ae6bb1e90fca05692f53499c9f1c790113792a27a4232feded247919f601974e",
+        "shape": [
+          608,
+          763
+        ],
+        "url": "https://globalnightlight.s3.amazonaws.com/composites/npp_201908_ops/DNB_npp_20190801-20190831_global_ecm-slcorr_v10_ops.avg_rade9.tif",
+        "window_bounds": [
+          108.53541897,
+          -8.23541733,
+          111.71458567,
+          -5.70208398
+        ]
+      },
       "201908/avg_rade9@34": {
         "dtype": "float32",
         "etag": "3e98d80b38e811e9412d37113f69fb0c-496",
@@ -14445,6 +15177,24 @@
           -2.49791729,
           129.94375248,
           2.66874942
+        ]
+      },
+      "201908/n_cf@33": {
+        "dtype": "uint16",
+        "etag": "75e5a50d0ad3fab899e0236e63466824-126",
+        "last_modified": "Wed, 11 Jan 2023 20:38:46 GMT",
+        "read_at": "2026-10-08T03:15:31+00:00",
+        "sha256_window": "8b7c62e3857cc115d54d62f06cbe49c3f92956100df29fa3034eb78bfc78b6ad",
+        "shape": [
+          608,
+          763
+        ],
+        "url": "https://globalnightlight.s3.amazonaws.com/composites/npp_201908_ops/DNB_npp_20190801-20190831_global_ecm-slcorr_v10_ops.n_cf.tif",
+        "window_bounds": [
+          108.53541897,
+          -8.23541733,
+          111.71458567,
+          -5.70208398
         ]
       },
       "201908/n_cf@34": {
@@ -14771,6 +15521,24 @@
           2.66874942
         ]
       },
+      "201909/avg_rade9@33": {
+        "dtype": "float32",
+        "etag": "83bd2de6262940fcc14addbff4bb5ad0-538",
+        "last_modified": "Wed, 11 Jan 2023 20:41:01 GMT",
+        "read_at": "2026-10-08T03:15:36+00:00",
+        "sha256_window": "c064295efcae71627e5828d3c99287b81933f29923682959d28b71941647ed00",
+        "shape": [
+          608,
+          763
+        ],
+        "url": "https://globalnightlight.s3.amazonaws.com/composites/npp_201909_ops/DNB_npp_20190901-20190930_global_ecm-slcorr_v10_ops.avg_rade9.tif",
+        "window_bounds": [
+          108.53541897,
+          -8.23541733,
+          111.71458567,
+          -5.70208398
+        ]
+      },
       "201909/avg_rade9@34": {
         "dtype": "float32",
         "etag": "83bd2de6262940fcc14addbff4bb5ad0-538",
@@ -15093,6 +15861,24 @@
           -2.49791729,
           129.94375248,
           2.66874942
+        ]
+      },
+      "201909/n_cf@33": {
+        "dtype": "uint16",
+        "etag": "7035d1cfbb80436ab631a38402953cb9-135",
+        "last_modified": "Wed, 11 Jan 2023 20:41:02 GMT",
+        "read_at": "2026-10-08T03:15:41+00:00",
+        "sha256_window": "07d2a332eaf0b3d6186c3f95ddd5feef3f5124cd336012267333bfc04f3aaf70",
+        "shape": [
+          608,
+          763
+        ],
+        "url": "https://globalnightlight.s3.amazonaws.com/composites/npp_201909_ops/DNB_npp_20190901-20190930_global_ecm-slcorr_v10_ops.n_cf.tif",
+        "window_bounds": [
+          108.53541897,
+          -8.23541733,
+          111.71458567,
+          -5.70208398
         ]
       },
       "201909/n_cf@34": {
@@ -15419,6 +16205,24 @@
           2.66874942
         ]
       },
+      "201910/avg_rade9@33": {
+        "dtype": "float32",
+        "etag": "2b36cb612cd912b654c3551437846fa1-545",
+        "last_modified": "Wed, 11 Jan 2023 20:43:23 GMT",
+        "read_at": "2026-10-08T03:15:46+00:00",
+        "sha256_window": "4226cb678a1211a07ceb1b56fcd61efb45f5ced9029ed9f5287f517cfc9124bd",
+        "shape": [
+          608,
+          763
+        ],
+        "url": "https://globalnightlight.s3.amazonaws.com/composites/npp_201910_ops/DNB_npp_20191001-20191031_global_ecm-slcorr_v10_ops.avg_rade9.tif",
+        "window_bounds": [
+          108.53541897,
+          -8.23541733,
+          111.71458567,
+          -5.70208398
+        ]
+      },
       "201910/avg_rade9@34": {
         "dtype": "float32",
         "etag": "2b36cb612cd912b654c3551437846fa1-545",
@@ -15741,6 +16545,24 @@
           -2.49791729,
           129.94375248,
           2.66874942
+        ]
+      },
+      "201910/n_cf@33": {
+        "dtype": "uint16",
+        "etag": "f6e17a765d17775b099f7a1de39a3563-144",
+        "last_modified": "Wed, 11 Jan 2023 20:43:23 GMT",
+        "read_at": "2026-10-08T03:15:51+00:00",
+        "sha256_window": "30ff18fd4f3735e0da992ff68035dca8e537122b852c58eee5f7e7aeb9bef4c8",
+        "shape": [
+          608,
+          763
+        ],
+        "url": "https://globalnightlight.s3.amazonaws.com/composites/npp_201910_ops/DNB_npp_20191001-20191031_global_ecm-slcorr_v10_ops.n_cf.tif",
+        "window_bounds": [
+          108.53541897,
+          -8.23541733,
+          111.71458567,
+          -5.70208398
         ]
       },
       "201910/n_cf@34": {
@@ -16067,6 +16889,24 @@
           2.66874942
         ]
       },
+      "201911/avg_rade9@33": {
+        "dtype": "float32",
+        "etag": "014848c3acaceadea8488c0ffa2448c1-525",
+        "last_modified": "Wed, 11 Jan 2023 20:46:24 GMT",
+        "read_at": "2026-10-08T03:15:58+00:00",
+        "sha256_window": "edeac4ebcad5fda52f3cae31f1e30e91b83866fcb089d701979b3b5e8d64809a",
+        "shape": [
+          608,
+          763
+        ],
+        "url": "https://globalnightlight.s3.amazonaws.com/composites/npp_201911_ops/DNB_npp_20191101-20191130_global_ecm-slcorr_v10_ops.avg_rade9.tif",
+        "window_bounds": [
+          108.53541897,
+          -8.23541733,
+          111.71458567,
+          -5.70208398
+        ]
+      },
       "201911/avg_rade9@34": {
         "dtype": "float32",
         "etag": "014848c3acaceadea8488c0ffa2448c1-525",
@@ -16389,6 +17229,24 @@
           -2.49791729,
           129.94375248,
           2.66874942
+        ]
+      },
+      "201911/n_cf@33": {
+        "dtype": "uint16",
+        "etag": "755f69ed9a13a945d5ce56c71df60a73-135",
+        "last_modified": "Wed, 11 Jan 2023 20:46:24 GMT",
+        "read_at": "2026-10-08T03:16:04+00:00",
+        "sha256_window": "f770ca814f28421caac748b49e8d4d4785eec70bf9f99539dd660f5ef7c92767",
+        "shape": [
+          608,
+          763
+        ],
+        "url": "https://globalnightlight.s3.amazonaws.com/composites/npp_201911_ops/DNB_npp_20191101-20191130_global_ecm-slcorr_v10_ops.n_cf.tif",
+        "window_bounds": [
+          108.53541897,
+          -8.23541733,
+          111.71458567,
+          -5.70208398
         ]
       },
       "201911/n_cf@34": {
@@ -16715,6 +17573,24 @@
           2.66874942
         ]
       },
+      "201912/avg_rade9@33": {
+        "dtype": "float32",
+        "etag": "6b1c386040c3997d5024140f6476c3ad-486",
+        "last_modified": "Wed, 11 Jan 2023 20:48:42 GMT",
+        "read_at": "2026-10-08T03:16:09+00:00",
+        "sha256_window": "d03f7b8a9fb281c16edb0d1c4da5d71c53bdd09d8dc10b1eeab44801af6ba880",
+        "shape": [
+          608,
+          763
+        ],
+        "url": "https://globalnightlight.s3.amazonaws.com/composites/npp_201912_ops/DNB_npp_20191201-20191231_global_ecm-slcorr_v10_ops.avg_rade9.tif",
+        "window_bounds": [
+          108.53541897,
+          -8.23541733,
+          111.71458567,
+          -5.70208398
+        ]
+      },
       "201912/avg_rade9@34": {
         "dtype": "float32",
         "etag": "6b1c386040c3997d5024140f6476c3ad-486",
@@ -17037,6 +17913,24 @@
           -2.49791729,
           129.94375248,
           2.66874942
+        ]
+      },
+      "201912/n_cf@33": {
+        "dtype": "uint16",
+        "etag": "d5e3b871bf93fc962af7bfba73715b02-135",
+        "last_modified": "Wed, 11 Jan 2023 20:48:43 GMT",
+        "read_at": "2026-10-08T03:16:14+00:00",
+        "sha256_window": "9d564be15f03a1f1374a699df24ba819a5ac982f5ebf7227e1eb6d0442cc377d",
+        "shape": [
+          608,
+          763
+        ],
+        "url": "https://globalnightlight.s3.amazonaws.com/composites/npp_201912_ops/DNB_npp_20191201-20191231_global_ecm-slcorr_v10_ops.n_cf.tif",
+        "window_bounds": [
+          108.53541897,
+          -8.23541733,
+          111.71458567,
+          -5.70208398
         ]
       },
       "201912/n_cf@34": {
@@ -17363,6 +18257,24 @@
           2.66874942
         ]
       },
+      "202001/avg_rade9@33": {
+        "dtype": "float32",
+        "etag": "dcff109cf8010d6c6b611f4bce3632f1-502",
+        "last_modified": "Wed, 11 Jan 2023 21:35:43 GMT",
+        "read_at": "2026-10-08T03:16:38+00:00",
+        "sha256_window": "e532bda4ce51f11d105d7d5242d339643e3acabd79e853fd75322491a6d3d2be",
+        "shape": [
+          608,
+          763
+        ],
+        "url": "https://globalnightlight.s3.amazonaws.com/composites/npp_202001_ops/DNB_npp_20200101-20200131_global_ecm-slcorr_v10_ops.avg_rade9.tif",
+        "window_bounds": [
+          108.53541897,
+          -8.23541733,
+          111.71458567,
+          -5.70208398
+        ]
+      },
       "202001/avg_rade9@34": {
         "dtype": "float32",
         "etag": "dcff109cf8010d6c6b611f4bce3632f1-502",
@@ -17685,6 +18597,24 @@
           -2.49791729,
           129.94375248,
           2.66874942
+        ]
+      },
+      "202001/n_cf@33": {
+        "dtype": "uint16",
+        "etag": "4247d9936634ba5cf4049d0ecf86fc8c-141",
+        "last_modified": "Wed, 11 Jan 2023 21:35:43 GMT",
+        "read_at": "2026-10-08T03:16:46+00:00",
+        "sha256_window": "930a43dd44a9dee95591a3c3b59c3262a9fa64cb8c09df6faf0be0cf056ece00",
+        "shape": [
+          608,
+          763
+        ],
+        "url": "https://globalnightlight.s3.amazonaws.com/composites/npp_202001_ops/DNB_npp_20200101-20200131_global_ecm-slcorr_v10_ops.n_cf.tif",
+        "window_bounds": [
+          108.53541897,
+          -8.23541733,
+          111.71458567,
+          -5.70208398
         ]
       },
       "202001/n_cf@34": {
@@ -18011,6 +18941,24 @@
           2.66874942
         ]
       },
+      "202002/avg_rade9@33": {
+        "dtype": "float32",
+        "etag": "8add06711a9dff5eed387917518eb38e-538",
+        "last_modified": "Wed, 11 Jan 2023 21:37:55 GMT",
+        "read_at": "2026-10-08T03:16:52+00:00",
+        "sha256_window": "126798ad1d42596817e233a9316f8c26035556bce4a7f5b60f9ce2c9d61ae7e2",
+        "shape": [
+          608,
+          763
+        ],
+        "url": "https://globalnightlight.s3.amazonaws.com/composites/npp_202002_ops/DNB_npp_20200201-20200229_global_ecm-slcorr_v10_ops.avg_rade9.tif",
+        "window_bounds": [
+          108.53541897,
+          -8.23541733,
+          111.71458567,
+          -5.70208398
+        ]
+      },
       "202002/avg_rade9@34": {
         "dtype": "float32",
         "etag": "8add06711a9dff5eed387917518eb38e-538",
@@ -18333,6 +19281,24 @@
           -2.49791729,
           129.94375248,
           2.66874942
+        ]
+      },
+      "202002/n_cf@33": {
+        "dtype": "uint16",
+        "etag": "453dfeccacbb098e7586bc111438ad16-140",
+        "last_modified": "Wed, 11 Jan 2023 21:37:55 GMT",
+        "read_at": "2026-10-08T03:16:57+00:00",
+        "sha256_window": "006f82ffa6e06e3ee73ae735362e41c8d6fd5663645d3dd466512f9e851992ae",
+        "shape": [
+          608,
+          763
+        ],
+        "url": "https://globalnightlight.s3.amazonaws.com/composites/npp_202002_ops/DNB_npp_20200201-20200229_global_ecm-slcorr_v10_ops.n_cf.tif",
+        "window_bounds": [
+          108.53541897,
+          -8.23541733,
+          111.71458567,
+          -5.70208398
         ]
       },
       "202002/n_cf@34": {
@@ -18659,6 +19625,24 @@
           2.66874942
         ]
       },
+      "202003/avg_rade9@33": {
+        "dtype": "float32",
+        "etag": "34cf5d63cbb0648efda6878415907d09-541",
+        "last_modified": "Wed, 11 Jan 2023 21:40:37 GMT",
+        "read_at": "2026-10-08T03:17:05+00:00",
+        "sha256_window": "cd0478a1a13d6e3b186121cdcb8d897d65609745f6557c39072e02b63e043169",
+        "shape": [
+          608,
+          763
+        ],
+        "url": "https://globalnightlight.s3.amazonaws.com/composites/npp_202003_ops/DNB_npp_20200301-20200331_global_ecm-slcorr_v10_ops.avg_rade9.tif",
+        "window_bounds": [
+          108.53541897,
+          -8.23541733,
+          111.71458567,
+          -5.70208398
+        ]
+      },
       "202003/avg_rade9@34": {
         "dtype": "float32",
         "etag": "34cf5d63cbb0648efda6878415907d09-541",
@@ -18981,6 +19965,24 @@
           -2.49791729,
           129.94375248,
           2.66874942
+        ]
+      },
+      "202003/n_cf@33": {
+        "dtype": "uint16",
+        "etag": "5a980a75722e8da525fdcb7fa30453d4-147",
+        "last_modified": "Wed, 11 Jan 2023 21:40:37 GMT",
+        "read_at": "2026-10-08T03:17:10+00:00",
+        "sha256_window": "a5641153a0bc2b3331c52cff2d703c0b67830d9f77c1bb306710482fca135f92",
+        "shape": [
+          608,
+          763
+        ],
+        "url": "https://globalnightlight.s3.amazonaws.com/composites/npp_202003_ops/DNB_npp_20200301-20200331_global_ecm-slcorr_v10_ops.n_cf.tif",
+        "window_bounds": [
+          108.53541897,
+          -8.23541733,
+          111.71458567,
+          -5.70208398
         ]
       },
       "202003/n_cf@34": {
@@ -19307,6 +20309,24 @@
           2.66874942
         ]
       },
+      "202004/avg_rade9@33": {
+        "dtype": "float32",
+        "etag": "fb88f79a57befb966ecd0414500574d1-527",
+        "last_modified": "Wed, 11 Jan 2023 21:42:30 GMT",
+        "read_at": "2026-10-08T03:17:15+00:00",
+        "sha256_window": "e317169a947c6178ebbc5a337278e786439372fa33e9640b5959fe089255613c",
+        "shape": [
+          608,
+          763
+        ],
+        "url": "https://globalnightlight.s3.amazonaws.com/composites/npp_202004_ops/DNB_npp_20200401-20200430_global_ecm-slcorr_v10_ops.avg_rade9.tif",
+        "window_bounds": [
+          108.53541897,
+          -8.23541733,
+          111.71458567,
+          -5.70208398
+        ]
+      },
       "202004/avg_rade9@34": {
         "dtype": "float32",
         "etag": "fb88f79a57befb966ecd0414500574d1-527",
@@ -19629,6 +20649,24 @@
           -2.49791729,
           129.94375248,
           2.66874942
+        ]
+      },
+      "202004/n_cf@33": {
+        "dtype": "uint16",
+        "etag": "7094ce0691154127f5b2cc61089806b2-132",
+        "last_modified": "Wed, 11 Jan 2023 21:42:31 GMT",
+        "read_at": "2026-10-08T03:17:19+00:00",
+        "sha256_window": "f34092f50c2fb13821b248b51abf9c48d4cafa951ea631f8a07be0133b609458",
+        "shape": [
+          608,
+          763
+        ],
+        "url": "https://globalnightlight.s3.amazonaws.com/composites/npp_202004_ops/DNB_npp_20200401-20200430_global_ecm-slcorr_v10_ops.n_cf.tif",
+        "window_bounds": [
+          108.53541897,
+          -8.23541733,
+          111.71458567,
+          -5.70208398
         ]
       },
       "202004/n_cf@34": {
@@ -19955,6 +20993,24 @@
           2.66874942
         ]
       },
+      "202005/avg_rade9@33": {
+        "dtype": "float32",
+        "etag": "161cb43b12c174eb9dc28a24c3ac4dce-483",
+        "last_modified": "Wed, 11 Jan 2023 21:44:10 GMT",
+        "read_at": "2026-10-08T03:17:24+00:00",
+        "sha256_window": "2da3e09546308435f5dd97209520ddcb927543dd00dee3e24281f311e7bd96a9",
+        "shape": [
+          608,
+          763
+        ],
+        "url": "https://globalnightlight.s3.amazonaws.com/composites/npp_202005_ops/DNB_npp_20200501-20200531_global_ecm-slcorr_v10_ops.avg_rade9.tif",
+        "window_bounds": [
+          108.53541897,
+          -8.23541733,
+          111.71458567,
+          -5.70208398
+        ]
+      },
       "202005/avg_rade9@34": {
         "dtype": "float32",
         "etag": "161cb43b12c174eb9dc28a24c3ac4dce-483",
@@ -20277,6 +21333,24 @@
           -2.49791729,
           129.94375248,
           2.66874942
+        ]
+      },
+      "202005/n_cf@33": {
+        "dtype": "uint16",
+        "etag": "02a6da0e223a9e6934c0fbf19c22f7e2-123",
+        "last_modified": "Wed, 11 Jan 2023 21:44:10 GMT",
+        "read_at": "2026-10-08T03:17:30+00:00",
+        "sha256_window": "b78acc79cfd40f9a63dad3bdd8797257eabd3fcf357595bb7f73d56e5e7b579a",
+        "shape": [
+          608,
+          763
+        ],
+        "url": "https://globalnightlight.s3.amazonaws.com/composites/npp_202005_ops/DNB_npp_20200501-20200531_global_ecm-slcorr_v10_ops.n_cf.tif",
+        "window_bounds": [
+          108.53541897,
+          -8.23541733,
+          111.71458567,
+          -5.70208398
         ]
       },
       "202005/n_cf@34": {
@@ -20603,6 +21677,24 @@
           2.66874942
         ]
       },
+      "202006/avg_rade9@33": {
+        "dtype": "float32",
+        "etag": "875b7f849cc792720ecd33a7b25f5754-461",
+        "last_modified": "Wed, 11 Jan 2023 21:45:52 GMT",
+        "read_at": "2026-10-08T03:17:35+00:00",
+        "sha256_window": "b5467f0bf3f269bfc34a849480c30d1d0f73fc6d551d51196166c2571d3fb42c",
+        "shape": [
+          608,
+          763
+        ],
+        "url": "https://globalnightlight.s3.amazonaws.com/composites/npp_202006_ops/DNB_npp_20200601-20200630_global_ecm-slcorr_v10_ops.avg_rade9.tif",
+        "window_bounds": [
+          108.53541897,
+          -8.23541733,
+          111.71458567,
+          -5.70208398
+        ]
+      },
       "202006/avg_rade9@34": {
         "dtype": "float32",
         "etag": "875b7f849cc792720ecd33a7b25f5754-461",
@@ -20925,6 +22017,24 @@
           -2.49791729,
           129.94375248,
           2.66874942
+        ]
+      },
+      "202006/n_cf@33": {
+        "dtype": "uint16",
+        "etag": "92eab4569d4ac4c339d7ae973d1a3e71-115",
+        "last_modified": "Wed, 11 Jan 2023 21:45:52 GMT",
+        "read_at": "2026-10-08T03:17:40+00:00",
+        "sha256_window": "cca004313b3c1b2cfcacc2095be27b5b8d860b2850497efdbf73df57dd453a82",
+        "shape": [
+          608,
+          763
+        ],
+        "url": "https://globalnightlight.s3.amazonaws.com/composites/npp_202006_ops/DNB_npp_20200601-20200630_global_ecm-slcorr_v10_ops.n_cf.tif",
+        "window_bounds": [
+          108.53541897,
+          -8.23541733,
+          111.71458567,
+          -5.70208398
         ]
       },
       "202006/n_cf@34": {
@@ -21251,6 +22361,24 @@
           2.66874942
         ]
       },
+      "202007/avg_rade9@33": {
+        "dtype": "float32",
+        "etag": "f8317207eedd8ce8741c228f3fcb8685-482",
+        "last_modified": "Wed, 11 Jan 2023 21:47:18 GMT",
+        "read_at": "2026-10-08T03:17:45+00:00",
+        "sha256_window": "bbdf0cd64d22cd8934953f2c4100dc1693ad06b146a952b29dd41e2d1926a01e",
+        "shape": [
+          608,
+          763
+        ],
+        "url": "https://globalnightlight.s3.amazonaws.com/composites/npp_202007_ops/DNB_npp_20200701-20200731_global_ecm-slcorr_v10_ops.avg_rade9.tif",
+        "window_bounds": [
+          108.53541897,
+          -8.23541733,
+          111.71458567,
+          -5.70208398
+        ]
+      },
       "202007/avg_rade9@34": {
         "dtype": "float32",
         "etag": "f8317207eedd8ce8741c228f3fcb8685-482",
@@ -21573,6 +22701,24 @@
           -2.49791729,
           129.94375248,
           2.66874942
+        ]
+      },
+      "202007/n_cf@33": {
+        "dtype": "uint16",
+        "etag": "67601d6ec6b9bfa922f70db789ddf98f-117",
+        "last_modified": "Wed, 11 Jan 2023 21:47:17 GMT",
+        "read_at": "2026-10-08T03:17:49+00:00",
+        "sha256_window": "cb26bce9c938d08b7e8eb15a9fed407361a80681a905e30c647f49b3c0ca0bdb",
+        "shape": [
+          608,
+          763
+        ],
+        "url": "https://globalnightlight.s3.amazonaws.com/composites/npp_202007_ops/DNB_npp_20200701-20200731_global_ecm-slcorr_v10_ops.n_cf.tif",
+        "window_bounds": [
+          108.53541897,
+          -8.23541733,
+          111.71458567,
+          -5.70208398
         ]
       },
       "202007/n_cf@34": {
@@ -21899,6 +23045,24 @@
           2.66874942
         ]
       },
+      "202008/avg_rade9@33": {
+        "dtype": "float32",
+        "etag": "e5a3b9742141698a793ea084725e31b6-520",
+        "last_modified": "Wed, 11 Jan 2023 21:48:43 GMT",
+        "read_at": "2026-10-08T03:17:54+00:00",
+        "sha256_window": "45dbc999271fafef84f7688c330fdf085a15b6013a7b34a122d8dd21c8d9872c",
+        "shape": [
+          608,
+          763
+        ],
+        "url": "https://globalnightlight.s3.amazonaws.com/composites/npp_202008_ops/DNB_npp_20200801-20200831_global_ecm-slcorr_v10_ops.avg_rade9.tif",
+        "window_bounds": [
+          108.53541897,
+          -8.23541733,
+          111.71458567,
+          -5.70208398
+        ]
+      },
       "202008/avg_rade9@34": {
         "dtype": "float32",
         "etag": "e5a3b9742141698a793ea084725e31b6-520",
@@ -22221,6 +23385,24 @@
           -2.49791729,
           129.94375248,
           2.66874942
+        ]
+      },
+      "202008/n_cf@33": {
+        "dtype": "uint16",
+        "etag": "7a48e8b70acb4e0b81f2dc8c0ead7e97-124",
+        "last_modified": "Wed, 11 Jan 2023 21:48:43 GMT",
+        "read_at": "2026-10-08T03:17:59+00:00",
+        "sha256_window": "41e30b0e31b58f60ab868749a8d66347d24e72f2a0225d468a878021b0a57fc1",
+        "shape": [
+          608,
+          763
+        ],
+        "url": "https://globalnightlight.s3.amazonaws.com/composites/npp_202008_ops/DNB_npp_20200801-20200831_global_ecm-slcorr_v10_ops.n_cf.tif",
+        "window_bounds": [
+          108.53541897,
+          -8.23541733,
+          111.71458567,
+          -5.70208398
         ]
       },
       "202008/n_cf@34": {
@@ -22547,6 +23729,24 @@
           2.66874942
         ]
       },
+      "202009/avg_rade9@33": {
+        "dtype": "float32",
+        "etag": "df82c6db4927be0b4144a7d7164c8df3-549",
+        "last_modified": "Wed, 11 Jan 2023 21:50:18 GMT",
+        "read_at": "2026-10-08T03:18:03+00:00",
+        "sha256_window": "b2dacf487389057a5d238b453d8429492cadc4878e4cf64b23f790ec1cd1e5bd",
+        "shape": [
+          608,
+          763
+        ],
+        "url": "https://globalnightlight.s3.amazonaws.com/composites/npp_202009_ops/DNB_npp_20200901-20200930_global_ecm-slcorr_v10_ops.avg_rade9.tif",
+        "window_bounds": [
+          108.53541897,
+          -8.23541733,
+          111.71458567,
+          -5.70208398
+        ]
+      },
       "202009/avg_rade9@34": {
         "dtype": "float32",
         "etag": "df82c6db4927be0b4144a7d7164c8df3-549",
@@ -22869,6 +24069,24 @@
           -2.49791729,
           129.94375248,
           2.66874942
+        ]
+      },
+      "202009/n_cf@33": {
+        "dtype": "uint16",
+        "etag": "466d26564edc3da0a9dc5772cd605724-134",
+        "last_modified": "Wed, 11 Jan 2023 21:50:18 GMT",
+        "read_at": "2026-10-08T03:18:09+00:00",
+        "sha256_window": "d764a1eb8e7fbb1f152124243af6b3511e763ffa6b07460396e1cf15fd097568",
+        "shape": [
+          608,
+          763
+        ],
+        "url": "https://globalnightlight.s3.amazonaws.com/composites/npp_202009_ops/DNB_npp_20200901-20200930_global_ecm-slcorr_v10_ops.n_cf.tif",
+        "window_bounds": [
+          108.53541897,
+          -8.23541733,
+          111.71458567,
+          -5.70208398
         ]
       },
       "202009/n_cf@34": {
@@ -23195,6 +24413,24 @@
           2.66874942
         ]
       },
+      "202010/avg_rade9@33": {
+        "dtype": "float32",
+        "etag": "a81246256ddfbd930b1029b45ec2e83c-551",
+        "last_modified": "Wed, 11 Jan 2023 21:52:19 GMT",
+        "read_at": "2026-10-08T03:18:14+00:00",
+        "sha256_window": "2a378082c33c33e84eb66f4c0ec62e7c3911d461722f1f731f84b05624af40f7",
+        "shape": [
+          608,
+          763
+        ],
+        "url": "https://globalnightlight.s3.amazonaws.com/composites/npp_202010_ops/DNB_npp_20201001-20201031_global_ecm-slcorr_v10_ops.avg_rade9.tif",
+        "window_bounds": [
+          108.53541897,
+          -8.23541733,
+          111.71458567,
+          -5.70208398
+        ]
+      },
       "202010/avg_rade9@34": {
         "dtype": "float32",
         "etag": "a81246256ddfbd930b1029b45ec2e83c-551",
@@ -23517,6 +24753,24 @@
           -2.49791729,
           129.94375248,
           2.66874942
+        ]
+      },
+      "202010/n_cf@33": {
+        "dtype": "uint16",
+        "etag": "a4cfbb312e97d4c76f10cd5c7c47557f-134",
+        "last_modified": "Wed, 11 Jan 2023 21:52:19 GMT",
+        "read_at": "2026-10-08T03:18:19+00:00",
+        "sha256_window": "6d795425986bb0c6a28546bebef69bfbc3220b960a2a1314bd9ae53c7102bd69",
+        "shape": [
+          608,
+          763
+        ],
+        "url": "https://globalnightlight.s3.amazonaws.com/composites/npp_202010_ops/DNB_npp_20201001-20201031_global_ecm-slcorr_v10_ops.n_cf.tif",
+        "window_bounds": [
+          108.53541897,
+          -8.23541733,
+          111.71458567,
+          -5.70208398
         ]
       },
       "202010/n_cf@34": {
@@ -23843,6 +25097,24 @@
           2.66874942
         ]
       },
+      "202011/avg_rade9@33": {
+        "dtype": "float32",
+        "etag": "e3a689fd50f9ae3790a6760c8d0a4a93-541",
+        "last_modified": "Wed, 11 Jan 2023 21:54:28 GMT",
+        "read_at": "2026-10-08T03:18:23+00:00",
+        "sha256_window": "19b67cad7680b4ea325903daf50a4897202835cdc415bfd752100f40ec94b2ec",
+        "shape": [
+          608,
+          763
+        ],
+        "url": "https://globalnightlight.s3.amazonaws.com/composites/npp_202011_ops/DNB_npp_20201101-20201130_global_ecm-slcorr_v10_ops.avg_rade9.tif",
+        "window_bounds": [
+          108.53541897,
+          -8.23541733,
+          111.71458567,
+          -5.70208398
+        ]
+      },
       "202011/avg_rade9@34": {
         "dtype": "float32",
         "etag": "e3a689fd50f9ae3790a6760c8d0a4a93-541",
@@ -24165,6 +25437,24 @@
           -2.49791729,
           129.94375248,
           2.66874942
+        ]
+      },
+      "202011/n_cf@33": {
+        "dtype": "uint16",
+        "etag": "6c6cf829cb0336d766914fda12e3b0e1-132",
+        "last_modified": "Wed, 11 Jan 2023 21:54:28 GMT",
+        "read_at": "2026-10-08T03:18:28+00:00",
+        "sha256_window": "98cfbadfc535194bf216d91063efd6f2ff201e8ec70b9e543643edf10fb41ac6",
+        "shape": [
+          608,
+          763
+        ],
+        "url": "https://globalnightlight.s3.amazonaws.com/composites/npp_202011_ops/DNB_npp_20201101-20201130_global_ecm-slcorr_v10_ops.n_cf.tif",
+        "window_bounds": [
+          108.53541897,
+          -8.23541733,
+          111.71458567,
+          -5.70208398
         ]
       },
       "202011/n_cf@34": {
@@ -24491,6 +25781,24 @@
           2.66874942
         ]
       },
+      "202012/avg_rade9@33": {
+        "dtype": "float32",
+        "etag": "cf0557dd11d97d9e4068880d40dde0a4-516",
+        "last_modified": "Wed, 11 Jan 2023 21:56:21 GMT",
+        "read_at": "2026-10-08T03:18:32+00:00",
+        "sha256_window": "c079155e44f2a3a6a9269c0308d243ec8b46eb29423c7ba03950b42f6698cf24",
+        "shape": [
+          608,
+          763
+        ],
+        "url": "https://globalnightlight.s3.amazonaws.com/composites/npp_202012_ops/DNB_npp_20201201-20201231_global_ecm-slcorr_v10_ops.avg_rade9.tif",
+        "window_bounds": [
+          108.53541897,
+          -8.23541733,
+          111.71458567,
+          -5.70208398
+        ]
+      },
       "202012/avg_rade9@34": {
         "dtype": "float32",
         "etag": "cf0557dd11d97d9e4068880d40dde0a4-516",
@@ -24813,6 +26121,24 @@
           -2.49791729,
           129.94375248,
           2.66874942
+        ]
+      },
+      "202012/n_cf@33": {
+        "dtype": "uint16",
+        "etag": "f227a69c5c8f193d346d8d3b84331ace-127",
+        "last_modified": "Wed, 11 Jan 2023 21:56:21 GMT",
+        "read_at": "2026-10-08T03:18:37+00:00",
+        "sha256_window": "fb66d35bc6e7751897b12fc53cf6536670ed924569f9c0650931e16cd3ceaa02",
+        "shape": [
+          608,
+          763
+        ],
+        "url": "https://globalnightlight.s3.amazonaws.com/composites/npp_202012_ops/DNB_npp_20201201-20201231_global_ecm-slcorr_v10_ops.n_cf.tif",
+        "window_bounds": [
+          108.53541897,
+          -8.23541733,
+          111.71458567,
+          -5.70208398
         ]
       },
       "202012/n_cf@34": {
@@ -25139,6 +26465,24 @@
           2.66874942
         ]
       },
+      "202101/avg_rade9@33": {
+        "dtype": "float32",
+        "etag": "7fd27f292bb0467d0bb040701ee0e887-524",
+        "last_modified": "Wed, 11 Jan 2023 22:56:39 GMT",
+        "read_at": "2026-10-08T03:18:54+00:00",
+        "sha256_window": "b5d9e937c1eb302c9ab34e963201753e6a739840da77e0e7109b66da7e7ca7af",
+        "shape": [
+          608,
+          763
+        ],
+        "url": "https://globalnightlight.s3.amazonaws.com/composites/npp_202101_ops/DNB_npp_20210101-20210131_global_ecm-slcorr_v10_ops.avg_rade9.tif",
+        "window_bounds": [
+          108.53541897,
+          -8.23541733,
+          111.71458567,
+          -5.70208398
+        ]
+      },
       "202101/avg_rade9@34": {
         "dtype": "float32",
         "etag": "7fd27f292bb0467d0bb040701ee0e887-524",
@@ -25461,6 +26805,24 @@
           -2.49791729,
           129.94375248,
           2.66874942
+        ]
+      },
+      "202101/n_cf@33": {
+        "dtype": "uint16",
+        "etag": "9a198f2729ccc49ced292efa8b746022-132",
+        "last_modified": "Wed, 11 Jan 2023 22:56:39 GMT",
+        "read_at": "2026-10-08T03:18:58+00:00",
+        "sha256_window": "f7bee3e301eb998d5f0d1fdcc4d2df5a760be90838ca4a80206fe1a4b4c0f557",
+        "shape": [
+          608,
+          763
+        ],
+        "url": "https://globalnightlight.s3.amazonaws.com/composites/npp_202101_ops/DNB_npp_20210101-20210131_global_ecm-slcorr_v10_ops.n_cf.tif",
+        "window_bounds": [
+          108.53541897,
+          -8.23541733,
+          111.71458567,
+          -5.70208398
         ]
       },
       "202101/n_cf@34": {
@@ -25787,6 +27149,24 @@
           2.66874942
         ]
       },
+      "202102/avg_rade9@33": {
+        "dtype": "float32",
+        "etag": "14a05b0fae751ef4a1802215e42ed4d0-551",
+        "last_modified": "Wed, 11 Jan 2023 22:58:26 GMT",
+        "read_at": "2026-10-08T03:19:03+00:00",
+        "sha256_window": "03ef33e8107be8e7fe121cbfa7e8b604cdf1be74e2f606cd7d4331083fca2c6b",
+        "shape": [
+          608,
+          763
+        ],
+        "url": "https://globalnightlight.s3.amazonaws.com/composites/npp_202102_ops/DNB_npp_20210201-20210228_global_ecm-slcorr_v10_ops.avg_rade9.tif",
+        "window_bounds": [
+          108.53541897,
+          -8.23541733,
+          111.71458567,
+          -5.70208398
+        ]
+      },
       "202102/avg_rade9@34": {
         "dtype": "float32",
         "etag": "14a05b0fae751ef4a1802215e42ed4d0-551",
@@ -26109,6 +27489,24 @@
           -2.49791729,
           129.94375248,
           2.66874942
+        ]
+      },
+      "202102/n_cf@33": {
+        "dtype": "uint16",
+        "etag": "e393ab7fb5860ad21f062cd43bae59ae-140",
+        "last_modified": "Wed, 11 Jan 2023 21:59:49 GMT",
+        "read_at": "2026-10-08T03:19:07+00:00",
+        "sha256_window": "5ddaa9256cbf02b200075a9edd0183a95f18a05c8eceeb476d301f446e267cd8",
+        "shape": [
+          608,
+          763
+        ],
+        "url": "https://globalnightlight.s3.amazonaws.com/composites/npp_202102_ops/DNB_npp_20210201-20210228_global_ecm-slcorr_v10_ops.n_cf.tif",
+        "window_bounds": [
+          108.53541897,
+          -8.23541733,
+          111.71458567,
+          -5.70208398
         ]
       },
       "202102/n_cf@34": {
@@ -26435,6 +27833,24 @@
           2.66874942
         ]
       },
+      "202103/avg_rade9@33": {
+        "dtype": "float32",
+        "etag": "736c3b1573cdf00afe1dc2ca6f850fa2-556",
+        "last_modified": "Wed, 11 Jan 2023 22:59:56 GMT",
+        "read_at": "2026-10-08T03:19:12+00:00",
+        "sha256_window": "de21473ce477efa96afaf7dc064a8521f7f2f021cfc66e43e03222718cd87876",
+        "shape": [
+          608,
+          763
+        ],
+        "url": "https://globalnightlight.s3.amazonaws.com/composites/npp_202103_ops/DNB_npp_20210301-20210331_global_ecm-slcorr_v10_ops.avg_rade9.tif",
+        "window_bounds": [
+          108.53541897,
+          -8.23541733,
+          111.71458567,
+          -5.70208398
+        ]
+      },
       "202103/avg_rade9@34": {
         "dtype": "float32",
         "etag": "736c3b1573cdf00afe1dc2ca6f850fa2-556",
@@ -26757,6 +28173,24 @@
           -2.49791729,
           129.94375248,
           2.66874942
+        ]
+      },
+      "202103/n_cf@33": {
+        "dtype": "uint16",
+        "etag": "0eebf47eb086ad18c14428f2e2c57074-139",
+        "last_modified": "Wed, 11 Jan 2023 22:59:56 GMT",
+        "read_at": "2026-10-08T03:19:17+00:00",
+        "sha256_window": "639913c208ea4a647913e0829330a3ef438799537bfec4ff9acb39a4164605c8",
+        "shape": [
+          608,
+          763
+        ],
+        "url": "https://globalnightlight.s3.amazonaws.com/composites/npp_202103_ops/DNB_npp_20210301-20210331_global_ecm-slcorr_v10_ops.n_cf.tif",
+        "window_bounds": [
+          108.53541897,
+          -8.23541733,
+          111.71458567,
+          -5.70208398
         ]
       },
       "202103/n_cf@34": {
@@ -27083,6 +28517,24 @@
           2.66874942
         ]
       },
+      "202104/avg_rade9@33": {
+        "dtype": "float32",
+        "etag": "0553559a465926018ce4a7d3d599223e-560",
+        "last_modified": "Wed, 11 Jan 2023 23:02:58 GMT",
+        "read_at": "2026-10-08T03:19:22+00:00",
+        "sha256_window": "2b2f81fd7eb5c335d424a4ea5d7c7f8432bd2dc181ae297b3a4e8d5ea707af50",
+        "shape": [
+          608,
+          763
+        ],
+        "url": "https://globalnightlight.s3.amazonaws.com/composites/npp_202104_ops/DNB_npp_20210401-20210430_global_ecm-slcorr_v10_ops.avg_rade9.tif",
+        "window_bounds": [
+          108.53541897,
+          -8.23541733,
+          111.71458567,
+          -5.70208398
+        ]
+      },
       "202104/avg_rade9@34": {
         "dtype": "float32",
         "etag": "0553559a465926018ce4a7d3d599223e-560",
@@ -27405,6 +28857,24 @@
           -2.49791729,
           129.94375248,
           2.66874942
+        ]
+      },
+      "202104/n_cf@33": {
+        "dtype": "uint16",
+        "etag": "8f7b062ef14553cb3cc63ddef6a62992-133",
+        "last_modified": "Wed, 11 Jan 2023 23:02:58 GMT",
+        "read_at": "2026-10-08T03:19:26+00:00",
+        "sha256_window": "1c25677d61c69bf9441b5f69941202a523458d67ed682c758e097ff7e285266e",
+        "shape": [
+          608,
+          763
+        ],
+        "url": "https://globalnightlight.s3.amazonaws.com/composites/npp_202104_ops/DNB_npp_20210401-20210430_global_ecm-slcorr_v10_ops.n_cf.tif",
+        "window_bounds": [
+          108.53541897,
+          -8.23541733,
+          111.71458567,
+          -5.70208398
         ]
       },
       "202104/n_cf@34": {
@@ -27731,6 +29201,24 @@
           2.66874942
         ]
       },
+      "202105/avg_rade9@33": {
+        "dtype": "float32",
+        "etag": "934990ab17e96dccd00a22abf423605a-506",
+        "last_modified": "Wed, 11 Jan 2023 23:06:51 GMT",
+        "read_at": "2026-10-08T03:19:31+00:00",
+        "sha256_window": "95bc51e571693ff77acb06b1d5f98f8ec31fd5bb69524615908ae265019fc9f5",
+        "shape": [
+          608,
+          763
+        ],
+        "url": "https://globalnightlight.s3.amazonaws.com/composites/npp_202105_ops/DNB_npp_20210501-20210531_global_ecm-slcorr_v10_ops.avg_rade9.tif",
+        "window_bounds": [
+          108.53541897,
+          -8.23541733,
+          111.71458567,
+          -5.70208398
+        ]
+      },
       "202105/avg_rade9@34": {
         "dtype": "float32",
         "etag": "934990ab17e96dccd00a22abf423605a-506",
@@ -28053,6 +29541,24 @@
           -2.49791729,
           129.94375248,
           2.66874942
+        ]
+      },
+      "202105/n_cf@33": {
+        "dtype": "uint16",
+        "etag": "2c7e8d0fd8e21099c3f99f98a6479780-124",
+        "last_modified": "Wed, 11 Jan 2023 23:06:52 GMT",
+        "read_at": "2026-10-08T03:19:36+00:00",
+        "sha256_window": "23fc133b54ad363b29f6ee00471f07ce01c8540ece26e3e40215d95bdc96d8d2",
+        "shape": [
+          608,
+          763
+        ],
+        "url": "https://globalnightlight.s3.amazonaws.com/composites/npp_202105_ops/DNB_npp_20210501-20210531_global_ecm-slcorr_v10_ops.n_cf.tif",
+        "window_bounds": [
+          108.53541897,
+          -8.23541733,
+          111.71458567,
+          -5.70208398
         ]
       },
       "202105/n_cf@34": {
@@ -28379,6 +29885,24 @@
           2.66874942
         ]
       },
+      "202106/avg_rade9@33": {
+        "dtype": "float32",
+        "etag": "596cb3faf98ee74f927db48e4b001704-475",
+        "last_modified": "Wed, 11 Jan 2023 23:09:36 GMT",
+        "read_at": "2026-10-08T03:19:41+00:00",
+        "sha256_window": "62f2fc5bda7523c57d408d443193020ec5a1fd27e2c040be3bf9de3884119c54",
+        "shape": [
+          608,
+          763
+        ],
+        "url": "https://globalnightlight.s3.amazonaws.com/composites/npp_202106_ops/DNB_npp_20210601-20210630_global_ecm-slcorr_v10_ops.avg_rade9.tif",
+        "window_bounds": [
+          108.53541897,
+          -8.23541733,
+          111.71458567,
+          -5.70208398
+        ]
+      },
       "202106/avg_rade9@34": {
         "dtype": "float32",
         "etag": "596cb3faf98ee74f927db48e4b001704-475",
@@ -28701,6 +30225,24 @@
           -2.49791729,
           129.94375248,
           2.66874942
+        ]
+      },
+      "202106/n_cf@33": {
+        "dtype": "uint16",
+        "etag": "1cc05012dec4313dd13c7bb4bc5a6b9b-120",
+        "last_modified": "Wed, 11 Jan 2023 23:09:37 GMT",
+        "read_at": "2026-10-08T03:19:45+00:00",
+        "sha256_window": "ef11bc9444461148ed7c1f67ed8740f935cbdecfde3041142b7122d848d58a97",
+        "shape": [
+          608,
+          763
+        ],
+        "url": "https://globalnightlight.s3.amazonaws.com/composites/npp_202106_ops/DNB_npp_20210601-20210630_global_ecm-slcorr_v10_ops.n_cf.tif",
+        "window_bounds": [
+          108.53541897,
+          -8.23541733,
+          111.71458567,
+          -5.70208398
         ]
       },
       "202106/n_cf@34": {
@@ -29027,6 +30569,24 @@
           2.66874942
         ]
       },
+      "202107/avg_rade9@33": {
+        "dtype": "float32",
+        "etag": "df895f7a82fcc87042e34b45358887fd-476",
+        "last_modified": "Wed, 11 Jan 2023 23:12:07 GMT",
+        "read_at": "2026-10-08T03:19:50+00:00",
+        "sha256_window": "543099b06f356ec28bb612aca50df62b6d2ccdb1f605a9d7d54ed9451dd42b68",
+        "shape": [
+          608,
+          763
+        ],
+        "url": "https://globalnightlight.s3.amazonaws.com/composites/npp_202107_ops/DNB_npp_20210701-20210731_global_ecm-slcorr_v10_ops.avg_rade9.tif",
+        "window_bounds": [
+          108.53541897,
+          -8.23541733,
+          111.71458567,
+          -5.70208398
+        ]
+      },
       "202107/avg_rade9@34": {
         "dtype": "float32",
         "etag": "df895f7a82fcc87042e34b45358887fd-476",
@@ -29349,6 +30909,24 @@
           -2.49791729,
           129.94375248,
           2.66874942
+        ]
+      },
+      "202107/n_cf@33": {
+        "dtype": "uint16",
+        "etag": "0355d1905cf959923c797a5d90ac9155-121",
+        "last_modified": "Wed, 11 Jan 2023 23:12:07 GMT",
+        "read_at": "2026-10-08T03:19:54+00:00",
+        "sha256_window": "cd04d865522bbaa468f3a845c024c563ace79f1130f949f932f809ff7bf501af",
+        "shape": [
+          608,
+          763
+        ],
+        "url": "https://globalnightlight.s3.amazonaws.com/composites/npp_202107_ops/DNB_npp_20210701-20210731_global_ecm-slcorr_v10_ops.n_cf.tif",
+        "window_bounds": [
+          108.53541897,
+          -8.23541733,
+          111.71458567,
+          -5.70208398
         ]
       },
       "202107/n_cf@34": {
@@ -29675,6 +31253,24 @@
           2.66874942
         ]
       },
+      "202109/avg_rade9@33": {
+        "dtype": "float32",
+        "etag": "a27e483d3f101a83f114b1c1abf09d15-556",
+        "last_modified": "Wed, 11 Jan 2023 23:14:49 GMT",
+        "read_at": "2026-10-08T03:19:59+00:00",
+        "sha256_window": "17dd533343c24a20c2c09fdeec104ee3528c3e1b72d84a801b0e020fbe6eff12",
+        "shape": [
+          608,
+          763
+        ],
+        "url": "https://globalnightlight.s3.amazonaws.com/composites/npp_202109_ops/DNB_npp_20210901-20210930_global_ecm-slcorr_v10_ops.avg_rade9.tif",
+        "window_bounds": [
+          108.53541897,
+          -8.23541733,
+          111.71458567,
+          -5.70208398
+        ]
+      },
       "202109/avg_rade9@34": {
         "dtype": "float32",
         "etag": "a27e483d3f101a83f114b1c1abf09d15-556",
@@ -29997,6 +31593,24 @@
           -2.49791729,
           129.94375248,
           2.66874942
+        ]
+      },
+      "202109/n_cf@33": {
+        "dtype": "uint16",
+        "etag": "5b16f399b1094b19e50b311f4561691d-136",
+        "last_modified": "Wed, 11 Jan 2023 23:14:49 GMT",
+        "read_at": "2026-10-08T03:20:03+00:00",
+        "sha256_window": "052b1c72db4fed1b08abb9c68b27ef1fcd702eb18bd09c089c3168513387f57e",
+        "shape": [
+          608,
+          763
+        ],
+        "url": "https://globalnightlight.s3.amazonaws.com/composites/npp_202109_ops/DNB_npp_20210901-20210930_global_ecm-slcorr_v10_ops.n_cf.tif",
+        "window_bounds": [
+          108.53541897,
+          -8.23541733,
+          111.71458567,
+          -5.70208398
         ]
       },
       "202109/n_cf@34": {
@@ -30323,6 +31937,24 @@
           2.66874942
         ]
       },
+      "202110/avg_rade9@33": {
+        "dtype": "float32",
+        "etag": "a496e33600df6fb389543983fd3d3308-569",
+        "last_modified": "Wed, 11 Jan 2023 23:17:07 GMT",
+        "read_at": "2026-10-08T03:20:08+00:00",
+        "sha256_window": "ef17e3210752ed8478143de58e686fb0cd0b71e05f93e06e605063cd82ac48ca",
+        "shape": [
+          608,
+          763
+        ],
+        "url": "https://globalnightlight.s3.amazonaws.com/composites/npp_202110_ops/DNB_npp_20211001-20211031_global_ecm-slcorr_v10_ops.avg_rade9.tif",
+        "window_bounds": [
+          108.53541897,
+          -8.23541733,
+          111.71458567,
+          -5.70208398
+        ]
+      },
       "202110/avg_rade9@34": {
         "dtype": "float32",
         "etag": "a496e33600df6fb389543983fd3d3308-569",
@@ -30645,6 +32277,24 @@
           -2.49791729,
           129.94375248,
           2.66874942
+        ]
+      },
+      "202110/n_cf@33": {
+        "dtype": "uint16",
+        "etag": "fb6f212a030cb76b4dcfeb733cffeb7c-141",
+        "last_modified": "Wed, 11 Jan 2023 23:17:07 GMT",
+        "read_at": "2026-10-08T03:20:13+00:00",
+        "sha256_window": "608e2f052ee4bc157689ee28102585cbf71473d5a204b4eacb61be69a461b44d",
+        "shape": [
+          608,
+          763
+        ],
+        "url": "https://globalnightlight.s3.amazonaws.com/composites/npp_202110_ops/DNB_npp_20211001-20211031_global_ecm-slcorr_v10_ops.n_cf.tif",
+        "window_bounds": [
+          108.53541897,
+          -8.23541733,
+          111.71458567,
+          -5.70208398
         ]
       },
       "202110/n_cf@34": {
@@ -30971,6 +32621,24 @@
           2.66874942
         ]
       },
+      "202111/avg_rade9@33": {
+        "dtype": "float32",
+        "etag": "6d7d66222ed0b921aa65587aa84e9708-556",
+        "last_modified": "Wed, 11 Jan 2023 23:20:10 GMT",
+        "read_at": "2026-10-08T03:20:18+00:00",
+        "sha256_window": "08511415925b877d3f1ba26d2b7f8e82e93c1ac0f673cacb8ce98b3f0df13502",
+        "shape": [
+          608,
+          763
+        ],
+        "url": "https://globalnightlight.s3.amazonaws.com/composites/npp_202111_ops/DNB_npp_20211101-20211130_global_ecm-slcorr_v10_ops.avg_rade9.tif",
+        "window_bounds": [
+          108.53541897,
+          -8.23541733,
+          111.71458567,
+          -5.70208398
+        ]
+      },
       "202111/avg_rade9@34": {
         "dtype": "float32",
         "etag": "6d7d66222ed0b921aa65587aa84e9708-556",
@@ -31293,6 +32961,24 @@
           -2.49791729,
           129.94375248,
           2.66874942
+        ]
+      },
+      "202111/n_cf@33": {
+        "dtype": "uint16",
+        "etag": "575104d5b5e44abb0fe9010db03e057a-132",
+        "last_modified": "Wed, 11 Jan 2023 23:20:10 GMT",
+        "read_at": "2026-10-08T03:20:22+00:00",
+        "sha256_window": "2b3b69329955bc22390e8cfefcf42a1ef65628bd35e0d706476ff2b7bfe95380",
+        "shape": [
+          608,
+          763
+        ],
+        "url": "https://globalnightlight.s3.amazonaws.com/composites/npp_202111_ops/DNB_npp_20211101-20211130_global_ecm-slcorr_v10_ops.n_cf.tif",
+        "window_bounds": [
+          108.53541897,
+          -8.23541733,
+          111.71458567,
+          -5.70208398
         ]
       },
       "202111/n_cf@34": {
@@ -31619,6 +33305,24 @@
           2.66874942
         ]
       },
+      "202112/avg_rade9@33": {
+        "dtype": "float32",
+        "etag": "a049ff00379808b1c13dfdf1e7518f73-524",
+        "last_modified": "Wed, 11 Jan 2023 23:22:13 GMT",
+        "read_at": "2026-10-08T03:20:28+00:00",
+        "sha256_window": "f7ef441026c561520be2d4ecda918dd569ce2520f4ada7e81a9a7d5b253032ea",
+        "shape": [
+          608,
+          763
+        ],
+        "url": "https://globalnightlight.s3.amazonaws.com/composites/npp_202112_ops/DNB_npp_20211201-20211231_global_ecm-slcorr_v10_ops.avg_rade9.tif",
+        "window_bounds": [
+          108.53541897,
+          -8.23541733,
+          111.71458567,
+          -5.70208398
+        ]
+      },
       "202112/avg_rade9@34": {
         "dtype": "float32",
         "etag": "a049ff00379808b1c13dfdf1e7518f73-524",
@@ -31941,6 +33645,24 @@
           -2.49791729,
           129.94375248,
           2.66874942
+        ]
+      },
+      "202112/n_cf@33": {
+        "dtype": "uint16",
+        "etag": "34ea6b82d817ecde30bb1d3ec5f69795-132",
+        "last_modified": "Wed, 11 Jan 2023 23:22:13 GMT",
+        "read_at": "2026-10-08T03:20:32+00:00",
+        "sha256_window": "b5f0bc061f4ad6f82f3464b47b740dd3e7541bb77df57f335530861520a4efae",
+        "shape": [
+          608,
+          763
+        ],
+        "url": "https://globalnightlight.s3.amazonaws.com/composites/npp_202112_ops/DNB_npp_20211201-20211231_global_ecm-slcorr_v10_ops.n_cf.tif",
+        "window_bounds": [
+          108.53541897,
+          -8.23541733,
+          111.71458567,
+          -5.70208398
         ]
       },
       "202112/n_cf@34": {
@@ -32267,6 +33989,24 @@
           2.66874942
         ]
       },
+      "202201/avg_rade9@33": {
+        "dtype": "float32",
+        "etag": "72ebfbcdb9715389a0643838efdb3009-537",
+        "last_modified": "Thu, 12 Jan 2023 01:50:25 GMT",
+        "read_at": "2026-10-08T03:20:49+00:00",
+        "sha256_window": "6b433ef5ecf9dc5980ce6db5ceeec7d2bacac5b04c8121b9ff4f4b59420ffc4f",
+        "shape": [
+          608,
+          763
+        ],
+        "url": "https://globalnightlight.s3.amazonaws.com/composites/npp_202201_ops/DNB_npp_20220101-20220131_global_ecm-slcorr_v10_ops.avg_rade9.tif",
+        "window_bounds": [
+          108.53541897,
+          -8.23541733,
+          111.71458567,
+          -5.70208398
+        ]
+      },
       "202201/avg_rade9@34": {
         "dtype": "float32",
         "etag": "72ebfbcdb9715389a0643838efdb3009-537",
@@ -32589,6 +34329,24 @@
           -2.49791729,
           129.94375248,
           2.66874942
+        ]
+      },
+      "202201/n_cf@33": {
+        "dtype": "uint16",
+        "etag": "15dce1d91243f21ab7f87a1a96e7c452-135",
+        "last_modified": "Thu, 12 Jan 2023 01:50:25 GMT",
+        "read_at": "2026-10-08T03:20:53+00:00",
+        "sha256_window": "8ad947c530ac1a3d7d8c1ee02a8c524d967cbf6488c110a729f40f3fb231c759",
+        "shape": [
+          608,
+          763
+        ],
+        "url": "https://globalnightlight.s3.amazonaws.com/composites/npp_202201_ops/DNB_npp_20220101-20220131_global_ecm-slcorr_v10_ops.n_cf.tif",
+        "window_bounds": [
+          108.53541897,
+          -8.23541733,
+          111.71458567,
+          -5.70208398
         ]
       },
       "202201/n_cf@34": {
@@ -32915,6 +34673,24 @@
           2.66874942
         ]
       },
+      "202202/avg_rade9@33": {
+        "dtype": "float32",
+        "etag": "84e774fa140aa68dec2bc24550addb5d-569",
+        "last_modified": "Thu, 12 Jan 2023 01:52:31 GMT",
+        "read_at": "2026-10-08T03:20:58+00:00",
+        "sha256_window": "df034f2fde78115a1d1dd6471a79dd7a59a2e5496044bcc4507d3678f3a28628",
+        "shape": [
+          608,
+          763
+        ],
+        "url": "https://globalnightlight.s3.amazonaws.com/composites/npp_202202_ops/DNB_npp_20220201-20220228_global_ecm-slcorr_v10_ops.avg_rade9.tif",
+        "window_bounds": [
+          108.53541897,
+          -8.23541733,
+          111.71458567,
+          -5.70208398
+        ]
+      },
       "202202/avg_rade9@34": {
         "dtype": "float32",
         "etag": "84e774fa140aa68dec2bc24550addb5d-569",
@@ -33237,6 +35013,24 @@
           -2.49791729,
           129.94375248,
           2.66874942
+        ]
+      },
+      "202202/n_cf@33": {
+        "dtype": "uint16",
+        "etag": "0df51b2c063628ec835c74b775a66d3f-127",
+        "last_modified": "Thu, 12 Jan 2023 01:52:31 GMT",
+        "read_at": "2026-10-08T03:21:02+00:00",
+        "sha256_window": "9b9c8dd9e022e04a4dada13a5616066b85cd149fc6d707e3e230b2a00fb0e337",
+        "shape": [
+          608,
+          763
+        ],
+        "url": "https://globalnightlight.s3.amazonaws.com/composites/npp_202202_ops/DNB_npp_20220201-20220228_global_ecm-slcorr_v10_ops.n_cf.tif",
+        "window_bounds": [
+          108.53541897,
+          -8.23541733,
+          111.71458567,
+          -5.70208398
         ]
       },
       "202202/n_cf@34": {
@@ -33563,6 +35357,24 @@
           2.66874942
         ]
       },
+      "202203/avg_rade9@33": {
+        "dtype": "float32",
+        "etag": "87d50348c7935801bcbe24b0c3d6e9ea-566",
+        "last_modified": "Thu, 12 Jan 2023 01:54:14 GMT",
+        "read_at": "2026-10-08T03:21:07+00:00",
+        "sha256_window": "8312160f5f3cfb152a46697ffff1c001390c438ad2866b4bc187613ba65dd4fd",
+        "shape": [
+          608,
+          763
+        ],
+        "url": "https://globalnightlight.s3.amazonaws.com/composites/npp_202203_ops/DNB_npp_20220301-20220331_global_ecm-slcorr_v10_ops.avg_rade9.tif",
+        "window_bounds": [
+          108.53541897,
+          -8.23541733,
+          111.71458567,
+          -5.70208398
+        ]
+      },
       "202203/avg_rade9@34": {
         "dtype": "float32",
         "etag": "87d50348c7935801bcbe24b0c3d6e9ea-566",
@@ -33885,6 +35697,24 @@
           -2.49791729,
           129.94375248,
           2.66874942
+        ]
+      },
+      "202203/n_cf@33": {
+        "dtype": "uint16",
+        "etag": "763d8fd7fe7f7cdd457c33ee53d4efd1-143",
+        "last_modified": "Thu, 12 Jan 2023 01:54:14 GMT",
+        "read_at": "2026-10-08T03:21:12+00:00",
+        "sha256_window": "1edfabce616fa497c21c532f5067df0381583989333f0e682e31f8d32eac9501",
+        "shape": [
+          608,
+          763
+        ],
+        "url": "https://globalnightlight.s3.amazonaws.com/composites/npp_202203_ops/DNB_npp_20220301-20220331_global_ecm-slcorr_v10_ops.n_cf.tif",
+        "window_bounds": [
+          108.53541897,
+          -8.23541733,
+          111.71458567,
+          -5.70208398
         ]
       },
       "202203/n_cf@34": {
@@ -34211,6 +36041,24 @@
           2.66874942
         ]
       },
+      "202204/avg_rade9@33": {
+        "dtype": "float32",
+        "etag": "c3de06469d243c18e66dcb3f05131a67-569",
+        "last_modified": "Thu, 12 Jan 2023 01:56:32 GMT",
+        "read_at": "2026-10-08T03:21:17+00:00",
+        "sha256_window": "ebd2546270fc5a801b8cd25601ecd66fc9d9c7176b1afc7217a5fac07d32da44",
+        "shape": [
+          608,
+          763
+        ],
+        "url": "https://globalnightlight.s3.amazonaws.com/composites/npp_202204_ops/DNB_npp_20220401-20220430_global_ecm-slcorr_v10_ops.avg_rade9.tif",
+        "window_bounds": [
+          108.53541897,
+          -8.23541733,
+          111.71458567,
+          -5.70208398
+        ]
+      },
       "202204/avg_rade9@34": {
         "dtype": "float32",
         "etag": "c3de06469d243c18e66dcb3f05131a67-569",
@@ -34533,6 +36381,24 @@
           -2.49791729,
           129.94375248,
           2.66874942
+        ]
+      },
+      "202204/n_cf@33": {
+        "dtype": "uint16",
+        "etag": "c0c366b3cb5da146fa3aff1064296ff0-132",
+        "last_modified": "Thu, 12 Jan 2023 01:56:32 GMT",
+        "read_at": "2026-10-08T03:21:21+00:00",
+        "sha256_window": "a2c10d8165825a91637842e37e3a6179e657a1383bc7a9b49ae1dd6ca4ccfc73",
+        "shape": [
+          608,
+          763
+        ],
+        "url": "https://globalnightlight.s3.amazonaws.com/composites/npp_202204_ops/DNB_npp_20220401-20220430_global_ecm-slcorr_v10_ops.n_cf.tif",
+        "window_bounds": [
+          108.53541897,
+          -8.23541733,
+          111.71458567,
+          -5.70208398
         ]
       },
       "202204/n_cf@34": {
@@ -34859,6 +36725,24 @@
           2.66874942
         ]
       },
+      "202205/avg_rade9@33": {
+        "dtype": "float32",
+        "etag": "e5f4b4cf9694eb272aea27e789c22909-511",
+        "last_modified": "Thu, 12 Jan 2023 01:58:20 GMT",
+        "read_at": "2026-10-08T03:21:26+00:00",
+        "sha256_window": "e8d811eadfeba1468657ebdd54a52ea2f8e38d7edfe87dd63dade60cafafe035",
+        "shape": [
+          608,
+          763
+        ],
+        "url": "https://globalnightlight.s3.amazonaws.com/composites/npp_202205_ops/DNB_npp_20220501-20220531_global_ecm-slcorr_v10_ops.avg_rade9.tif",
+        "window_bounds": [
+          108.53541897,
+          -8.23541733,
+          111.71458567,
+          -5.70208398
+        ]
+      },
       "202205/avg_rade9@34": {
         "dtype": "float32",
         "etag": "e5f4b4cf9694eb272aea27e789c22909-511",
@@ -35181,6 +37065,24 @@
           -2.49791729,
           129.94375248,
           2.66874942
+        ]
+      },
+      "202205/n_cf@33": {
+        "dtype": "uint16",
+        "etag": "f4a379530572dc2783532ebaabf3db4a-127",
+        "last_modified": "Thu, 12 Jan 2023 01:58:20 GMT",
+        "read_at": "2026-10-08T03:21:31+00:00",
+        "sha256_window": "16e350be15d016f030b3dd1975f86f3cbb4c795d7e0bcbc47c92104bc44dc6e7",
+        "shape": [
+          608,
+          763
+        ],
+        "url": "https://globalnightlight.s3.amazonaws.com/composites/npp_202205_ops/DNB_npp_20220501-20220531_global_ecm-slcorr_v10_ops.n_cf.tif",
+        "window_bounds": [
+          108.53541897,
+          -8.23541733,
+          111.71458567,
+          -5.70208398
         ]
       },
       "202205/n_cf@34": {
@@ -35507,6 +37409,24 @@
           2.66874942
         ]
       },
+      "202207/avg_rade9@33": {
+        "dtype": "float32",
+        "etag": "30ecbdd3530c8fdf3a6e1be6f7e9eef6-494",
+        "last_modified": "Thu, 12 Jan 2023 01:59:59 GMT",
+        "read_at": "2026-10-08T03:21:36+00:00",
+        "sha256_window": "3f66f517736fad9ec366a00f01a55b241f032c4eb6f3483c4ccfa8eaa210f57c",
+        "shape": [
+          608,
+          763
+        ],
+        "url": "https://globalnightlight.s3.amazonaws.com/composites/npp_202207_ops/DNB_npp_20220701-20220731_global_ecm-slcorr_v10_ops.avg_rade9.tif",
+        "window_bounds": [
+          108.53541897,
+          -8.23541733,
+          111.71458567,
+          -5.70208398
+        ]
+      },
       "202207/avg_rade9@34": {
         "dtype": "float32",
         "etag": "30ecbdd3530c8fdf3a6e1be6f7e9eef6-494",
@@ -35829,6 +37749,24 @@
           -2.49791729,
           129.94375248,
           2.66874942
+        ]
+      },
+      "202207/n_cf@33": {
+        "dtype": "uint16",
+        "etag": "3aaf31293e93bae62f3c5446b14f7bc9-108",
+        "last_modified": "Thu, 12 Jan 2023 01:59:59 GMT",
+        "read_at": "2026-10-08T03:21:41+00:00",
+        "sha256_window": "19e0a4e6c4196f808bb5ecf3a686050660ff165c8234ce9ae931e2b3e8b842e0",
+        "shape": [
+          608,
+          763
+        ],
+        "url": "https://globalnightlight.s3.amazonaws.com/composites/npp_202207_ops/DNB_npp_20220701-20220731_global_ecm-slcorr_v10_ops.n_cf.tif",
+        "window_bounds": [
+          108.53541897,
+          -8.23541733,
+          111.71458567,
+          -5.70208398
         ]
       },
       "202207/n_cf@34": {
@@ -36155,6 +38093,24 @@
           2.66874942
         ]
       },
+      "202209/avg_rade9@33": {
+        "dtype": "float32",
+        "etag": "4636c058ec539cd85e107afe0e0831b2-571",
+        "last_modified": "Thu, 18 May 2023 16:03:11 GMT",
+        "read_at": "2026-10-08T03:21:45+00:00",
+        "sha256_window": "82637433d2701a3ea2d7f4ad353e28ce592567e4489ccd8b863e03d30fadac8c",
+        "shape": [
+          608,
+          763
+        ],
+        "url": "https://globalnightlight.s3.amazonaws.com/composites/npp_202209_ops/DNB_npp_20220901-20220930_global_ecm-slcorr_v10_ops.avg_rade9.tif",
+        "window_bounds": [
+          108.53541897,
+          -8.23541733,
+          111.71458567,
+          -5.70208398
+        ]
+      },
       "202209/avg_rade9@34": {
         "dtype": "float32",
         "etag": "4636c058ec539cd85e107afe0e0831b2-571",
@@ -36477,6 +38433,24 @@
           -2.49791729,
           129.94375248,
           2.66874942
+        ]
+      },
+      "202209/n_cf@33": {
+        "dtype": "uint16",
+        "etag": "2be7eba12fe4394bfc91961a3c008fa8-142",
+        "last_modified": "Thu, 18 May 2023 16:03:10 GMT",
+        "read_at": "2026-10-08T03:21:50+00:00",
+        "sha256_window": "ffd0c349fadbb9bf36ba7646ea0b14fc9b81ff8064d2ea4c83b215e85e9baf78",
+        "shape": [
+          608,
+          763
+        ],
+        "url": "https://globalnightlight.s3.amazonaws.com/composites/npp_202209_ops/DNB_npp_20220901-20220930_global_ecm-slcorr_v10_ops.n_cf.tif",
+        "window_bounds": [
+          108.53541897,
+          -8.23541733,
+          111.71458567,
+          -5.70208398
         ]
       },
       "202209/n_cf@34": {
@@ -36803,6 +38777,24 @@
           2.66874942
         ]
       },
+      "202210/avg_rade9@33": {
+        "dtype": "float32",
+        "etag": "a4314b57609ff3f49039ca431975b331-573",
+        "last_modified": "Thu, 18 May 2023 15:37:30 GMT",
+        "read_at": "2026-10-08T03:21:54+00:00",
+        "sha256_window": "72807f6f15a02195585d55e717583228ff31a768452995efe47ce8b16e58a33c",
+        "shape": [
+          608,
+          763
+        ],
+        "url": "https://globalnightlight.s3.amazonaws.com/composites/npp_202210_ops/DNB_npp_20221001-20221031_global_ecm-slcorr_v10_ops.avg_rade9.tif",
+        "window_bounds": [
+          108.53541897,
+          -8.23541733,
+          111.71458567,
+          -5.70208398
+        ]
+      },
       "202210/avg_rade9@34": {
         "dtype": "float32",
         "etag": "a4314b57609ff3f49039ca431975b331-573",
@@ -37125,6 +39117,24 @@
           -2.49791729,
           129.94375248,
           2.66874942
+        ]
+      },
+      "202210/n_cf@33": {
+        "dtype": "uint16",
+        "etag": "32eb397998f56388a771ad33d3e07446-145",
+        "last_modified": "Thu, 18 May 2023 15:37:29 GMT",
+        "read_at": "2026-10-08T03:21:59+00:00",
+        "sha256_window": "8d9209507f96f10fbbeb4f78c7b7713d10f156c7afa766f0d8cd504dd185ed83",
+        "shape": [
+          608,
+          763
+        ],
+        "url": "https://globalnightlight.s3.amazonaws.com/composites/npp_202210_ops/DNB_npp_20221001-20221031_global_ecm-slcorr_v10_ops.n_cf.tif",
+        "window_bounds": [
+          108.53541897,
+          -8.23541733,
+          111.71458567,
+          -5.70208398
         ]
       },
       "202210/n_cf@34": {
@@ -37451,6 +39461,24 @@
           2.66874942
         ]
       },
+      "202211/avg_rade9@33": {
+        "dtype": "float32",
+        "etag": "e405a1046860741824508a1872e88ff6-555",
+        "last_modified": "Tue, 10 Jan 2023 04:49:13 GMT",
+        "read_at": "2026-10-08T03:22:03+00:00",
+        "sha256_window": "fdb8d8fa526f0f5a662e74b50678a9e20921ab561d8d2698d0208698f4ed8459",
+        "shape": [
+          608,
+          763
+        ],
+        "url": "https://globalnightlight.s3.amazonaws.com/composites/npp_202211_ops/DNB_npp_20221101-20221130_global_ecm-slcorr_v10_ops.avg_rade9.tif",
+        "window_bounds": [
+          108.53541897,
+          -8.23541733,
+          111.71458567,
+          -5.70208398
+        ]
+      },
       "202211/avg_rade9@34": {
         "dtype": "float32",
         "etag": "e405a1046860741824508a1872e88ff6-555",
@@ -37773,6 +39801,24 @@
           -2.49791729,
           129.94375248,
           2.66874942
+        ]
+      },
+      "202211/n_cf@33": {
+        "dtype": "uint16",
+        "etag": "090ef5f98dae6494602a7d7c1bd7d243-132",
+        "last_modified": "Tue, 10 Jan 2023 04:49:13 GMT",
+        "read_at": "2026-10-08T03:22:08+00:00",
+        "sha256_window": "fd62e41e35e5bb8fb6fb9fcadcb1a7d5de847dbce37e5ee7d9731b538c008f05",
+        "shape": [
+          608,
+          763
+        ],
+        "url": "https://globalnightlight.s3.amazonaws.com/composites/npp_202211_ops/DNB_npp_20221101-20221130_global_ecm-slcorr_v10_ops.n_cf.tif",
+        "window_bounds": [
+          108.53541897,
+          -8.23541733,
+          111.71458567,
+          -5.70208398
         ]
       },
       "202211/n_cf@34": {
@@ -38099,6 +40145,24 @@
           2.66874942
         ]
       },
+      "202212/avg_rade9@33": {
+        "dtype": "float32",
+        "etag": "82c6cb049867e1ad26df9327d6474a85-537",
+        "last_modified": "Tue, 10 Jan 2023 23:15:53 GMT",
+        "read_at": "2026-10-08T03:22:13+00:00",
+        "sha256_window": "10f5d158a989e7b82ed88110588d8213fd5bafbc043cf2ce16a54f1aa32f4ad7",
+        "shape": [
+          608,
+          763
+        ],
+        "url": "https://globalnightlight.s3.amazonaws.com/composites/npp_202212_ops/DNB_npp_20221201-20221231_global_ecm-slcorr_v10_ops.avg_rade9.tif",
+        "window_bounds": [
+          108.53541897,
+          -8.23541733,
+          111.71458567,
+          -5.70208398
+        ]
+      },
       "202212/avg_rade9@34": {
         "dtype": "float32",
         "etag": "82c6cb049867e1ad26df9327d6474a85-537",
@@ -38421,6 +40485,24 @@
           -2.49791729,
           129.94375248,
           2.66874942
+        ]
+      },
+      "202212/n_cf@33": {
+        "dtype": "uint16",
+        "etag": "58aeb6a88c0ebaf476cf9d5973a09ab5-131",
+        "last_modified": "Tue, 10 Jan 2023 23:15:53 GMT",
+        "read_at": "2026-10-08T03:22:17+00:00",
+        "sha256_window": "9336612259c961e470209ca92fb6eb655f8669c29093abe98599a949cbb27b3a",
+        "shape": [
+          608,
+          763
+        ],
+        "url": "https://globalnightlight.s3.amazonaws.com/composites/npp_202212_ops/DNB_npp_20221201-20221231_global_ecm-slcorr_v10_ops.n_cf.tif",
+        "window_bounds": [
+          108.53541897,
+          -8.23541733,
+          111.71458567,
+          -5.70208398
         ]
       },
       "202212/n_cf@34": {
@@ -38747,6 +40829,24 @@
           2.66874942
         ]
       },
+      "202301/avg_rade9@33": {
+        "dtype": "float32",
+        "etag": "8a94221c687e5b489864a70193719a3a-546",
+        "last_modified": "Tue, 14 Feb 2023 01:12:17 GMT",
+        "read_at": "2026-10-08T03:22:35+00:00",
+        "sha256_window": "ed49b694b83c7c9982048d2adb304dc722b2a1fff3145ea792a4a3d8ac94b273",
+        "shape": [
+          608,
+          763
+        ],
+        "url": "https://globalnightlight.s3.amazonaws.com/composites/npp_202301_ops/DNB_npp_20230101-20230131_global_ecm-slcorr_v10_ops.avg_rade9.tif",
+        "window_bounds": [
+          108.53541897,
+          -8.23541733,
+          111.71458567,
+          -5.70208398
+        ]
+      },
       "202301/avg_rade9@34": {
         "dtype": "float32",
         "etag": "8a94221c687e5b489864a70193719a3a-546",
@@ -39069,6 +41169,24 @@
           -2.49791729,
           129.94375248,
           2.66874942
+        ]
+      },
+      "202301/n_cf@33": {
+        "dtype": "uint16",
+        "etag": "f8cddb07bdf2ef5c14767f13a5b0e825-129",
+        "last_modified": "Tue, 14 Feb 2023 01:12:17 GMT",
+        "read_at": "2026-10-08T03:22:40+00:00",
+        "sha256_window": "4d210cbc429a0f0e1e6b1c10185c0ddc13e138cd3a742ed56fbe903b702f3de2",
+        "shape": [
+          608,
+          763
+        ],
+        "url": "https://globalnightlight.s3.amazonaws.com/composites/npp_202301_ops/DNB_npp_20230101-20230131_global_ecm-slcorr_v10_ops.n_cf.tif",
+        "window_bounds": [
+          108.53541897,
+          -8.23541733,
+          111.71458567,
+          -5.70208398
         ]
       },
       "202301/n_cf@34": {
@@ -39395,6 +41513,24 @@
           2.66874942
         ]
       },
+      "202302/avg_rade9@33": {
+        "dtype": "float32",
+        "etag": "8eb0d32862f7e33065d235f84328ffbd-579",
+        "last_modified": "Thu, 02 Mar 2023 20:03:42 GMT",
+        "read_at": "2026-10-08T03:22:45+00:00",
+        "sha256_window": "5f0750aef6ff456dd8a2d5a89332ef37bbaa88af026fcc726e3cff5b1901d7a6",
+        "shape": [
+          608,
+          763
+        ],
+        "url": "https://globalnightlight.s3.amazonaws.com/composites/npp_202302_ops/DNB_npp_20230201-20230228_global_ecm-slcorr_v10_ops.avg_rade9.tif",
+        "window_bounds": [
+          108.53541897,
+          -8.23541733,
+          111.71458567,
+          -5.70208398
+        ]
+      },
       "202302/avg_rade9@34": {
         "dtype": "float32",
         "etag": "8eb0d32862f7e33065d235f84328ffbd-579",
@@ -39717,6 +41853,24 @@
           -2.49791729,
           129.94375248,
           2.66874942
+        ]
+      },
+      "202302/n_cf@33": {
+        "dtype": "uint16",
+        "etag": "ee54b4b566546db49c2e65ccf56e1bcc-129",
+        "last_modified": "Thu, 02 Mar 2023 20:03:41 GMT",
+        "read_at": "2026-10-08T03:22:49+00:00",
+        "sha256_window": "d8eb1ff6a075b7f9ce51c761e3cf5008d3de55cfa77459336f1912fc04448c33",
+        "shape": [
+          608,
+          763
+        ],
+        "url": "https://globalnightlight.s3.amazonaws.com/composites/npp_202302_ops/DNB_npp_20230201-20230228_global_ecm-slcorr_v10_ops.n_cf.tif",
+        "window_bounds": [
+          108.53541897,
+          -8.23541733,
+          111.71458567,
+          -5.70208398
         ]
       },
       "202302/n_cf@34": {
@@ -40043,6 +42197,24 @@
           2.66874942
         ]
       },
+      "202303/avg_rade9@33": {
+        "dtype": "float32",
+        "etag": "eaad3db30f2be04f5ebfba19feee1119-588",
+        "last_modified": "Thu, 06 Apr 2023 18:07:02 GMT",
+        "read_at": "2026-10-08T03:22:54+00:00",
+        "sha256_window": "c5ccd79caa2b1d04fdd3695ae58c271a93eed92380003cd0dd0e62aa7fb6a88c",
+        "shape": [
+          608,
+          763
+        ],
+        "url": "https://globalnightlight.s3.amazonaws.com/composites/npp_202303_ops/DNB_npp_20230301-20230331_global_ecm-slcorr_v10_ops.avg_rade9.tif",
+        "window_bounds": [
+          108.53541897,
+          -8.23541733,
+          111.71458567,
+          -5.70208398
+        ]
+      },
       "202303/avg_rade9@34": {
         "dtype": "float32",
         "etag": "eaad3db30f2be04f5ebfba19feee1119-588",
@@ -40365,6 +42537,24 @@
           -2.49791729,
           129.94375248,
           2.66874942
+        ]
+      },
+      "202303/n_cf@33": {
+        "dtype": "uint16",
+        "etag": "f8b82a77f8c3580fdc0b8d77e43f21c9-138",
+        "last_modified": "Thu, 06 Apr 2023 18:07:02 GMT",
+        "read_at": "2026-10-08T03:22:58+00:00",
+        "sha256_window": "beecf62c356e2e6fc5f7a8978b16358a13812d744e721b7609fd9ec6e2e2e1a0",
+        "shape": [
+          608,
+          763
+        ],
+        "url": "https://globalnightlight.s3.amazonaws.com/composites/npp_202303_ops/DNB_npp_20230301-20230331_global_ecm-slcorr_v10_ops.n_cf.tif",
+        "window_bounds": [
+          108.53541897,
+          -8.23541733,
+          111.71458567,
+          -5.70208398
         ]
       },
       "202303/n_cf@34": {
@@ -40691,6 +42881,24 @@
           2.66874942
         ]
       },
+      "202304/avg_rade9@33": {
+        "dtype": "float32",
+        "etag": "cb62abe8658114703a693ccd82cf65ee-569",
+        "last_modified": "Tue, 15 Aug 2023 18:05:45 GMT",
+        "read_at": "2026-10-08T03:23:04+00:00",
+        "sha256_window": "4a312cff0d543e8ac2f156af89d7d3570155dd01ef64a57e3d77ebeca2b5c325",
+        "shape": [
+          608,
+          763
+        ],
+        "url": "https://globalnightlight.s3.amazonaws.com/composites/npp_202304_ops/DNB_npp_20230401-20230430_global_ecm-slcorr_v10_ops.avg_rade9.tif",
+        "window_bounds": [
+          108.53541897,
+          -8.23541733,
+          111.71458567,
+          -5.70208398
+        ]
+      },
       "202304/avg_rade9@34": {
         "dtype": "float32",
         "etag": "cb62abe8658114703a693ccd82cf65ee-569",
@@ -41013,6 +43221,24 @@
           -2.49791729,
           129.94375248,
           2.66874942
+        ]
+      },
+      "202304/n_cf@33": {
+        "dtype": "uint16",
+        "etag": "e105d7644ff870ebf92f8098ab8de100-125",
+        "last_modified": "Tue, 15 Aug 2023 18:05:46 GMT",
+        "read_at": "2026-10-08T03:23:08+00:00",
+        "sha256_window": "2ea3cbe9432a0f290254698386c979fe7a76dce8ee532fa8cae40ccf262fcfc4",
+        "shape": [
+          608,
+          763
+        ],
+        "url": "https://globalnightlight.s3.amazonaws.com/composites/npp_202304_ops/DNB_npp_20230401-20230430_global_ecm-slcorr_v10_ops.n_cf.tif",
+        "window_bounds": [
+          108.53541897,
+          -8.23541733,
+          111.71458567,
+          -5.70208398
         ]
       },
       "202304/n_cf@34": {
@@ -41339,6 +43565,24 @@
           2.66874942
         ]
       },
+      "202305/avg_rade9@33": {
+        "dtype": "float32",
+        "etag": "316b4a72c9d56acf36a724ef06f94a29-514",
+        "last_modified": "Sat, 03 Jun 2023 19:31:39 GMT",
+        "read_at": "2026-10-08T03:23:13+00:00",
+        "sha256_window": "652d7a1e8b87eaea260339d73ee11526194ca96ec2472993b8d3b74abdfce789",
+        "shape": [
+          608,
+          763
+        ],
+        "url": "https://globalnightlight.s3.amazonaws.com/composites/npp_202305_ops/DNB_npp_20230501-20230531_global_ecm-slcorr_v10_ops.avg_rade9.tif",
+        "window_bounds": [
+          108.53541897,
+          -8.23541733,
+          111.71458567,
+          -5.70208398
+        ]
+      },
       "202305/avg_rade9@34": {
         "dtype": "float32",
         "etag": "316b4a72c9d56acf36a724ef06f94a29-514",
@@ -41661,6 +43905,24 @@
           -2.49791729,
           129.94375248,
           2.66874942
+        ]
+      },
+      "202305/n_cf@33": {
+        "dtype": "uint16",
+        "etag": "8267625e58b32d2198490d11616ba670-114",
+        "last_modified": "Sat, 03 Jun 2023 19:31:38 GMT",
+        "read_at": "2026-10-08T03:23:18+00:00",
+        "sha256_window": "0db3fe920f7d9e273ef3ed78cb45a823c620ae4241b0207971b802ee38d1d828",
+        "shape": [
+          608,
+          763
+        ],
+        "url": "https://globalnightlight.s3.amazonaws.com/composites/npp_202305_ops/DNB_npp_20230501-20230531_global_ecm-slcorr_v10_ops.n_cf.tif",
+        "window_bounds": [
+          108.53541897,
+          -8.23541733,
+          111.71458567,
+          -5.70208398
         ]
       },
       "202305/n_cf@34": {
@@ -41987,6 +44249,24 @@
           2.66874942
         ]
       },
+      "202306/avg_rade9@33": {
+        "dtype": "float32",
+        "etag": "0405bd513b35abe5b60955026997649c-490",
+        "last_modified": "Fri, 07 Jul 2023 22:04:29 GMT",
+        "read_at": "2026-10-08T03:23:23+00:00",
+        "sha256_window": "af5449c3ff5b55758214e81ac67d4f2f9e8e5d476abc194421ec604c29ece5f6",
+        "shape": [
+          608,
+          763
+        ],
+        "url": "https://globalnightlight.s3.amazonaws.com/composites/npp_202306_ops/DNB_npp_20230601-20230630_global_ecm-slcorr_v10_ops.avg_rade9.tif",
+        "window_bounds": [
+          108.53541897,
+          -8.23541733,
+          111.71458567,
+          -5.70208398
+        ]
+      },
       "202306/avg_rade9@34": {
         "dtype": "float32",
         "etag": "0405bd513b35abe5b60955026997649c-490",
@@ -42309,6 +44589,24 @@
           -2.49791729,
           129.94375248,
           2.66874942
+        ]
+      },
+      "202306/n_cf@33": {
+        "dtype": "uint16",
+        "etag": "db5c9900f4cbddc41754c2493886dd37-109",
+        "last_modified": "Fri, 07 Jul 2023 22:04:29 GMT",
+        "read_at": "2026-10-08T03:23:28+00:00",
+        "sha256_window": "92b4c55e714c528fad2ac8154379bf7e1efabfdfce07ebf24ce857e8329c792d",
+        "shape": [
+          608,
+          763
+        ],
+        "url": "https://globalnightlight.s3.amazonaws.com/composites/npp_202306_ops/DNB_npp_20230601-20230630_global_ecm-slcorr_v10_ops.n_cf.tif",
+        "window_bounds": [
+          108.53541897,
+          -8.23541733,
+          111.71458567,
+          -5.70208398
         ]
       },
       "202306/n_cf@34": {
@@ -42635,6 +44933,24 @@
           2.66874942
         ]
       },
+      "202307/avg_rade9@33": {
+        "dtype": "float32",
+        "etag": "e7c01a00cdec7a3a30b8a61fbc014f08-503",
+        "last_modified": "Tue, 15 Aug 2023 17:58:06 GMT",
+        "read_at": "2026-10-08T03:23:32+00:00",
+        "sha256_window": "76210e96136d1987b3b8442dd55e92bdc0f6dd473a92153968db9be9044621dc",
+        "shape": [
+          608,
+          763
+        ],
+        "url": "https://globalnightlight.s3.amazonaws.com/composites/npp_202307_ops/DNB_npp_20230701-20230731_global_ecm-slcorr_v10_ops.avg_rade9.tif",
+        "window_bounds": [
+          108.53541897,
+          -8.23541733,
+          111.71458567,
+          -5.70208398
+        ]
+      },
       "202307/avg_rade9@34": {
         "dtype": "float32",
         "etag": "e7c01a00cdec7a3a30b8a61fbc014f08-503",
@@ -42957,6 +45273,24 @@
           -2.49791729,
           129.94375248,
           2.66874942
+        ]
+      },
+      "202307/n_cf@33": {
+        "dtype": "uint16",
+        "etag": "b0a7e52a3faabed999c9d31c06dab126-110",
+        "last_modified": "Tue, 15 Aug 2023 17:58:07 GMT",
+        "read_at": "2026-10-08T03:23:37+00:00",
+        "sha256_window": "b5ba6e9cc7aae89de926bfd1e74e9b8d0d30443ff0f2cb03ff694b13b7381de6",
+        "shape": [
+          608,
+          763
+        ],
+        "url": "https://globalnightlight.s3.amazonaws.com/composites/npp_202307_ops/DNB_npp_20230701-20230731_global_ecm-slcorr_v10_ops.n_cf.tif",
+        "window_bounds": [
+          108.53541897,
+          -8.23541733,
+          111.71458567,
+          -5.70208398
         ]
       },
       "202307/n_cf@34": {
@@ -43283,6 +45617,24 @@
           2.66874942
         ]
       },
+      "202308/avg_rade9@33": {
+        "dtype": "float32",
+        "etag": "82d20cb8d76ef1ec2269bd1d239b20dc-542",
+        "last_modified": "Tue, 05 Sep 2023 23:59:05 GMT",
+        "read_at": "2026-10-08T03:23:42+00:00",
+        "sha256_window": "622e90decb539af1467b64e2a096517c77f184cd0edacaf81b4c150a993f61aa",
+        "shape": [
+          608,
+          763
+        ],
+        "url": "https://globalnightlight.s3.amazonaws.com/composites/npp_202308_ops/DNB_npp_20230801-20230831_global_ecm-slcorr_v10_ops.avg_rade9.tif",
+        "window_bounds": [
+          108.53541897,
+          -8.23541733,
+          111.71458567,
+          -5.70208398
+        ]
+      },
       "202308/avg_rade9@34": {
         "dtype": "float32",
         "etag": "82d20cb8d76ef1ec2269bd1d239b20dc-542",
@@ -43605,6 +45957,24 @@
           -2.49791729,
           129.94375248,
           2.66874942
+        ]
+      },
+      "202308/n_cf@33": {
+        "dtype": "uint16",
+        "etag": "dd50eebd5aca941b95d3faf8e78723b3-124",
+        "last_modified": "Tue, 05 Sep 2023 23:59:05 GMT",
+        "read_at": "2026-10-08T03:23:46+00:00",
+        "sha256_window": "3526b42d065d97bed7724c4d6290ca954f7e4f21f643d58c8884cd481349a44a",
+        "shape": [
+          608,
+          763
+        ],
+        "url": "https://globalnightlight.s3.amazonaws.com/composites/npp_202308_ops/DNB_npp_20230801-20230831_global_ecm-slcorr_v10_ops.n_cf.tif",
+        "window_bounds": [
+          108.53541897,
+          -8.23541733,
+          111.71458567,
+          -5.70208398
         ]
       },
       "202308/n_cf@34": {
@@ -43931,6 +46301,24 @@
           2.66874942
         ]
       },
+      "202309/avg_rade9@33": {
+        "dtype": "float32",
+        "etag": "a0780b32883fc926017e1481ffe8d471-583",
+        "last_modified": "Thu, 05 Oct 2023 18:21:41 GMT",
+        "read_at": "2026-10-08T03:23:52+00:00",
+        "sha256_window": "4a513b33c3f5c24b215f0fcb3a536e340d77a74dd8589b51bd5199190ac12d62",
+        "shape": [
+          608,
+          763
+        ],
+        "url": "https://globalnightlight.s3.amazonaws.com/composites/npp_202309_ops/DNB_npp_20230901-20230930_global_ecm-slcorr_v10_ops.avg_rade9.tif",
+        "window_bounds": [
+          108.53541897,
+          -8.23541733,
+          111.71458567,
+          -5.70208398
+        ]
+      },
       "202309/avg_rade9@34": {
         "dtype": "float32",
         "etag": "a0780b32883fc926017e1481ffe8d471-583",
@@ -44253,6 +46641,24 @@
           -2.49791729,
           129.94375248,
           2.66874942
+        ]
+      },
+      "202309/n_cf@33": {
+        "dtype": "uint16",
+        "etag": "54bdcb76f8b00a3987dbcfdf74bf9bbe-134",
+        "last_modified": "Thu, 05 Oct 2023 18:21:40 GMT",
+        "read_at": "2026-10-08T03:23:58+00:00",
+        "sha256_window": "2b314978d9c8ccd352736fd1293f3507a6da3d885851323ee1b8c77d5c66a741",
+        "shape": [
+          608,
+          763
+        ],
+        "url": "https://globalnightlight.s3.amazonaws.com/composites/npp_202309_ops/DNB_npp_20230901-20230930_global_ecm-slcorr_v10_ops.n_cf.tif",
+        "window_bounds": [
+          108.53541897,
+          -8.23541733,
+          111.71458567,
+          -5.70208398
         ]
       },
       "202309/n_cf@34": {
@@ -44579,6 +46985,24 @@
           2.66874942
         ]
       },
+      "202310/avg_rade9@33": {
+        "dtype": "float32",
+        "etag": "327dfc15cfbf18fee09ce0059117fcfd-584",
+        "last_modified": "Mon, 06 Nov 2023 20:01:32 GMT",
+        "read_at": "2026-10-08T03:24:03+00:00",
+        "sha256_window": "0e9ded59b9bdd5806fedad1392573f2774a8a3c06e124a56300d88356b766b63",
+        "shape": [
+          608,
+          763
+        ],
+        "url": "https://globalnightlight.s3.amazonaws.com/composites/npp_202310_ops/DNB_npp_20231001-20231031_global_ecm-slcorr_v10_ops.avg_rade9.tif",
+        "window_bounds": [
+          108.53541897,
+          -8.23541733,
+          111.71458567,
+          -5.70208398
+        ]
+      },
       "202310/avg_rade9@34": {
         "dtype": "float32",
         "etag": "327dfc15cfbf18fee09ce0059117fcfd-584",
@@ -44901,6 +47325,24 @@
           -2.49791729,
           129.94375248,
           2.66874942
+        ]
+      },
+      "202310/n_cf@33": {
+        "dtype": "uint16",
+        "etag": "083ff126b1121fe622f4e9e8002eb76e-135",
+        "last_modified": "Mon, 06 Nov 2023 20:01:31 GMT",
+        "read_at": "2026-10-08T03:24:07+00:00",
+        "sha256_window": "9146781d5599f1970107a6fa30898a101853faa8cddefd5cbfbd08338c48b1d4",
+        "shape": [
+          608,
+          763
+        ],
+        "url": "https://globalnightlight.s3.amazonaws.com/composites/npp_202310_ops/DNB_npp_20231001-20231031_global_ecm-slcorr_v10_ops.n_cf.tif",
+        "window_bounds": [
+          108.53541897,
+          -8.23541733,
+          111.71458567,
+          -5.70208398
         ]
       },
       "202310/n_cf@34": {
@@ -45227,6 +47669,24 @@
           2.66874942
         ]
       },
+      "202311/avg_rade9@33": {
+        "dtype": "float32",
+        "etag": "69283c233d94662e9caef9ceb0314d35-574",
+        "last_modified": "Sun, 03 Dec 2023 21:09:25 GMT",
+        "read_at": "2026-10-08T03:24:12+00:00",
+        "sha256_window": "c2cfcf7688a0aacd5b6e7fc52de4b80d18bfc18283cdbe841de2a61df7f0aa9e",
+        "shape": [
+          608,
+          763
+        ],
+        "url": "https://globalnightlight.s3.amazonaws.com/composites/npp_202311_ops/DNB_npp_20231101-20231130_global_ecm-slcorr_v10_ops.avg_rade9.tif",
+        "window_bounds": [
+          108.53541897,
+          -8.23541733,
+          111.71458567,
+          -5.70208398
+        ]
+      },
       "202311/avg_rade9@34": {
         "dtype": "float32",
         "etag": "69283c233d94662e9caef9ceb0314d35-574",
@@ -45549,6 +48009,24 @@
           -2.49791729,
           129.94375248,
           2.66874942
+        ]
+      },
+      "202311/n_cf@33": {
+        "dtype": "uint16",
+        "etag": "05b52abc499602cd7ca729e7998199c9-130",
+        "last_modified": "Sun, 03 Dec 2023 21:09:24 GMT",
+        "read_at": "2026-10-08T03:24:17+00:00",
+        "sha256_window": "0cb12dc9d642f8dcbfebd02a9acc9097ebd13992959d00d3e35e4f76c39c925e",
+        "shape": [
+          608,
+          763
+        ],
+        "url": "https://globalnightlight.s3.amazonaws.com/composites/npp_202311_ops/DNB_npp_20231101-20231130_global_ecm-slcorr_v10_ops.n_cf.tif",
+        "window_bounds": [
+          108.53541897,
+          -8.23541733,
+          111.71458567,
+          -5.70208398
         ]
       },
       "202311/n_cf@34": {
@@ -45875,6 +48353,24 @@
           2.66874942
         ]
       },
+      "202312/avg_rade9@33": {
+        "dtype": "float32",
+        "etag": "f43ab75e5d9b40594cc449f41e2bb124-558",
+        "last_modified": "Fri, 05 Jan 2024 20:48:43 GMT",
+        "read_at": "2026-10-08T03:24:21+00:00",
+        "sha256_window": "a577cc26ea68da4eaf441f92afbc31dd810623547d7a8122fdc8062c296e69d1",
+        "shape": [
+          608,
+          763
+        ],
+        "url": "https://globalnightlight.s3.amazonaws.com/composites/npp_202312_ops/DNB_npp_20231201-20231231_global_ecm-slcorr_v10_ops.avg_rade9.tif",
+        "window_bounds": [
+          108.53541897,
+          -8.23541733,
+          111.71458567,
+          -5.70208398
+        ]
+      },
       "202312/avg_rade9@34": {
         "dtype": "float32",
         "etag": "f43ab75e5d9b40594cc449f41e2bb124-558",
@@ -46197,6 +48693,24 @@
           -2.49791729,
           129.94375248,
           2.66874942
+        ]
+      },
+      "202312/n_cf@33": {
+        "dtype": "uint16",
+        "etag": "17f8eafd96d6c7ed2d284a5bf165f52f-132",
+        "last_modified": "Fri, 05 Jan 2024 20:48:43 GMT",
+        "read_at": "2026-10-08T03:24:26+00:00",
+        "sha256_window": "5c7d84687e187902d86c2d087586a1a1a2d32109bb5879f134326544e6d9df72",
+        "shape": [
+          608,
+          763
+        ],
+        "url": "https://globalnightlight.s3.amazonaws.com/composites/npp_202312_ops/DNB_npp_20231201-20231231_global_ecm-slcorr_v10_ops.n_cf.tif",
+        "window_bounds": [
+          108.53541897,
+          -8.23541733,
+          111.71458567,
+          -5.70208398
         ]
       },
       "202312/n_cf@34": {
@@ -46523,6 +49037,24 @@
           2.66874942
         ]
       },
+      "202401/avg_rade9@33": {
+        "dtype": "float32",
+        "etag": "897cdd7f36ff6b243df0c365447c90da-550",
+        "last_modified": "Fri, 09 Feb 2024 05:30:14 GMT",
+        "read_at": "2026-10-08T03:24:44+00:00",
+        "sha256_window": "0097f781e8695fcf457e7c045933b490f81f7ef05c2b3de298b778993e82ce13",
+        "shape": [
+          608,
+          763
+        ],
+        "url": "https://globalnightlight.s3.amazonaws.com/composites/npp_202401_ops/DNB_npp_20240101-20240131_global_ecm-slcorr_v10_ops.avg_rade9.tif",
+        "window_bounds": [
+          108.53541897,
+          -8.23541733,
+          111.71458567,
+          -5.70208398
+        ]
+      },
       "202401/avg_rade9@34": {
         "dtype": "float32",
         "etag": "897cdd7f36ff6b243df0c365447c90da-550",
@@ -46845,6 +49377,24 @@
           -2.49791729,
           129.94375248,
           2.66874942
+        ]
+      },
+      "202401/n_cf@33": {
+        "dtype": "uint16",
+        "etag": "c70fd59247bfeb3ade46b3375525d278-132",
+        "last_modified": "Fri, 09 Feb 2024 05:30:14 GMT",
+        "read_at": "2026-10-08T03:24:49+00:00",
+        "sha256_window": "d544fd2cbcfd5cd36b006b956e35b9adc3a71b4b57007ff555dbb0f4287a4002",
+        "shape": [
+          608,
+          763
+        ],
+        "url": "https://globalnightlight.s3.amazonaws.com/composites/npp_202401_ops/DNB_npp_20240101-20240131_global_ecm-slcorr_v10_ops.n_cf.tif",
+        "window_bounds": [
+          108.53541897,
+          -8.23541733,
+          111.71458567,
+          -5.70208398
         ]
       },
       "202401/n_cf@34": {
@@ -47171,6 +49721,24 @@
           2.66874942
         ]
       },
+      "202402/avg_rade9@33": {
+        "dtype": "float32",
+        "etag": "f6cc80e331d0b4b7861a393a976dab4e-578",
+        "last_modified": "Sun, 28 Apr 2024 21:35:24 GMT",
+        "read_at": "2026-10-08T03:24:54+00:00",
+        "sha256_window": "3ef0f9e5e6007148a0ceaf0b2fdb8b57babdcf3235bec470c7a96a09d70c5a04",
+        "shape": [
+          608,
+          763
+        ],
+        "url": "https://globalnightlight.s3.amazonaws.com/composites/npp_202402_ops/DNB_npp_20240201-20240229_global_ecm-slcorr_v10_ops.avg_rade9.tif",
+        "window_bounds": [
+          108.53541897,
+          -8.23541733,
+          111.71458567,
+          -5.70208398
+        ]
+      },
       "202402/avg_rade9@34": {
         "dtype": "float32",
         "etag": "f6cc80e331d0b4b7861a393a976dab4e-578",
@@ -47493,6 +50061,24 @@
           -2.49791729,
           129.94375248,
           2.66874942
+        ]
+      },
+      "202402/n_cf@33": {
+        "dtype": "uint16",
+        "etag": "421fd360aec2627db842f2863d84a3e1-135",
+        "last_modified": "Sun, 28 Apr 2024 21:35:25 GMT",
+        "read_at": "2026-10-08T03:24:58+00:00",
+        "sha256_window": "56ffc685471ea34e29c5f96b8cc4cb751d882edf648f7bb0f406ce8da0eec560",
+        "shape": [
+          608,
+          763
+        ],
+        "url": "https://globalnightlight.s3.amazonaws.com/composites/npp_202402_ops/DNB_npp_20240201-20240229_global_ecm-slcorr_v10_ops.n_cf.tif",
+        "window_bounds": [
+          108.53541897,
+          -8.23541733,
+          111.71458567,
+          -5.70208398
         ]
       },
       "202402/n_cf@34": {
@@ -47819,6 +50405,24 @@
           2.66874942
         ]
       },
+      "202403/avg_rade9@33": {
+        "dtype": "float32",
+        "etag": "d9da62e3856f1e88b9768e4a2b6af330-581",
+        "last_modified": "Sun, 28 Apr 2024 21:42:53 GMT",
+        "read_at": "2026-10-08T03:25:03+00:00",
+        "sha256_window": "1c90ba9b56e8ad3af0cf46e25a3342927c6009206124d6399c665a3bc0d20a04",
+        "shape": [
+          608,
+          763
+        ],
+        "url": "https://globalnightlight.s3.amazonaws.com/composites/npp_202403_ops/DNB_npp_20240301-20240331_global_ecm-slcorr_v10_ops.avg_rade9.tif",
+        "window_bounds": [
+          108.53541897,
+          -8.23541733,
+          111.71458567,
+          -5.70208398
+        ]
+      },
       "202403/avg_rade9@34": {
         "dtype": "float32",
         "etag": "d9da62e3856f1e88b9768e4a2b6af330-581",
@@ -48141,6 +50745,24 @@
           -2.49791729,
           129.94375248,
           2.66874942
+        ]
+      },
+      "202403/n_cf@33": {
+        "dtype": "uint16",
+        "etag": "ec5be2f8e49750c2669b3c128cd70c73-134",
+        "last_modified": "Sun, 28 Apr 2024 21:42:53 GMT",
+        "read_at": "2026-10-08T03:25:07+00:00",
+        "sha256_window": "b9b5aeec53e86d9cdc433b3ca6e82cb2c85695aa5b4191fce7d3ee51e9c1575b",
+        "shape": [
+          608,
+          763
+        ],
+        "url": "https://globalnightlight.s3.amazonaws.com/composites/npp_202403_ops/DNB_npp_20240301-20240331_global_ecm-slcorr_v10_ops.n_cf.tif",
+        "window_bounds": [
+          108.53541897,
+          -8.23541733,
+          111.71458567,
+          -5.70208398
         ]
       },
       "202403/n_cf@34": {
@@ -48467,6 +51089,24 @@
           2.66874942
         ]
       },
+      "202404/avg_rade9@33": {
+        "dtype": "float32",
+        "etag": "e1ea1745fe17dc00348f9e63b4e1d439-588",
+        "last_modified": "Tue, 21 May 2024 01:26:08 GMT",
+        "read_at": "2026-10-08T03:25:12+00:00",
+        "sha256_window": "7d0dfbee64445b9b18af5f2940cc83879737ea0bf00faf99a0c9622d84858acf",
+        "shape": [
+          608,
+          763
+        ],
+        "url": "https://globalnightlight.s3.amazonaws.com/composites/npp_202404_ops/DNB_npp_20240401-20240430_global_ecm-slcorr_v10_ops.avg_rade9.tif",
+        "window_bounds": [
+          108.53541897,
+          -8.23541733,
+          111.71458567,
+          -5.70208398
+        ]
+      },
       "202404/avg_rade9@34": {
         "dtype": "float32",
         "etag": "e1ea1745fe17dc00348f9e63b4e1d439-588",
@@ -48789,6 +51429,24 @@
           -2.49791729,
           129.94375248,
           2.66874942
+        ]
+      },
+      "202404/n_cf@33": {
+        "dtype": "uint16",
+        "etag": "96bbb30bfcbc54bb427c7e621dde5e9d-125",
+        "last_modified": "Tue, 21 May 2024 01:26:08 GMT",
+        "read_at": "2026-10-08T03:25:17+00:00",
+        "sha256_window": "d2afc9d451da8027f07179eba2605de943b40376a6047c8f5917f17266bbd62b",
+        "shape": [
+          608,
+          763
+        ],
+        "url": "https://globalnightlight.s3.amazonaws.com/composites/npp_202404_ops/DNB_npp_20240401-20240430_global_ecm-slcorr_v10_ops.n_cf.tif",
+        "window_bounds": [
+          108.53541897,
+          -8.23541733,
+          111.71458567,
+          -5.70208398
         ]
       },
       "202404/n_cf@34": {
@@ -49115,6 +51773,24 @@
           2.66874942
         ]
       },
+      "202405/avg_rade9@33": {
+        "dtype": "float32",
+        "etag": "36a7e7e90b3991ed64c7ef868ac8c9a7-535",
+        "last_modified": "Mon, 17 Jun 2024 21:13:24 GMT",
+        "read_at": "2026-10-08T03:25:21+00:00",
+        "sha256_window": "83a180c971e3dffdf30822801d9515a1291e05a0a16e2eb5befb8e522baffb48",
+        "shape": [
+          608,
+          763
+        ],
+        "url": "https://globalnightlight.s3.amazonaws.com/composites/npp_202405_ops/DNB_npp_20240501-20240531_global_ecm-slcorr_v10_ops.avg_rade9.tif",
+        "window_bounds": [
+          108.53541897,
+          -8.23541733,
+          111.71458567,
+          -5.70208398
+        ]
+      },
       "202405/avg_rade9@34": {
         "dtype": "float32",
         "etag": "36a7e7e90b3991ed64c7ef868ac8c9a7-535",
@@ -49437,6 +52113,24 @@
           -2.49791729,
           129.94375248,
           2.66874942
+        ]
+      },
+      "202405/n_cf@33": {
+        "dtype": "uint16",
+        "etag": "15006991a9eba5f1655a19830bff264f-111",
+        "last_modified": "Mon, 17 Jun 2024 21:13:25 GMT",
+        "read_at": "2026-10-08T03:25:28+00:00",
+        "sha256_window": "254bb757c60d9643d4a26e7b3da472a8467fb8097b69f4140bd49492f343e46d",
+        "shape": [
+          608,
+          763
+        ],
+        "url": "https://globalnightlight.s3.amazonaws.com/composites/npp_202405_ops/DNB_npp_20240501-20240531_global_ecm-slcorr_v10_ops.n_cf.tif",
+        "window_bounds": [
+          108.53541897,
+          -8.23541733,
+          111.71458567,
+          -5.70208398
         ]
       },
       "202405/n_cf@34": {
@@ -49763,6 +52457,24 @@
           2.66874942
         ]
       },
+      "202406/avg_rade9@33": {
+        "dtype": "float32",
+        "etag": "cd94f1c1139abd2e78bf4f0fe48d2b5e-495",
+        "last_modified": "Thu, 17 Oct 2024 18:04:17 GMT",
+        "read_at": "2026-10-08T03:25:35+00:00",
+        "sha256_window": "8c309403027516bc4121293b0e3e0099924447b68537e98310fb6ecbcb482bb7",
+        "shape": [
+          608,
+          763
+        ],
+        "url": "https://globalnightlight.s3.amazonaws.com/composites/npp_202406_ops/DNB_npp_20240601-20240630_global_ecm-slcorr_v10_ops.avg_rade9.tif",
+        "window_bounds": [
+          108.53541897,
+          -8.23541733,
+          111.71458567,
+          -5.70208398
+        ]
+      },
       "202406/avg_rade9@34": {
         "dtype": "float32",
         "etag": "cd94f1c1139abd2e78bf4f0fe48d2b5e-495",
@@ -50085,6 +52797,24 @@
           -2.49791729,
           129.94375248,
           2.66874942
+        ]
+      },
+      "202406/n_cf@33": {
+        "dtype": "uint16",
+        "etag": "7b63a48c39d21c989259e04dd8696f31-99",
+        "last_modified": "Thu, 17 Oct 2024 18:04:18 GMT",
+        "read_at": "2026-10-08T03:25:41+00:00",
+        "sha256_window": "ab453268494b74a58241e7c257112a9ba02ea4c6dbd11701860f2497c1a74a23",
+        "shape": [
+          608,
+          763
+        ],
+        "url": "https://globalnightlight.s3.amazonaws.com/composites/npp_202406_ops/DNB_npp_20240601-20240630_global_ecm-slcorr_v10_ops.n_cf.tif",
+        "window_bounds": [
+          108.53541897,
+          -8.23541733,
+          111.71458567,
+          -5.70208398
         ]
       },
       "202406/n_cf@34": {
@@ -50411,6 +53141,24 @@
           2.66874942
         ]
       },
+      "202407/avg_rade9@33": {
+        "dtype": "float32",
+        "etag": "c4232153f61872a421c2fa6b4f5016f9-481",
+        "last_modified": "Thu, 17 Oct 2024 18:34:00 GMT",
+        "read_at": "2026-10-08T03:25:46+00:00",
+        "sha256_window": "22b8fa01cdd6c1170637196ffa27736d957d89370f1015513cbdb912cf4a8ebb",
+        "shape": [
+          608,
+          763
+        ],
+        "url": "https://globalnightlight.s3.amazonaws.com/composites/npp_202407_ops/DNB_npp_20240701-20240731_global_ecm-slcorr_v10_ops.avg_rade9.tif",
+        "window_bounds": [
+          108.53541897,
+          -8.23541733,
+          111.71458567,
+          -5.70208398
+        ]
+      },
       "202407/avg_rade9@34": {
         "dtype": "float32",
         "etag": "c4232153f61872a421c2fa6b4f5016f9-481",
@@ -50733,6 +53481,24 @@
           -2.49791729,
           129.94375248,
           2.66874942
+        ]
+      },
+      "202407/n_cf@33": {
+        "dtype": "uint16",
+        "etag": "44b557450f69139f8604d3e2a3d25528-81",
+        "last_modified": "Thu, 17 Oct 2024 18:34:01 GMT",
+        "read_at": "2026-10-08T03:25:50+00:00",
+        "sha256_window": "5fb9fe6689dffe95e3d821cb336968654f07c793ed0e19ece5147f5162ac3be4",
+        "shape": [
+          608,
+          763
+        ],
+        "url": "https://globalnightlight.s3.amazonaws.com/composites/npp_202407_ops/DNB_npp_20240701-20240731_global_ecm-slcorr_v10_ops.n_cf.tif",
+        "window_bounds": [
+          108.53541897,
+          -8.23541733,
+          111.71458567,
+          -5.70208398
         ]
       },
       "202407/n_cf@34": {
@@ -51059,6 +53825,24 @@
           2.66874942
         ]
       },
+      "202408/avg_rade9@33": {
+        "dtype": "float32",
+        "etag": "a9018df9fcf865a4554e3fa9acb5afc4-554",
+        "last_modified": "Thu, 17 Oct 2024 18:37:27 GMT",
+        "read_at": "2026-10-08T03:25:55+00:00",
+        "sha256_window": "9a9326f65c256c5f5e47aeac90a1e5a7d40dbb2c902e1806c269da01752fdb90",
+        "shape": [
+          608,
+          763
+        ],
+        "url": "https://globalnightlight.s3.amazonaws.com/composites/npp_202408_ops/DNB_npp_20240801-20240831_global_ecm-slcorr_v10_ops.avg_rade9.tif",
+        "window_bounds": [
+          108.53541897,
+          -8.23541733,
+          111.71458567,
+          -5.70208398
+        ]
+      },
       "202408/avg_rade9@34": {
         "dtype": "float32",
         "etag": "a9018df9fcf865a4554e3fa9acb5afc4-554",
@@ -51381,6 +54165,24 @@
           -2.49791729,
           129.94375248,
           2.66874942
+        ]
+      },
+      "202408/n_cf@33": {
+        "dtype": "uint16",
+        "etag": "4479cf8e0edb98bf6acb637fb139f408-127",
+        "last_modified": "Thu, 17 Oct 2024 18:37:27 GMT",
+        "read_at": "2026-10-08T03:25:59+00:00",
+        "sha256_window": "b219a74e377b99776ba0f25dfd61736b1093d5f6c743806c8bc7fe4ac65fbfed",
+        "shape": [
+          608,
+          763
+        ],
+        "url": "https://globalnightlight.s3.amazonaws.com/composites/npp_202408_ops/DNB_npp_20240801-20240831_global_ecm-slcorr_v10_ops.n_cf.tif",
+        "window_bounds": [
+          108.53541897,
+          -8.23541733,
+          111.71458567,
+          -5.70208398
         ]
       },
       "202408/n_cf@34": {
@@ -51707,6 +54509,24 @@
           2.66874942
         ]
       },
+      "202409/avg_rade9@33": {
+        "dtype": "float32",
+        "etag": "c77e8abd92ad925bca5da9c4b632dadf-577",
+        "last_modified": "Thu, 17 Oct 2024 18:42:50 GMT",
+        "read_at": "2026-10-08T03:26:04+00:00",
+        "sha256_window": "5d4478b98ae7fd9c08047fc572bce692a4df7d96f369a24e43e3aa434cdff4d4",
+        "shape": [
+          608,
+          763
+        ],
+        "url": "https://globalnightlight.s3.amazonaws.com/composites/npp_202409_ops/DNB_npp_20240901-20240930_global_ecm-slcorr_v10_ops.avg_rade9.tif",
+        "window_bounds": [
+          108.53541897,
+          -8.23541733,
+          111.71458567,
+          -5.70208398
+        ]
+      },
       "202409/avg_rade9@34": {
         "dtype": "float32",
         "etag": "c77e8abd92ad925bca5da9c4b632dadf-577",
@@ -52029,6 +54849,24 @@
           -2.49791729,
           129.94375248,
           2.66874942
+        ]
+      },
+      "202409/n_cf@33": {
+        "dtype": "uint16",
+        "etag": "d7c01f93ffd51c7bd384a05965ee653e-115",
+        "last_modified": "Thu, 17 Oct 2024 18:42:50 GMT",
+        "read_at": "2026-10-08T03:26:09+00:00",
+        "sha256_window": "46f1ba9e0b3da0182e2dbf9c2c06dd87d84327ecaeb2d68089f0efed4ded3efd",
+        "shape": [
+          608,
+          763
+        ],
+        "url": "https://globalnightlight.s3.amazonaws.com/composites/npp_202409_ops/DNB_npp_20240901-20240930_global_ecm-slcorr_v10_ops.n_cf.tif",
+        "window_bounds": [
+          108.53541897,
+          -8.23541733,
+          111.71458567,
+          -5.70208398
         ]
       },
       "202409/n_cf@34": {
@@ -52355,6 +55193,24 @@
           2.66874942
         ]
       },
+      "202411/avg_rade9@33": {
+        "dtype": "float32",
+        "etag": "e708700e5a21be31cbfb13e67392aa11-575",
+        "last_modified": "Mon, 09 Dec 2024 19:04:18 GMT",
+        "read_at": "2026-10-08T03:26:18+00:00",
+        "sha256_window": "5fe0c7626506e1a08852e5adcc6a4c5d711dc90cde6789e801360d9ad7520547",
+        "shape": [
+          608,
+          763
+        ],
+        "url": "https://globalnightlight.s3.amazonaws.com/composites/npp_202411_ops/DNB_npp_20241101-20241130_global_ecm-slcorr_v10_ops.avg_rade9.tif",
+        "window_bounds": [
+          108.53541897,
+          -8.23541733,
+          111.71458567,
+          -5.70208398
+        ]
+      },
       "202411/avg_rade9@34": {
         "dtype": "float32",
         "etag": "e708700e5a21be31cbfb13e67392aa11-575",
@@ -52677,6 +55533,24 @@
           -2.49791729,
           129.94375248,
           2.66874942
+        ]
+      },
+      "202411/n_cf@33": {
+        "dtype": "uint16",
+        "etag": "92171c6eca501aefed29807a48407c58-113",
+        "last_modified": "Mon, 09 Dec 2024 19:04:18 GMT",
+        "read_at": "2026-10-08T03:26:24+00:00",
+        "sha256_window": "df6ed0f5d2ee826c67fb0f05381069712335d757af32a28d03e33a7d25fb46f5",
+        "shape": [
+          608,
+          763
+        ],
+        "url": "https://globalnightlight.s3.amazonaws.com/composites/npp_202411_ops/DNB_npp_20241101-20241130_global_ecm-slcorr_v10_ops.n_cf.tif",
+        "window_bounds": [
+          108.53541897,
+          -8.23541733,
+          111.71458567,
+          -5.70208398
         ]
       },
       "202411/n_cf@34": {
@@ -53003,6 +55877,24 @@
           2.66874942
         ]
       },
+      "202412/avg_rade9@33": {
+        "dtype": "float32",
+        "etag": "03f6e5ba08bd4a6181565dcc6c2029ab-554",
+        "last_modified": "Thu, 28 Aug 2025 02:11:57 GMT",
+        "read_at": "2026-10-08T03:26:35+00:00",
+        "sha256_window": "5ef8d43628d86a95552fe8b5aa8b03ec05d0dea888d94266f6ea5c371eaf383e",
+        "shape": [
+          608,
+          763
+        ],
+        "url": "https://globalnightlight.s3.amazonaws.com/composites/npp_202412_ops/DNB_npp_20241201-20241231_global_ecm-slcorr_v10_ops.avg_rade9.tif",
+        "window_bounds": [
+          108.53541897,
+          -8.23541733,
+          111.71458567,
+          -5.70208398
+        ]
+      },
       "202412/avg_rade9@34": {
         "dtype": "float32",
         "etag": "03f6e5ba08bd4a6181565dcc6c2029ab-554",
@@ -53325,6 +56217,24 @@
           -2.49791729,
           129.94375248,
           2.66874942
+        ]
+      },
+      "202412/n_cf@33": {
+        "dtype": "uint16",
+        "etag": "6a8d48e16d3e8ee9f71a767e6e99e49d-140",
+        "last_modified": "Thu, 28 Aug 2025 02:11:57 GMT",
+        "read_at": "2026-10-08T03:26:42+00:00",
+        "sha256_window": "f0363842117e5cc672de6ae7c9d96bf900e7bccbc4e7873c0fc2368147c72cba",
+        "shape": [
+          608,
+          763
+        ],
+        "url": "https://globalnightlight.s3.amazonaws.com/composites/npp_202412_ops/DNB_npp_20241201-20241231_global_ecm-slcorr_v10_ops.n_cf.tif",
+        "window_bounds": [
+          108.53541897,
+          -8.23541733,
+          111.71458567,
+          -5.70208398
         ]
       },
       "202412/n_cf@34": {
