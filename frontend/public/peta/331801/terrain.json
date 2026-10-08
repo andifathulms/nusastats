@@ -69,7 +69,7 @@
   "classification": {
     "official": false,
     "note": "Klasifikasi NusaStats (aturan di config/terrain_rules.yaml), bukan klasifikasi resmi.",
-    "rules_sha256": "46978aef2bbd47b075cb7feebba2e50524c63ce4f39271053ce4d2aaaf8fb479"
+    "rules_sha256": "e55d201ddba19c12723be4d6b648e72d5f013c3c5cb23d4db38ac7c3fb16ce3d"
   },
   "checks": {
     "area_geodesic_km2": 163.02,
@@ -155,6 +155,6 @@
     "lowland_note": "Batas bawah: model permukaan (tajuk pohon, bangunan) terbaca lebih tinggi dari tanah.",
     "local_relief_method": "max - min elevation in a 33x33 px (990 m) window on the UTM grid; NusaStats classes, shown alongside (not replacing) the terrain class",
     "config_sha256": "bc1b902c8fa23d79936518aa2cb1fa9a1a01e3fba4c13ac3c5ce884e190c482d",
-    "computed_at": "2026-10-08T03:00:54+00:00"
+    "computed_at": "2026-10-08T05:18:56+00:00"
   }
 }

@@ -63,13 +63,14 @@
       300
     ]
   },
-  "terrain_class": "campuran",
-  "terrain_class_label": "Campuran",
-  "terrain_class_reason": "Campuran: tidak memenuhi aturan lain (0,0% area ≥1000 m, 36,6% area lereng ≥8°, 46,4% area <100 m)",
+  "terrain_class": "dataran",
+  "terrain_class_label": "Dataran",
+  "terrain_class_reason": "Dataran: 63,4% area lereng <8°",
   "classification": {
     "official": false,
     "note": "Klasifikasi NusaStats (aturan di config/terrain_rules.yaml), bukan klasifikasi resmi.",
-    "rules_sha256": "46978aef2bbd47b075cb7feebba2e50524c63ce4f39271053ce4d2aaaf8fb479"
+    "rules_sha256": "e55d201ddba19c12723be4d6b648e72d5f013c3c5cb23d4db38ac7c3fb16ce3d",
+    "reclassified_at": "2026-10-08T05:18:46+00:00"
   },
   "checks": {
     "area_geodesic_km2": 441.05,
