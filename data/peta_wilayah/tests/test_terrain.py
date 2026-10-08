@@ -64,7 +64,10 @@ def test_rules_order_and_reason(cfg):
     assert c == "perbukitan" and reason == "Perbukitan: 58,0% area lereng ≥8°"
     c, _, reason = rules.classify(_m(share_elev_lt_100=70, share_slope_lt_8=80), cfg)
     assert c == "dataran_rendah" and reason == "Dataran rendah: 70,0% area <100 m dan 80,0% area lereng <8°"
-    assert rules.classify(_m(share_elev_lt_100=50, share_slope_lt_8=80), cfg)[0] == "campuran"
+    # Flat but mostly above 100 m: an inland plain, not "mixed".
+    c, _, reason = rules.classify(_m(share_elev_lt_100=10, share_slope_lt_8=95.3), cfg)
+    assert c == "dataran" and reason == "Dataran: 95,3% area lereng <8°"
+    assert rules.classify(_m(share_elev_lt_100=50, share_slope_lt_8=55, share_slope_ge_8=45), cfg)[0] == "campuran"
 
 
 def test_snap_bounds_lands_on_source_grid():

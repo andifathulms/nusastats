@@ -142,7 +142,10 @@ Thresholds live in `config/terrain_rules.yaml`, not in code. Rules are checked i
 1. **Pegunungan** — ≥40% of area at ≥1000 m, OR ≥40% of area with slope ≥25°.
 2. **Perbukitan** — ≥50% of area with slope ≥8°, OR ≥50% of area at ≥200 m.
 3. **Dataran rendah** — ≥60% of area at <100 m AND ≥60% of area with slope <8°.
-4. **Campuran** — anything else.
+4. **[Decided 2026-10-08] Dataran** — ≥60% of area with slope <8°, at any elevation. Flat inland plains above 100 m
+   (e.g. Klaten 95% flat, Kota Surakarta 99% flat) otherwise fell through to "Campuran". Applied to the 3,974 areas
+   already computed with `python -m terrain.reclassify`: 329 areas changed, all Campuran → Dataran.
+5. **Campuran** — anything else.
 
 `terrain_class_reason` must state which rule matched and the actual values, e.g. `"Perbukitan: 58,0% area lereng ≥8°"` (Indonesian copy and number format). The UI and cards label this as a NusaStats classification, not an official one.
 

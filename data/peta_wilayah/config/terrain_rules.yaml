@@ -26,6 +26,12 @@ rules:
     all:
       - {metric: share_elev_lt_100, op: ">=", value: 60}
       - {metric: share_slope_lt_8, op: ">=", value: 60}
+  # Flat land at any elevation (e.g. Klaten, Kota Surakarta: >90% flat but mostly above
+  # 100 m). Without this rule such inland plains fell through to "Campuran". Added 2026-10-08.
+  - class: dataran
+    label: Dataran
+    all:
+      - {metric: share_slope_lt_8, op: ">=", value: 60}
   - class: campuran
     label: Campuran
     default: true
