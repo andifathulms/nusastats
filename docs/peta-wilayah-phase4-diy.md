@@ -25,7 +25,7 @@ Source: [Bisnis (Merapi)](https://kabar24.bisnis.com/read/20231204/15/1720588/pe
 
 ## Findings
 
-- **Kota Yogyakarta is 91,1% built-up**, the highest built-up share of any area so far, and 100% lit in both years.
+- **Kota Yogyakarta is 91,1% built-up**, the highest of any kabupaten/kota so far (its kecamatan Danurejan reaches 97,6%), and 100% lit in both years.
 - **Night lights.** Gunungkidul 20,7 → 51,6% lit (×2,5), Kulon Progo 35,0 → 64,1% (×1,8; the new airport area),
   Bantul 84 → 99%.
 - **Classification issue (open).** Kota Yogyakarta, Sleman and Kulon Progo come out *Campuran*. Kota Yogyakarta is
