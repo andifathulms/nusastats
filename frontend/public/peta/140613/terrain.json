@@ -1,0 +1,162 @@
+{
+  "kode": "140613",
+  "name": "BONAI DARUSSALAM",
+  "level": "kecamatan",
+  "provinsi": {
+    "kode": "14",
+    "name": "RIAU"
+  },
+  "area_km2": 1175.7,
+  "elevation_m": {
+    "min": 2.7,
+    "max": 53.3,
+    "mean": 19.0,
+    "median": 18.9,
+    "p5": 9.3,
+    "p95": 29.2
+  },
+  "relief_m": 19.9,
+  "highest_point": {
+    "elevation_m": 53.3,
+    "lon": 100.96611,
+    "lat": 1.14556
+  },
+  "elevation_bands_pct": {
+    "<100": 100.0,
+    "100-500": 0.0,
+    "500-1000": 0.0,
+    "1000-2000": 0.0,
+    ">=2000": 0.0
+  },
+  "slope_deg": {
+    "mean": 1.0
+  },
+  "slope_classes_pct": {
+    "<8": 99.28,
+    "8-25": 0.72,
+    ">=25": 0.0
+  },
+  "metrics_pct": {
+    "share_elev_ge_1000": 0.0,
+    "share_elev_ge_200": 0.0,
+    "share_elev_lt_100": 100.0,
+    "share_slope_ge_25": 0.0,
+    "share_slope_ge_8": 0.72,
+    "share_slope_lt_8": 99.28
+  },
+  "lowland_pct": {
+    "lt_5": 0.11,
+    "lt_10": 8.53
+  },
+  "local_relief": {
+    "window_m": 1000,
+    "mean_m": 9.0,
+    "classes_pct": {
+      "datar": 99.64,
+      "bergelombang": 0.36,
+      "berbukit": 0.0,
+      "bergunung": 0.0
+    },
+    "breaks_m": [
+      30,
+      100,
+      300
+    ]
+  },
+  "terrain_class": "dataran_rendah",
+  "terrain_class_label": "Dataran rendah",
+  "terrain_class_reason": "Dataran rendah: 100,0% area <100 m dan 99,3% area lereng <8°",
+  "classification": {
+    "official": false,
+    "note": "Klasifikasi NusaStats (aturan di config/terrain_rules.yaml), bukan klasifikasi resmi.",
+    "rules_sha256": "e55d201ddba19c12723be4d6b648e72d5f013c3c5cb23d4db38ac7c3fb16ce3d"
+  },
+  "checks": {
+    "area_geodesic_km2": 1175.74,
+    "area_utm_polygon_km2": 1176.06,
+    "area_utm_pixels_km2": 1176.07,
+    "utm_vs_geodesic_pct": 0.027,
+    "pixels_vs_utm_pct": 0.001,
+    "nodata_pct": 0.0,
+    "polygon_pixels_utm": 1306748
+  },
+  "metadata": {
+    "dataset": "Copernicus DEM GLO-30 Public",
+    "dataset_type": "DSM (surface model: includes canopy and buildings)",
+    "vertical_datum": "EGM2008 geoid (EPSG:3855), metres",
+    "year": 2015,
+    "attribution": "produced using Copernicus WorldDEM-30 © DLR e.V. 2010-2014 and © Airbus Defence and Space GmbH 2014-2018 provided under COPERNICUS by the European Union and ESA; all rights reserved",
+    "tile_version_tag": null,
+    "tiles": {
+      "Copernicus_DSM_COG_10_N00_00_E100_00_DEM": "ad77a995b3fa8a68945d10700917b45d4481f439d66dfcc554063b9f0ebccde9",
+      "Copernicus_DSM_COG_10_N00_00_E101_00_DEM": "5ae795cf7995c2ed66a925961c153af9322438f82faab0eb7020f3ae7eec28ac",
+      "Copernicus_DSM_COG_10_N01_00_E100_00_DEM": "9aa8f1f583399332614f7f245fa1e4ee2df1404a519cc2e8a918d710ee8e2c72",
+      "Copernicus_DSM_COG_10_N01_00_E101_00_DEM": "3a57f45ef623c7a73de3acc46f57b4d60333f43cc1e79e416b585dbe16009681"
+    },
+    "ocean_tiles_absent": [],
+    "boundary": {
+      "source": "data/big_boundaries/big-villages-14.geojson",
+      "sha256": "4fee66ebea2e5b83fd4e7fb7d42f6a0a2a889043554bd2e7793d59e3be48230d",
+      "method": "shapely.union_all(grid_size=1e-8) per code prefix; no simplify, no island/hole dropping (data/big_boundaries/dissolve.py:dissolve)"
+    },
+    "crs_stats": "EPSG:32647",
+    "pixel_size_m": 30.0,
+    "resampling_to_utm": "bilinear",
+    "min_max_from": "native DEM pixels (EPSG:4326, 1 arc-second) inside the polygon",
+    "shares_from": "30 m UTM pixels (EPSG:32647) whose centre lies inside the polygon",
+    "slope_method": "Horn 3x3 on the UTM grid",
+    "hillshade": {
+      "azimuth_deg": 315,
+      "altitude_deg": 45,
+      "z_factor": 1.0
+    },
+    "tint": [
+      [
+        0,
+        "#4f8f4a"
+      ],
+      [
+        100,
+        "#8fb36a"
+      ],
+      [
+        300,
+        "#cfd28c"
+      ],
+      [
+        500,
+        "#e3cf98"
+      ],
+      [
+        1000,
+        "#c8a06a"
+      ],
+      [
+        2000,
+        "#9a6a43"
+      ],
+      [
+        3000,
+        "#7b5a4a"
+      ],
+      [
+        4000,
+        "#ffffff"
+      ]
+    ],
+    "lowland_colors": [
+      "#1d4f91",
+      "#6fa8dc"
+    ],
+    "relief_colors": [
+      "#eef0dc",
+      "#c9d7a0",
+      "#c99a5b",
+      "#7a4b2e"
+    ],
+    "lowland_note": "Batas bawah: model permukaan (tajuk pohon, bangunan) terbaca lebih tinggi dari tanah.",
+    "local_relief_method": "max - min elevation in a 33x33 px (990 m) window on the UTM grid; NusaStats classes, shown alongside (not replacing) the terrain class",
+    "config_sha256": "bc1b902c8fa23d79936518aa2cb1fa9a1a01e3fba4c13ac3c5ce884e190c482d",
+    "computed_at": "2026-10-09T09:00:34+00:00"
+  }
+}
