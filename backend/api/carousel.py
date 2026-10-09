@@ -22,6 +22,7 @@ Kemendagri region. Values are stored as-is; rounding is a rendering concern.
 
 import re
 import unicodedata
+from decimal import ROUND_HALF_UP, Decimal
 
 from catalog.models import AdminLevel, Domain, Variable
 from djpk.derived import DERIVED_BY_KEY as DJPK_DERIVED
@@ -61,14 +62,83 @@ def slugify(text, limit=40):
     return s[:limit].rstrip("-")
 
 
+_SOURCE_ID = {"bps": "bps", "dukcapil": "duk", "djpk": "djpk"}
+_LEVEL_ID = {"provinsi": "prov", "kabupaten": "kab", "kecamatan": "kec"}
+
+
+def pack_slug(source, metric, level, period, prov=None):
+    """A pack id that stays unique within the 40-char slug cap: the metric part
+    is what gets shortened, never the level, period or province."""
+    tail = slugify(f"{_LEVEL_ID[level]}-{period}" + (f"-{prov}" if prov else ""))
+    head = f"{_SOURCE_ID[source]}-"
+    room = 40 - len(head) - len(tail) - 1
+    return f"{head}{slugify(str(metric), limit=room)}-{tail}"
+
+
 def fmt_int(n):
     return f"{n:,}".replace(",", ".")
+
+
+_SOURCE_SHORT = {"bps": "BPS", "dukcapil": "DUKCAPIL", "djpk": "DJPK"}
+
+
+def short_metric(name):
+    """Headline form of a metric name. Drops what BPS packs into its names: a
+    leading '[Metode Baru]', an SDG indicator code ('3.a.1', '10.1.1.(f)'), a
+    trailing 'menurut/per Kabupaten/Kota' or 'Kabupaten/Kota', and a trailing
+    '(...)'."""
+    s = re.sub(r"^\[[^\]]*\]\s*", "", name)
+    s = re.sub(r"^\d+(\.\w+)*\.?(\(\w\))?\s+", "", s)
+    s = re.sub(r"\s+(menurut|per)\s+(kabupaten|kab|provinsi|kecamatan).*$", "", s, flags=re.I)
+    s = re.sub(r"\s+kabupaten/kota$", "", s, flags=re.I)
+    s = re.sub(r"\s*\([^)]*\)\s*$", "", s)
+    return re.sub(r"\s{2,}", " ", s).strip() or name
+
+
+def kicker_for(source, period):
+    """The slide eyebrow, e.g. 'DATA • BPS 2025'."""
+    return f"DATA • {_SOURCE_SHORT[source]} {str(period)[:4]}"
+
+
+def fmt_num(v, decimals=2):
+    """Indonesian number: thousands dot, decimal comma, at most `decimals`
+    decimals (half up, trailing zeros dropped). 89.55 -> '89,55', 582327 -> '582.327'."""
+    q = Decimal(str(v)).quantize(Decimal(1).scaleb(-decimals), rounding=ROUND_HALF_UP)
+    whole, _, frac = f"{q:,.{decimals}f}".partition(".")
+    frac = frac.rstrip("0")
+    return whole.replace(",", ".") + ("," + frac if frac else "")
+
+
+def fmt_value(v, unit):
+    """A value with its unit, the way a slide shows it (Peta Angka rules: at
+    most 2 decimals, whole numbers for people, large Rupiah in words)."""
+    u = (unit or "").strip()
+    ul = u.lower()
+    if ul in ("%", "persen"):
+        return f"{fmt_num(v)}%"
+    if ul.split(" ")[0] in ("jiwa", "orang", "kk", "rumah", "unit"):
+        return f"{fmt_num(v, 0)} {u}"
+    if u == "Rp" or ul == "rupiah":
+        for size, word in ((1e12, "triliun"), (1e9, "miliar"), (1e6, "juta")):
+            if abs(v) >= size:
+                return f"Rp{fmt_num(v / size, 1)} {word}"
+        return f"Rp{fmt_num(v, 0)}"
+    if ul.startswith("rupiah"):
+        return f"Rp{fmt_num(v, 0)}{u[len('rupiah'):]}"
+    if ul.startswith("indeks") or not u:
+        return fmt_num(v)
+    return f"{fmt_num(v)} {ul if u.istitle() and ' ' not in u else u}"
 
 
 def _bulan_tahun(period):
     """'2026-10' -> 'Okt 2026'."""
     y, m = period.split("-")
     return f"{_BULAN[int(m) - 1]} {y}"
+
+
+def period_label(period):
+    """How a slide names the period: a year as-is, a Dukcapil snapshot as 'data Okt 2026'."""
+    return f"data {_bulan_tahun(period)}" if re.fullmatch(r"\d{4}-\d{2}", str(period)) else str(period)
 
 
 def _iso(dt):
@@ -151,7 +221,8 @@ def _bps(metric, level, period, opts):
         "metric": var.name + breakdown,
         "unit": unit,
         "period": plabel,
-        "source": f"BPS — {var.name}{breakdown} menurut {LEVEL_TITLE[level]}, {plabel}",
+        "source": (f"BPS — {var.name}{breakdown}, {plabel}" if re.search(r"\bmenurut\b", var.name, re.I)
+                   else f"BPS — {var.name}{breakdown} menurut {LEVEL_TITLE[level]}, {plabel}"),
         "notes": notes,
         "provenance": {"source": "bps", "variable_id": var.variable_id, "variable_name": var.name,
                        "turvar_id": str(turvar), "period_id": periods[0][0], "rows": prov_refs},
@@ -315,7 +386,7 @@ def build_pack(source, metric, level, period=None, *, prov=None, top=5, bottom=5
     picked = ordered if n <= top + bottom else ordered[:top] + ordered[n - bottom:]
 
     scope = LEVEL_NOUN[level]
-    where = ""
+    where, pname = "", None
     if prov:
         pname = DukcapilRegion.objects.filter(level="province", code=prov).values_list("name", flat=True).first()
         where = f" di {pname or prov}"
@@ -339,7 +410,7 @@ def build_pack(source, metric, level, period=None, *, prov=None, top=5, bottom=5
     if notes:
         pack_notes.append(notes)
 
-    pid = pack_id or slugify(f"{source}-{metric}-{level}-{built['period']}" + (f"-{prov}" if prov else ""))
+    pid = pack_id or pack_slug(source, metric, level, built["period"], prov)
     pack = {
         "format": FORMAT,
         "id": pid,
@@ -361,12 +432,17 @@ def build_pack(source, metric, level, period=None, *, prov=None, top=5, bottom=5
         "map": {
             "level": level,
             "prov": prov or "",
+            "prov_name": pname or "",
+            "title": short_metric(label_metric or built["metric"]),
+            "kicker": kicker_for(source, built["period"]),
+            "period_label": period_label(built["period"]),
             "n": n,
             "expected": total,
             "min": min(values),
             "max": max(values),
             "values": [{"geo": r["geo"], "code": r["code"], "label": r["label"], "value": r["value"],
-                        "rank": r["rank"]} for r in ordered if r["geo"]],
+                        "display": fmt_value(r["value"], built["unit"]), "rank": r["rank"]}
+                       for r in ordered if r["geo"]],
             "unmatched": [{"code": r["code"], "label": r["label"]} for r in ordered if not r["geo"]],
         },
     }

@@ -71,7 +71,7 @@ def test_bps_pack_shape_labels_and_crosswalked_map(bps):
     pack = result["pack"]
 
     assert pack["format"] == "carousel-data/1"
-    assert pack["id"] == "bps-415-kabupaten-2025"
+    assert pack["id"] == "bps-415-kab-2025"
     assert pack["unit"] == "Tahun"
     assert pack["rows"] == [
         {"label": "Kota Banda Aceh", "code": "1171", "value": 13.37},
@@ -170,11 +170,20 @@ def test_command_writes_pack_and_provenance(bps, tmp_path):
     out, prov = tmp_path / "pack.json", tmp_path / "prov.json"
     call_command("export_carousel_pack", "--source", "bps", "--metric", "415", "--level", "kabupaten",
                  "--period", "2025", "--out", str(out), "--provenance", str(prov))
-    assert json.loads(out.read_text())["id"] == "bps-415-kabupaten-2025"
+    assert json.loads(out.read_text())["id"] == "bps-415-kab-2025"
     assert json.loads(prov.read_text())["rows"][0]["check_log_id"]
     with pytest.raises(CommandError):
         call_command("export_carousel_pack", "--source", "bps", "--metric", "999", "--level", "kabupaten",
                      "--period", "2025")
+
+
+def test_pack_ids_keep_level_period_and_province_under_the_cap():
+    from api.carousel import pack_slug
+
+    national = pack_slug("dukcapil", "jumlah_penduduk", "kecamatan", "2026-10")
+    dki = pack_slug("dukcapil", "jumlah_penduduk", "kecamatan", "2026-10", "31")
+    assert national != dki
+    assert dki.endswith("-kec-2026-10-31") and len(dki) <= 40
 
 
 def test_slugify_matches_carousel_press():

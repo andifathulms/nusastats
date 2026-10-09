@@ -18,12 +18,12 @@ import { litGrowth, loadPeta, MIN_BASE_LIT_KM2, petaAsset, type Peta } from "@/l
 export type Template = "terrain" | "landcover" | "nightlights";
 export const TEMPLATES: Template[] = ["terrain", "landcover", "nightlights"];
 
-const W = 1080;
-const H = 1920;
+export const W = 1080;
+export const H = 1920;
 // TikTok UI zones (spec §6.2): keep text and key content out of them.
-const SAFE = { top: 220, bottom: 420, right: 160 };
-const PAD = 64; // left margin
-const CONTENT_W = W - PAD - SAFE.right; // 856
+export const SAFE = { top: 220, bottom: 420, right: 160 };
+export const PAD = 64; // left margin
+export const CONTENT_W = W - PAD - SAFE.right; // 856
 
 type Outline = { id: string; d: string };
 type Geo = { features: { properties: { domain_id: string }; geometry: { type: string; coordinates: unknown } }[] };
@@ -131,7 +131,7 @@ export function ShareCard({ template, kode, debug }: { template: Template; kode:
   );
 }
 
-function CornerTag() {
+export function CornerTag() {
   // Fixed position and style on every card (spec §6.2), inside the safe area.
   return (
     <div
@@ -143,7 +143,7 @@ function CornerTag() {
   );
 }
 
-function SafeZones() {
+export function SafeZones() {
   const z = "absolute flex items-center justify-center bg-red-600/35 font-mono text-[22px] text-white outline outline-2 outline-red-500";
   return (
     <>
@@ -357,7 +357,7 @@ function NightlightsFacts({ peta }: { peta: Peta }) {
   );
 }
 
-function Footer({ source }: { source: string }) {
+export function Footer({ source }: { source: string }) {
   return (
     <p className="mt-6 border-t border-coal-border pt-4 text-[19px] leading-snug text-coal-muted">
       Sumber: {source}. Batas wilayah indikatif (BIG).

@@ -854,3 +854,63 @@ export type PetaRegionRanks = {
 export const petaApi = {
   region: (code: string) => get<PetaRegionRanks>(`/peta/regions/${code}/`),
 };
+
+// --- carousel packs (api.carousel) -------------------------------------------
+
+export type CarouselMapValue = {
+  geo: string; // Kemendagri code
+  code: string; // the source's own code
+  label: string;
+  value: number;
+  display: string; // formatted by the backend, same string the deck uses
+  rank: number; // 1 = highest
+};
+
+export type CarouselPackResult = {
+  pack: {
+    format: "carousel-data/1";
+    id: string;
+    metric: string;
+    unit: string;
+    period: string;
+    level: "provinsi" | "kabupaten" | "kecamatan";
+    source: string;
+    notes: string;
+    rows: { label: string; code: string; value: number }[];
+  };
+  provenance: { source: "bps" | "dukcapil" | "djpk" } & Record<string, unknown>;
+  map: {
+    level: "provinsi" | "kabupaten" | "kecamatan";
+    prov: string;
+    prov_name: string;
+    title: string;
+    kicker: string;
+    period_label: string;
+    n: number;
+    expected: number;
+    min: number;
+    max: number;
+    values: CarouselMapValue[];
+    unmatched: { code: string; label: string }[];
+  };
+};
+
+export type CarouselDeckResult = CarouselPackResult & {
+  deck: string;
+  readme: string;
+  cards: { file: string; path: string }[];
+  warnings: string[];
+};
+
+/** Pack/deck requests. A refusal (422) rejects with the backend's reason. */
+async function carouselGet<T>(path: string, query: string): Promise<T> {
+  const res = await fetch(`${API_BASE}/api/carousel/${path}/?${query}`);
+  const body = await res.json().catch(() => null);
+  if (!res.ok) throw new Error(body?.error ?? `API carousel/${path} -> ${res.status}`);
+  return body as T;
+}
+
+export const carouselApi = {
+  pack: (query: string) => carouselGet<CarouselPackResult>("pack", query),
+  deck: (query: string) => carouselGet<CarouselDeckResult>("deck", query),
+};

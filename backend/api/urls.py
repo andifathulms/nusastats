@@ -32,6 +32,7 @@ urlpatterns = [
     path("dukcapil/regency-bridge/<str:domain_id>/", dukcapil_views.regency_bridge, name="dukcapil-regency-bridge"),
     # carousel-data/1 packs for Carousel Press and the /card/angka map card.
     path("carousel/pack/", carousel_views.pack, name="carousel-pack"),
+    path("carousel/deck/", carousel_views.deck, name="carousel-deck"),
     # DJPK/SIKD regional finance (APBD/PAD) — separate again from BPS & dukcapil.
     path("djpk/summary/", djpk_views.summary, name="djpk-summary"),
     path("djpk/accounts/", djpk_views.accounts, name="djpk-accounts"),

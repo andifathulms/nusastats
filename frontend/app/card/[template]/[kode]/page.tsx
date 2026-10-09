@@ -2,12 +2,20 @@
 
 import { useSearchParams } from "next/navigation";
 import { Suspense } from "react";
+import { AngkaCard } from "@/components/cards/AngkaCard";
 import { ShareCard, TEMPLATES, type Template } from "@/components/cards/ShareCard";
 
 // /card/{template}/{kode}[?debug=1] — a bare 1080×1920 share card for the PNG
-// exporter (`npm run card`). `debug=1` draws the TikTok UI zones.
+// exporters (`npm run card`, `npm run carousel`). `debug=1` draws the TikTok UI
+// zones. `angka` is a carousel-data/1 pack on a map: kode = Kemendagri province
+// scope or 00, the pack query (and focus=) in the search params.
 function Card({ template, kode }: { template: string; kode: string }) {
-  const debug = useSearchParams().get("debug") === "1";
+  const params = useSearchParams();
+  const debug = params.get("debug") === "1";
+  if (template === "angka") {
+    if (!/^\d{2}$/.test(kode)) return <div id="card" data-card-error={`cakupan tidak dikenal: ${kode}`} />;
+    return <AngkaCard scope={kode} query={params} debug={debug} />;
+  }
   if (!TEMPLATES.includes(template as Template) || !/^\d{2}(\d{2}(\d{2})?)?$/.test(kode))
     return <div id="card" data-card-error={`template/kode tidak dikenal: ${template}/${kode}`} />;
   return <ShareCard template={template as Template} kode={kode} debug={debug} />;
