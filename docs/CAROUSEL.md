@@ -32,7 +32,9 @@ npm run carousel -- --source djpk --metric rasio_kemandirian --level kabupaten -
 ```
 
 This writes `pack.json`, `provenance.json`, `map.json`, `deck.txt`, `README.md` and the map PNGs
-to `exports/carousels/{id}/` (gitignored). Then paste `deck.txt` into Carousel Press, unzip its
+to `exports/carousels/{id}/` (gitignored), plus `carousel-press.url`, which opens the deck in Carousel
+Press (`#deck=<base64url>`; the base URL comes from `CAROUSEL_PRESS_URL`). Then open it, or paste
+`deck.txt` there, unzip its
 PNGs into the same folder, and upload everything in name order: `{id}_01.png`, `{id}_01a_peta.png`,
 `{id}_02.png`, `{id}_02a_6409.png`, …
 

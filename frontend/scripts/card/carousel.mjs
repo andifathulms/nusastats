@@ -80,5 +80,6 @@ for (const card of body.cards) {
 }
 await browser.close();
 console.log(`carousel: ${saved} map card(s) saved, ${failed.length} not saved${failed.length ? ":\n  " + failed.join("\n  ") : ""}`);
-console.log(`next: paste ${join(dir, "deck.txt")} into Carousel Press, unzip its PNGs into the same folder.`);
+writeFileSync(join(dir, "carousel-press.url"), `[InternetShortcut]\nURL=${body.carousel_press_url}\n`);
+console.log(`next: open carousel-press.url (or paste deck.txt into Carousel Press), unzip its PNGs into ${dir}.`);
 process.exit(failed.length ? 1 : 0);

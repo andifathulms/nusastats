@@ -168,3 +168,16 @@ def test_long_metric_names_leave_the_headline_and_warn():
     assert "Nama seri lengkap di Catatan" in cover[2]
     assert "Catatan\nSeri: Proporsi Perempuan" in b["deck"]
     assert any("label_metric" in w for w in b["warnings"])
+
+
+def test_carousel_press_link_round_trips_unicode():
+    import base64
+
+    from api.carousel_deck import carousel_press_link
+
+    deck = deck_bundle(_result(ROWS), SPEC, recipe="gap")["deck"]
+    assert "•" in deck and "×" in deck
+    link = carousel_press_link(deck, base="https://cp.example/")
+    data = link.split("#deck=", 1)[1]
+    assert "=" not in data and "+" not in data and "/" not in data
+    assert base64.urlsafe_b64decode(data + "=" * (-len(data) % 4)).decode("utf-8") == deck

@@ -13,6 +13,8 @@ files so they sort into place next to Carousel Press' `{slug}_{NN}.png` export:
 is a region's map right after its slide.
 """
 
+import base64
+import os
 import re
 from urllib.parse import urlencode
 
@@ -70,6 +72,16 @@ def _note_cards(notes):
     if cur:
         cards.append(cur)
     return cards
+
+
+# Carousel Press opens a deck passed in the URL fragment (never sent to a
+# server): #deck=<base64url of the UTF-8 text, no padding>.
+CAROUSEL_PRESS_URL = os.environ.get("CAROUSEL_PRESS_URL", "https://andifathulms.github.io/carousel-press/")
+
+
+def carousel_press_link(deck, base=None):
+    data = base64.urlsafe_b64encode(deck.encode("utf-8")).decode("ascii").rstrip("=")
+    return f"{base or CAROUSEL_PRESS_URL}#deck={data}"
 
 
 def _hashtags(prov_name):
@@ -191,12 +203,13 @@ def deck_bundle(result, spec, recipe="top", map_bg="terrain", template="editoria
     deck = "\n---\n".join([header] + slides) + "\n"
 
     card_lines = "\n".join(f"- `{c['file']}` ← `{c['path']}`" for c in cards) or "- (none)"
+    link = carousel_press_link(deck)
     readme = f"""# {slug}
 
 Carousel bundle from NusaStats (`carousel-data/1`, recipe `{recipe}`).
 
-1. Open Carousel Press, paste `deck.txt`, and edit **only the cover hook**. Every number and the
-   "Catatan" text come from `pack.json`; don't change them.
+1. Open the deck in Carousel Press ([link]({link})), or paste `deck.txt` there. Edit **only the
+   cover hook**. Every number and the "Catatan" text come from `pack.json`; don't change them.
 2. Download all (ZIP) and unzip the PNGs into this folder.
 3. The map cards below are already here. Their names sort into place next to the deck slides
    (`{slug}_01.png`, `{slug}_01a_peta.png`, `{slug}_02.png`, ...). Upload the PNGs to TikTok in
@@ -209,4 +222,4 @@ Map cards:
 Every value traces to a stored response in `provenance.json` (URL with the key redacted, SHA-256,
 fetch time).
 """
-    return {"deck": deck, "readme": readme, "cards": cards, "warnings": warnings}
+    return {"deck": deck, "readme": readme, "cards": cards, "warnings": warnings, "carousel_press_url": link}

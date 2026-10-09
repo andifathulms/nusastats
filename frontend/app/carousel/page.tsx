@@ -343,6 +343,14 @@ function Result({ result, form }: { result: CarouselDeckResult; form: Form }) {
         <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
           <SectionTitle hint="tempel di Carousel Press; ubah kalimat sampul saja">Teks deck</SectionTitle>
           <div className="flex flex-wrap gap-2">
+            <a
+              href={result.carousel_press_url}
+              target="_blank"
+              rel="noreferrer"
+              className="rounded-full bg-brand-gradient px-4 py-1.5 text-sm font-semibold text-white shadow-glow hover:opacity-90"
+            >
+              Buka di Carousel Press
+            </a>
             <Action onClick={() => copy("deck", result.deck)}>{copied === "deck" ? "Tersalin" : "Salin"}</Action>
             <Action onClick={() => download("deck.txt", result.deck)}>deck.txt</Action>
             <Action onClick={() => download("pack.json", JSON.stringify(pack, null, 2) + "\n", "application/json")}>pack.json</Action>
@@ -361,7 +369,7 @@ function Result({ result, form }: { result: CarouselDeckResult; form: Form }) {
         </div>
         <pre className="overflow-x-auto rounded-lg bg-ink-panel2 p-4 font-mono text-[12.5px] text-ink-text">{cmd}</pre>
         <p className="mt-3 text-sm text-ink-muted">
-          Lalu buka Carousel Press, tempel deck.txt, unduh ZIP-nya ke folder yang sama, dan unggah semua PNG ke TikTok
+          Lalu buka deck di Carousel Press (tombol di atas), unduh ZIP-nya ke folder yang sama, dan unggah semua PNG ke TikTok
           sesuai urutan nama. Panduan lengkap: <code className="font-mono text-xs">docs/CAROUSEL.md</code>.
         </p>
       </Panel>
