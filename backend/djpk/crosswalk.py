@@ -45,6 +45,15 @@ _NAME_ALIASES = {
     "MAMUJUUTARA": "PASANGKAYU",                 # renamed 2017 (DJPK keeps old label in older years)
 }
 
+# Renames whose old name is still another region's name, so they must be keyed
+# by Kota/Kabupaten family too: (family, normalized DJPK name) -> normalized
+# dukcapil name. Kabupaten Pontianak became Kabupaten Mempawah (PP 58/2014);
+# DJPK still labels it "Kab. Pontianak" (1405, 2024), while "Kota Pontianak" is
+# a different region and must keep its own match.
+_FAMILY_ALIASES = {
+    ("kabupaten", "PONTIANAK"): "MEMPAWAH",
+}
+
 
 def normalize_name(name):
     """Bare comparison key: uppercase, drop type tokens & punctuation, expand
@@ -177,8 +186,9 @@ def build_crosswalk():
     for r in regions:
         if r.level != "regency":
             continue
+        fam = status_family(r.name)
         norm = normalize_name(r.name)
-        nkey = (status_family(r.name), norm)
+        nkey = (fam, _FAMILY_ALIASES.get((fam, norm), norm))
         kemenprov = djpkprov_to_kemenprov.get(r.djpk_prov)
         code = reg_by_prov.get(kemenprov, {}).get(nkey) if kemenprov else None
         method = "name-exact" if code else ""

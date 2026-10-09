@@ -101,3 +101,21 @@ def test_unmatched_region_is_left_blank_and_reported(db):
     assert wakanda.match_method == ""
     assert summary["unmatched"] == 1
     assert any("Wakanda" in n for n in summary["unmatched_names"])
+
+
+@pytest.mark.django_db
+def test_renamed_kabupaten_matches_without_taking_the_kota_of_its_old_name():
+    """DJPK still labels Kab. Mempawah by its pre-2014 name, Kab. Pontianak;
+    Kota Pontianak is a different region and keeps its own code."""
+    _dukcapil_province("61", "Kalimantan Barat")
+    _dukcapil_regency("6102", "Mempawah", "Kabupaten", "61")
+    _dukcapil_regency("6171", "Pontianak", "Kota", "61")
+    _djpk_region("14", "00", RegionLevel.PROVINCE, "Prov. Kalimantan Barat", "Prov. Kalimantan Barat")
+    _djpk_region("14", "05", RegionLevel.REGENCY, "Kab. Pontianak", "Prov. Kalimantan Barat")
+    _djpk_region("14", "13", RegionLevel.REGENCY, "Kota Pontianak", "Prov. Kalimantan Barat")
+
+    summary = build_crosswalk()
+
+    assert summary["unmatched"] == 0
+    codes = {r.name: r.kemendagri_code for r in ApbdRegion.objects.filter(level=RegionLevel.REGENCY)}
+    assert codes == {"Kab. Pontianak": "6102", "Kota Pontianak": "6171"}
