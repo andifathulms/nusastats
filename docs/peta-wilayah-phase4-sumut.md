@@ -34,8 +34,9 @@ followed by a second pass that found every area up to date.
 
 **The province's DEM maximum is not Sibuatan.** Langkat reads 2.821,5 m in kec. Batang Serangan at 97.853°E 3.630°N,
 on the Leuser range by the Aceh border. Sibuatan's "highest in Sumatera Utara" status probably refers to summits
-reached by hiking routes; this report does not claim a named peak for the Langkat point. Recheck it from the Aceh
-side when Aceh runs.
+reached by hiking routes; this report does not claim a named peak for the Langkat point. **Resolved in the
+[Aceh run](peta-wilayah-phase4-aceh.md):** the summit is on the Aceh side (kec. Badar, Aceh Tenggara, 2.834,6 m at
+97.853°E 3.629°N); Langkat's 2.821,5 m is its border slope.
 
 Sources: [Gunung Bagging (Sumatera Utara)](https://www.gunungbagging.com/sumatera-utara/),
 [iNews (Sibuatan)](https://www.inews.id/regional/sumut/gunung-sibuatan),
