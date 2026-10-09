@@ -1,0 +1,101 @@
+{
+  "kode": "150111",
+  "name": "AIR HANGAT TIMUR",
+  "level": "kecamatan",
+  "provinsi": {
+    "kode": "15",
+    "name": "JAMBI"
+  },
+  "year": 2021,
+  "area_km2": 179.9,
+  "dominant": {
+    "code": 10,
+    "label": "Tutupan pohon",
+    "share_pct": 81.64
+  },
+  "classes": [
+    {
+      "code": 10,
+      "name": "Tree cover",
+      "label": "Tutupan pohon",
+      "color": "#006400",
+      "pixels": 1470075,
+      "share_pct": 81.64,
+      "area_km2": 146.85
+    },
+    {
+      "code": 30,
+      "name": "Grassland",
+      "label": "Padang rumput",
+      "color": "#ffff4c",
+      "pixels": 221670,
+      "share_pct": 12.31,
+      "area_km2": 22.14
+    },
+    {
+      "code": 40,
+      "name": "Cropland",
+      "label": "Lahan pertanian",
+      "color": "#f096ff",
+      "pixels": 89996,
+      "share_pct": 5.0,
+      "area_km2": 8.99
+    },
+    {
+      "code": 50,
+      "name": "Built-up",
+      "label": "Lahan terbangun",
+      "color": "#fa0000",
+      "pixels": 18916,
+      "share_pct": 1.05,
+      "area_km2": 1.89
+    },
+    {
+      "code": 60,
+      "name": "Bare / sparse vegetation",
+      "label": "Lahan terbuka",
+      "color": "#b4b4b4",
+      "pixels": 122,
+      "share_pct": 0.01,
+      "area_km2": 0.01
+    }
+  ],
+  "checks": {
+    "share_sum_pct": 100.01,
+    "area_geodesic_km2": 179.89,
+    "area_utm_polygon_km2": 180.08,
+    "area_utm_pixels_km2": 180.08,
+    "utm_vs_geodesic_pct": 0.11,
+    "pixels_vs_utm_pct": -0.004,
+    "nodata_pct": 0.0,
+    "polygon_pixels_utm": 1800779,
+    "render_palette_colours": 5,
+    "render_palette_exact": true
+  },
+  "metadata": {
+    "dataset": "ESA WorldCover 10 m 2021 v200",
+    "version": "v200",
+    "year": 2021,
+    "license": "CC BY 4.0 (Creative Commons Attribution 4.0 International)",
+    "attribution": "© ESA WorldCover project 2021 / Contains modified Copernicus Sentinel data (2021) processed by ESA WorldCover consortium",
+    "product_version_tag": "V2.0.0",
+    "tiles": {
+      "S03E099": "36bae12e5394d764b84421197f9c72d3d6faff61fac472fdf4a193c9767eea5d"
+    },
+    "tiles_absent": [],
+    "boundary": {
+      "source": "data/big_boundaries/big-villages-15.geojson",
+      "sha256": "e22cad366be0f2af270494d925b51d59258616cf9b9135dc8b33cb28790c50b5",
+      "method": "shapely.union_all(grid_size=1e-8) per code prefix; no simplify, no island/hole dropping (data/big_boundaries/dissolve.py:dissolve)"
+    },
+    "crs_stats": "EPSG:32747",
+    "pixel_size_m": 10.0,
+    "resampling_to_utm": "nearest",
+    "shares_from": "10 m UTM pixels (EPSG:32747) whose centre lies inside the polygon; shares are of classified pixels",
+    "area_km2_method": "share × geodesic polygon area (WGS84 ellipsoid)",
+    "display_resampling": "mode",
+    "caveat": "Kelas 10 'Tutupan pohon' mencakup perkebunan (sawit, akasia); jangan sebut 'hutan'.",
+    "config_sha256": "cf0713550fb2fc58b2fae33bf270d90afc44a31c24d2d51990d7ca6d1811c0a5",
+    "computed_at": "2026-10-09T05:38:27+00:00"
+  }
+}

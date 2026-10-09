@@ -1,0 +1,159 @@
+{
+  "kode": "150709",
+  "name": "MENDAHARA ULU",
+  "level": "kecamatan",
+  "provinsi": {
+    "kode": "15",
+    "name": "JAMBI"
+  },
+  "area_km2": 607.0,
+  "elevation_m": {
+    "min": 0.5,
+    "max": 105.1,
+    "mean": 16.9,
+    "median": 15.0,
+    "p5": 3.2,
+    "p95": 38.3
+  },
+  "relief_m": 35.1,
+  "highest_point": {
+    "elevation_m": 105.1,
+    "lon": 103.33583,
+    "lat": -1.26917
+  },
+  "elevation_bands_pct": {
+    "<100": 100.0,
+    "100-500": 0.0,
+    "500-1000": 0.0,
+    "1000-2000": 0.0,
+    ">=2000": 0.0
+  },
+  "slope_deg": {
+    "mean": 2.37
+  },
+  "slope_classes_pct": {
+    "<8": 98.11,
+    "8-25": 1.89,
+    ">=25": 0.0
+  },
+  "metrics_pct": {
+    "share_elev_ge_1000": 0.0,
+    "share_elev_ge_200": 0.0,
+    "share_elev_lt_100": 100.0,
+    "share_slope_ge_25": 0.0,
+    "share_slope_ge_8": 1.89,
+    "share_slope_lt_8": 98.11
+  },
+  "lowland_pct": {
+    "lt_5": 13.37,
+    "lt_10": 33.25
+  },
+  "local_relief": {
+    "window_m": 1000,
+    "mean_m": 18.3,
+    "classes_pct": {
+      "datar": 89.78,
+      "bergelombang": 10.22,
+      "berbukit": 0.0,
+      "bergunung": 0.0
+    },
+    "breaks_m": [
+      30,
+      100,
+      300
+    ]
+  },
+  "terrain_class": "dataran_rendah",
+  "terrain_class_label": "Dataran rendah",
+  "terrain_class_reason": "Dataran rendah: 100,0% area <100 m dan 98,1% area lereng <8°",
+  "classification": {
+    "official": false,
+    "note": "Klasifikasi NusaStats (aturan di config/terrain_rules.yaml), bukan klasifikasi resmi.",
+    "rules_sha256": "e55d201ddba19c12723be4d6b648e72d5f013c3c5cb23d4db38ac7c3fb16ce3d"
+  },
+  "checks": {
+    "area_geodesic_km2": 606.96,
+    "area_utm_polygon_km2": 606.88,
+    "area_utm_pixels_km2": 606.92,
+    "utm_vs_geodesic_pct": -0.013,
+    "pixels_vs_utm_pct": 0.007,
+    "nodata_pct": 0.0,
+    "polygon_pixels_utm": 674361
+  },
+  "metadata": {
+    "dataset": "Copernicus DEM GLO-30 Public",
+    "dataset_type": "DSM (surface model: includes canopy and buildings)",
+    "vertical_datum": "EGM2008 geoid (EPSG:3855), metres",
+    "year": 2015,
+    "attribution": "produced using Copernicus WorldDEM-30 © DLR e.V. 2010-2014 and © Airbus Defence and Space GmbH 2014-2018 provided under COPERNICUS by the European Union and ESA; all rights reserved",
+    "tile_version_tag": null,
+    "tiles": {
+      "Copernicus_DSM_COG_10_S02_00_E103_00_DEM": "d46cd0a356d2efff1f6148b834c3f7bb44951f9cc37f1197720b34b65454a39f"
+    },
+    "ocean_tiles_absent": [],
+    "boundary": {
+      "source": "data/big_boundaries/big-villages-15.geojson",
+      "sha256": "e22cad366be0f2af270494d925b51d59258616cf9b9135dc8b33cb28790c50b5",
+      "method": "shapely.union_all(grid_size=1e-8) per code prefix; no simplify, no island/hole dropping (data/big_boundaries/dissolve.py:dissolve)"
+    },
+    "crs_stats": "EPSG:32748",
+    "pixel_size_m": 30.0,
+    "resampling_to_utm": "bilinear",
+    "min_max_from": "native DEM pixels (EPSG:4326, 1 arc-second) inside the polygon",
+    "shares_from": "30 m UTM pixels (EPSG:32748) whose centre lies inside the polygon",
+    "slope_method": "Horn 3x3 on the UTM grid",
+    "hillshade": {
+      "azimuth_deg": 315,
+      "altitude_deg": 45,
+      "z_factor": 1.0
+    },
+    "tint": [
+      [
+        0,
+        "#4f8f4a"
+      ],
+      [
+        100,
+        "#8fb36a"
+      ],
+      [
+        300,
+        "#cfd28c"
+      ],
+      [
+        500,
+        "#e3cf98"
+      ],
+      [
+        1000,
+        "#c8a06a"
+      ],
+      [
+        2000,
+        "#9a6a43"
+      ],
+      [
+        3000,
+        "#7b5a4a"
+      ],
+      [
+        4000,
+        "#ffffff"
+      ]
+    ],
+    "lowland_colors": [
+      "#1d4f91",
+      "#6fa8dc"
+    ],
+    "relief_colors": [
+      "#eef0dc",
+      "#c9d7a0",
+      "#c99a5b",
+      "#7a4b2e"
+    ],
+    "lowland_note": "Batas bawah: model permukaan (tajuk pohon, bangunan) terbaca lebih tinggi dari tanah.",
+    "local_relief_method": "max - min elevation in a 33x33 px (990 m) window on the UTM grid; NusaStats classes, shown alongside (not replacing) the terrain class",
+    "config_sha256": "bc1b902c8fa23d79936518aa2cb1fa9a1a01e3fba4c13ac3c5ce884e190c482d",
+    "computed_at": "2026-10-09T05:55:27+00:00"
+  }
+}
