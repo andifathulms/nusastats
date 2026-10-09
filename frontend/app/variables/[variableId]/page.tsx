@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { routes } from "@/lib/routes";
 import {
   api,
   formatNumber,
@@ -164,6 +165,20 @@ export default function VariableDetailPage({ params }: { params: { variableId: s
             <Badge key={l}>{LEVEL_LABEL[l] ?? l}</Badge>
           ))}
           <span className="text-ink-faint">variable_id {dims.variable_id}</span>
+          {isGeographic && dims.years.length > 0 && (
+            <Link
+              href={`${routes.carousel}?${new URLSearchParams({
+                source: "bps",
+                metric: dims.variable_id,
+                level: dims.admin_levels.includes("regency") ? "kabupaten" : "provinsi",
+                period: String(dims.years[dims.years.length - 1]),
+                ...(dims.turvars.length > 1 && turvarId ? { turvar: turvarId } : {}),
+              })}`}
+              className="ml-auto rounded-full border border-ink-border px-3 py-1 font-semibold text-ink-text transition-colors hover:border-ink-accent hover:text-ink-accent"
+            >
+              Buat carousel
+            </Link>
+          )}
         </div>
       </header>
 

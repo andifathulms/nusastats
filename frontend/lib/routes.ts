@@ -11,6 +11,7 @@ export const routes = {
   variable: (id: string) => `/variables/${id}`,
   dukcapil: "/dukcapil",
   keuangan: "/keuangan",
+  carousel: "/carousel",
 };
 
 // Dukcapil province code (2-digit, 38 provinces) -> the region page. All 38

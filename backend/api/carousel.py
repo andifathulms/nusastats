@@ -401,12 +401,23 @@ def build_pack(source, metric, level, period=None, *, prov=None, top=5, bottom=5
         pack_notes.append(f"Semua {fmt_int(n)} {scope}{where}.")
     else:
         pack_notes.append(f"{top} tertinggi dan {bottom} terendah dari {fmt_int(n)} {scope}{where}.")
-        for edge, nxt in ((ordered[top - 1], ordered[top]), (ordered[n - bottom], ordered[n - bottom - 1])):
-            if edge["value"] == nxt["value"]:
-                pack_notes.append(f"Ada nilai kembar di batas peringkat ({edge['value']}); urutan nilai kembar "
-                                  "mengikuti kode wilayah.")
-                break
-    pack_notes += built["notes"]
+    # Ties among the shown rows or at the cut-offs: the order between them is
+    # only the region code, so say so instead of implying a ranking.
+    edges = set()
+    for i, r in enumerate(picked[:-1]):
+        if r["value"] == picked[i + 1]["value"]:
+            edges.add(i)
+    if n > top + bottom:
+        edges |= {"top"} if ordered[top - 1]["value"] == ordered[top]["value"] else set()
+        edges |= {"bottom"} if ordered[n - bottom]["value"] == ordered[n - bottom - 1]["value"] else set()
+    if edges:
+        tied = sorted({fmt_value(r["value"], built["unit"]) for i, r in enumerate(picked)
+                       if (i in edges or i - 1 in edges)} | ({"di batas peringkat"} if edges & {"top", "bottom"} else set()))
+        pack_notes.append(f"Ada nilai kembar ({', '.join(tied)}); urutan di antara nilai yang sama mengikuti kode "
+                          "wilayah, bukan peringkat.")
+    # The Papua-code note only matters when a 2022-Papua row is in this scope.
+    papua = source == "bps" and any(r["code"][:2] in {"92", "95", "96", "97"} for r in rows)
+    pack_notes += [x for x in built["notes"] if papua or not x.startswith("Kode wilayah = kode BPS")]
     if notes:
         pack_notes.append(notes)
 

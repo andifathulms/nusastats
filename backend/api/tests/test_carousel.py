@@ -189,3 +189,10 @@ def test_pack_ids_keep_level_period_and_province_under_the_cap():
 def test_slugify_matches_carousel_press():
     assert slugify("Pengeluaran per Kapita — Jakarta Selatan, 2025") == "pengeluaran-per-kapita-jakarta-selatan-2"
     assert slugify("Sémua Ñama") == "semua-nama"
+
+
+@pytest.mark.django_db
+def test_tie_among_shown_rows_is_noted(bps):
+    DataPoint.objects.filter(domain__domain_id="1101").update(value=13.37)
+    notes = build_pack("bps", "415", "kabupaten", "2025")["pack"]["notes"]
+    assert "nilai kembar (13,37 tahun)" in notes

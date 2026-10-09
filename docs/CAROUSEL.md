@@ -11,6 +11,14 @@ api/carousel_deck.py   deck_bundle()  pack -> deck text + the map cards to rende
 scripts/card/carousel.mjs             all of the above into exports/carousels/{id}/
 ```
 
+## In the app
+
+`/carousel` builds the same bundle in the browser: pick a source, indicator, level, period and
+province. It previews the map cards, shows the deck text (copy, or download `deck.txt`,
+`pack.json`, `provenance.json`) and gives the exact `npm run carousel` command for the PNGs. The
+form lives in the URL. "Buat carousel" links on BPS variable pages, `/dukcapil` and `/keuangan`
+prefill it.
+
 ## One command
 
 The stack must be running (`docker compose up`). The first time only, set up the exporter:

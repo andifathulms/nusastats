@@ -46,6 +46,12 @@ export default function KeuanganOverviewPage() {
             >
               Buka analitik →
             </Link>
+            <Link
+              href={`/carousel?source=djpk&metric=rasio_kemandirian&level=kabupaten&period=${summary.scope.tahun}`}
+              className="inline-flex h-11 items-center rounded-full border border-white/20 px-6 text-sm font-bold text-coal-text transition-colors hover:bg-white/5"
+            >
+              Buat carousel
+            </Link>
           </div>
           <div className="mt-5 text-xs text-coal-muted">
             Tahun anggaran <span className="font-medium text-ink-text">{summary.scope.tahun}</span>

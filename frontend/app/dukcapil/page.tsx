@@ -46,6 +46,12 @@ export default function DukcapilOverviewPage() {
             >
               Jelajahi wilayah
             </Link>
+            <Link
+              href="/carousel?source=dukcapil&metric=jumlah_penduduk&level=kabupaten"
+              className="inline-flex h-11 items-center rounded-full border border-white/20 px-6 text-sm font-bold text-coal-text transition-colors hover:bg-white/5"
+            >
+              Buat carousel
+            </Link>
           </div>
           {summary.period && (
             <div className="mt-5 text-xs text-coal-muted">
