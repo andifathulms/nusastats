@@ -22,13 +22,11 @@ import { DukcapilRegionProfile } from "@/components/DukcapilRegionProfile";
 import { ProvinceInsight, RegencyInsight } from "@/components/RegionInsight";
 import { PetaWilayah, type PetaFact } from "@/components/peta/PetaWilayah";
 import { Breadcrumbs, RegionHero, StickyTabs, type Crumb, type HeroFact } from "@/components/explore/RegionHero";
+import { bpsProvinceToKemendagri } from "@/lib/provinces";
 import { provinceHref, routes } from "@/lib/routes";
 
-// BPS province domain -> Dukcapil 2-digit code. BPS still uses the pre-2022
-// Papua split: 9400 Papua = Dukcapil 91, 9100 Papua Barat = Dukcapil 92.
-function dukcapilProvinceCode(bpsId: string): string {
-  return ({ "9400": "91", "9100": "92" } as Record<string, string>)[bpsId] ?? bpsId.slice(0, 2);
-}
+// BPS province domain -> Dukcapil 2-digit code (Papua codes differ, see lib/provinces).
+const dukcapilProvinceCode = bpsProvinceToKemendagri;
 
 type Kind = "national" | "province" | "regency" | "district" | "village";
 
@@ -37,7 +35,8 @@ type Kind = "national" | "province" | "regency" | "district" | "village";
 // and desa (10-digit), which BPS has no counterpart for.
 function regionKind(code: string): Kind {
   if (code === "0000") return "national";
-  // 2-digit = a Dukcapil-only province (the four post-2022 Papua provinces).
+  // 2-digit = the Dukcapil-only province profile (older links to the 2022
+  // Papua provinces, which now have BPS domains too).
   if (code.length === 2) return "province";
   if (code.length === 4) return code.endsWith("00") ? "province" : "regency";
   if (code.length <= 7) return "district";

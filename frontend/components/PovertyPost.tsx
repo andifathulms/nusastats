@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { bpsProvinceToKemendagri } from "@/lib/provinces";
 import {
   CartesianGrid, Cell, Line, LineChart, Scatter, ScatterChart, Tooltip as RTooltip,
   XAxis, YAxis, ZAxis, ResponsiveContainer,
@@ -173,7 +174,7 @@ export function PovertyPost({ config }: { config: PovertyConfig }) {
             byRegion.get(d.domain_id) ??
             (() => {
               const isProv = level === "province";
-              const provCode = isProv ? d.domain_id.slice(0, 2) : xwalk.get(d.domain_id)?.prov_code ?? d.domain_id.slice(0, 2);
+              const provCode = isProv ? bpsProvinceToKemendagri(d.domain_id) : xwalk.get(d.domain_id)?.prov_code ?? d.domain_id.slice(0, 2);
               const provName = isProv ? d.domain_name : xwalk.get(d.domain_id)?.prov_name ?? provCode;
               return {
                 domain_id: d.domain_id,
@@ -647,7 +648,7 @@ function MapPanel({ rows, metrics, level, xwalk }: { rows: Row[]; metrics: Pover
       const c = r.byKey[metric];
       if (!c) continue;
       const v = metric === "count" ? c.value / 1000 : c.value; // count → juta
-      const key = isProv ? r.domain_id.slice(0, 2) : xwalk.get(r.domain_id)?.kemendagri_code;
+      const key = isProv ? bpsProvinceToKemendagri(r.domain_id) : xwalk.get(r.domain_id)?.kemendagri_code;
       if (!key) continue;
       map.set(key, { value: Math.round(v * 100) / 100, name: r.name });
     }

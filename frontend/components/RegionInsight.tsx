@@ -26,6 +26,7 @@ import {
 } from "@/lib/api";
 import { Panel, SectionTitle } from "@/components/ui";
 import { ChoroplethMap, type MapValue } from "@/components/ChoroplethMap";
+import { bpsProvinceToKemendagri } from "@/lib/provinces";
 
 // --- metric contract -------------------------------------------------------
 
@@ -55,7 +56,8 @@ type Metric = {
 };
 
 type LoadCtx = {
-  prov: string; // 2-digit Kemendagri/BPS province code
+  prov: string; // 2-digit Kemendagri province code (Dukcapil, DJPK, geometry)
+  bpsProv?: string; // 2-digit BPS province prefix (province pages; differs in Papua)
   kab?: string; // 4-digit Kemendagri regency code (regency pages)
 };
 
@@ -134,7 +136,8 @@ const PDRB_METRIC: Metric = {
   load: async (ctx) => {
     // Scoped server-side to this province's regencies (BPS regency domain_ids
     // are hierarchical: first 2 digits = the province).
-    const r = await api.ranking(PDRB_ADHB, { admin_level: "regency", turvar_id: PDRB_TOTAL_TURVAR, prov: ctx.prov });
+    if (!ctx.bpsProv) return { rows: [], note: "provinsi BPS tidak diketahui" };
+    const r = await api.ranking(PDRB_ADHB, { admin_level: "regency", turvar_id: PDRB_TOTAL_TURVAR, prov: ctx.bpsProv });
     const rows = r.results.map((x) => bpsRow(x, x.value));
     return { rows, note: `PDRB atas dasar harga berlaku ${r.year} · sumber BPS` };
   },
@@ -152,12 +155,13 @@ const PDRB_GROWTH_METRIC: Metric = {
     // Anchor to the latest year the size ranking has, then measure real growth
     // over the year before it on the constant-price series.
     // Same request as the PDRB size metric, so it's shared/cached, not refetched.
-    const base = await api.ranking(PDRB_ADHB, { admin_level: "regency", turvar_id: PDRB_TOTAL_TURVAR, prov: ctx.prov });
+    if (!ctx.bpsProv) return { rows: [], note: "provinsi BPS tidak diketahui" };
+    const base = await api.ranking(PDRB_ADHB, { admin_level: "regency", turvar_id: PDRB_TOTAL_TURVAR, prov: ctx.bpsProv });
     if (!base.year) return { rows: [], note: "tahun PDRB tidak diketahui" };
     const g = await api.growth(PDRB_ADHK, {
       admin_level: "regency",
       turvar_id: PDRB_TOTAL_TURVAR,
-      prov: ctx.prov,
+      prov: ctx.bpsProv,
       year_from: String(base.year - 1),
       year_to: String(base.year),
     });
@@ -236,8 +240,8 @@ const ECONOMY_METRICS: Metric[] = [
 // --- page-level sections ---------------------------------------------------
 
 export function ProvinceInsight({ domainId, regionName }: { domainId: string; regionName: string }) {
-  const prov = domainId.slice(0, 2);
-  const ctx: LoadCtx = { prov };
+  const prov = bpsProvinceToKemendagri(domainId);
+  const ctx: LoadCtx = { prov, bpsProv: domainId.slice(0, 2) };
 
   return (
     <div className="space-y-10">
@@ -358,7 +362,7 @@ function MetricSection({
       live = false;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [key, ctx.prov, ctx.kab]);
+  }, [key, ctx.prov, ctx.bpsProv, ctx.kab]);
 
   // Fill in whichever code side the loader didn't supply.
   const { bpsByKemen, kemenByBps } = useMemo(

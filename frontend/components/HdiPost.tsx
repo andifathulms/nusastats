@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { bpsProvinceToKemendagri } from "@/lib/provinces";
 import {
   CartesianGrid, Cell, Line, LineChart, Scatter, ScatterChart, Tooltip as RTooltip,
   XAxis, YAxis, ZAxis, ResponsiveContainer,
@@ -138,7 +139,7 @@ export function HdiPost({ config }: { config: HdiConfig }) {
             byRegion.get(d.domain_id) ??
             (() => {
               const isProv = level === "province";
-              const provCode = isProv ? d.domain_id.slice(0, 2) : xwalk.get(d.domain_id)?.prov_code ?? d.domain_id.slice(0, 2);
+              const provCode = isProv ? bpsProvinceToKemendagri(d.domain_id) : xwalk.get(d.domain_id)?.prov_code ?? d.domain_id.slice(0, 2);
               const provName = isProv ? d.domain_name : xwalk.get(d.domain_id)?.prov_name ?? provCode;
               return { domain_id: d.domain_id, name: isProv ? d.domain_name : bpsRegionLabel(d.domain_name, d.domain_id), provCode, provName, byKey: {} as Record<string, Cell4> };
             })();
@@ -558,7 +559,7 @@ function MapPanel({ rows, config, metrics, level, xwalk }: { rows: Row[]; config
       const c = r.byKey[key];
       if (!c) continue;
       const v = key === "income" ? c.value / 1000 : c.value;
-      const gk = isProv ? r.domain_id.slice(0, 2) : xwalk.get(r.domain_id)?.kemendagri_code;
+      const gk = isProv ? bpsProvinceToKemendagri(r.domain_id) : xwalk.get(r.domain_id)?.kemendagri_code;
       if (!gk) continue;
       map.set(gk, { value: Math.round(v * 100) / 100, name: r.name });
     }

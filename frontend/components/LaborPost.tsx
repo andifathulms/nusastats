@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { bpsProvinceToKemendagri } from "@/lib/provinces";
 import { CartesianGrid, Cell, Line, LineChart, Scatter, ScatterChart, Tooltip as RTooltip, XAxis, YAxis, ZAxis, ResponsiveContainer } from "recharts";
 import { api, CHART, groupColor, titleCase } from "@/lib/api";
 import { type LaborConfig } from "@/lib/posts";
@@ -226,7 +227,7 @@ function ScatterPanel({ rows }: { rows: Row[] }) {
 }
 
 function MapPanel({ rows, metric, m }: { rows: Row[]; metric: Metric; m: { fmt: (r: Row) => number | undefined } }) {
-  const values = useMemo(() => { const map = new Map<string, MapValue>(); for (const r of rows) { const v = m.fmt(r); if (v != null) map.set(r.domain_id.slice(0, 2), { value: Math.round(v * 10) / 10, name: r.name }); } return map; }, [rows, metric]);
+  const values = useMemo(() => { const map = new Map<string, MapValue>(); for (const r of rows) { const v = m.fmt(r); if (v != null) map.set(bpsProvinceToKemendagri(r.domain_id), { value: Math.round(v * 10) / 10, name: r.name }); } return map; }, [rows, metric]);
   const vals = [...values.values()].map((v) => v.value);
   const min = vals.length ? Math.min(...vals) : 0;
   const max = vals.length ? Math.max(...vals) : 10;

@@ -16,17 +16,40 @@ exactly what "store it for each regency and province" needs, from the
 same calls Cakupan's coverage crawl already made.
 """
 
+from django.db.models import Q
 from django.utils import timezone
 
-from bps_client.client import BpsClient
+from bps_client.client import BpsClient, BpsResponse
 from bps_client.exceptions import BpsApiError, TooManyConsecutiveFailures
-from catalog.models import AdminLevel, CoverageRecord, CoverageStatus, Domain, Variable
+from catalog.models import AdminLevel, CoverageCheckLog, CoverageRecord, CoverageStatus, Domain, Variable
 from crawler.coverage import _as_int, _clean_label, fetch_th_chunked_responses, known_domain_ints, record_check_log
 
 from .models import DataPoint
 
 
-def ingest_from_responses(variable, response_log_pairs):
+def _drop_superseded(to_upsert):
+    """The 2022 Papua split (crawler.vervar_domains): some responses carry a
+    kabupaten under both its pre-2022 code and its new code for the same
+    period, sometimes with different values (var 464, 2025: Yahukimo 9416 = 5,
+    9707 = 0). Keep the new code, the one BPS now publishes under, and drop the
+    old-code twin. Removes those keys from `to_upsert` in place and returns
+    them, so stale rows from earlier ingests can be deleted too."""
+    successor_of = dict(
+        Domain.objects.filter(predecessor__isnull=False).values_list("predecessor_id", "id")
+    )
+    if not successor_of:
+        return []
+    present = {(dom, per, tv) for dom, per, _vv, tv in to_upsert}
+    superseded = [
+        key for key in to_upsert
+        if key[0] in successor_of and (successor_of[key[0]], key[1], key[3]) in present
+    ]
+    for key in superseded:
+        del to_upsert[key]
+    return superseded
+
+
+def ingest_from_responses(variable, response_log_pairs, report=None):
     """Decodes every (domain, period, vervar, turvar) data point present
     across `response_log_pairs` for `variable` and upserts them as
     DataPoint rows. Idempotent: re-ingesting the same responses updates
@@ -134,6 +157,15 @@ def ingest_from_responses(variable, response_log_pairs):
                             fetched_at=now,
                         )
 
+    superseded = _drop_superseded(to_upsert)
+    if report is not None:
+        report["superseded"] = report.get("superseded", 0) + len(superseded)
+    if superseded:
+        q = Q()
+        for domain_id, period_id, vervar_val, turvar_val in superseded:
+            q |= Q(domain_id=domain_id, period_id=period_id, vervar_id=vervar_val, turvar_id=turvar_val)
+        DataPoint.objects.filter(q, variable=variable).delete()
+
     points = list(to_upsert.values())
     if points:
         DataPoint.objects.bulk_create(
@@ -151,6 +183,44 @@ def ingest_from_responses(variable, response_log_pairs):
             ],
         )
     return len(points)
+
+
+def reingest_from_logs(variable_ids=None, on_variable_done=None):
+    """Re-decode every confirmed variable from the responses already stored in
+    CoverageCheckLog: no BPS call and no new log rows. Each DataPoint keeps
+    pointing at the stored log it was decoded from. Used after new Domain rows
+    appear (crawler.vervar_domains), so values that were skipped for lack of a
+    domain get stored. `variable_ids` limits it to some BPS variable ids."""
+    from crawler.stored import latest_data_log_ids
+
+    confirmed = (
+        CoverageRecord.objects.filter(status=CoverageStatus.CONFIRMED).values_list("variable_id", flat=True).distinct()
+    )
+    variables = Variable.objects.filter(id__in=confirmed).prefetch_related("periods")
+    if variable_ids:
+        variables = variables.filter(variable_id__in=[str(v) for v in variable_ids])
+    logs_by_var = latest_data_log_ids()
+
+    report = {"data_points": 0, "variables": 0, "superseded": 0, "no_logs": []}
+    for variable in variables:
+        log_ids = logs_by_var.get(variable.variable_id, [])
+        if not log_ids:
+            report["no_logs"].append(variable.variable_id)
+            continue
+        pairs = [
+            (BpsResponse(log.url, log.http_status, log.raw_body, log.response_hash, log.is_error, log.error_detail), log)
+            for log in CoverageCheckLog.objects.filter(id__in=log_ids).order_by("id")
+        ]
+        count = ingest_from_responses(variable, pairs, report=report)
+        report["data_points"] += count
+        report["variables"] += 1
+        if on_variable_done:
+            on_variable_done(variable, count)
+
+    from .aggregates import refresh_variable_stats
+
+    refresh_variable_stats()
+    return report
 
 
 def ingest_all_confirmed(client=None, use_cache=True, on_variable_done=None):

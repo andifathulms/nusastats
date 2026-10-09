@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { bpsProvinceToKemendagri } from "@/lib/provinces";
 import { CartesianGrid, Cell, Scatter, ScatterChart, Tooltip as RTooltip, XAxis, YAxis, ZAxis, ResponsiveContainer } from "recharts";
 import { api, CHART, djpkApi, dukcapilApi, groupColor, titleCase } from "@/lib/api";
 import { type CrossDevConfig } from "@/lib/posts";
@@ -44,7 +45,7 @@ export function CrossDevPost({ config }: { config: CrossDevConfig }) {
       for (const x of kemR.results) if (x.kemendagri_code) kem.set(x.kemendagri_code, { name: titleCase(x.domain_name.replace(/^Prov(insi|\.)?\s+/i, "")), value: x.value });
       const bps2kem = new Map<string, string>();
       if (cw) for (const c of cw.results) bps2kem.set(c.bps_domain_id, c.kemendagri_code);
-      const toKem = (bpsId: string) => (level === "province" ? bpsId.slice(0, 2) : bps2kem.get(bpsId));
+      const toKem = (bpsId: string) => (level === "province" ? bpsProvinceToKemendagri(bpsId) : bps2kem.get(bpsId));
 
       const ipmBy = new Map<string, number>(); ipmR.results.forEach((x) => ipmBy.set(x.domain_id, x.value));
       const p0By = new Map<string, number>(); p0R.results.forEach((x) => p0By.set(x.domain_id, x.value));

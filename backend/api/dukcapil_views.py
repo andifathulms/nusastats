@@ -536,6 +536,21 @@ _REGENCY_CROSSWALK = {
 }
 
 
+# BPS province prefix -> Kemendagri province code, where they differ. Outside
+# Papua the 2-digit prefixes name the same province in both systems (all 32
+# checked by name, 2026-10). Every Papua prefix differs: BPS keeps 91 Papua
+# Barat / 94 Papua and carries the 2022 provinces as 92/95/96/97
+# (crawler.vervar_domains); Kemendagri numbers them 91-96. Mirrored in
+# frontend/lib/provinces.ts.
+_BPS_PROVINCE_TO_KEMENDAGRI = {"91": "92", "92": "96", "94": "91", "95": "93", "96": "94", "97": "95"}
+
+
+def bps_province_to_kemendagri(domain_id):
+    """A BPS province domain_id ("9500") -> its Kemendagri 2-digit code ("93")."""
+    p = (domain_id or "")[:2]
+    return _BPS_PROVINCE_TO_KEMENDAGRI.get(p, p)
+
+
 class _RegencyIndex:
     """The period's Dukcapil regencies, indexed once by every key the
     resolver matches on. Replaces re-scanning (and re-normalizing with a

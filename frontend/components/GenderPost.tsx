@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { bpsProvinceToKemendagri } from "@/lib/provinces";
 import {
   CartesianGrid, Cell, ReferenceLine, Scatter, ScatterChart, Tooltip as RTooltip, XAxis, YAxis, ZAxis, ResponsiveContainer,
 } from "recharts";
@@ -74,7 +75,7 @@ export function GenderPost({ config }: { config: GenderConfig }) {
       const ensure = (domain_id: string, name: string) =>
         by.get(domain_id) ?? (() => {
           const isProv = level === "province";
-          const provCode = isProv ? domain_id.slice(0, 2) : xwalk.get(domain_id)?.prov_code ?? domain_id.slice(0, 2);
+          const provCode = isProv ? bpsProvinceToKemendagri(domain_id) : xwalk.get(domain_id)?.prov_code ?? domain_id.slice(0, 2);
           const provName = isProv ? name : xwalk.get(domain_id)?.prov_name ?? provCode;
           const r: Row = { domain_id, name: isProv ? name : bpsRegionLabel(name, domain_id), provCode, provName, by: {} };
           by.set(domain_id, r);
@@ -324,7 +325,7 @@ function MapPanel({ rows, metrics, metricKey, level, xwalk }: { rows: Row[]; met
     for (const r of rows) {
       const p = r.by[key];
       if (!p) continue;
-      const gk = isProv ? r.domain_id.slice(0, 2) : xwalk.get(r.domain_id)?.kemendagri_code;
+      const gk = isProv ? bpsProvinceToKemendagri(r.domain_id) : xwalk.get(r.domain_id)?.kemendagri_code;
       if (!gk) continue;
       const g = isMoney(m) ? p.gap / 1000 : p.gap;
       map.set(gk, { value: Math.round(g * 100) / 100, name: r.name });

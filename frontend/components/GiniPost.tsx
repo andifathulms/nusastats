@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { bpsProvinceToKemendagri } from "@/lib/provinces";
 import {
   CartesianGrid, Cell, Legend, Line, LineChart, Scatter, ScatterChart, Tooltip as RTooltip, XAxis, YAxis, ZAxis, ResponsiveContainer,
 } from "recharts";
@@ -241,7 +242,7 @@ function ScatterPanel({ rows, compare, cmpKey, setCmpKey }: { rows: Row[]; compa
 function MapPanel({ rows, daerah }: { rows: Row[]; daerah: Daerah }) {
   const values = useMemo(() => {
     const map = new Map<string, MapValue>();
-    for (const r of rows) { const v = r.gini[daerah]; if (v != null) map.set(r.domain_id.slice(0, 2), { value: Math.round(v * 1000) / 1000, name: r.name }); }
+    for (const r of rows) { const v = r.gini[daerah]; if (v != null) map.set(bpsProvinceToKemendagri(r.domain_id), { value: Math.round(v * 1000) / 1000, name: r.name }); }
     return map;
   }, [rows, daerah]);
   const vals = [...values.values()].map((v) => v.value);

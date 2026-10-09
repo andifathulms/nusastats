@@ -20,6 +20,11 @@ class DataModelType(models.TextChoices):
     FOREIGN_TRADE = "foreign_trade", "Foreign Trade"
 
 
+class DomainSource(models.TextChoices):
+    DOMAIN_API = "domain_api", "BPS domain endpoint"
+    DATA_VERVAR = "data_vervar", "BPS data response vervar"
+
+
 class CoverageStatus(models.TextChoices):
     CONFIRMED = "confirmed", "Confirmed"
     NOT_CONFIRMED = "not_confirmed", "Not confirmed"
@@ -41,6 +46,19 @@ class Domain(models.Model):
         on_delete=models.CASCADE,
         related_name="regencies",
         limit_choices_to={"admin_level": AdminLevel.PROVINCE},
+    )
+    # BPS's `domain` endpoint still lists the pre-2022 34 provinces, but its
+    # `data` responses already carry the four 2022 Papua provinces and their
+    # 26 kabupaten under new vervar codes (92xx/95xx/96xx/97xx). Those domains
+    # are created from the stored data response that names them
+    # (crawler.vervar_domains) and keep a link to it, plus the pre-2022 domain
+    # they replace, so ingest can drop the stale old-code twin.
+    source = models.CharField(max_length=16, choices=DomainSource.choices, default=DomainSource.DOMAIN_API)
+    source_check_log = models.ForeignKey(
+        "CoverageCheckLog", null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
+    )
+    predecessor = models.ForeignKey(
+        "self", null=True, blank=True, on_delete=models.SET_NULL, related_name="successors"
     )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

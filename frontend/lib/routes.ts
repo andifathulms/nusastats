@@ -1,3 +1,5 @@
+import { kemendagriProvinceToBps } from "./provinces";
+
 // Single source of truth for in-app URLs, so a route rename touches one file.
 export const routes = {
   home: "/",
@@ -11,14 +13,9 @@ export const routes = {
   keuangan: "/keuangan",
 };
 
-// Dukcapil province code (2-digit, 38 provinces) -> the region page. BPS still
-// publishes the pre-2022 Papua split (9100 Papua Barat, 9400 Papua), so those
-// two map to their BPS domain; the four newer Papua provinces exist only in
-// Dukcapil and open the Dukcapil-only profile.
-const BPS_PROVINCE_OVERRIDE: Record<string, string> = { "91": "9400", "92": "9100" };
-const DUKCAPIL_ONLY_PROVINCES = new Set(["93", "94", "95", "96"]);
-
+// Dukcapil province code (2-digit, 38 provinces) -> the region page. All 38
+// now have a BPS domain, including the four 2022 Papua provinces, but Papua's
+// codes differ between the systems (see lib/provinces).
 export function provinceHref(dukCode: string): string {
-  if (DUKCAPIL_ONLY_PROVINCES.has(dukCode)) return routes.region(dukCode);
-  return routes.region(BPS_PROVINCE_OVERRIDE[dukCode] ?? `${dukCode}00`);
+  return routes.region(kemendagriProvinceToBps(dukCode));
 }
