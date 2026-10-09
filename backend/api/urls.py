@@ -1,7 +1,7 @@
 from django.urls import include, path
 from rest_framework.routers import DefaultRouter
 
-from . import djpk_views, dukcapil_views, peta_views, search_views
+from . import carousel_views, djpk_views, dukcapil_views, peta_views, search_views
 from .stats_views import CorrelateView, RegionViewSet, SummaryView, VariableDataViewSet
 from .views import CoverageExportView, SimdasiTableViewSet, VariableViewSet
 
@@ -30,6 +30,8 @@ urlpatterns = [
     path("dukcapil/correlate/", dukcapil_views.correlate, name="dukcapil-correlate"),
     path("dukcapil/regency-crosswalk/", dukcapil_views.regency_crosswalk, name="dukcapil-regency-crosswalk"),
     path("dukcapil/regency-bridge/<str:domain_id>/", dukcapil_views.regency_bridge, name="dukcapil-regency-bridge"),
+    # carousel-data/1 packs for Carousel Press and the /card/angka map card.
+    path("carousel/pack/", carousel_views.pack, name="carousel-pack"),
     # DJPK/SIKD regional finance (APBD/PAD) — separate again from BPS & dukcapil.
     path("djpk/summary/", djpk_views.summary, name="djpk-summary"),
     path("djpk/accounts/", djpk_views.accounts, name="djpk-accounts"),
