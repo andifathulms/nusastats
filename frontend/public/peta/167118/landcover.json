@@ -1,0 +1,119 @@
+{
+  "kode": "167118",
+  "name": "ILIR TIMUR TIGA",
+  "level": "kecamatan",
+  "provinsi": {
+    "kode": "16",
+    "name": "SUMATERA SELATAN"
+  },
+  "year": 2021,
+  "area_km2": 7.8,
+  "dominant": {
+    "code": 50,
+    "label": "Lahan terbangun",
+    "share_pct": 75.28
+  },
+  "classes": [
+    {
+      "code": 50,
+      "name": "Built-up",
+      "label": "Lahan terbangun",
+      "color": "#fa0000",
+      "pixels": 58988,
+      "share_pct": 75.28,
+      "area_km2": 5.9
+    },
+    {
+      "code": 10,
+      "name": "Tree cover",
+      "label": "Tutupan pohon",
+      "color": "#006400",
+      "pixels": 12895,
+      "share_pct": 16.46,
+      "area_km2": 1.29
+    },
+    {
+      "code": 30,
+      "name": "Grassland",
+      "label": "Padang rumput",
+      "color": "#ffff4c",
+      "pixels": 4919,
+      "share_pct": 6.28,
+      "area_km2": 0.49
+    },
+    {
+      "code": 80,
+      "name": "Permanent water bodies",
+      "label": "Badan air",
+      "color": "#0064c8",
+      "pixels": 848,
+      "share_pct": 1.08,
+      "area_km2": 0.08
+    },
+    {
+      "code": 60,
+      "name": "Bare / sparse vegetation",
+      "label": "Lahan terbuka",
+      "color": "#b4b4b4",
+      "pixels": 472,
+      "share_pct": 0.6,
+      "area_km2": 0.05
+    },
+    {
+      "code": 40,
+      "name": "Cropland",
+      "label": "Lahan pertanian",
+      "color": "#f096ff",
+      "pixels": 235,
+      "share_pct": 0.3,
+      "area_km2": 0.02
+    },
+    {
+      "code": 20,
+      "name": "Shrubland",
+      "label": "Semak belukar",
+      "color": "#ffbb22",
+      "pixels": 1,
+      "share_pct": 0.0,
+      "area_km2": 0.0
+    }
+  ],
+  "checks": {
+    "share_sum_pct": 100.0,
+    "area_geodesic_km2": 7.84,
+    "area_utm_polygon_km2": 7.84,
+    "area_utm_pixels_km2": 7.84,
+    "utm_vs_geodesic_pct": -0.078,
+    "pixels_vs_utm_pct": -0.012,
+    "nodata_pct": 0.0,
+    "polygon_pixels_utm": 78358,
+    "render_palette_colours": 6,
+    "render_palette_exact": true
+  },
+  "metadata": {
+    "dataset": "ESA WorldCover 10 m 2021 v200",
+    "version": "v200",
+    "year": 2021,
+    "license": "CC BY 4.0 (Creative Commons Attribution 4.0 International)",
+    "attribution": "© ESA WorldCover project 2021 / Contains modified Copernicus Sentinel data (2021) processed by ESA WorldCover consortium",
+    "product_version_tag": "V2.0.0",
+    "tiles": {
+      "S03E102": "94abbb6186aa8d6b377728d48201daf2673c2527ac674a3bf3d51f6c77579073"
+    },
+    "tiles_absent": [],
+    "boundary": {
+      "source": "data/big_boundaries/big-villages-16.geojson",
+      "sha256": "21d3cbf71ee63a5effbce69c72b9f84bf2d2941a5a2b09e96f5d1e1da59a57ac",
+      "method": "shapely.union_all(grid_size=1e-8) per code prefix; no simplify, no island/hole dropping (data/big_boundaries/dissolve.py:dissolve)"
+    },
+    "crs_stats": "EPSG:32748",
+    "pixel_size_m": 10.0,
+    "resampling_to_utm": "nearest",
+    "shares_from": "10 m UTM pixels (EPSG:32748) whose centre lies inside the polygon; shares are of classified pixels",
+    "area_km2_method": "share × geodesic polygon area (WGS84 ellipsoid)",
+    "display_resampling": "mode",
+    "caveat": "Kelas 10 'Tutupan pohon' mencakup perkebunan (sawit, akasia); jangan sebut 'hutan'.",
+    "config_sha256": "cf0713550fb2fc58b2fae33bf270d90afc44a31c24d2d51990d7ca6d1811c0a5",
+    "computed_at": "2026-10-09T04:32:48+00:00"
+  }
+}
