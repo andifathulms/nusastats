@@ -8,6 +8,7 @@ import { themeVar } from "./brand";
 import { CornerTag, Footer, H, OffFrameNote, W } from "./ShareCard";
 import { BREAKS, CLASS_COLORS, Fact, LabelLegend, MapLabels, bulanTahun, compact, kabInfo, pct1, type KabInfo } from "./WilayahCard";
 import { CardHeader, MapLayout, TikTokOverlay, mapBoxFor } from "./layout";
+import { kecFacts, litFacts, lowFacts } from "./facts";
 
 /**
  * Kabupaten profile cards that join Dukcapil population with per-desa raster
@@ -26,13 +27,12 @@ export type ProfilTemplate = "cahaya" | "rendah" | "kecamatan";
 export const PROFIL_TEMPLATES: ProfilTemplate[] = ["cahaya", "rendah", "kecamatan"];
 // Ratios that are meaningful per kecamatan (aggregates, never desa-level).
 export const KECAMATAN_INDICATORS = ["median_age", "pct_elderly", "pct_productive", "sex_ratio", "pct_sarjana", "dependency_ratio"];
-const MAJORITY = 50; // a desa is "mostly" lit / under 10 m at this share of its area
 
 type DesaStats = {
   desa: Record<string, { area_km2: number; px: number; lt_5_pct: number | null; lt_10_pct: number | null; lit_pct: number | null; mean_nw: number | null }>;
   metadata: { lights: { year: number; lit_threshold_nw: number }; lowland: { note: string } };
 };
-type Loaded = {
+export type Loaded = {
   kab: KabInfo;
   period: string | null;
   villages: DukcapilRankRow[];
@@ -46,7 +46,7 @@ type Loaded = {
 
 const json = (url: string) => fetch(url).then((r) => (r.ok ? r.json() : Promise.reject(new Error(`${url} -> ${r.status}`))));
 
-async function load(template: ProfilTemplate, kode: string, indicator: string): Promise<Loaded> {
+export async function load(template: ProfilTemplate, kode: string, indicator: string): Promise<Loaded> {
   const prov = kode.slice(0, 2);
   const needsDesa = template !== "kecamatan";
   const [pops, areas, summary, villages, desa, peta, kec, districts, villagesGeo, outline] = await Promise.all([
@@ -69,7 +69,7 @@ async function load(template: ProfilTemplate, kode: string, indicator: string): 
 }
 
 /** Guardrails: any problem = no card (and no figures). */
-function problems(template: ProfilTemplate, kode: string, d: Loaded, indicator: string): string[] {
+export function problems(template: ProfilTemplate, kode: string, d: Loaded, indicator: string): string[] {
   const out: string[] = [];
   if (kode.length !== 4) return ["kartu ini untuk kabupaten/kota (kode 4 digit)"];
   if (template === "kecamatan") {
@@ -136,7 +136,7 @@ export function ProfilCard({ template, kode, query, debug }: { template: ProfilT
 }
 
 /** Desa rows joined to Dukcapil population (code-for-code; the guardrail above checks coverage). */
-function joinDesa(d: Loaded) {
+export function joinDesa(d: Loaded) {
   return d.villages
     .filter((v) => d.desa!.desa[v.domain_id])
     .map((v) => ({ id: v.domain_id, name: titleCase(v.domain_name), pop: v.value, ...d.desa!.desa[v.domain_id] }));
@@ -204,15 +204,7 @@ function LightsBody({ kode, d, onImage, onImageError }: { kode: string; d: Loade
   const byId = useMemo(() => new Map(rows.map((r) => [r.id, r])), [rows]);
   const cls = (v: number) => (BREAKS.findIndex((b) => v < b) === -1 ? BREAKS.length : BREAKS.findIndex((b) => v < b));
 
-  // Residents of desa where most of the area is lit at night (lit share >= 50%),
-  // against the share of the whole kabupaten that is lit (area-weighted).
-  const pop = rows.reduce((a, r) => a + r.pop, 0);
-  const litPop = rows.filter((r) => (r.lit_pct ?? 0) >= MAJORITY).reduce((a, r) => a + r.pop, 0);
-  const area = rows.reduce((a, r) => a + r.area_km2, 0);
-  const litArea = rows.reduce((a, r) => a + (r.area_km2 * (r.lit_pct ?? 0)) / 100, 0);
-  const darkDesa = rows.filter((r) => (r.lit_pct ?? 0) < MAJORITY).length;
-  const popShare = (litPop / pop) * 100;
-  const areaShare = (litArea / area) * 100;
+  const { litPop, darkDesa, popShare, areaShare, contrast } = litFacts(rows);
   const year = d.desa!.metadata.lights.year;
   const outlineEls = edge.map((p) => <path key={`e-${p.id}`} d={p.d} fill="none" stroke="#F3ECDD" strokeWidth={2.2} vectorEffect="non-scaling-stroke" />);
   // Same frame for both maps: a tall kabupaten pairs them side by side, a wide one stacks them.
@@ -229,8 +221,7 @@ function LightsBody({ kode, d, onImage, onImageError }: { kode: string; d: Loade
           <OffFrameNote items={fit.offFrame} />
           <p className="text-[34px] font-semibold leading-tight">
             <span className="text-ink-gold">{pct1(popShare)}</span> penduduk tinggal di desa yang terang malam hari
-            {/* "padahal hanya" only when people are clearly more concentrated than light. */}
-            {popShare - areaShare >= 20 ? <>, padahal hanya {pct1(areaShare)} wilayahnya bercahaya.</> : <>; {pct1(areaShare)} wilayahnya bercahaya.</>}
+            {contrast ? <>, padahal hanya {pct1(areaShare)} wilayahnya bercahaya.</> : <>; {pct1(areaShare)} wilayahnya bercahaya.</>}
           </p>
           <div className="nm-facts mt-5 grid grid-cols-2 gap-6">
             <Fact value={compact(litPop)} label="penduduk di desa terang" />
@@ -282,10 +273,8 @@ function LowBody({ kode, d, onImage, onImageError }: { kode: string; d: Loaded; 
   const rows = useMemo(() => joinDesa(d), [d]);
   const edge = useMemo(() => project(own, outer).paths, [own, outer]);
   // Desa where most of the area is under 10 m: drawn with a cream outline over the layer.
-  const lowIds = new Set(rows.filter((r) => (r.lt_10_pct ?? 0) >= MAJORITY).map((r) => r.id));
-  const low = rows.filter((r) => lowIds.has(r.id));
-  const pop = rows.reduce((a, r) => a + r.pop, 0);
-  const lowPop = low.reduce((a, r) => a + r.pop, 0);
+  const { low, lowPop, lowShare, top } = lowFacts(rows);
+  const lowIds = new Set(low.map((r) => r.id));
   const t = d.peta!.terrain!;
   const [c5, c10] = t.metadata.lowland_colors!;
   const lowPaths = useMemo(
@@ -294,7 +283,6 @@ function LowBody({ kode, d, onImage, onImageError }: { kode: string; d: Loaded; 
     [d, outer, rows]
   );
   const shade = d.peta!.present.hillshade;
-  const top = [...low].sort((a, b) => b.pop - a.pop).slice(0, 4);
 
   return (
     <MapLayout
@@ -310,7 +298,7 @@ function LowBody({ kode, d, onImage, onImageError }: { kode: string; d: Loaded; 
           <p className="mt-5 text-[34px] font-semibold leading-tight">
             {low.length ? (
               <>
-                <span className="text-ink-gold">{compact(lowPop)}</span> penduduk ({pct1((lowPop / pop) * 100)}) tinggal di {formatNumber(low.length)} desa yang
+                <span className="text-ink-gold">{compact(lowPop)}</span> penduduk ({pct1(lowShare)}) tinggal di {formatNumber(low.length)} desa yang
                 sebagian besar wilayahnya di bawah 10 m.
               </>
             ) : (
@@ -363,9 +351,7 @@ function KecamatanBody({ kode, d }: { kode: string; d: Loaded }) {
   // kabupaten where every kecamatan has more women reads as one side.
   const { kind, mid } = kindFor(kec.unit, kec.indicator.field);
   const scale = scaleFor(kind, min, max, mid);
-  const unit = kec.unit ? ` ${kec.unit}` : "";
-  const fmt = (v: number) => `${v.toLocaleString("id-ID", { maximumFractionDigits: 1 })}${unit === " %" ? "%" : unit}`;
-  const sorted = [...kec.results].sort((a, b) => b.value - a.value);
+  const { fmt, hi, lo } = kecFacts(kec);
   const k = 1 / Math.min(box.w / vw, box.h / vh);
 
   return (
@@ -385,8 +371,8 @@ function KecamatanBody({ kode, d }: { kode: string; d: Loaded }) {
             <span className="whitespace-nowrap">{fmt(scale.hi)}</span>
           </div>
           <div className={`nm-facts ${scale.mid !== undefined ? "mt-12" : "mt-5"} grid grid-cols-2 gap-6`}>
-            <Fact value={fmt(sorted[0].value)} label={`tertinggi: ${titleCase(sorted[0].domain_name)}`} />
-            <Fact value={fmt(sorted[sorted.length - 1].value)} label={`terendah: ${titleCase(sorted[sorted.length - 1].domain_name)}`} />
+            <Fact value={fmt(hi.value)} label={`tertinggi: ${titleCase(hi.domain_name)}`} />
+            <Fact value={fmt(lo.value)} label={`terendah: ${titleCase(lo.domain_name)}`} />
           </div>
           <Footer source={`Diolah dari Ditjen Dukcapil Kemendagri, data ${bulanTahun(d.period)} (penduduk terdaftar, bukan sensus)`} />
         </>

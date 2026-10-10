@@ -6,6 +6,7 @@ import { NO_DATA, PALETTES, frameOf, framing, neighbourColours, placeLabels, pro
 import { themeVar } from "./brand";
 import { CornerTag, Footer, OffFrameNote } from "./ShareCard";
 import { CONTENT_W, CardHeader, H, MapLayout, PAD, TikTokOverlay, W, ZONE, mapBoxFor } from "./layout";
+import { compact, densityFacts, pct1, shortName } from "./facts";
 
 /**
  * 1080×1920 kabupaten profile cards drawn from boundaries + Dukcapil data (no
@@ -38,7 +39,7 @@ const ADMIN_INFO_H = 260;
 
 export type Geos = { inner: Geo; outline: Geo; kec: Geo | null };
 export type KabInfo = { name: string; prov: string; pop: number | null; area: number | null };
-type Data = {
+export type Data = {
   kab: KabInfo;
   districts: DukcapilRankRow[];
   villageTotal: number;
@@ -46,9 +47,7 @@ type Data = {
   period: string | null;
 };
 
-export const compact = (n: number) =>
-  n >= 1e6 ? `${(n / 1e6).toLocaleString("id-ID", { maximumFractionDigits: 2 })} juta` : formatNumber(Math.round(n));
-export const pct1 = (v: number) => `${v.toLocaleString("id-ID", { maximumFractionDigits: v < 10 ? 1 : 0 })}%`;
+export { compact, pct1, shortName };
 
 export function bulanTahun(period: string | null): string {
   if (!period) return "";
@@ -69,7 +68,7 @@ export function kabInfo(kode: string, pops: DukcapilRankRow[], areas: DukcapilRa
   };
 }
 
-async function loadData(template: WilayahTemplate, kode: string): Promise<Data> {
+export async function loadData(template: WilayahTemplate, kode: string): Promise<Data> {
   const prov = kode.slice(0, 2);
   const [pops, areas, districts, villageList, summary, villages] = await Promise.all([
     dukcapilApi.rank({ indicator: "jumlah_penduduk", level: "regency", prov, limit: "200" }),
@@ -90,6 +89,19 @@ async function loadData(template: WilayahTemplate, kode: string): Promise<Data> 
   };
 }
 
+const json = (url: string) => fetch(url).then((r) => (r.ok ? r.json() : Promise.reject(new Error(`${url} -> ${r.status}`))));
+
+/** Boundaries a card draws: desa (kepadatan) or kecamatan, plus the kabupaten outlines. */
+export async function loadGeo(template: WilayahTemplate, kode: string): Promise<Geos> {
+  const districts = `/dukcapil-districts-${kode.slice(0, 2)}.geojson`;
+  const [inner, outline, kec] = await Promise.all([
+    json(template === "kepadatan" ? `/dukcapil-villages-${kode.slice(0, 2)}.geojson` : districts),
+    json("/dukcapil-regencies.geojson"),
+    template === "kepadatan" ? json(districts) : Promise.resolve(null),
+  ]);
+  return { inner, outline, kec };
+}
+
 export function WilayahCard({ template, kode, debug }: { template: WilayahTemplate; kode: string; debug: boolean }) {
   const [data, setData] = useState<Data | null>(null);
   const [geo, setGeo] = useState<Geos | null>(null);
@@ -101,16 +113,8 @@ export function WilayahCard({ template, kode, debug }: { template: WilayahTempla
       setFatal("kartu ini untuk kabupaten/kota (kode 4 digit)");
       return;
     }
-    const json = (url: string) => fetch(url).then((r) => (r.ok ? r.json() : Promise.reject(new Error(`${url} -> ${r.status}`))));
     loadData(template, kode).then(setData).catch((e) => setFatal(String(e.message ?? e)));
-    const districts = `/dukcapil-districts-${kode.slice(0, 2)}.geojson`;
-    Promise.all([
-      json(template === "kepadatan" ? `/dukcapil-villages-${kode.slice(0, 2)}.geojson` : districts),
-      json("/dukcapil-regencies.geojson"),
-      template === "kepadatan" ? json(districts) : Promise.resolve(null),
-    ])
-      .then(([inner, outline, kec]) => setGeo({ inner, outline, kec }))
-      .catch((e) => setFatal(String(e.message ?? e)));
+    loadGeo(template, kode).then(setGeo).catch((e) => setFatal(String(e.message ?? e)));
     document.fonts.ready.then(() => setFontsReady(true));
   }, [template, kode]);
 
@@ -144,7 +148,7 @@ export function WilayahCard({ template, kode, debug }: { template: WilayahTempla
 }
 
 /** Guardrails: no figure is drawn when the inputs don't add up. */
-function problems(template: WilayahTemplate, kode: string, data: Data, geo: Geos): string[] {
+export function problems(template: WilayahTemplate, kode: string, data: Data, geo: Geos): string[] {
   const out: string[] = [];
   const inner = geo.inner.features.filter((f) => f.properties.domain_id.startsWith(kode));
   if (!inner.length) out.push(`tidak ada batas ${template === "kepadatan" ? "desa" : "kecamatan"} untuk ${kode}`);
@@ -254,37 +258,7 @@ function DensityBody({ kode, data, geo }: { kode: string; data: Data; geo: Geos 
   }, [geo, kode]);
 
   const cls = (v: number) => BREAKS.findIndex((b) => v < b) === -1 ? BREAKS.length : BREAKS.findIndex((b) => v < b);
-  // "Half the residents live in X% of the area": desa sorted densest first,
-  // summed until they hold half the population. Inputs: Dukcapil population and
-  // BIG area per desa (the components of pop_density_big).
-  const facts = useMemo(() => {
-    const rows = data.villages
-      .map((v) => ({
-        v,
-        pop: v.components?.find((c) => c.field === "jumlah_penduduk")?.value ?? 0,
-        area: v.components?.find((c) => c.field === "luas_big")?.value ?? 0,
-      }))
-      .filter((r) => r.area > 0);
-    const pop = rows.reduce((a, r) => a + r.pop, 0);
-    const area = rows.reduce((a, r) => a + r.area, 0);
-    let p = 0;
-    let a = 0;
-    for (const r of [...rows].sort((x, y) => y.v.value - x.v.value)) {
-      p += r.pop;
-      a += r.area;
-      if (p >= pop / 2) break;
-    }
-    // Densest kecamatan, from its desa summed: one odd BIG desa polygon (Makassar's
-    // Manggala: 29.163 residents on 0,32 km²) can't become the headline this way.
-    const byKec = new Map<string, { pop: number; area: number }>();
-    for (const r of rows) {
-      const k = byKec.get(r.v.domain_id.slice(0, 6)) ?? { pop: 0, area: 0 };
-      byKec.set(r.v.domain_id.slice(0, 6), { pop: k.pop + r.pop, area: k.area + r.area });
-    }
-    const names = new Map(data.districts.map((d) => [d.domain_id, titleCase(d.domain_name)]));
-    const [kecId, kec] = [...byKec.entries()].reduce((m, e) => (e[1].pop / e[1].area > m[1].pop / m[1].area ? e : m));
-    return { pop, halfAreaPct: area ? (a / area) * 100 : 0, top: { name: names.get(kecId) ?? kecId, density: kec.pop / kec.area } };
-  }, [data.villages, data.districts]);
+  const facts = useMemo(() => densityFacts(data.villages, data.districts), [data.villages, data.districts]);
   const missing = data.villageTotal - data.villages.length;
 
   return (
@@ -380,10 +354,6 @@ export function LabelLegend({ numbered }: { numbered: Label[] }) {
 }
 
 /** "Kab. Barru" -> "Barru", "Kota Adm. Jakarta Timur" -> "Jakarta Timur" (for sentences). */
-export function shortName(name: string): string {
-  return name.replace(/^(Kab\. Adm\.|Kota Adm\.|Kab\.|Kota)\s+/, "");
-}
-
 /** The closing slide: the province's kabupaten/kota with this one highlighted. */
 function ClosingBody({ kode, data, geo }: { kode: string; data: Data; geo: Geos }) {
   const { paths, own, ring, vw, vh, offFrame } = useMemo(() => {

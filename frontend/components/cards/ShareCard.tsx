@@ -2,9 +2,10 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { formatNumber, regionLabel, titleCase } from "@/lib/api";
-import { litGrowth, loadPeta, MIN_BASE_LIT_KM2, petaAsset, type Peta } from "@/lib/peta";
+import { loadPeta, MIN_BASE_LIT_KM2, petaAsset, type Peta } from "@/lib/peta";
 import { themeVar } from "./brand";
 import { cropBox, framing, type Feature, type OffFrame } from "./geo";
+import { landcoverTop3, lightsYears, metres, peak, pctInt, reliefTop2 } from "./facts";
 
 /**
  * 1080×1920 share card (docs/FEATURE-peta-wilayah.md §6.2), rendered for the PNG
@@ -31,10 +32,6 @@ type Outline = { id: string; d: string };
 const NO_FEATURES = { features: [] };
 type Geo = { features: { properties: { domain_id: string }; geometry: { type: string; coordinates: unknown } }[] };
 
-const pctInt = (v: number) => (v > 0 && v < 1 ? "<1%" : `${formatNumber(Math.round(v))}%`);
-const metres = (v: number) => `${formatNumber(Math.round(v))} m`;
-// Peak heights are model pixels (30 m, surface model): round to 10 m, never quote to the metre.
-const peak = (v: number) => `${formatNumber(Math.round(v / 10) * 10)} m`;
 
 function areaTitle(peta: Peta, kode: string): { title: string; sub: string } {
   const name = peta.terrain?.name ?? peta.landcover?.name ?? peta.nightlights?.name ?? kode;
@@ -46,7 +43,7 @@ function areaTitle(peta: Peta, kode: string): { title: string; sub: string } {
 }
 
 /** §8 guardrails. Returns the problems; any problem = no card. */
-function problems(peta: Peta | null, template: Template): string[] {
+export function problems(peta: Peta | null, template: Template): string[] {
   if (!peta) return ["area belum dihitung (tidak ada bounds.json)"];
   const out: string[] = [];
   if (template === "terrain") {
@@ -333,11 +330,7 @@ function TerrainFacts({ peta }: { peta: Peta }) {
       {t.local_relief && (
         <p className="mt-3 text-[28px] text-coal-muted">
           Relief lokal:{" "}
-          {(
-            [["datar", t.local_relief.classes_pct.datar], ["bergelombang", t.local_relief.classes_pct.bergelombang], ["berbukit", t.local_relief.classes_pct.berbukit], ["bergunung", t.local_relief.classes_pct.bergunung]] as [string, number][]
-          )
-            .sort((a, b) => b[1] - a[1])
-            .slice(0, 2)
+          {reliefTop2(t)
             .map(([l, v]) => `${pctInt(v)} ${l}`)
             .join(", ")}
         </p>
@@ -354,7 +347,7 @@ function TerrainFacts({ peta }: { peta: Peta }) {
 
 function LandcoverFacts({ peta }: { peta: Peta }) {
   const lc = peta.landcover!;
-  const top3 = lc.classes.slice(0, 3);
+  const top3 = landcoverTop3(lc);
   // Legend: only classes the area actually has at a visible share.
   const legend = lc.classes.filter((c) => c.share_pct >= 0.1);
   return (
@@ -389,10 +382,8 @@ function LandcoverFacts({ peta }: { peta: Peta }) {
 function NightlightsFacts({ peta }: { peta: Peta }) {
   const nl = peta.nightlights!;
   const years = Object.keys(nl.years).sort();
-  const base = nl.years[String(nl.base_year)];
-  const last = nl.years[String(nl.latest_year)];
+  const { base, last, x } = lightsYears(nl);
   const max = Math.max(...years.map((y) => nl.years[y].lit_pct), 0.1);
-  const x = litGrowth(nl);
   return (
     <div className="shrink-0">
       <div className="nm-years flex h-[86px] items-end gap-3">
