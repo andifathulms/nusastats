@@ -41,7 +41,8 @@ def _result(rows, unit="tahun", n=514, notes="5 tertinggi dan 5 terendah dari 51
                  "rows": [{"label": lbl, "code": code, "value": v} for lbl, code, v in rows]},
         "provenance": {"source": "bps"},
         "map": {"prov": "", "prov_name": "", "n": n, "kicker": "DATA • BPS 2025", "period_label": "2025",
-                "values": [{"code": code, "geo": geo, "rank": i + 1}
+                "unmatched": [],
+                "values": [{"code": code, "geo": geo, "rank": i + 1, "rank_asc": len(rows) - i}
                            for i, (_l, code, _v) in enumerate(rows)
                            for geo in [{"9701": "9508", "1171": "1171"}.get(code, code)]]},
     }
@@ -61,7 +62,8 @@ def _slides(deck):
 def test_top_recipe_counts_down_to_the_highest():
     b = deck_bundle(_result(ROWS), SPEC, recipe="top")
     slides = _slides(b["deck"])
-    assert slides[0].startswith("template: editorial/midnight\nlang: id\ntitle: bps-415-kab-2025\ncaption: ")
+    assert slides[0].startswith("template: editorial/midnight\nlang: id\ntitle: bps-415-kab-2025\ncounter: off\n"
+                                "caption: ")
     assert slides[1] == ('[cover kicker="DATA • BPS 2025"]\nRata-rata Lama Sekolah | 5 Tertinggi\n'
                          "Rata-rata Lama Sekolah, 2025.")
     assert slides[2] == "[number=5 icon=map-pin]\nKota Madiun\n*12,12 tahun*"
@@ -181,3 +183,16 @@ def test_carousel_press_link_round_trips_unicode():
     data = link.split("#deck=", 1)[1]
     assert "=" not in data and "+" not in data and "/" not in data
     assert base64.urlsafe_b64decode(data + "=" * (-len(data) % 4)).decode("utf-8") == deck
+
+
+def test_tied_regions_share_the_rank_and_say_so():
+    rows = [("Kota Balikpapan", "6471", 11.04), ("Kota Samarinda", "6472", 11.04), ("Kota Bontang", "6474", 11.03)]
+    r = _result(rows, n=3, notes="Semua 3.")
+    r["map"]["values"][1]["rank"] = 1  # what build_pack gives a tie
+    slides = _slides(deck_bundle(r, SPEC, recipe="top")["deck"])
+    assert slides[3] == ("[number=1 icon=star]\nKota Samarinda\n*11,04 tahun*, tertinggi dari 3 "
+                         "kabupaten/kota, sama dengan Kota Balikpapan.")
+    assert slides[4].startswith("[number=1 icon=star]\nKota Balikpapan\n*11,04 tahun*, tertinggi dari 3")
+    assert slides[4].endswith("sama dengan Kota Samarinda.")
+    gap = _slides(deck_bundle(r, SPEC, recipe="gap")["deck"])
+    assert gap[2].endswith("tertinggi dari 3 kabupaten/kota, sama dengan Kota Samarinda.")

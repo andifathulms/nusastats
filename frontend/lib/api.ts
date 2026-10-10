@@ -863,7 +863,8 @@ export type CarouselMapValue = {
   label: string;
   value: number;
   display: string; // formatted by the backend, same string the deck uses
-  rank: number; // 1 = highest
+  rank: number; // 1 = highest; tied values share a rank
+  rank_asc: number; // 1 = lowest
 };
 
 export type CarouselPackResult = {
@@ -891,7 +892,7 @@ export type CarouselPackResult = {
     min: number;
     max: number;
     values: CarouselMapValue[];
-    unmatched: { code: string; label: string }[];
+    unmatched: { code: string; label: string; rank: number; rank_asc: number }[];
   };
 };
 

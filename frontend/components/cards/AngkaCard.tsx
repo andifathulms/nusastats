@@ -245,7 +245,7 @@ function OverviewBody({ data, geo, scope, asc }: { data: CarouselPackResult; geo
   }, [geo, map.level, scope]);
   const span = map.max - map.min || 1;
   // The three the deck counts down to: highest, or lowest for a `terendah` deck (order=asc).
-  const top3 = [...map.values].sort((a, b) => (asc ? b.rank - a.rank : a.rank - b.rank)).slice(0, 3);
+  const top3 = [...map.values].sort((a, b) => (asc ? a.rank_asc - b.rank_asc : a.rank - b.rank) || a.code.localeCompare(b.code)).slice(0, 3);
   const lowest = map.values.reduce((a, b) => (b.value < a.value ? b : a));
   const highest = map.values.reduce((a, b) => (b.value > a.value ? b : a));
   const partial = partialNote(data);
@@ -280,7 +280,7 @@ function OverviewBody({ data, geo, scope, asc }: { data: CarouselPackResult; geo
         <ol className="mt-3 space-y-3">
           {top3.map((v) => (
             <li key={v.geo} className="flex items-baseline gap-4">
-              <span className="w-12 shrink-0 font-mono text-[28px] text-ink-gold">#{asc ? map.n - v.rank + 1 : v.rank}</span>
+              <span className="w-12 shrink-0 font-mono text-[28px] text-ink-gold">#{asc ? v.rank_asc : v.rank}</span>
               <span className="min-w-0 flex-1 truncate text-[34px] font-semibold">{v.label}</span>
               <span className="whitespace-nowrap text-[34px] font-extrabold tabular-nums">{v.display}</span>
             </li>
@@ -326,7 +326,7 @@ function FocusBody({
     counted.current.add(src);
     onImage();
   };
-  const place = asc ? map.n - v.rank + 1 : v.rank;
+  const place = asc ? v.rank_asc : v.rank;
   const word = asc ? "terendah" : "tertinggi";
   const layerSource = !peta
     ? ""

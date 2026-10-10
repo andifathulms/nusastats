@@ -381,8 +381,13 @@ def build_pack(source, metric, level, period=None, *, prov=None, top=5, bottom=5
         raise PackError(f"{n} nilai untuk {total} wilayah: ada wilayah ganda, periksa datanya.")
 
     ordered = sorted(rows, key=lambda r: (-r["value"], r["code"]))
-    for i, r in enumerate(ordered, start=1):
-        r["rank"] = i
+    # Competition ranks, both ways: tied values share a rank (1, 1, 3), so a
+    # tie is never shown as one region beating another.
+    for i, r in enumerate(ordered):
+        r["rank"] = ordered[i - 1]["rank"] if i and r["value"] == ordered[i - 1]["value"] else i + 1
+    for i, r in enumerate(reversed(ordered)):
+        prev = ordered[n - i] if i else None
+        r["rank_asc"] = prev["rank_asc"] if prev and r["value"] == prev["value"] else i + 1
     picked = ordered if n <= top + bottom else ordered[:top] + ordered[n - bottom:]
 
     scope = LEVEL_NOUN[level]
@@ -452,8 +457,10 @@ def build_pack(source, metric, level, period=None, *, prov=None, top=5, bottom=5
             "min": min(values),
             "max": max(values),
             "values": [{"geo": r["geo"], "code": r["code"], "label": r["label"], "value": r["value"],
-                        "display": fmt_value(r["value"], built["unit"]), "rank": r["rank"]}
+                        "display": fmt_value(r["value"], built["unit"]), "rank": r["rank"],
+                        "rank_asc": r["rank_asc"]}
                        for r in ordered if r["geo"]],
-            "unmatched": [{"code": r["code"], "label": r["label"]} for r in ordered if not r["geo"]],
+            "unmatched": [{"code": r["code"], "label": r["label"], "rank": r["rank"], "rank_asc": r["rank_asc"]}
+                          for r in ordered if not r["geo"]],
         },
     }

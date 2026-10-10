@@ -196,3 +196,10 @@ def test_tie_among_shown_rows_is_noted(bps):
     DataPoint.objects.filter(domain__domain_id="1101").update(value=13.37)
     notes = build_pack("bps", "415", "kabupaten", "2025")["pack"]["notes"]
     assert "nilai kembar (13,37 tahun)" in notes
+
+
+@pytest.mark.django_db
+def test_ties_share_competition_ranks_both_ways(bps):
+    DataPoint.objects.filter(domain__domain_id="1101").update(value=13.37)
+    vals = {v["code"]: (v["rank"], v["rank_asc"]) for v in build_pack("bps", "415", "kabupaten", "2025")["map"]["values"]}
+    assert vals == {"1101": (1, 3), "1171": (1, 3), "1102": (3, 2), "9707": (4, 1)}

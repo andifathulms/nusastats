@@ -84,6 +84,14 @@ def carousel_press_link(deck, base=None):
     return f"{base or CAROUSEL_PRESS_URL}#deck={data}"
 
 
+def _tied_with(row, rows):
+    """'sama dengan X dan Y' when other shown rows have exactly this value."""
+    peers = [_text(r["label"]) for r in rows if r is not row and r["value"] == row["value"]]
+    if not peers:
+        return []
+    return ["sama dengan " + (peers[0] if len(peers) == 1 else ", ".join(peers[:-1]) + " dan " + peers[-1])]
+
+
 def _hashtags(prov_name):
     tags = ["#datadaerah", "#indonesia", "#statistik"]
     if prov_name:
@@ -103,6 +111,7 @@ def deck_bundle(result, spec, recipe="top", map_bg="terrain", template="editoria
     noun = LEVEL_NOUN[level]
     where = f" di {m['prov_name']}" if m["prov_name"] else ""
     geo_of = {v["code"]: v["geo"] for v in m["values"]}
+    ranks = {v["code"]: (v["rank"], v["rank_asc"]) for v in m["values"] + m["unmatched"]}
     rows = pack["rows"]
     short = short_metric(pack["metric"])
     kicker = m["kicker"]
@@ -145,12 +154,13 @@ def deck_bundle(result, spec, recipe="top", map_bg="terrain", template="editoria
         else:
             warnings.append("No overview map: kecamatan level needs a province scope (prov=).")
         # Countdown: the reveal (#1) is the last card.
-        for i, row in enumerate(reversed(picked)):
-            place = k - i
+        # Badges show the shared rank, so tied regions get the same number.
+        for row in reversed(picked):
+            place = ranks[row["code"]][0 if recipe == "top" else 1]
             icon = "star" if place == 1 else "map-pin"
-            body = f"*{fmt_value(row['value'], unit)}*"
-            if place == 1:
-                body += f", {word.lower()} dari {fmt_num(n, 0)} {noun}{where}."
+            extra = [f"{word.lower()} dari {fmt_num(n, 0)} {noun}{where}"] if place == 1 else []
+            extra += _tied_with(row, picked)
+            body = f"*{fmt_value(row['value'], unit)}*" + (f", {', '.join(extra)}." if extra else "")
             slides.append(f"[number={place} icon={icon}]\n{_text(row['label'])}\n{body}")
             focus(row["code"], "desc" if recipe == "top" else "asc")
         if recipe == "terendah":
@@ -163,12 +173,10 @@ def deck_bundle(result, spec, recipe="top", map_bg="terrain", template="editoria
         slides.append(f'[cover kicker="{_attr(kicker)}"]\n{lead} | {_text(hi_d)} vs {_text(lo_d)}\n'
                       f"{_text(subtitle)}")
         cards.append({"file": f"{slug}_01a_peta.png", "path": f"/card/angka/{m['prov'] or '00'}?{query}"})
-        slides.append(f"[number=off icon=star]\n{_text(hi['label'])}\n*{hi_d}*, tertinggi dari "
-                      f"{fmt_num(n, 0)} {noun}{where}.")
-        focus(hi["code"])
-        slides.append(f"[number=off icon=map-pin]\n{_text(lo['label'])}\n*{lo_d}*, terendah dari "
-                      f"{fmt_num(n, 0)} {noun}{where}.")
-        focus(lo["code"])
+        for row, disp, word, icon in ((hi, hi_d, "tertinggi", "star"), (lo, lo_d, "terendah", "map-pin")):
+            extra = ", ".join([f"{word} dari {fmt_num(n, 0)} {noun}{where}"] + _tied_with(row, rows))
+            slides.append(f"[number=off icon={icon}]\n{_text(row['label'])}\n*{disp}*, {extra}.")
+            focus(row["code"])
         diff = hi["value"] - lo["value"]
         body = f"*{_difference(diff, unit)}*"
         if lo["value"] > 0 and hi["value"] / lo["value"] >= 2:
@@ -199,7 +207,9 @@ def deck_bundle(result, spec, recipe="top", map_bg="terrain", template="editoria
 
     hook = slides[0].split("\n")[1].replace("\\|", "|").replace(" | ", " ").replace("|", " ")
     caption = f"{hook}. Sumber: {pack['source']} · Diolah oleh Peta Angka {_hashtags(m['prov_name'])}"
-    header = f"template: {template}\nlang: id\ntitle: {slug}\ncaption: {_text(caption)}"
+    # The map cards sit between the deck's slides, so Carousel Press' own "i/N"
+    # counter would count the wrong total: switch it off (Carousel Press F18).
+    header = f"template: {template}\nlang: id\ntitle: {slug}\ncounter: off\ncaption: {_text(caption)}"
     deck = "\n---\n".join([header] + slides) + "\n"
 
     card_lines = "\n".join(f"- `{c['file']}` ← `{c['path']}`" for c in cards) or "- (none)"
