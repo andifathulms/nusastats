@@ -95,8 +95,12 @@ def compute(kode: str) -> dict:
             continue
         floor = cfg["stats"]["noise_floor_nw"]
         if (valid & (r < floor) & (wgt > 0)).any():
-            raise NightlightsCheckFailed(
-                f"{kode} {year}: annual median below the noise floor ({float(np.nanmin(r)):.3f} < {floor} nW)")
+            # Implausible radiance in this area's annual raster. Seen when a pixel has a single
+            # cloud-free night all year (Botain 960154, 2024: one May night at -0.51 nW), so the
+            # "median" is one noisy reading. Like a cloudy year: leave the year out, with the reason.
+            low = float(np.nanmin(np.where(valid & (wgt > 0), r, np.nan)))
+            skipped[str(year)] = f"annual median below the noise floor ({low:.3f} < {floor} nW)"
+            continue
         noise = valid & (r < 0) & (wgt > 0)
         rv = np.where(valid, np.clip(r, 0.0, None), 0.0)  # noise-floor negatives = no light
         wv = np.where(valid, wgt, 0.0)

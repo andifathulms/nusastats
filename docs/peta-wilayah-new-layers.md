@@ -51,7 +51,9 @@ mangroves 5.8–9.2 m, coastal forest 10.7–23 m and cities 3.6–9.5 m. The UI
 - **Skipped month:** 2024-10 publishes under another naming (`ecmslcfg`). It is skipped and recorded, not
   substituted, so 2024 uses 11 months.
 - **Noise floor:** calibrated radiance has noise just below zero (at most 0.012% of pixels, lowest −0.19 nW). Values
-  down to −0.5 nW count as no light; anything lower fails. The noise share is recorded per year.
+  down to −0.5 nW count as no light. A year whose annual raster goes lower inside an area is left out for that area,
+  with the reason, like a cloudy year (first seen in Papua Barat Daya 2024: a pixel in Botain whose only cloud-free
+  night of the year read −0.51 nW). The noise share is recorded per year.
 
 **Provenance.** We cannot hash a 4 GB file we only read a window from. Each monthly window is recorded in
 `sources.json` with its URL, ETag, Last-Modified, window bounds and the **sha256 of the exact pixels read**. A re-read
