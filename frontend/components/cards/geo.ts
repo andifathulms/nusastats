@@ -149,3 +149,84 @@ export function neighbourColours(features: Feature[], paletteSize: number): Map<
   }
   return colour;
 }
+
+export type OffFrame = { id: string; name: string; km: number; dir: string };
+export type Framing = { frame: Frame; cropped: boolean; offFrame: OffFrame[] };
+
+const ARAH = ["timur", "timur laut", "utara", "barat laut", "barat", "barat daya", "selatan", "tenggara"];
+
+/** Frame a region on its main landmass. Starting from the largest polygon, any
+ * part within a fifth of the cluster's size is pulled in; parts farther out
+ * (Makassar's Kepulauan Sangkarrang, ~30 km offshore) are left outside the
+ * frame and returned with distance and direction, so a card can name them.
+ * A real archipelago (outlying parts > 15% of the area) or a crop that wouldn't
+ * gain much keeps the full frame. */
+export function framing(features: Feature[]): Framing {
+  type Part = { id: string; name: string; fr: Frame; area: number; cx: number; cy: number };
+  const parts: Part[] = [];
+  for (const f of features)
+    for (const poly of polygons(f)) {
+      const fr = frameOf([{ properties: f.properties, geometry: { type: "Polygon", coordinates: poly } }]);
+      const ring = poly[0];
+      let a = 0;
+      for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) a += (ring[j][0] + ring[i][0]) * (ring[j][1] - ring[i][1]);
+      parts.push({
+        id: f.properties.domain_id,
+        name: f.properties.name ?? f.properties.domain_id,
+        fr,
+        area: Math.abs(a / 2),
+        cx: (fr.west + fr.east) / 2,
+        cy: (fr.south + fr.north) / 2,
+      });
+    }
+  const full = frameOf(features);
+  if (!parts.length) return { frame: full, cropped: false, offFrame: [] };
+  const inCluster = new Set<Part>([parts.reduce((m, p) => (p.area > m.area ? p : m))]);
+  const box = { ...[...inCluster][0].fr };
+  for (let grown = true; grown; ) {
+    grown = false;
+    const reach = 0.2 * Math.max(box.east - box.west, box.north - box.south);
+    for (const p of parts) {
+      if (inCluster.has(p)) continue;
+      const gap = Math.max(0, p.fr.west - box.east, box.west - p.fr.east, p.fr.south - box.north, box.south - p.fr.north);
+      if (gap <= reach) {
+        inCluster.add(p);
+        box.west = Math.min(box.west, p.fr.west);
+        box.east = Math.max(box.east, p.fr.east);
+        box.south = Math.min(box.south, p.fr.south);
+        box.north = Math.max(box.north, p.fr.north);
+        grown = true;
+      }
+    }
+  }
+  const out = parts.filter((p) => !inCluster.has(p));
+  const total = parts.reduce((s, p) => s + p.area, 0);
+  const outArea = out.reduce((s, p) => s + p.area, 0);
+  const span = (fr: Frame) => (fr.east - fr.west) * (fr.north - fr.south);
+  if (!out.length || outArea > 0.15 * total || span(full) < 1.6 * span(box)) return { frame: full, cropped: false, offFrame: [] };
+
+  const pad = 0.04 * Math.max(box.east - box.west, box.north - box.south);
+  const frame = { west: box.west - pad, east: box.east + pad, south: box.south - pad, north: box.north + pad };
+  const cx = (box.west + box.east) / 2;
+  const cy = (box.south + box.north) / 2;
+  const cos = Math.cos((cy * Math.PI) / 180);
+  const byId = new Map<string, OffFrame>();
+  for (const p of out) {
+    const dx = (p.cx - cx) * cos * 111.32;
+    const dy = (p.cy - cy) * 110.57;
+    const km = Math.round(Math.hypot(dx, dy) / 5) * 5;
+    const dir = ARAH[Math.round(((Math.atan2(dy, dx) * 180) / Math.PI + 360) / 45) % 8];
+    const prev = byId.get(p.id);
+    if (!prev || km > prev.km) byId.set(p.id, { id: p.id, name: p.name, km, dir });
+  }
+  return { frame, cropped: true, offFrame: [...byId.values()] };
+}
+
+/** The rectangle of `inner` in the projection of `outer` (viewBox units), to
+ * crop a raster card drawn over `outer` down to `inner`. */
+export function cropBox(inner: Frame, outer: Frame): { x: number; y: number; w: number; h: number } {
+  const to = projector(outer);
+  const [x0, y0] = to([Math.max(inner.west, outer.west), Math.min(inner.north, outer.north)]);
+  const [x1, y1] = to([Math.min(inner.east, outer.east), Math.max(inner.south, outer.south)]);
+  return { x: x0, y: y0, w: x1 - x0, h: y1 - y0 };
+}

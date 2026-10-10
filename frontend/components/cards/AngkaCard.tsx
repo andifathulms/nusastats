@@ -3,8 +3,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { carouselApi, type CarouselMapValue, type CarouselPackResult } from "@/lib/api";
 import { loadPeta, petaAsset, type Peta } from "@/lib/peta";
-import { NO_DATA, RAMP, frameOf, project, rampColor, type Feature, type Frame, type Geo } from "./geo";
-import { CONTENT_W, CornerTag, Footer, H, PAD, SAFE, SafeZones, W } from "./ShareCard";
+import { NO_DATA, RAMP, cropBox, frameOf, framing, project, rampColor, type Feature, type Geo } from "./geo";
+import { CONTENT_W, CornerTag, Footer, H, OffFrameNote, PAD, SAFE, SafeZones, W } from "./ShareCard";
 
 /**
  * 1080×1920 "angka" card: one carousel-data/1 pack (backend api/carousel.py) on
@@ -277,12 +277,16 @@ function FocusBody({
 }) {
   const { map, pack } = data;
   const v = map.values.find((x) => x.geo === focus) as CarouselMapValue;
-  const { paths, edge, vw, vh } = useMemo(() => {
+  const { paths, edge, view, fit } = useMemo(() => {
     const feats = selectFeatures(geo, map.level, "", focus);
-    const frame = peta ? peta.bounds : frameOf(feats);
+    const fit = framing(feats);
+    const frame = peta ? peta.bounds : fit.frame;
     const own = outline?.features.filter((f) => f.properties.domain_id === focus) ?? [];
-    return { ...project(feats, frame), edge: own.length ? project(own, frame).paths : [] };
+    const { paths, vw, vh } = project(feats, frame);
+    const view = peta && fit.cropped ? cropBox(fit.frame, peta.bounds) : { x: 0, y: 0, w: vw, h: vh };
+    return { paths, edge: own.length ? project(own, frame).paths : [], view, fit };
   }, [geo, map.level, focus, peta, outline]);
+  const { w: vw, h: vh } = view;
   const counted = useRef(new Set<string>());
   const done = (src: string) => {
     if (counted.current.has(src)) return;
@@ -310,7 +314,7 @@ function FocusBody({
         <Header eyebrow={map.kicker} title={v.label} />
       </div>
       <div className="mt-6 flex min-h-0 flex-1 items-center justify-center">
-        <svg viewBox={`0 0 ${vw.toFixed(0)} ${vh.toFixed(0)}`} preserveAspectRatio="xMidYMid meet" className="h-full w-full">
+        <svg viewBox={`${view.x.toFixed(1)} ${view.y.toFixed(1)} ${vw.toFixed(1)} ${vh.toFixed(1)}`} preserveAspectRatio="xMidYMid meet" className="h-full w-full">
           {layers.map((src, i) => (
             <image
               key={src}
@@ -343,6 +347,7 @@ function FocusBody({
           ))}
         </svg>
       </div>
+      <OffFrameNote items={fit.offFrame} />
       {peta && <LayerLegend peta={peta} bg={bg} />}
       <div className="mt-6 shrink-0">
         <div className="text-[96px] font-extrabold leading-none tracking-[-0.02em] tabular-nums">

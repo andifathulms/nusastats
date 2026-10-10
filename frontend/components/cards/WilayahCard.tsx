@@ -2,8 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { dukcapilApi, formatNumber, regionLabel, titleCase, type DukcapilRankRow } from "@/lib/api";
-import { NO_DATA, RAMP, frameOf, labelPoint, lerpHex, neighbourColours, project, projector, type Feature, type Geo } from "./geo";
-import { CONTENT_W, CornerTag, Footer, H, PAD, SAFE, SafeZones, W } from "./ShareCard";
+import { NO_DATA, RAMP, framing, labelPoint, lerpHex, neighbourColours, project, projector, type Feature, type Geo, type OffFrame } from "./geo";
+import { CONTENT_W, CornerTag, Footer, H, OffFrameNote, PAD, SAFE, SafeZones, W } from "./ShareCard";
 
 /**
  * 1080×1920 kabupaten profile cards drawn from boundaries + Dukcapil data (no
@@ -178,10 +178,11 @@ function Fact({ value, label }: { value: string; label: string }) {
 type Label = { id: string; name: string; x: number; y: number; size: number; n?: number };
 
 function AdminBody({ kode, data, geo }: { kode: string; data: Data; geo: Geos }) {
-  const { paths, edge, labels, numbered, vw, vh } = useMemo(() => {
+  const { paths, edge, labels, numbered, vw, vh, offFrame } = useMemo(() => {
     const feats = geo.inner.features.filter((f) => f.properties.domain_id.startsWith(kode));
     const own = geo.outline.features.filter((f) => f.properties.domain_id === kode);
-    const frame = frameOf(own.length ? own : feats);
+    const fit = framing(feats);
+    const frame = fit.frame;
     const { paths, vw, vh } = project(feats, frame);
     const to = projector(frame);
     // viewBox units per card pixel, so labels come out at a readable px size.
@@ -194,6 +195,8 @@ function AdminBody({ kode, data, geo }: { kode: string; data: Data; geo: Geos })
       .map((f: Feature) => ({ f, ...labelPoint(f, to) }))
       .sort((a, b) => b.room - a.room);
     for (const s of spots) {
+      // Wholly outside the frame: named in the off-frame note instead.
+      if (s.x < 0 || s.x > vw || s.y < 0 || s.y > vh) continue;
       const id = s.f.properties.domain_id;
       const name = names.get(id) ?? titleCase(s.f.properties.name ?? id);
       const size = Math.max(20, Math.min(30, (s.room / k) * 0.55)) * k;
@@ -209,7 +212,7 @@ function AdminBody({ kode, data, geo }: { kode: string; data: Data; geo: Geos })
     numbered.sort((a, b) => a.name.localeCompare(b.name, "id"));
     numbered.forEach((l, i) => (l.n = i + 1));
     const edge = own.length ? project(own, frame).paths : [];
-    return { paths, edge, labels, numbered, vw, vh };
+    return { paths, edge, labels, numbered, vw, vh, offFrame: fit.offFrame };
   }, [geo, kode, data.districts]);
   const tones = useMemo(
     () => neighbourColours(geo.inner.features.filter((f) => f.properties.domain_id.startsWith(kode)), ADMIN_TONES.length),
@@ -256,6 +259,7 @@ function AdminBody({ kode, data, geo }: { kode: string; data: Data; geo: Geos })
           ))}
         </svg>
       </div>
+      <OffFrameNote items={offFrame} />
       {numbered.length > 0 && (
         <ol className="mt-4 shrink-0 columns-3 gap-6 text-[19px] leading-snug text-coal-muted">
           {numbered.map((l) => (
@@ -278,15 +282,17 @@ function AdminBody({ kode, data, geo }: { kode: string; data: Data; geo: Geos })
 
 function DensityBody({ kode, data, geo }: { kode: string; data: Data; geo: Geos }) {
   const byId = useMemo(() => new Map(data.villages.map((v) => [v.domain_id, v])), [data.villages]);
-  const { paths, kec, edge, vw, vh } = useMemo(() => {
+  const { paths, kec, edge, vw, vh, offFrame } = useMemo(() => {
     const feats = geo.inner.features.filter((f) => f.properties.domain_id.startsWith(kode));
     const own = geo.outline.features.filter((f) => f.properties.domain_id === kode);
-    const frame = frameOf(own.length ? own : feats);
+    const fit = framing(feats);
+    const frame = fit.frame;
     const kecFeats = geo.kec?.features.filter((f) => f.properties.domain_id.startsWith(kode)) ?? [];
     return {
       ...project(feats, frame),
       kec: project(kecFeats, frame).paths,
       edge: own.length ? project(own, frame).paths : [],
+      offFrame: fit.offFrame as OffFrame[],
     };
   }, [geo, kode]);
 
@@ -311,9 +317,17 @@ function DensityBody({ kode, data, geo }: { kode: string; data: Data; geo: Geos 
       a += r.area;
       if (p >= pop / 2) break;
     }
-    const top = rows.reduce((m, r) => (r.v.value > m.v.value ? r : m), rows[0]);
-    return { pop, halfAreaPct: area ? (a / area) * 100 : 0, top };
-  }, [data.villages]);
+    // Densest kecamatan, from its desa summed: one odd BIG desa polygon (Makassar's
+    // Manggala: 29.163 residents on 0,32 km²) can't become the headline this way.
+    const byKec = new Map<string, { pop: number; area: number }>();
+    for (const r of rows) {
+      const k = byKec.get(r.v.domain_id.slice(0, 6)) ?? { pop: 0, area: 0 };
+      byKec.set(r.v.domain_id.slice(0, 6), { pop: k.pop + r.pop, area: k.area + r.area });
+    }
+    const names = new Map(data.districts.map((d) => [d.domain_id, titleCase(d.domain_name)]));
+    const [kecId, kec] = [...byKec.entries()].reduce((m, e) => (e[1].pop / e[1].area > m[1].pop / m[1].area ? e : m));
+    return { pop, halfAreaPct: area ? (a / area) * 100 : 0, top: { name: names.get(kecId) ?? kecId, density: kec.pop / kec.area } };
+  }, [data.villages, data.districts]);
   const missing = data.villageTotal - data.villages.length;
   const ranges = ["< 10", "10–50", "50–250", "250–1.000", "1.000–5.000", "≥ 5.000"];
 
@@ -334,6 +348,7 @@ function DensityBody({ kode, data, geo }: { kode: string; data: Data; geo: Geos 
           ))}
         </svg>
       </div>
+      <OffFrameNote items={offFrame} />
       <div className="mt-4 shrink-0">
         <div className="flex gap-1">
           {CLASS_COLORS.map((c, i) => (
@@ -349,7 +364,7 @@ function DensityBody({ kode, data, geo }: { kode: string; data: Data; geo: Geos 
         </p>
         <div className="mt-6 grid grid-cols-2 gap-6">
           <Fact value={compact(facts.pop)} label="penduduk di peta ini" />
-          <Fact value={`${formatNumber(Math.round(facts.top.v.value))}/km²`} label={`terpadat: ${titleCase(facts.top.v.domain_name)}`} />
+          <Fact value={`${formatNumber(Math.round(facts.top.density))}/km²`} label={`kecamatan terpadat: ${facts.top.name}`} />
         </div>
         <Footer
           source={`Penduduk: Ditjen Dukcapil Kemendagri, data ${bulanTahun(data.period)} (penduduk terdaftar, bukan sensus); luas desa: BIG 1:10.000, dihitung NusaStats`}

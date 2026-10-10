@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { formatNumber, regionLabel, titleCase } from "@/lib/api";
 import { litGrowth, loadPeta, MIN_BASE_LIT_KM2, petaAsset, type Peta } from "@/lib/peta";
+import { cropBox, framing, type Feature, type OffFrame } from "./geo";
 
 /**
  * 1080×1920 share card (docs/FEATURE-peta-wilayah.md §6.2), rendered for the PNG
@@ -231,6 +232,9 @@ function CardBody({
 }) {
   const { title, sub } = areaTitle(peta, kode);
   const { paths, vw, vh } = useOutlines(geo, kode, peta.bounds);
+  // Frame the main landmass; far-off islands are named under the map instead.
+  const fit = useMemo(() => framing(geo.features.filter((f) => f.properties.domain_id.startsWith(kode)) as Feature[]), [geo, kode]);
+  const view = fit.cropped ? cropBox(fit.frame, peta.bounds) : { x: 0, y: 0, w: vw, h: vh };
   const outline = useOutlines(regGeo ?? NO_FEATURES, kode, peta.bounds).paths;
   const counted = useRef(new Set<string>());
   const done = (src: string) => {
@@ -262,7 +266,7 @@ function CardBody({
       <div className="mt-2 text-[34px] text-coal-muted">{sub}</div>
 
       <div className="mt-6 flex min-h-0 flex-1 items-center justify-center">
-        <svg viewBox={`0 0 ${vw.toFixed(0)} ${vh.toFixed(0)}`} preserveAspectRatio="xMidYMid meet" className="h-full w-full">
+        <svg viewBox={`${view.x.toFixed(1)} ${view.y.toFixed(1)} ${view.w.toFixed(1)} ${view.h.toFixed(1)}`} preserveAspectRatio="xMidYMid meet" className="h-full w-full">
           {layers.map((l) => (
             <image
               key={l.src}
@@ -294,6 +298,7 @@ function CardBody({
           ))}
         </svg>
       </div>
+      <OffFrameNote items={fit.offFrame} />
 
       {template === "terrain" ? (
         <TerrainFacts peta={peta} />
@@ -466,6 +471,14 @@ function ReliefFacts({ peta }: { peta: Peta }) {
       <Footer source="Copernicus DEM GLO-30, data 2011–2015 (© DLR e.V., © Airbus DS; Copernicus/EU/ESA)" />
     </div>
   );
+}
+
+/** Names the parts of a region left outside a cropped frame, so nothing vanishes silently. */
+export function OffFrameNote({ items }: { items: OffFrame[] }) {
+  if (!items.length) return null;
+  const shown = items.slice(0, 3).map((o) => `${titleCase(o.name)} (± ${formatNumber(o.km)} km ${o.dir})`);
+  const more = items.length > 3 ? ` dan ${items.length - 3} lainnya` : "";
+  return <p className="mt-3 shrink-0 text-[20px] text-coal-muted">Di luar bingkai: {shown.join(", ")}{more}.</p>;
 }
 
 export function Footer({ source }: { source: string }) {
