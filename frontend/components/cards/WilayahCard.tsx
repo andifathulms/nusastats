@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { dukcapilApi, formatNumber, regionLabel, titleCase, type DukcapilRankRow } from "@/lib/api";
-import { NO_DATA, PALETTES, framing, neighbourColours, placeLabels, project, type Geo, type Label, type OffFrame } from "./geo";
+import { NO_DATA, PALETTES, frameOf, framing, neighbourColours, placeLabels, project, projector, type Geo, type Label, type OffFrame } from "./geo";
 import { themeVar } from "./brand";
 import { CONTENT_W, CornerTag, Footer, H, OffFrameNote, PAD, SAFE, SafeZones, W } from "./ShareCard";
 
@@ -15,11 +15,13 @@ import { CONTENT_W, CornerTag, Footer, H, OffFrameNote, PAD, SAFE, SafeZones, W 
  *   /card/wilayah/{kab}    administrative map: kecamatan with their names
  *   /card/kepadatan/{kab}  population density per desa (registered residents
  *                          ÷ BIG area), on fixed log-spaced classes so cards
- *                          of different kabupaten compare
+ *                          of different kabupaten compare; the profile's hook
+ *   /card/penutup/{kab}    closing slide: the province with this kabupaten
+ *                          highlighted, "Kabupaten mana berikutnya?"
  */
 
-export type WilayahTemplate = "wilayah" | "kepadatan";
-export const WILAYAH_TEMPLATES: WilayahTemplate[] = ["wilayah", "kepadatan"];
+export type WilayahTemplate = "wilayah" | "kepadatan" | "penutup";
+export const WILAYAH_TEMPLATES: WilayahTemplate[] = ["wilayah", "kepadatan", "penutup"];
 
 // Muted sea/sand tones for neighbouring kecamatan: distinct, never a ranking.
 const ADMIN_TONES = ["#22417A", "#2E5A8F", "#3B4F6B", "#1F5C6E", "#4A4A6A"];
@@ -124,7 +126,13 @@ export function WilayahCard({ template, kode, debug }: { template: WilayahTempla
       {error ? (
         <div className="p-16 text-[28px] text-coal-text">Kartu tidak dibuat: {error}</div>
       ) : data && geo ? (
-        template === "wilayah" ? <AdminBody kode={kode} data={data} geo={geo} /> : <DensityBody kode={kode} data={data} geo={geo} />
+        template === "wilayah" ? (
+          <AdminBody kode={kode} data={data} geo={geo} />
+        ) : template === "penutup" ? (
+          <ClosingBody kode={kode} data={data} geo={geo} />
+        ) : (
+          <DensityBody kode={kode} data={data} geo={geo} />
+        )
       ) : null}
       <CornerTag />
       {debug && <SafeZones />}
@@ -277,7 +285,11 @@ function DensityBody({ kode, data, geo }: { kode: string; data: Data; geo: Geos 
 
   return (
     <Column>
-      <Title eyebrow="Kepadatan penduduk per desa" kab={data.kab} />
+      <Title eyebrow="Penduduk · kepadatan per desa" kab={data.kab} />
+      {/* The hook: this card opens the profile, so its fact leads. */}
+      <p className="mt-6 font-display text-[64px] leading-[1.02]">
+        Separuh warga {shortName(data.kab.name)} tinggal di <span className="text-nm-sorot">{pct1(facts.halfAreaPct)}</span> wilayahnya.
+      </p>
       <div className="mt-6 flex min-h-0 flex-1 items-center justify-center">
         <svg viewBox={`0 0 ${vw.toFixed(0)} ${vh.toFixed(0)}`} preserveAspectRatio="xMidYMid meet" className="h-full w-full">
           {paths.map((p) => {
@@ -303,9 +315,6 @@ function DensityBody({ kode, data, geo }: { kode: string; data: Data; geo: Geos 
           ))}
         </div>
         <div className="mt-1 text-right font-mono text-[24px] text-coal-muted">jiwa/km²{missing > 0 ? ` · abu-abu: ${missing} desa tanpa data` : ""}</div>
-        <p className="mt-6 text-[34px] font-semibold leading-tight">
-          Separuh penduduk tinggal di <span className="text-ink-gold">{pct1(facts.halfAreaPct)}</span> wilayahnya.
-        </p>
         <div className="mt-6 grid grid-cols-2 gap-6">
           <Fact value={compact(facts.pop)} label="penduduk di peta ini" />
           <Fact value={`${formatNumber(Math.round(facts.top.density))}/km²`} label={`kecamatan terpadat: ${facts.top.name}`} />
@@ -366,5 +375,56 @@ export function LabelLegend({ numbered }: { numbered: Label[] }) {
       </ol>
     )}
     </>
+  );
+}
+
+/** "Kab. Barru" -> "Barru", "Kota Adm. Jakarta Timur" -> "Jakarta Timur" (for sentences). */
+export function shortName(name: string): string {
+  return name.replace(/^(Kab\. Adm\.|Kota Adm\.|Kab\.|Kota)\s+/, "");
+}
+
+/** The closing slide: the province's kabupaten/kota with this one highlighted. */
+function ClosingBody({ kode, data, geo }: { kode: string; data: Data; geo: Geos }) {
+  const { paths, own, ring, vw, vh, offFrame } = useMemo(() => {
+    const feats = geo.outline.features.filter((f) => f.properties.domain_id.startsWith(kode.slice(0, 2)));
+    const fit = framing(feats);
+    const { paths, vw, vh } = project(feats, fit.frame);
+    // A ring around the highlighted kabupaten, at least ~44 card px, so a small
+    // kota (Makassar) is findable on its province map.
+    const ownFeat = feats.filter((f) => f.properties.domain_id === kode);
+    const to = projector(fit.frame);
+    const b = frameOf(ownFeat);
+    const [x0, y0] = to([b.west, b.north]);
+    const [x1, y1] = to([b.east, b.south]);
+    const k = 1 / Math.min(CONTENT_W / vw, 760 / vh);
+    const ring = { cx: (x0 + x1) / 2, cy: (y0 + y1) / 2, r: Math.max(Math.hypot(x1 - x0, y1 - y0) / 2 + 10 * k, 44 * k), w: 4 * k };
+    return { paths, own: paths.filter((p) => p.id === kode), ring, vw, vh, offFrame: fit.offFrame };
+  }, [geo, kode]);
+  return (
+    <Column>
+      <div className="font-mono text-[28px] uppercase tracking-[0.1em] text-ink-gold">Kenali kabupatenmu</div>
+      <h1 className="mt-3 font-display text-[112px] leading-[0.96]">Kabupaten mana berikutnya?</h1>
+      <p className="mt-5 text-[36px] leading-snug text-coal-muted">Tulis di komentar. Daerah yang paling banyak disebut jadi peta berikutnya.</p>
+      <div className="mt-6 flex min-h-0 flex-1 items-center justify-center">
+        <svg viewBox={`0 0 ${vw.toFixed(0)} ${vh.toFixed(0)}`} preserveAspectRatio="xMidYMid meet" className="h-full w-full">
+          {paths.map((p) => (
+            <path key={p.id} d={p.d} fill={p.id === kode ? "var(--nm-sorot)" : "#26333A"} stroke="#0F1416" strokeWidth={1} vectorEffect="non-scaling-stroke" />
+          ))}
+          {own.map((p) => (
+            <path key={`o-${p.id}`} d={p.d} fill="none" stroke="#F1EDE3" strokeWidth={2.6} vectorEffect="non-scaling-stroke" />
+          ))}
+          <circle cx={ring.cx} cy={ring.cy} r={ring.r} fill="none" stroke="var(--nm-sorot)" strokeWidth={ring.w} />
+        </svg>
+      </div>
+      <OffFrameNote items={offFrame} />
+      <div className="mt-4 shrink-0">
+        <p className="text-[34px] font-semibold">
+          <span className="text-nm-sorot">{data.kab.name}</span> di {data.kab.prov}
+        </p>
+        <p className="mt-6 border-t border-coal-border pt-4 text-[26px] leading-snug text-coal-muted">
+          Ikuti Nusantara Mapper untuk peta kabupaten berikutnya. Batas wilayah indikatif (BIG 1:10.000).
+        </p>
+      </div>
+    </Column>
   );
 }

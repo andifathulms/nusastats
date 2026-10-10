@@ -7,10 +7,11 @@ import { chromium } from "playwright";
 export const TEMPLATES = {
   terrain: "terrain.json", landcover: "landcover.json", nightlights: "nightlights.json",
   lowland: "terrain.json", relief: "terrain.json", wilayah: "bounds.json", kepadatan: "bounds.json",
-  cahaya: "desa.json", rendah: "desa.json", kecamatan: "bounds.json",
+  cahaya: "desa.json", rendah: "desa.json", kecamatan: "bounds.json", penutup: "bounds.json",
 };
-// A kabupaten profile, in posting order.
-export const PROFIL = ["wilayah", "kepadatan", "cahaya", "kecamatan", "terrain", "lowland", "rendah", "relief", "landcover", "nightlights"];
+// A kabupaten profile, in posting order: the hook first, the question last.
+// lowland, relief and nightlights stay available as single cards.
+export const PROFIL = ["kepadatan", "wilayah", "terrain", "landcover", "cahaya", "rendah", "kecamatan", "penutup"];
 
 export function cardUrl(base, template, kode, { indicator, debug } = {}) {
   const q = new URLSearchParams();

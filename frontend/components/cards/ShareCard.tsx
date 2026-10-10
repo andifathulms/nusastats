@@ -348,6 +348,19 @@ function TerrainFacts({ peta }: { peta: Peta }) {
         <span className="font-display text-[64px] font-medium leading-none">{t.terrain_class_label}</span>
         <span className="rounded-full border border-coal-border px-4 py-1 text-[26px] text-coal-muted">klasifikasi NusaStats</span>
       </div>
+      {/* The profile's one terrain slide also carries local relief (the relief card stays as an extra). */}
+      {t.local_relief && (
+        <p className="mt-3 text-[28px] text-coal-muted">
+          Relief lokal:{" "}
+          {(
+            [["datar", t.local_relief.classes_pct.datar], ["bergelombang", t.local_relief.classes_pct.bergelombang], ["berbukit", t.local_relief.classes_pct.berbukit], ["bergunung", t.local_relief.classes_pct.bergunung]] as [string, number][]
+          )
+            .sort((a, b) => b[1] - a[1])
+            .slice(0, 2)
+            .map(([l, v]) => `${pctInt(v)} ${l}`)
+            .join(", ")}
+        </p>
+      )}
       <div className="mt-6 grid grid-cols-3 gap-6">
         <Fact value={metres(t.elevation_m.mean)} label="rata-rata elevasi" />
         <Fact value={peak(t.highest_point.elevation_m)} label="titik tertinggi" />

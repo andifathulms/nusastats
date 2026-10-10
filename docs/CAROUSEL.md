@@ -87,7 +87,7 @@ Besides rankings, one kabupaten can be posted as a set of maps:
 
 ```bash
 cd frontend
-npm run card -- --template profil --kode 6409     # all seven, numbered in posting order
+npm run card -- --template profil --kode 6409     # the 8-slide profile, numbered in posting order
 npm run card -- --template wilayah --kode 3201    # one template
 ```
 
@@ -100,5 +100,14 @@ npm run card -- --template wilayah --kode 3201    # one template
 | `rendah` | the lowland layer, desa mostly under 10 m outlined, and "N penduduk tinggal di desa yang sebagian besar wilayahnya di bawah 10 m" (a lower bound: surface model) | `desa.json` + Peta lowland |
 | `terrain`, `lowland`, `relief`, `landcover`, `nightlights` | the Peta Wilayah layers | Peta outputs for that kode |
 
-Output goes to `exports/cards/profil/{kode}/{NN}_{template}.png`. The first two work everywhere,
+Output goes to `exports/cards/profil/{kode}/{NN}_{template}.png`, in this posting order:
+`kepadatan` (the hook: "Separuh warga X tinggal di Y% wilayahnya"), `wilayah`, `terrain` (with
+local relief), `landcover`, `cahaya`, `rendah`, `kecamatan`, `penutup` (the province with the
+kabupaten ringed, "Kabupaten mana berikutnya?"). `lowland`, `relief` and `nightlights` remain as
+single cards.
+
+The cards have their own look, "Atlas Malam" (proposal: "Arah Visual Nusantara Mapper"):
+Archivo, an ink background, one theme colour per subject (`components/cards/brand.ts`, the
+`.nm-card` layer in `globals.css`) and a palette per kind of number (`geo.PALETTES`: magma for
+amounts, viridis for ratios, diverging around 100 for sex ratio). The first two work everywhere,
 Papua included, and the Peta layers wherever the pipeline has run.

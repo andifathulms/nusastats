@@ -13,19 +13,21 @@ const CARDS = process.env.NEXT_PUBLIC_CARDS_BASE || "http://localhost:3012";
 const SCALE = 0.25;
 const SECONDS_PER_CARD = 4.5;
 
-type Card = { id: string; label: string; needs: string[] };
-// Posting order (same as PROFIL in scripts/card/shoot.mjs).
+type Card = { id: string; label: string; needs: string[]; extra?: boolean };
+// Posting order (same as PROFIL in scripts/card/shoot.mjs): the hook first, the
+// question last. Extras are single cards outside the ZIP.
 const CARDS_IN_ORDER: Card[] = [
+  { id: "kepadatan", label: "Hook: kepadatan per desa", needs: [] },
   { id: "wilayah", label: "Wilayah administrasi", needs: [] },
-  { id: "kepadatan", label: "Kepadatan per desa", needs: [] },
-  { id: "cahaya", label: "Penduduk vs cahaya malam", needs: ["desa.json", "nightlights.json"] },
-  { id: "kecamatan", label: "Per kecamatan", needs: [] },
   { id: "terrain", label: "Medan", needs: ["terrain.json"] },
-  { id: "lowland", label: "Dataran rendah", needs: ["terrain.json"] },
-  { id: "rendah", label: "Penduduk di dataran rendah", needs: ["desa.json", "terrain.json"] },
-  { id: "relief", label: "Relief", needs: ["terrain.json"] },
   { id: "landcover", label: "Tutupan lahan", needs: ["landcover.json"] },
-  { id: "nightlights", label: "Cahaya malam", needs: ["nightlights.json"] },
+  { id: "cahaya", label: "Penduduk vs cahaya malam", needs: ["desa.json", "nightlights.json"] },
+  { id: "rendah", label: "Penduduk di dataran rendah", needs: ["desa.json", "terrain.json"] },
+  { id: "kecamatan", label: "Per kecamatan", needs: [] },
+  { id: "penutup", label: "Penutup: kabupaten berikutnya?", needs: [] },
+  { id: "lowland", label: "Tambahan: dataran rendah", needs: ["terrain.json"], extra: true },
+  { id: "relief", label: "Tambahan: relief", needs: ["terrain.json"], extra: true },
+  { id: "nightlights", label: "Tambahan: cahaya malam", needs: ["nightlights.json"], extra: true },
 ];
 const INDICATORS = [
   { id: "median_age", label: "Usia median" },
@@ -99,7 +101,7 @@ export function ProfilTool({
     const missing = files ? c.needs.find((f) => !files[f]) : undefined;
     return { ...c, available: !!files && !missing, reason: missing ? missingReason(missing, kode) : null };
   });
-  const available = cards.filter((c) => c.available);
+  const available = cards.filter((c) => c.available && !c.extra);
   const path = (c: Card) => `/card/${c.id}/${kode}${c.id === "kecamatan" ? `?indicator=${indicator}` : ""}`;
 
   const downloadZip = async () => {
@@ -181,7 +183,7 @@ export function ProfilTool({
             <div>
               <h2 className="font-display text-2xl font-medium text-ink-text">{title}</h2>
               <p className="text-sm text-ink-muted">
-                {selected?.parent_name} · {files ? `${available.length} dari ${cards.length} kartu tersedia` : "memeriksa data…"}
+                {selected?.parent_name} · {files ? `${available.length} dari ${cards.filter((c) => !c.extra).length} kartu profil tersedia` : "memeriksa data…"}
               </p>
             </div>
             <button
@@ -225,7 +227,7 @@ export function ProfilTool({
                 )}
                 <figcaption className="mt-2 flex items-baseline justify-between gap-2 text-xs">
                   <span className="truncate text-ink-muted">
-                    <span className="font-mono text-ink-faint">{String(i + 1).padStart(2, "0")}</span> {c.label}
+                    <span className="font-mono text-ink-faint">{c.extra ? "+" : String(i + 1).padStart(2, "0")}</span> {c.label}
                   </span>
                   {c.available && service === "up" && (
                     <a
