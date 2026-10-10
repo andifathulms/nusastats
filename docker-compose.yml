@@ -88,5 +88,26 @@ services:
     depends_on:
       - web
 
+  # Renders /card/* pages to PNG/ZIP for the /carousel page's downloads, with the
+  # same Playwright version as `npm run card` (frontend/scripts/card/serve.mjs).
+  cards:
+    image: mcr.microsoft.com/playwright:v1.63.0-noble
+    working_dir: /app
+    command: sh -c "npm ci --no-audit --no-fund && node serve.mjs"
+    environment:
+      PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: "1"
+      CARD_BASE: http://frontend:3000
+      API_PUBLIC: http://localhost:8010
+      API_INTERNAL: http://web:8000
+    volumes:
+      - ./frontend/scripts/card:/app
+      # The host's node_modules (macOS) must not shadow the container's.
+      - /app/node_modules
+    ports:
+      - "3012:3012"
+    depends_on:
+      - frontend
+      - web
+
 volumes:
   postgres_data:

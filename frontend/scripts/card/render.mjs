@@ -18,22 +18,15 @@
 // reports data-card-error (a failed guardrail, a missing image) is NOT saved;
 // it is listed and the run exits non-zero. One-time setup:
 //   cd scripts/card && npm ci && npx playwright install chromium
-import { mkdirSync, readdirSync, existsSync, statSync } from "node:fs";
+import { mkdirSync, readdirSync, existsSync, statSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { chromium } from "playwright";
+import { PROFIL, TEMPLATES, cardUrl, openPage, shoot } from "./shoot.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const FRONTEND = join(HERE, "..", "..");
 const PETA = join(FRONTEND, "public", "peta");
 const OUT = join(FRONTEND, "..", "exports", "cards");
-// Template -> the Peta file an area needs before it can be listed for a batch.
-const TEMPLATES = {
-  terrain: "terrain.json", landcover: "landcover.json", nightlights: "nightlights.json",
-  lowland: "terrain.json", relief: "terrain.json", wilayah: "bounds.json", kepadatan: "bounds.json",
-  cahaya: "desa.json", rendah: "desa.json", kecamatan: "bounds.json",
-};
-const PROFIL = ["wilayah", "kepadatan", "cahaya", "kecamatan", "terrain", "lowland", "rendah", "relief", "landcover", "nightlights"];
 const LEVEL_LEN = { provinsi: 2, kabupaten: 4, kecamatan: 6 };
 
 function parse(argv) {
@@ -71,31 +64,20 @@ const jobs = args.kode.flatMap((kode) =>
     : [{ t: args.template, kode, file: join(OUT, args.template, kode) }]
 );
 
-const browser = await chromium.launch();
-const page = await browser.newPage({ viewport: { width: 1080, height: 1920 }, deviceScaleFactor: 1, reducedMotion: "reduce" });
+const { browser, page } = await openPage();
 const failed = [];
 let saved = 0;
 for (const { t, kode, file: base } of jobs) {
-  const q = new URLSearchParams();
-  if (t === "kecamatan" && args.indicator) q.set("indicator", args.indicator);
-  if (args.debug) q.set("debug", "1");
-  const url = `${args.base}/card/${t}/${kode}${q.size ? `?${q}` : ""}`;
-  try {
-    await page.goto(url, { timeout: 120_000 });
-    await page.waitForSelector("#card[data-card-ready], #card[data-card-error]", { timeout: 90_000 });
-    const err = await page.getAttribute("#card", "data-card-error");
-    if (err) {
-      failed.push(`${t}/${kode}: ${err}`);
-      continue;
-    }
-    const file = `${base}${args.debug ? ".debug" : ""}.png`;
-    mkdirSync(dirname(file), { recursive: true });
-    await page.locator("#card").screenshot({ path: file, animations: "disabled" });
-    saved++;
-    console.log(`card: ${t}/${kode} -> ${file} (${Math.round(statSync(file).size / 1024)} KB)`);
-  } catch (e) {
-    failed.push(`${t}/${kode}: ${e.message.split("\n")[0]}`);
+  const r = await shoot(page, cardUrl(args.base, t, kode, { indicator: args.indicator, debug: args.debug }));
+  if (r.error) {
+    failed.push(`${t}/${kode}: ${r.error}`);
+    continue;
   }
+  const file = `${base}${args.debug ? ".debug" : ""}.png`;
+  mkdirSync(dirname(file), { recursive: true });
+  writeFileSync(file, r.png);
+  saved++;
+  console.log(`card: ${t}/${kode} -> ${file} (${Math.round(statSync(file).size / 1024)} KB)${r.note ? ` — ${r.note}` : ""}`);
 }
 await browser.close();
 console.log(`card: ${saved} saved, ${failed.length} not saved${failed.length ? ":\n  " + failed.join("\n  ") : ""}`);
