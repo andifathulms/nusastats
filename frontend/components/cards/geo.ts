@@ -230,3 +230,38 @@ export function cropBox(inner: Frame, outer: Frame): { x: number; y: number; w: 
   const [x1, y1] = to([Math.min(inner.east, outer.east), Math.max(inner.south, outer.south)]);
   return { x: x0, y: y0, w: x1 - x0, h: y1 - y0 };
 }
+
+export type Label = { id: string; name: string; x: number; y: number; size: number; n?: number };
+
+/** Names for the features of a map in a box of boxW x boxH card pixels: the
+ * roomiest features first, each name inside its feature at 20-30 px when it
+ * has room and doesn't collide; the rest get a number (sorted by name) for a
+ * legend. Features wholly outside the frame are skipped (an off-frame note
+ * names them). */
+export function placeLabels(
+  feats: Feature[], frame: Frame, vw: number, vh: number, names: Map<string, string>, boxW: number, boxH: number,
+): { labels: Label[]; numbered: Label[] } {
+  const to = projector(frame);
+  const k = 1 / Math.min(boxW / vw, boxH / vh); // viewBox units per card pixel
+  const placed: { x0: number; x1: number; y0: number; y1: number }[] = [];
+  const labels: Label[] = [];
+  const numbered: Label[] = [];
+  const spots = feats.map((f) => ({ f, ...labelPoint(f, to) })).sort((a, b) => b.room - a.room);
+  for (const s of spots) {
+    if (s.x < 0 || s.x > vw || s.y < 0 || s.y > vh) continue;
+    const id = s.f.properties.domain_id;
+    const name = names.get(id) ?? s.f.properties.name ?? id;
+    const size = Math.max(20, Math.min(30, (s.room / k) * 0.55)) * k;
+    const w = name.length * size * 0.56;
+    const box = { x0: s.x - w / 2, x1: s.x + w / 2, y0: s.y - size * 0.7, y1: s.y + size * 0.5 };
+    const clear = !placed.some((p) => box.x0 < p.x1 && box.x1 > p.x0 && box.y0 < p.y1 && box.y1 > p.y0);
+    const inside = box.x0 > 0 && box.x1 < vw && box.y0 > 0 && box.y1 < vh;
+    if (s.room / k >= 14 && clear && inside) {
+      placed.push(box);
+      labels.push({ id, name, x: s.x, y: s.y, size });
+    } else numbered.push({ id, name, x: s.x, y: s.y, size: 18 * k });
+  }
+  numbered.sort((a, b) => a.name.localeCompare(b.name, "id"));
+  numbered.forEach((l, i) => (l.n = i + 1));
+  return { labels, numbered };
+}

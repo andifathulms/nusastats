@@ -6,7 +6,8 @@
 //
 // Templates: terrain, landcover, nightlights, lowland, relief (Peta layers),
 // wilayah (kecamatan map with names), kepadatan (population density per desa),
-// cahaya (residents vs night lights).
+// cahaya (residents vs night lights), kecamatan (a Dukcapil ratio per
+// kecamatan; --indicator, default median_age).
 // `profil` renders all of them in posting order into
 // exports/cards/profil/{kode}/{NN}_{template}.png; a template whose data isn't
 // there for an area is reported, not saved.
@@ -30,13 +31,13 @@ const OUT = join(FRONTEND, "..", "exports", "cards");
 const TEMPLATES = {
   terrain: "terrain.json", landcover: "landcover.json", nightlights: "nightlights.json",
   lowland: "terrain.json", relief: "terrain.json", wilayah: "bounds.json", kepadatan: "bounds.json",
-  cahaya: "desa.json",
+  cahaya: "desa.json", kecamatan: "bounds.json",
 };
-const PROFIL = ["wilayah", "kepadatan", "cahaya", "terrain", "lowland", "relief", "landcover", "nightlights"];
+const PROFIL = ["wilayah", "kepadatan", "cahaya", "kecamatan", "terrain", "lowland", "relief", "landcover", "nightlights"];
 const LEVEL_LEN = { provinsi: 2, kabupaten: 4, kecamatan: 6 };
 
 function parse(argv) {
-  const a = { kode: [], base: "http://localhost:3010", debug: false };
+  const a = { kode: [], base: "http://localhost:3010", debug: false, indicator: null };
   for (let i = 0; i < argv.length; i++) {
     const k = argv[i];
     const v = () => argv[++i];
@@ -46,6 +47,7 @@ function parse(argv) {
     else if (k === "--provinsi") a.provinsi = v();
     else if (k === "--base") a.base = v();
     else if (k === "--debug") a.debug = true;
+    else if (k === "--indicator") a.indicator = v();
     else throw new Error(`unknown argument ${k}`);
   }
   if (!TEMPLATES[a.template] && a.template !== "profil")
@@ -74,7 +76,10 @@ const page = await browser.newPage({ viewport: { width: 1080, height: 1920 }, de
 const failed = [];
 let saved = 0;
 for (const { t, kode, file: base } of jobs) {
-  const url = `${args.base}/card/${t}/${kode}${args.debug ? "?debug=1" : ""}`;
+  const q = new URLSearchParams();
+  if (t === "kecamatan" && args.indicator) q.set("indicator", args.indicator);
+  if (args.debug) q.set("debug", "1");
+  const url = `${args.base}/card/${t}/${kode}${q.size ? `?${q}` : ""}`;
   try {
     await page.goto(url, { timeout: 120_000 });
     await page.waitForSelector("#card[data-card-ready], #card[data-card-error]", { timeout: 90_000 });

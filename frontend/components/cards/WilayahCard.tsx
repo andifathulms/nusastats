@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { dukcapilApi, formatNumber, regionLabel, titleCase, type DukcapilRankRow } from "@/lib/api";
-import { NO_DATA, RAMP, framing, labelPoint, lerpHex, neighbourColours, project, projector, type Feature, type Geo, type OffFrame } from "./geo";
+import { NO_DATA, RAMP, framing, lerpHex, neighbourColours, placeLabels, project, type Geo, type Label, type OffFrame } from "./geo";
 import { CONTENT_W, CornerTag, Footer, H, OffFrameNote, PAD, SAFE, SafeZones, W } from "./ShareCard";
 
 /**
@@ -181,8 +181,6 @@ export function Fact({ value, label }: { value: string; label: string }) {
   );
 }
 
-type Label = { id: string; name: string; x: number; y: number; size: number; n?: number };
-
 function AdminBody({ kode, data, geo }: { kode: string; data: Data; geo: Geos }) {
   const { paths, edge, labels, numbered, vw, vh, offFrame } = useMemo(() => {
     const feats = geo.inner.features.filter((f) => f.properties.domain_id.startsWith(kode));
@@ -190,33 +188,8 @@ function AdminBody({ kode, data, geo }: { kode: string; data: Data; geo: Geos })
     const fit = framing(feats);
     const frame = fit.frame;
     const { paths, vw, vh } = project(feats, frame);
-    const to = projector(frame);
-    // viewBox units per card pixel, so labels come out at a readable px size.
-    const k = 1 / Math.min(MAP_W / vw, MAP_H / vh);
     const names = new Map(data.districts.map((d) => [d.domain_id, titleCase(d.domain_name)]));
-    const placed: { x0: number; x1: number; y0: number; y1: number }[] = [];
-    const labels: Label[] = [];
-    const numbered: Label[] = [];
-    const spots = feats
-      .map((f: Feature) => ({ f, ...labelPoint(f, to) }))
-      .sort((a, b) => b.room - a.room);
-    for (const s of spots) {
-      // Wholly outside the frame: named in the off-frame note instead.
-      if (s.x < 0 || s.x > vw || s.y < 0 || s.y > vh) continue;
-      const id = s.f.properties.domain_id;
-      const name = names.get(id) ?? titleCase(s.f.properties.name ?? id);
-      const size = Math.max(20, Math.min(30, (s.room / k) * 0.55)) * k;
-      const w = name.length * size * 0.56;
-      const box = { x0: s.x - w / 2, x1: s.x + w / 2, y0: s.y - size * 0.7, y1: s.y + size * 0.5 };
-      const clear = !placed.some((p) => box.x0 < p.x1 && box.x1 > p.x0 && box.y0 < p.y1 && box.y1 > p.y0);
-      const inside = box.x0 > 0 && box.x1 < vw && box.y0 > 0 && box.y1 < vh;
-      if (s.room / k >= 14 && clear && inside) {
-        placed.push(box);
-        labels.push({ id, name, x: s.x, y: s.y, size });
-      } else numbered.push({ id, name, x: s.x, y: s.y, size: 18 * k });
-    }
-    numbered.sort((a, b) => a.name.localeCompare(b.name, "id"));
-    numbered.forEach((l, i) => (l.n = i + 1));
+    const { labels, numbered } = placeLabels(feats, frame, vw, vh, names, MAP_W, MAP_H);
     const edge = own.length ? project(own, frame).paths : [];
     return { paths, edge, labels, numbered, vw, vh, offFrame: fit.offFrame };
   }, [geo, kode, data.districts]);
@@ -237,44 +210,11 @@ function AdminBody({ kode, data, geo }: { kode: string; data: Data; geo: Geos })
           {edge.map((p) => (
             <path key={`e-${p.id}`} d={p.d} fill="none" stroke="#F3ECDD" strokeWidth={2.6} strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
           ))}
-          {labels.map((l) => (
-            <text
-              key={l.id}
-              x={l.x}
-              y={l.y}
-              textAnchor="middle"
-              dominantBaseline="middle"
-              fontSize={l.size}
-              fontWeight={600}
-              fill="#F3ECDD"
-              stroke="#0B1A33"
-              strokeWidth={l.size * 0.18}
-              paintOrder="stroke"
-              style={{ fontFamily: "inherit" }}
-            >
-              {l.name}
-            </text>
-          ))}
-          {numbered.map((l) => (
-            <g key={l.id}>
-              <circle cx={l.x} cy={l.y} r={14 * k} fill="#F3ECDD" />
-              <text x={l.x} y={l.y} textAnchor="middle" dominantBaseline="central" fontSize={16 * k} fontWeight={700} fill="#0B1A33">
-                {l.n}
-              </text>
-            </g>
-          ))}
+          <MapLabels labels={labels} numbered={numbered} k={k} />
         </svg>
       </div>
       <OffFrameNote items={offFrame} />
-      {numbered.length > 0 && (
-        <ol className="mt-4 shrink-0 columns-3 gap-6 text-[19px] leading-snug text-coal-muted">
-          {numbered.map((l) => (
-            <li key={l.id} className="break-inside-avoid">
-              <span className="font-mono text-ink-gold">{l.n}</span> {l.name}
-            </li>
-          ))}
-        </ol>
-      )}
+      <LabelLegend numbered={numbered} />
       <div className="mt-6 grid shrink-0 grid-cols-4 gap-4">
         <Fact value={formatNumber(data.districts.length)} label="kecamatan" />
         <Fact value={formatNumber(data.villageTotal)} label="desa/kelurahan" />
@@ -377,5 +317,56 @@ function DensityBody({ kode, data, geo }: { kode: string; data: Data; geo: Geos 
         />
       </div>
     </Column>
+  );
+}
+
+/** Kecamatan names on a map (viewBox units; `k` = viewBox units per card px). */
+export function MapLabels({ labels, numbered, k }: { labels: Label[]; numbered: Label[]; k: number }) {
+  return (
+    <>
+            {labels.map((l) => (
+              <text
+                key={l.id}
+                x={l.x}
+                y={l.y}
+                textAnchor="middle"
+                dominantBaseline="middle"
+                fontSize={l.size}
+                fontWeight={600}
+                fill="#F3ECDD"
+                stroke="#0B1A33"
+                strokeWidth={l.size * 0.18}
+                paintOrder="stroke"
+                style={{ fontFamily: "inherit" }}
+              >
+                {l.name}
+              </text>
+            ))}
+            {numbered.map((l) => (
+              <g key={l.id}>
+                <circle cx={l.x} cy={l.y} r={14 * k} fill="#F3ECDD" />
+                <text x={l.x} y={l.y} textAnchor="middle" dominantBaseline="central" fontSize={16 * k} fontWeight={700} fill="#0B1A33">
+                  {l.n}
+                </text>
+              </g>
+            ))}
+    </>
+  );
+}
+
+/** The legend for kecamatan too small for their name on the map. */
+export function LabelLegend({ numbered }: { numbered: Label[] }) {
+  return (
+    <>
+    {numbered.length > 0 && (
+      <ol className="mt-4 shrink-0 columns-3 gap-6 text-[19px] leading-snug text-coal-muted">
+        {numbered.map((l) => (
+          <li key={l.id} className="break-inside-avoid">
+            <span className="font-mono text-ink-gold">{l.n}</span> {l.name}
+          </li>
+        ))}
+      </ol>
+    )}
+    </>
   );
 }

@@ -1,25 +1,28 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { dukcapilApi, formatNumber, titleCase, type DukcapilRankRow } from "@/lib/api";
+import { dukcapilApi, formatNumber, titleCase, type DukcapilRank, type DukcapilRankRow } from "@/lib/api";
 import { loadPeta, petaAsset, type Peta } from "@/lib/peta";
-import { NO_DATA, cropBox, framing, project, type Geo } from "./geo";
+import { NO_DATA, RAMP, cropBox, framing, placeLabels, project, rampColor, type Geo } from "./geo";
 import { CornerTag, Footer, H, OffFrameNote, SafeZones, W } from "./ShareCard";
-import { BREAKS, CLASS_COLORS, Column, Fact, Title, bulanTahun, compact, kabInfo, pct1, type KabInfo } from "./WilayahCard";
+import { BREAKS, CLASS_COLORS, Column, Fact, LabelLegend, MapLabels, Title, bulanTahun, compact, kabInfo, pct1, type KabInfo } from "./WilayahCard";
 
 /**
  * Kabupaten profile cards that join Dukcapil population with per-desa raster
- * shares (frontend/public/peta/{kode}/desa.json, data/peta_wilayah/desa). Same
- * exporter contract as ShareCard.
+ * shares (frontend/public/peta/{kode}/desa.json, data/peta_wilayah/desa) or show
+ * a Dukcapil ratio per kecamatan. Same exporter contract as ShareCard.
  *
  *   /card/cahaya/{kab}                 registered residents per desa vs night lights
+ *   /card/kecamatan/{kab}?indicator=…  one Dukcapil ratio per kecamatan (default median_age)
  *
  * The desa join is by Kemendagri code; a join covering under 98% of the
  * registered population is refused rather than drawn.
  */
 
-export type ProfilTemplate = "cahaya";
-export const PROFIL_TEMPLATES: ProfilTemplate[] = ["cahaya"];
+export type ProfilTemplate = "cahaya" | "kecamatan";
+export const PROFIL_TEMPLATES: ProfilTemplate[] = ["cahaya", "kecamatan"];
+// Ratios that are meaningful per kecamatan (aggregates, never desa-level).
+export const KECAMATAN_INDICATORS = ["median_age", "pct_elderly", "pct_productive", "sex_ratio", "pct_sarjana", "dependency_ratio"];
 const MAJORITY = 50; // a desa is "mostly" lit at this share of its area
 
 type DesaStats = {
@@ -32,6 +35,7 @@ type Loaded = {
   villages: DukcapilRankRow[];
   desa: DesaStats | null;
   peta: Peta | null;
+  kec: DukcapilRank | null;
   districts: Geo;
   villagesGeo: Geo | null;
   outline: Geo;
@@ -39,10 +43,10 @@ type Loaded = {
 
 const json = (url: string) => fetch(url).then((r) => (r.ok ? r.json() : Promise.reject(new Error(`${url} -> ${r.status}`))));
 
-async function load(kode: string): Promise<Loaded> {
+async function load(template: ProfilTemplate, kode: string, indicator: string): Promise<Loaded> {
   const prov = kode.slice(0, 2);
-  const needsDesa = true;
-  const [pops, areas, summary, villages, desa, peta, districts, villagesGeo, outline] = await Promise.all([
+  const needsDesa = template !== "kecamatan";
+  const [pops, areas, summary, villages, desa, peta, kec, districts, villagesGeo, outline] = await Promise.all([
     dukcapilApi.rank({ indicator: "jumlah_penduduk", level: "regency", prov, limit: "200" }),
     dukcapilApi.rank({ indicator: "luas_big", level: "regency", prov, limit: "200" }),
     dukcapilApi.summary(),
@@ -51,17 +55,28 @@ async function load(kode: string): Promise<Loaded> {
       : Promise.resolve([] as DukcapilRankRow[]),
     needsDesa ? fetch(`/peta/${kode}/desa.json`).then((r) => (r.ok ? r.json() : null)) : Promise.resolve(null),
     needsDesa ? loadPeta(kode) : Promise.resolve(null),
+    template === "kecamatan"
+      ? dukcapilApi.rank({ indicator, level: "district", kab: kode, limit: "500" })
+      : Promise.resolve(null),
     json(`/dukcapil-districts-${prov}.geojson`),
     needsDesa ? json(`/dukcapil-villages-${prov}.geojson`) : Promise.resolve(null),
     json("/dukcapil-regencies.geojson"),
   ]);
-  return { kab: kabInfo(kode, pops.results, areas.results), period: summary.period ?? null, villages, desa, peta, districts, villagesGeo, outline };
+  return { kab: kabInfo(kode, pops.results, areas.results), period: summary.period ?? null, villages, desa, peta, kec, districts, villagesGeo, outline };
 }
 
 /** Guardrails: any problem = no card (and no figures). */
-function problems(kode: string, d: Loaded): string[] {
+function problems(template: ProfilTemplate, kode: string, d: Loaded, indicator: string): string[] {
   const out: string[] = [];
   if (kode.length !== 4) return ["kartu ini untuk kabupaten/kota (kode 4 digit)"];
+  if (template === "kecamatan") {
+    if (!KECAMATAN_INDICATORS.includes(indicator)) return [`indikator ${indicator} tidak untuk peta kecamatan`];
+    const kecs = d.districts.features.filter((f) => f.properties.domain_id.startsWith(kode)).length;
+    const vals = d.kec?.results ?? [];
+    if (vals.length < kecs) out.push(`hanya ${vals.length} dari ${kecs} kecamatan punya nilai`);
+    if (d.kec?.unit === "%" && vals.some((v) => v.value < 0 || v.value > 100)) out.push("persentase di luar 0–100");
+    return out;
+  }
   if (!d.desa) return [`desa.json belum dihitung untuk ${kode} (data/peta_wilayah: python -m desa --kode ${kode})`];
   if (!d.peta) return ["area Peta belum dihitung"];
   if (!d.peta.present.nightlights) out.push("lapisan cahaya malam tidak ada di perangkat ini");
@@ -71,21 +86,22 @@ function problems(kode: string, d: Loaded): string[] {
   return out;
 }
 
-export function ProfilCard({ kode, debug }: { template: ProfilTemplate; kode: string; query: URLSearchParams; debug: boolean }) {
+export function ProfilCard({ template, kode, query, debug }: { template: ProfilTemplate; kode: string; query: URLSearchParams; debug: boolean }) {
+  const indicator = query.get("indicator") ?? "median_age";
   const [data, setData] = useState<Loaded | null>(null);
   const [fatal, setFatal] = useState<string | null>(null);
   const [fontsReady, setFontsReady] = useState(false);
   const [loaded, setLoaded] = useState(0);
 
   useEffect(() => {
-    load(kode).then(setData).catch((e) => setFatal(String(e.message ?? e)));
+    load(template, kode, indicator).then(setData).catch((e) => setFatal(String(e.message ?? e)));
     document.fonts.ready.then(() => setFontsReady(true));
-  }, [kode]);
+  }, [template, kode, indicator]);
 
-  const issues = useMemo(() => (data ? problems(kode, data) : []), [kode, data]);
+  const issues = useMemo(() => (data ? problems(template, kode, data, indicator) : []), [template, kode, data, indicator]);
   const error = fatal ?? (issues.length ? issues.join("; ") : null);
   // Raster images the card waits for: the night-lights layer.
-  const images = !data?.peta || error ? 0 : 1;
+  const images = !data?.peta || error ? 0 : template === "cahaya" ? 1 : 0;
   const ready = !error && !!data && fontsReady && loaded >= images;
   const onImage = () => setLoaded((n) => n + 1);
   const onImageError = (src: string) => setFatal(`gambar gagal dimuat: ${src}`);
@@ -101,7 +117,11 @@ export function ProfilCard({ kode, debug }: { template: ProfilTemplate; kode: st
       {error ? (
         <div className="p-16 text-[28px] text-coal-text">Kartu tidak dibuat: {error}</div>
       ) : data ? (
-        <LightsBody kode={kode} d={data} onImage={onImage} onImageError={onImageError} />
+        template === "cahaya" ? (
+          <LightsBody kode={kode} d={data} onImage={onImage} onImageError={onImageError} />
+        ) : (
+          <KecamatanBody kode={kode} d={data} />
+        )
       ) : null}
       <CornerTag />
       {debug && <SafeZones />}
@@ -238,6 +258,55 @@ function LightsBody({ kode, d, onImage, onImageError }: { kode: string; d: Loade
           menunjukkan permukiman dan aktivitas, bukan jumlah penduduk.
         </p>
         <Footer source={`Penduduk: Ditjen Dukcapil Kemendagri, data ${bulanTahun(d.period)} (terdaftar); cahaya: World Bank Light Every Night, VIIRS ${year} (CC BY 4.0); desa: BIG 1:10.000; dihitung NusaStats`} />
+      </div>
+    </Column>
+  );
+}
+
+function KecamatanBody({ kode, d }: { kode: string; d: Loaded }) {
+  const kec = d.kec!;
+  const { paths, edge, labels, numbered, vw, vh, fit } = useMemo(() => {
+    const feats = d.districts.features.filter((f) => f.properties.domain_id.startsWith(kode));
+    const own = d.outline.features.filter((f) => f.properties.domain_id === kode);
+    const fit = framing(feats);
+    const { paths, vw, vh } = project(feats, fit.frame);
+    const names = new Map(kec.results.map((r) => [r.domain_id, titleCase(r.domain_name)]));
+    return { paths, vw, vh, fit, edge: project(own, fit.frame).paths, ...placeLabels(feats, fit.frame, vw, vh, names, 856, 760) };
+  }, [d, kode, kec]);
+  const byId = new Map(kec.results.map((r) => [r.domain_id, r]));
+  const vals = kec.results.map((r) => r.value);
+  const [min, max] = [Math.min(...vals), Math.max(...vals)];
+  const unit = kec.unit ? ` ${kec.unit}` : "";
+  const fmt = (v: number) => `${v.toLocaleString("id-ID", { maximumFractionDigits: 1 })}${unit === " %" ? "%" : unit}`;
+  const sorted = [...kec.results].sort((a, b) => b.value - a.value);
+  const k = 1 / Math.min(856 / vw, 760 / vh);
+
+  return (
+    <Column>
+      <Title eyebrow={`${kec.indicator.label_id} per kecamatan`} kab={d.kab} />
+      <div className="mt-6 flex min-h-0 flex-1 items-center justify-center">
+        <svg viewBox={`0 0 ${vw.toFixed(0)} ${vh.toFixed(0)}`} preserveAspectRatio="xMidYMid meet" className="h-full w-full">
+          {paths.map((p) => {
+            const r = byId.get(p.id);
+            return <path key={p.id} d={p.d} fill={r ? rampColor((r.value - min) / (max - min || 1)) : NO_DATA} stroke="rgba(11,26,51,0.6)" strokeWidth={0.8} vectorEffect="non-scaling-stroke" />;
+          })}
+          {edge.map((p) => <path key={`e-${p.id}`} d={p.d} fill="none" stroke="#F3ECDD" strokeWidth={2.4} vectorEffect="non-scaling-stroke" />)}
+          <MapLabels labels={labels} numbered={numbered} k={k} />
+        </svg>
+      </div>
+      <OffFrameNote items={fit.offFrame} />
+      <LabelLegend numbered={numbered} />
+      <div className="mt-4 shrink-0">
+        <div className="flex items-center gap-4 font-mono text-[20px] text-coal-muted">
+          <span className="whitespace-nowrap">{fmt(min)}</span>
+          <div className="h-3 min-w-0 flex-1 rounded-full" style={{ background: `linear-gradient(90deg, ${RAMP.join(", ")})` }} />
+          <span className="whitespace-nowrap">{fmt(max)}</span>
+        </div>
+        <div className="mt-5 grid grid-cols-2 gap-6">
+          <Fact value={fmt(sorted[0].value)} label={`tertinggi: ${titleCase(sorted[0].domain_name)}`} />
+          <Fact value={fmt(sorted[sorted.length - 1].value)} label={`terendah: ${titleCase(sorted[sorted.length - 1].domain_name)}`} />
+        </div>
+        <Footer source={`Diolah dari Ditjen Dukcapil Kemendagri, data ${bulanTahun(d.period)} (penduduk terdaftar, bukan sensus)`} />
       </div>
     </Column>
   );
