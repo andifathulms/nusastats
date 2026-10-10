@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { dukcapilApi, formatNumber, titleCase, type DukcapilRank, type DukcapilRankRow } from "@/lib/api";
 import { loadPeta, petaAsset, type Peta } from "@/lib/peta";
-import { NO_DATA, RAMP, cropBox, framing, placeLabels, project, rampColor, type Geo } from "./geo";
+import { NO_DATA, cropBox, framing, kindFor, placeLabels, project, scaleFor, type Geo } from "./geo";
 import { themeVar } from "./brand";
 import { CornerTag, Footer, H, OffFrameNote, SafeZones, W } from "./ShareCard";
 import { BREAKS, CLASS_COLORS, Column, Fact, LabelLegend, MapLabels, Title, bulanTahun, compact, kabInfo, pct1, type KabInfo } from "./WilayahCard";
@@ -226,7 +226,7 @@ function LightsBody({ kode, d, onImage, onImageError }: { kode: string; d: Loade
             <RasterMap layers={[]} view={view} outer={outer} onImage={onImage} onImageError={onImageError}>
               {villagePaths.map((p) => {
                 const r = byId.get(p.id);
-                return <path key={p.id} d={p.d} fill={r ? CLASS_COLORS[cls(r.pop / r.area_km2)] : NO_DATA} stroke="rgba(11,26,51,0.5)" strokeWidth={0.4} vectorEffect="non-scaling-stroke" />;
+                return <path key={p.id} d={p.d} fill={r ? CLASS_COLORS[cls(r.pop / r.area_km2)] : NO_DATA} stroke="rgba(15,20,22,0.55)" strokeWidth={0.4} vectorEffect="non-scaling-stroke" />;
               })}
               {outlineEls}
             </RasterMap>
@@ -348,6 +348,10 @@ function KecamatanBody({ kode, d }: { kode: string; d: Loaded }) {
   const byId = new Map(kec.results.map((r) => [r.domain_id, r]));
   const vals = kec.results.map((r) => r.value);
   const [min, max] = [Math.min(...vals), Math.max(...vals)];
+  // Ratios get the cool palette; sex ratio is diverging around 100, so a
+  // kabupaten where every kecamatan has more women reads as one side.
+  const { kind, mid } = kindFor(kec.unit, kec.indicator.field);
+  const scale = scaleFor(kind, min, max, mid);
   const unit = kec.unit ? ` ${kec.unit}` : "";
   const fmt = (v: number) => `${v.toLocaleString("id-ID", { maximumFractionDigits: 1 })}${unit === " %" ? "%" : unit}`;
   const sorted = [...kec.results].sort((a, b) => b.value - a.value);
@@ -360,7 +364,7 @@ function KecamatanBody({ kode, d }: { kode: string; d: Loaded }) {
         <svg viewBox={`0 0 ${vw.toFixed(0)} ${vh.toFixed(0)}`} preserveAspectRatio="xMidYMid meet" className="h-full w-full">
           {paths.map((p) => {
             const r = byId.get(p.id);
-            return <path key={p.id} d={p.d} fill={r ? rampColor((r.value - min) / (max - min || 1)) : NO_DATA} stroke="rgba(11,26,51,0.6)" strokeWidth={0.8} vectorEffect="non-scaling-stroke" />;
+            return <path key={p.id} d={p.d} fill={r ? scale.color(r.value) : NO_DATA} stroke="rgba(15,20,22,0.6)" strokeWidth={0.8} vectorEffect="non-scaling-stroke" />;
           })}
           {edge.map((p) => <path key={`e-${p.id}`} d={p.d} fill="none" stroke="#F3ECDD" strokeWidth={2.4} vectorEffect="non-scaling-stroke" />)}
           <MapLabels labels={labels} numbered={numbered} k={k} />
@@ -370,11 +374,13 @@ function KecamatanBody({ kode, d }: { kode: string; d: Loaded }) {
       <LabelLegend numbered={numbered} />
       <div className="mt-4 shrink-0">
         <div className="flex items-center gap-4 font-mono text-[26px] text-coal-muted">
-          <span className="whitespace-nowrap">{fmt(min)}</span>
-          <div className="h-3 min-w-0 flex-1 rounded-full" style={{ background: `linear-gradient(90deg, ${RAMP.join(", ")})` }} />
-          <span className="whitespace-nowrap">{fmt(max)}</span>
+          <span className="whitespace-nowrap">{fmt(scale.lo)}</span>
+          <div className="relative h-3 min-w-0 flex-1 rounded-full" style={{ background: `linear-gradient(90deg, ${scale.gradient})` }}>
+            {scale.mid !== undefined && <span className="absolute left-1/2 top-5 -translate-x-1/2 whitespace-nowrap">{fmt(scale.mid)}</span>}
+          </div>
+          <span className="whitespace-nowrap">{fmt(scale.hi)}</span>
         </div>
-        <div className="mt-5 grid grid-cols-2 gap-6">
+        <div className={`${scale.mid !== undefined ? "mt-12" : "mt-5"} grid grid-cols-2 gap-6`}>
           <Fact value={fmt(sorted[0].value)} label={`tertinggi: ${titleCase(sorted[0].domain_name)}`} />
           <Fact value={fmt(sorted[sorted.length - 1].value)} label={`terendah: ${titleCase(sorted[sorted.length - 1].domain_name)}`} />
         </div>

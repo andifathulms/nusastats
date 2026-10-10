@@ -17,10 +17,45 @@ export function lerpHex(a: string, b: string, t: number): string {
   return `#${pa.map((v, i) => Math.round(v + (pb[i] - v) * t).toString(16).padStart(2, "0")).join("")}`;
 }
 
-export function rampColor(t: number): string {
-  const x = Math.max(0, Math.min(1, t)) * (RAMP.length - 1);
-  const i = Math.min(RAMP.length - 2, Math.floor(x));
-  return lerpHex(RAMP[i], RAMP[i + 1], x - i);
+export function rampColor(t: number, colors: string[] = RAMP): string {
+  const x = Math.max(0, Math.min(1, t)) * (colors.length - 1);
+  const i = Math.min(colors.length - 2, Math.floor(x));
+  return lerpHex(colors[i], colors[i + 1], x - i);
+}
+
+// Nusantara Mapper card palettes, one per kind of number (proposal "Arah Visual
+// Nusantara Mapper"), all perceptually ordered and colour-blind safe on the dark
+// card background. The first stop is lighter than the background on purpose, so
+// the lowest class never reads as "no data".
+export const PALETTES = {
+  /** Counts and densities: magma-like, dark -> bright = few -> many. */
+  amount: ["#3B2559", "#6D2B6F", "#A83E6B", "#E2604F", "#F69F4E", "#FBE29A"],
+  /** Ratios and shares: viridis-like, so they never read as a population map. */
+  ratio: ["#3E4A89", "#31688E", "#26828E", "#1F9E89", "#6CCE59", "#E6E419"],
+  /** Numbers with a meaningful middle (sex ratio 100): teal below, coral above. */
+  diverging: ["#1F8A8A", "#6FC2B8", "#E8E4DA", "#F2A27A", "#D9573B"],
+};
+
+export type Scale = { color: (v: number) => string; gradient: string; mid?: number; lo: number; hi: number };
+
+/** A colour scale for values in [lo, hi]. `mid` makes it diverging and
+ * symmetric around that value (e.g. 100 for L per 100 P), so which side a
+ * region is on is visible without the legend. */
+export function scaleFor(kind: keyof typeof PALETTES, lo: number, hi: number, mid?: number): Scale {
+  const colors = PALETTES[kind];
+  if (mid !== undefined) {
+    const dev = Math.max(Math.abs(lo - mid), Math.abs(hi - mid)) || 1;
+    return { color: (v) => rampColor(0.5 + (v - mid) / (2 * dev), colors), gradient: colors.join(", "), mid, lo: mid - dev, hi: mid + dev };
+  }
+  return { color: (v) => rampColor((v - lo) / (hi - lo || 1), colors), gradient: colors.join(", "), lo, hi };
+}
+
+/** Which palette a metric gets, from its unit or key. */
+export function kindFor(unit: string, key = ""): { kind: keyof typeof PALETTES; mid?: number } {
+  const u = (unit || "").toLowerCase();
+  if (key === "sex_ratio" || u.includes("per 100 p")) return { kind: "diverging", mid: 100 };
+  if (/^(jiwa|orang|kk|rp)\b|jiwa\/km|^rp/.test(u)) return { kind: "amount" };
+  return { kind: "ratio" };
 }
 
 export function polygons(f: Feature): number[][][][] {

@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { carouselApi, type CarouselMapValue, type CarouselPackResult } from "@/lib/api";
 import { loadPeta, petaAsset, type Peta } from "@/lib/peta";
-import { NO_DATA, RAMP, cropBox, frameOf, framing, project, rampColor, type Feature, type Geo } from "./geo";
+import { NO_DATA, cropBox, frameOf, framing, kindFor, project, scaleFor, type Feature, type Geo } from "./geo";
 import { themeVar } from "./brand";
 import { CONTENT_W, CornerTag, Footer, H, OffFrameNote, PAD, SAFE, SafeZones, W } from "./ShareCard";
 
@@ -28,7 +28,7 @@ type Bg = "terrain" | "landcover" | "none";
 // A focused region without its Peta layer: one fixed sea fill. Its value is in
 // the big number, and a ramp colour without a legend would only hide the lowest
 // values against the coal surface.
-const SILHOUETTE = "#3F73CC";
+const SILHOUETTE = "#41545A"; // neutral slate: the value is in the big number, not the fill
 // The TikTok account these carousels are posted on.
 const BRAND = "Nusantara Mapper";
 const TOP_N = 10;
@@ -203,7 +203,8 @@ function OverviewBody({ data, geo, scope, asc }: { data: CarouselPackResult; geo
     const feats = selectFeatures(geo, map.level, scope, null);
     return project(feats, frameOf(feats));
   }, [geo, map.level, scope]);
-  const span = map.max - map.min || 1;
+  const { kind, mid } = kindFor(pack.unit);
+  const scale = scaleFor(kind, map.min, map.max, mid);
   // The three the deck counts down to: highest, or lowest for a `terendah` deck (order=asc).
   const top3 = [...map.values].sort((a, b) => (asc ? a.rank_asc - b.rank_asc : a.rank - b.rank) || a.code.localeCompare(b.code)).slice(0, 3);
   const lowest = map.values.reduce((a, b) => (b.value < a.value ? b : a));
@@ -221,8 +222,8 @@ function OverviewBody({ data, geo, scope, asc }: { data: CarouselPackResult; geo
               <path
                 key={p.id}
                 d={p.d}
-                fill={v ? rampColor((v.value - map.min) / span) : NO_DATA}
-                stroke="#0E1626"
+                fill={v ? scale.color(v.value) : NO_DATA}
+                stroke="#0F1416"
                 strokeWidth={0.6}
                 vectorEffect="non-scaling-stroke"
               />
@@ -233,7 +234,7 @@ function OverviewBody({ data, geo, scope, asc }: { data: CarouselPackResult; geo
       <div className="mt-6 shrink-0">
         <div className="flex items-center gap-4 font-mono text-[26px] text-coal-muted">
           <span className="whitespace-nowrap">{lowest.display}</span>
-          <div className="h-3 min-w-0 flex-1 rounded-full" style={{ background: `linear-gradient(90deg, ${RAMP.join(", ")})` }} />
+          <div className="h-3 min-w-0 flex-1 rounded-full" style={{ background: `linear-gradient(90deg, ${scale.gradient})` }} />
           <span className="whitespace-nowrap">{highest.display}</span>
         </div>
         <div className="mt-6 font-mono text-[26px] uppercase tracking-[0.12em] text-coal-muted">{asc ? "Terendah" : "Tertinggi"}</div>
@@ -398,7 +399,7 @@ function LayerLegend({ peta, bg }: { peta: Peta; bg: Bg }) {
 }
 
 /** The tally after the countdown: the top (or bottom, order=asc) 10 as bars from
- * zero. The regions the deck counted down to are drawn in cream, the rest in sea. */
+ * zero. The regions the deck counted down to are drawn in cream, the rest in slate. */
 function TopBody({ data, asc }: { data: CarouselPackResult; asc: boolean }) {
   const { map, pack } = data;
   // Regions without a map code (map.unmatched) are left out here as on the maps;
@@ -418,7 +419,7 @@ function TopBody({ data, asc }: { data: CarouselPackResult; asc: boolean }) {
   return (
     <Column>
       <Header eyebrow={map.kicker} title={`${rows.length} ${word}`} sub={`${map.title} · ${scopeLabel(data)} · ${map.period_label}`} />
-      <ol className="mt-10 flex min-h-0 flex-1 flex-col justify-center gap-5">
+      <ol className="mt-6 flex min-h-0 flex-1 flex-col justify-start gap-3">
         {rows.map((r) => {
           const place = asc ? r.rank_asc : r.rank;
           return (
@@ -428,10 +429,10 @@ function TopBody({ data, asc }: { data: CarouselPackResult; asc: boolean }) {
                 <span className="min-w-0 flex-1 truncate text-[28px] font-semibold">{r.label}</span>
                 <span className="whitespace-nowrap text-[28px] font-extrabold tabular-nums">{r.display}</span>
               </div>
-              <div className="ml-[60px] mt-2 h-4 rounded-full bg-white/5">
+              <div className="ml-[60px] mt-1 h-3 rounded-full bg-white/5">
                 <div
-                  className="h-4 rounded-full"
-                  style={{ width: `${Math.max(1, (Math.abs(r.value) / max) * 100)}%`, background: featured.has(r.code) ? "#F3ECDD" : "#4F82DC" }}
+                  className="h-3 rounded-full"
+                  style={{ width: `${Math.max(1, (Math.abs(r.value) / max) * 100)}%`, background: featured.has(r.code) ? "#F1EDE3" : "#5B6E74" }}
                 />
               </div>
             </li>

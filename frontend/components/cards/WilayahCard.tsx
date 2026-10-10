@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { dukcapilApi, formatNumber, regionLabel, titleCase, type DukcapilRankRow } from "@/lib/api";
-import { NO_DATA, RAMP, framing, lerpHex, neighbourColours, placeLabels, project, type Geo, type Label, type OffFrame } from "./geo";
+import { NO_DATA, PALETTES, framing, neighbourColours, placeLabels, project, type Geo, type Label, type OffFrame } from "./geo";
 import { themeVar } from "./brand";
 import { CONTENT_W, CornerTag, Footer, H, OffFrameNote, PAD, SAFE, SafeZones, W } from "./ShareCard";
 
@@ -25,11 +25,8 @@ export const WILAYAH_TEMPLATES: WilayahTemplate[] = ["wilayah", "kepadatan"];
 const ADMIN_TONES = ["#22417A", "#2E5A8F", "#3B4F6B", "#1F5C6E", "#4A4A6A"];
 // Density classes in jiwa/km². Fixed, log-spaced, so 6409 and 3273 read on one scale.
 export const BREAKS = [10, 50, 250, 1000, 5000];
-export const CLASS_COLORS = Array.from({ length: BREAKS.length + 1 }, (_, i) => {
-  const x = (i / BREAKS.length) * (RAMP.length - 1);
-  const j = Math.min(RAMP.length - 2, Math.floor(x));
-  return lerpHex(RAMP[j], RAMP[j + 1], x - j);
-});
+// Fixed classes take the six stops of the "amount" palette as they are.
+export const CLASS_COLORS = PALETTES.amount;
 // The map box on the card (px), to size labels in viewBox units.
 const MAP_W = CONTENT_W;
 const MAP_H = 820;
@@ -285,7 +282,7 @@ function DensityBody({ kode, data, geo }: { kode: string; data: Data; geo: Geos 
         <svg viewBox={`0 0 ${vw.toFixed(0)} ${vh.toFixed(0)}`} preserveAspectRatio="xMidYMid meet" className="h-full w-full">
           {paths.map((p) => {
             const v = byId.get(p.id);
-            return <path key={p.id} d={p.d} fill={v ? CLASS_COLORS[cls(v.value)] : NO_DATA} stroke="rgba(11,26,51,0.5)" strokeWidth={0.4} vectorEffect="non-scaling-stroke" />;
+            return <path key={p.id} d={p.d} fill={v ? CLASS_COLORS[cls(v.value)] : NO_DATA} stroke="rgba(15,20,22,0.55)" strokeWidth={0.4} vectorEffect="non-scaling-stroke" />;
           })}
           {kec.map((p) => (
             <path key={`k-${p.id}`} d={p.d} fill="none" stroke="rgba(243,236,221,0.3)" strokeWidth={0.8} vectorEffect="non-scaling-stroke" />
