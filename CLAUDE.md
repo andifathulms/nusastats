@@ -49,8 +49,9 @@ Docker.
 5. **Idempotent ingest.** Re-running any crawl or ingest updates rows in place
    (upsert on natural keys) and never duplicates them.
 6. **Explicit, never silent partial work.** Sampling, skipped regions and
-   failed fetches are logged and reported (e.g. provinsi 96 has no BIG
-   archive, so it is logged as skipped). Absence is recorded as absence.
+   failed fetches are logged and reported (e.g. a BIG kecamatan with no
+   Kemendagri name is logged as `skipped_no_name`, never named by guess).
+   Absence is recorded as absence.
 7. **Be polite to upstream services.** Rate-limit, back off exponentially on
    errors, and stop hard after N consecutive failures. Don't hammer an endpoint
    that keeps failing.

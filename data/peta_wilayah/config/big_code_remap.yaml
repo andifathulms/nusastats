@@ -1,0 +1,24 @@
+# BIG desa archive code remap (read by common/outlines.py).
+#
+# BIG's province-92 archive (big-villages-92.geojson) still files the six
+# regencies that moved from Papua Barat (92) to Papua Barat Daya (96) in 2022
+# under their pre-2022 codes. Each has the same footprint as its new code, and
+# below the regency the codes carry over unchanged: of the 1,013 desa under these
+# six old codes, 1,012 have a Dukcapil desa with the same suffix under the new
+# regency code and an identical name, and every Dukcapil 96 desa is covered
+# (checked 2026-10-10; see docs/peta-wilayah-crosswalk.md). The one extra BIG desa,
+# 9271081003 Klasaman, has no Dukcapil row; it stays in its BIG kecamatan
+# (927108 -> 967108 Klaurung).
+#
+# Effect: provinsi 96 is built from these features with the regency prefix
+# swapped (old[:4] -> new[:4], rest of the code kept), and provinsi 92 is built
+# without them, so no stale 92xx outlines are produced.
+96:
+  source_prov: "92"
+  regency:
+    "9201": "9601"  # Sorong
+    "9204": "9602"  # Sorong Selatan
+    "9205": "9603"  # Raja Ampat
+    "9209": "9604"  # Tambrauw
+    "9210": "9605"  # Maybrat
+    "9271": "9671"  # Kota Sorong

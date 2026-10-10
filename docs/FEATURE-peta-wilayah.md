@@ -102,7 +102,7 @@ frontend/public/peta/{kode}/
 
 ### 4.3 Processing per area
 
-0. **[Decided] Full-detail outlines.** The committed `frontend/public/dukcapil-*.geojson` outlines are simplified for display, so they must not be used for stats. The `outlines` step dissolves a province's full-res BIG desa polygons into full-detail kecamatan, kabupaten and provinsi outlines, cached in `cache/outlines/{prov}/`. It runs automatically when missing. Provinsi **96** (Papua Barat Daya) has no BIG archive, so it is **logged as skipped** (`cache/outlines/skipped.json` and stdout). It never falls back to the simplified display file.
+0. **[Decided] Full-detail outlines.** The committed `frontend/public/dukcapil-*.geojson` outlines are simplified for display, so they must not be used for stats. The `outlines` step dissolves a province's full-res BIG desa polygons into full-detail kecamatan, kabupaten and provinsi outlines, cached in `cache/outlines/{prov}/`. It runs automatically when missing. Provinsi **96** (Papua Barat Daya) has no BIG archive of its own; its desa are in the province-92 archive under pre-2022 regency codes and are mapped explicitly by `config/big_code_remap.yaml` (see `docs/peta-wilayah-crosswalk.md`). Any other province without an archive is **logged as skipped** (`cache/outlines/skipped.json` and stdout). It never falls back to the simplified display file.
 1. Load the area polygon from the full-detail outlines by kode wilayah. Handle multipolygons (islands).
 2. Find intersecting tiles from the bounding box, download missing ones, build a VRT/mosaic.
 3. Clip to the polygon. Pixels outside are nodata.

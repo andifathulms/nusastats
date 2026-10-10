@@ -41,13 +41,19 @@ Consequences:
 
 - **They are not crosswalk failures.** The 96xx regencies are matched; the 92xx features are duplicates under
   obsolete codes.
-- **Provinsi 96 is not really missing from BIG.** Its full-detail desa are in the province-92 file under the old codes.
-  Today the pipeline skips 96 as "no BIG archive". It could instead derive 96 from these features with an explicit
-  old→new remap table. Desa-level codes would need the same remap, and that needs checking first. This is
-  **deferred** until Papua is batched, and the skip stays logged until then.
-- **Batching provinsi 92 will produce outputs for these six stale codes** unless they are excluded. The batch runner
-  skips any outline code without a Kemendagri name, and logs it. The six stale codes have no name, so they are
-  skipped.
+- **Provinsi 96 is built from these features (2026-10-10).** Its full-detail desa are in the province-92 file under
+  the old codes. `config/big_code_remap.yaml` maps them explicitly: provinsi 96 takes the six old regencies with the
+  regency prefix swapped (old[:4] → new[:4], the rest of the code kept), and provinsi 92 is built without them, so
+  batching 92 produces no stale 92xx outlines. The outline `meta.json` of both provinces records the remap file's
+  sha256 and the counts (1,013 desa recoded into 96 and left out of 92).
+- **Desa-level check behind the remap.** Of the 1,013 BIG desa under the six old codes, 1,012 have a Dukcapil desa
+  with the same suffix under the new regency code and an identical name, and every Dukcapil 96 desa is covered. The
+  one extra BIG desa, 9271081003 Klasaman, has no Dukcapil row (Dukcapil numbers that kecamatan 1001, 1002, 1004);
+  it stays inside its BIG kecamatan, 927108 → 967108 Klaurung. Outputs stop at kecamatan level, so no desa name is
+  needed.
+- **Kecamatan names.** Dukcapil's district layer lists 108 of the 132 kecamatan in 96; the other 24
+  (960139–960155, 960220–960226 except 960223, 960325) are named from Dukcapil village records
+  (`kecamatan_names.json`), as elsewhere.
 - **Display side effect:** `dukcapil-regencies.geojson` draws these six areas twice, once under each code.
   This change leaves it alone.
 
