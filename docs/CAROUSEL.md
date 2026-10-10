@@ -72,7 +72,16 @@ metric name too long for the headline, and regions without a Peta layer (those c
 region's outline). Every number on a slide and a card is the pack's value, formatted once by the
 backend (`fmt_value`). Edit only the cover hook.
 
-## Kabupaten profile cards (`npm run card`)
+## Kabupaten profile cards
+
+In the app: `/carousel` → **Profil kabupaten** (`/carousel?mode=profil&kode=7311`). Pick a
+kabupaten to preview its cards, then **Unduh semua (ZIP)** or one **PNG**. Cards whose data isn't
+there yet say why instead of showing. The PNGs come from the `cards` service in docker-compose
+(`frontend/scripts/card/serve.mjs`, the same Playwright as `npm run card`; `GET :3012/zip?kode=7311`,
+`/png?template=terrain&kode=7311`). If it isn't running, the page says so:
+`docker compose up -d cards`.
+
+From the terminal (`npm run card`):
 
 Besides rankings, one kabupaten can be posted as a set of maps:
 

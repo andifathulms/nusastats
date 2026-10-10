@@ -13,11 +13,14 @@ import {
 } from "@/lib/api";
 import { Badge, ErrorState, PageHeader, Panel, SectionTitle } from "@/components/ui";
 import { routes } from "@/lib/routes";
+import { ProfilTool } from "@/components/carousel/ProfilTool";
 
-// /carousel — build a Peta Angka carousel from one ranking: the deck text for
-// Carousel Press, the map cards that go between its slides, and the command
-// that saves everything as PNGs (docs/CAROUSEL.md). The form state lives in the
-// URL, so the "Buat carousel" links elsewhere can prefill it.
+// /carousel — two ways to make a TikTok carousel (docs/CAROUSEL.md):
+//   Peringkat (default): one ranking -> deck text for Carousel Press, the map
+//     cards that go between its slides, and the command that saves them.
+//   Profil kabupaten (?mode=profil&kode=7311): one kabupaten's map cards,
+//     previewed and downloadable as PNG/ZIP from the `cards` service.
+// The state lives in the URL, so links elsewhere can prefill it.
 
 type Source = "bps" | "dukcapil" | "djpk";
 type Form = {
@@ -94,8 +97,51 @@ function download(name: string, text: string, type = "text/plain") {
 export default function CarouselPage() {
   return (
     <Suspense>
-      <CarouselTool />
+      <Modes />
     </Suspense>
+  );
+}
+
+function Modes() {
+  const params = useSearchParams();
+  const router = useRouter();
+  const mode = params.get("mode") === "profil" ? "profil" : "peringkat";
+  const go = (q: Record<string, string>) => router.replace(`${routes.carousel}?${new URLSearchParams(q)}`, { scroll: false });
+  const tab = (id: "peringkat" | "profil", label: string) => (
+    <button
+      type="button"
+      onClick={() => go(id === "profil" ? { mode: "profil" } : {})}
+      className={`rounded-full px-4 py-1.5 text-sm font-semibold ${
+        mode === id ? "bg-laut-950 text-kertas-200 dark:bg-ink-accent dark:text-ink-onAccent" : "text-ink-muted hover:text-ink-text"
+      }`}
+    >
+      {label}
+    </button>
+  );
+
+  return (
+    <div className="space-y-8">
+      <PageHeader eyebrow="Alat · TikTok" title="Buat carousel">
+        {mode === "profil"
+          ? "Satu kabupaten jadi rangkaian kartu peta: wilayah, kepadatan, medan, dataran rendah, tutupan lahan, cahaya malam dan lainnya, siap diunggah."
+          : "Satu peringkat jadi carousel TikTok: teks deck untuk Carousel Press, kartu peta di antara slidenya, dan perintah untuk menyimpan semuanya sebagai PNG. Angka diambil dari satu sumber saja, apa adanya."}
+      </PageHeader>
+      <div className="inline-flex gap-1 rounded-full border border-ink-border p-1">
+        {tab("peringkat", "Peringkat")}
+        {tab("profil", "Profil kabupaten")}
+      </div>
+      {mode === "profil" ? (
+        <ProfilTool
+          kode={params.get("kode") ?? ""}
+          indicator={params.get("indicator") ?? "median_age"}
+          onChange={(patch) =>
+            go({ mode: "profil", kode: patch.kode ?? params.get("kode") ?? "", indicator: patch.indicator ?? params.get("indicator") ?? "median_age" })
+          }
+        />
+      ) : (
+        <CarouselTool />
+      )}
+    </div>
   );
 }
 
@@ -143,10 +189,6 @@ function CarouselTool() {
 
   return (
     <div className="space-y-8">
-      <PageHeader eyebrow="Alat · TikTok" title="Buat carousel">
-        Satu peringkat jadi carousel TikTok: teks deck untuk Carousel Press, kartu peta di antara slidenya,
-        dan perintah untuk menyimpan semuanya sebagai PNG. Angka diambil dari satu sumber saja, apa adanya.
-      </PageHeader>
 
       <Panel>
         <form
