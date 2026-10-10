@@ -27,6 +27,19 @@ export async function openPage() {
   return { browser, page };
 }
 
+/** The kabupaten profile's TikTok text: { title, description } or { error }. */
+export async function caption(page, url) {
+  try {
+    await page.goto(url, { timeout: 120_000 });
+    await page.waitForSelector("#card[data-card-ready], #card[data-card-error]", { timeout: 90_000 });
+    const error = await page.getAttribute("#card", "data-card-error");
+    if (error) return { error };
+    return { title: await page.textContent("#caption-title"), description: await page.textContent("#caption-description") };
+  } catch (e) {
+    return { error: e.message.split("\n")[0] };
+  }
+}
+
 /** { png, note } for a ready card, or { error } (a guardrail or a load failure). */
 export async function shoot(page, url) {
   try {

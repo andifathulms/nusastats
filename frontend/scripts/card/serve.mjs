@@ -5,13 +5,14 @@
 //   GET /png?template=terrain&kode=7311[&indicator=pct_elderly]  -> image/png, or 422 {error}
 //   GET /zip?kode=7311[&indicator=…][&templates=wilayah,terrain] -> {kode}-profil.zip
 //
-// The zip holds {NN}_{template}.png in posting order plus TIDAK-DIBUAT.txt
-// listing any card that reported data-card-error, with the reason.
+// The zip holds {NN}_{template}.png in posting order, 00_judul-dan-deskripsi.txt
+// (the TikTok title and description for the slides it holds), and
+// TIDAK-DIBUAT.txt listing any card that reported data-card-error, with the reason.
 // In Docker the card pages are loaded from CARD_BASE (http://frontend:3000) and
 // their API calls to API_PUBLIC (http://localhost:8010, the URL baked into the
 // frontend) are forwarded to API_INTERNAL (http://web:8000).
 import http from "node:http";
-import { PROFIL, TEMPLATES, cardUrl, openPage, shoot } from "./shoot.mjs";
+import { PROFIL, TEMPLATES, caption, cardUrl, openPage, shoot } from "./shoot.mjs";
 import { zip } from "./zip.mjs";
 
 const PORT = Number(process.env.PORT || 3012);
@@ -64,10 +65,20 @@ http
       const wanted = (u.searchParams.get("templates") ?? PROFIL.join(",")).split(",").filter((t) => PROFIL.includes(t));
       const files = [];
       const skipped = [];
+      const made = [];
       for (const t of PROFIL.filter((x) => wanted.includes(x))) {
         const r = await serial(() => shoot(page, cardUrl(BASE, t, kode, { indicator })));
         if (r.error) skipped.push(`${t}: ${r.error}`);
-        else files.push({ name: `${String(files.length + 1).padStart(2, "0")}_${t}.png`, data: r.png });
+        else {
+          made.push(t);
+          files.push({ name: `${String(files.length + 1).padStart(2, "0")}_${t}.png`, data: r.png });
+        }
+      }
+      if (made.length) {
+        const q = new URLSearchParams({ cards: made.join(","), ...(indicator ? { indicator } : {}) });
+        const c = await serial(() => caption(page, `${BASE}/card/caption/${kode}?${q}`));
+        if (c.error) skipped.push(`judul & deskripsi TikTok: ${c.error}`);
+        else files.unshift({ name: "00_judul-dan-deskripsi.txt", data: Buffer.from(`JUDUL\n${c.title}\n\nDESKRIPSI\n${c.description}\n`, "utf8") });
       }
       if (skipped.length) files.push({ name: "TIDAK-DIBUAT.txt", data: Buffer.from(skipped.join("\n") + "\n", "utf8") });
       if (!files.length) return json(res, 422, { error: "tidak ada kartu yang bisa dibuat" });

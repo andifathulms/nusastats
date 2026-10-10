@@ -3,6 +3,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { dukcapilApi, regionLabel, type DukcapilRegionRow } from "@/lib/api";
 import { ErrorState, Panel, SectionTitle } from "@/components/ui";
+import { profilCaption, type ProfilCaption } from "@/components/cards/caption";
+import { TikTokText } from "./TikTokText";
 
 // "Profil kabupaten" mode of /carousel: pick a kabupaten, preview its profile
 // cards (the real /card routes, scaled down) and download them. PNGs come from
@@ -63,6 +65,8 @@ export function ProfilTool({
   const [busy, setBusy] = useState<{ started: number; total: number } | null>(null);
   const [now, setNow] = useState(Date.now());
   const [error, setError] = useState<string | null>(null);
+  const [caption, setCaption] = useState<ProfilCaption | null>(null);
+  const [captionError, setCaptionError] = useState<string | null>(null);
 
   useEffect(() => {
     dukcapilApi.regions({ level: "regency" }).then(setRegencies).catch(() => setRegencies([]));
@@ -80,6 +84,20 @@ export function ProfilTool({
       setFiles(Object.fromEntries(names.map((f, i) => [f, ok[i]])))
     );
   }, [kode]);
+
+  // TikTok title and description, from the same facts and guardrails as the cards.
+  useEffect(() => {
+    setCaption(null);
+    setCaptionError(null);
+    if (!kode) return;
+    let live = true;
+    profilCaption(kode, indicator)
+      .then((c) => live && setCaption(c))
+      .catch((e) => live && setCaptionError(String(e.message ?? e)));
+    return () => {
+      live = false;
+    };
+  }, [kode, indicator]);
 
   useEffect(() => {
     if (!busy) return;
@@ -243,6 +261,17 @@ export function ProfilTool({
           </div>
         </Panel>
       )}
+
+      {kode &&
+        (caption ? (
+          <TikTokText title={caption.title} description={caption.description} hint="satu baris per slide; juga ada di ZIP" />
+        ) : captionError ? (
+          <ErrorState message={`Judul & deskripsi tidak dibuat: ${captionError}`} />
+        ) : (
+          <Panel>
+            <p className="text-sm text-ink-muted">Menyusun judul & deskripsi TikTok…</p>
+          </Panel>
+        ))}
     </div>
   );
 }

@@ -15,7 +15,8 @@ scripts/card/carousel.mjs             all of the above into exports/carousels/{i
 
 `/carousel` builds the same bundle in the browser: pick a source, indicator, level, period and
 province. It previews the map cards, shows the deck text (copy, or download `deck.txt`,
-`pack.json`, `provenance.json`) and gives the exact `npm run carousel` command for the PNGs. The
+`pack.json`, `provenance.json`), a ready-to-paste TikTok title (≤ 90 characters) and description,
+and the exact `npm run carousel` command for the PNGs. The
 form lives in the URL. "Buat carousel" links on BPS variable pages, `/dukcapil` and `/keuangan`
 prefill it.
 
@@ -31,7 +32,8 @@ npm run carousel -- --source dukcapil --metric sex_ratio --level kabupaten --pro
 npm run carousel -- --source djpk --metric rasio_kemandirian --level kabupaten --period 2024
 ```
 
-This writes `pack.json`, `provenance.json`, `map.json`, `deck.txt`, `README.md` and the map PNGs
+This writes `pack.json`, `provenance.json`, `map.json`, `deck.txt`, `README.md`, `tiktok.txt` (title
+and description to paste when posting) and the map PNGs
 to `exports/carousels/{id}/` (gitignored), plus `carousel-press.url`, which opens the deck in Carousel
 Press (`#deck=<base64url>`; the base URL comes from `CAROUSEL_PRESS_URL`). Then open it, or paste
 `deck.txt` there, unzip its
@@ -80,6 +82,13 @@ there yet say why instead of showing. The PNGs come from the `cards` service in 
 (`frontend/scripts/card/serve.mjs`, the same Playwright as `npm run card`; `GET :3012/zip?kode=7311`,
 `/png?template=terrain&kode=7311`). If it isn't running, the page says so:
 `docker compose up -d cards`.
+
+Below the cards, **Judul & deskripsi TikTok** gives a title (the hook, ≤ 90 characters) and a
+description with one line per slide, each quoting the numbers that slide shows, then the
+question, the sources and hashtags. The ZIP holds the same text as `00_judul-dan-deskripsi.txt`,
+numbered for the slides actually in it. The numbers come from `components/cards/facts.ts`, the
+same functions the cards call, and a slide that fails its guardrails gets no line
+(`components/cards/caption.ts`; as text: `/card/caption/{kode}?cards=…`).
 
 From the terminal (`npm run card`):
 
