@@ -1,0 +1,142 @@
+{
+  "kode": "9301",
+  "name": "MERAUKE",
+  "level": "kabupaten",
+  "provinsi": {
+    "kode": "93",
+    "name": "PAPUA SELATAN"
+  },
+  "year": 2021,
+  "area_km2": 45013.3,
+  "dominant": {
+    "code": 10,
+    "label": "Tutupan pohon",
+    "share_pct": 67.7
+  },
+  "classes": [
+    {
+      "code": 10,
+      "name": "Tree cover",
+      "label": "Tutupan pohon",
+      "color": "#006400",
+      "pixels": 304749911,
+      "share_pct": 67.7,
+      "area_km2": 30474.96
+    },
+    {
+      "code": 90,
+      "name": "Herbaceous wetland",
+      "label": "Lahan basah",
+      "color": "#0096a0",
+      "pixels": 68681986,
+      "share_pct": 15.26,
+      "area_km2": 6868.19
+    },
+    {
+      "code": 30,
+      "name": "Grassland",
+      "label": "Padang rumput",
+      "color": "#ffff4c",
+      "pixels": 31068574,
+      "share_pct": 6.9,
+      "area_km2": 3106.85
+    },
+    {
+      "code": 95,
+      "name": "Mangroves",
+      "label": "Mangrove",
+      "color": "#00cf75",
+      "pixels": 28438860,
+      "share_pct": 6.32,
+      "area_km2": 2843.88
+    },
+    {
+      "code": 20,
+      "name": "Shrubland",
+      "label": "Semak belukar",
+      "color": "#ffbb22",
+      "pixels": 10015272,
+      "share_pct": 2.22,
+      "area_km2": 1001.53
+    },
+    {
+      "code": 80,
+      "name": "Permanent water bodies",
+      "label": "Badan air",
+      "color": "#0064c8",
+      "pixels": 4759808,
+      "share_pct": 1.06,
+      "area_km2": 475.98
+    },
+    {
+      "code": 40,
+      "name": "Cropland",
+      "label": "Lahan pertanian",
+      "color": "#f096ff",
+      "pixels": 1921174,
+      "share_pct": 0.43,
+      "area_km2": 192.12
+    },
+    {
+      "code": 60,
+      "name": "Bare / sparse vegetation",
+      "label": "Lahan terbuka",
+      "color": "#b4b4b4",
+      "pixels": 296571,
+      "share_pct": 0.07,
+      "area_km2": 29.66
+    },
+    {
+      "code": 50,
+      "name": "Built-up",
+      "label": "Lahan terbangun",
+      "color": "#fa0000",
+      "pixels": 201173,
+      "share_pct": 0.04,
+      "area_km2": 20.12
+    }
+  ],
+  "checks": {
+    "share_sum_pct": 100.0,
+    "area_geodesic_km2": 45013.29,
+    "area_utm_polygon_km2": 45013.39,
+    "area_utm_pixels_km2": 45013.33,
+    "utm_vs_geodesic_pct": 0.0,
+    "pixels_vs_utm_pct": -0.0,
+    "nodata_pct": 0.0,
+    "polygon_pixels_utm": 450133329,
+    "render_palette_colours": 9,
+    "render_palette_exact": true
+  },
+  "metadata": {
+    "dataset": "ESA WorldCover 10 m 2021 v200",
+    "version": "v200",
+    "year": 2021,
+    "license": "CC BY 4.0 (Creative Commons Attribution 4.0 International)",
+    "attribution": "© ESA WorldCover project 2021 / Contains modified Copernicus Sentinel data (2021) processed by ESA WorldCover consortium",
+    "product_version_tag": "V2.0.0",
+    "tiles": {
+      "S12E135": "cb8c4abfb2b861a70397a4bebee3b8d37702b93504fc6ca2740d0c4e552883cb",
+      "S12E138": "37964f4bcf57d7ff9741f11ba8d5704408f8b4ed0312302de3a9aa6491793e0a",
+      "S12E141": "a6c414178b606d9802239575116ce2cf127bab01157ad0e383c2efa1a96fa6a0",
+      "S09E135": "6d72c1582bde5565d31127cf1e66277d43af6027ff95006134aeedbad96abf7e",
+      "S09E138": "884c7ddcd6175d4711305f6a7e706ac2fa381867b51400e883bbacc8a001abb0",
+      "S09E141": "a3a3fd82285d99d9b309e0c192c099e111ce9468e51853a6e901c8ee4766a398"
+    },
+    "tiles_absent": [],
+    "boundary": {
+      "source": "data/big_boundaries/big-villages-93.geojson",
+      "sha256": "0fdcd5d10fa641709b721722a9671e7bd2396e5e9d4acc7d7601ec477c91e3b6",
+      "method": "shapely.union_all(grid_size=1e-8) per code prefix; no simplify, no island/hole dropping (data/big_boundaries/dissolve.py:dissolve)"
+    },
+    "crs_stats": "EPSG:32754",
+    "pixel_size_m": 10.0,
+    "resampling_to_utm": "nearest",
+    "shares_from": "10 m UTM pixels (EPSG:32754) whose centre lies inside the polygon; shares are of classified pixels",
+    "area_km2_method": "share × geodesic polygon area (WGS84 ellipsoid)",
+    "display_resampling": "mode",
+    "caveat": "Kelas 10 'Tutupan pohon' mencakup perkebunan (sawit, akasia); jangan sebut 'hutan'.",
+    "config_sha256": "cf0713550fb2fc58b2fae33bf270d90afc44a31c24d2d51990d7ca6d1811c0a5",
+    "computed_at": "2026-10-10T08:20:10+00:00"
+  }
+}

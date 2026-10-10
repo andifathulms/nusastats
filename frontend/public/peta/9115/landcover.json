@@ -1,0 +1,138 @@
+{
+  "kode": "9115",
+  "name": "WAROPEN",
+  "level": "kabupaten",
+  "provinsi": {
+    "kode": "91",
+    "name": "P A P U A"
+  },
+  "year": 2021,
+  "area_km2": 9615.6,
+  "dominant": {
+    "code": 10,
+    "label": "Tutupan pohon",
+    "share_pct": 95.64
+  },
+  "classes": [
+    {
+      "code": 10,
+      "name": "Tree cover",
+      "label": "Tutupan pohon",
+      "color": "#006400",
+      "pixels": 91984404,
+      "share_pct": 95.64,
+      "area_km2": 9196.71
+    },
+    {
+      "code": 95,
+      "name": "Mangroves",
+      "label": "Mangrove",
+      "color": "#00cf75",
+      "pixels": 2989229,
+      "share_pct": 3.11,
+      "area_km2": 298.87
+    },
+    {
+      "code": 80,
+      "name": "Permanent water bodies",
+      "label": "Badan air",
+      "color": "#0064c8",
+      "pixels": 574316,
+      "share_pct": 0.6,
+      "area_km2": 57.42
+    },
+    {
+      "code": 30,
+      "name": "Grassland",
+      "label": "Padang rumput",
+      "color": "#ffff4c",
+      "pixels": 266011,
+      "share_pct": 0.28,
+      "area_km2": 26.6
+    },
+    {
+      "code": 60,
+      "name": "Bare / sparse vegetation",
+      "label": "Lahan terbuka",
+      "color": "#b4b4b4",
+      "pixels": 178838,
+      "share_pct": 0.19,
+      "area_km2": 17.88
+    },
+    {
+      "code": 20,
+      "name": "Shrubland",
+      "label": "Semak belukar",
+      "color": "#ffbb22",
+      "pixels": 114990,
+      "share_pct": 0.12,
+      "area_km2": 11.5
+    },
+    {
+      "code": 90,
+      "name": "Herbaceous wetland",
+      "label": "Lahan basah",
+      "color": "#0096a0",
+      "pixels": 50064,
+      "share_pct": 0.05,
+      "area_km2": 5.01
+    },
+    {
+      "code": 50,
+      "name": "Built-up",
+      "label": "Lahan terbangun",
+      "color": "#fa0000",
+      "pixels": 12927,
+      "share_pct": 0.01,
+      "area_km2": 1.29
+    },
+    {
+      "code": 40,
+      "name": "Cropland",
+      "label": "Lahan pertanian",
+      "color": "#f096ff",
+      "pixels": 2994,
+      "share_pct": 0.0,
+      "area_km2": 0.3
+    }
+  ],
+  "checks": {
+    "share_sum_pct": 100.0,
+    "area_geodesic_km2": 9615.57,
+    "area_utm_polygon_km2": 9617.37,
+    "area_utm_pixels_km2": 9617.38,
+    "utm_vs_geodesic_pct": 0.019,
+    "pixels_vs_utm_pct": 0.0,
+    "nodata_pct": 0.0,
+    "polygon_pixels_utm": 96173773,
+    "render_palette_colours": 9,
+    "render_palette_exact": true
+  },
+  "metadata": {
+    "dataset": "ESA WorldCover 10 m 2021 v200",
+    "version": "v200",
+    "year": 2021,
+    "license": "CC BY 4.0 (Creative Commons Attribution 4.0 International)",
+    "attribution": "© ESA WorldCover project 2021 / Contains modified Copernicus Sentinel data (2021) processed by ESA WorldCover consortium",
+    "product_version_tag": "V2.0.0",
+    "tiles": {
+      "S06E135": "d24281a4595c5eb45d9b3af34ddee44a8994af951a047eda62adf1995e691dda",
+      "S03E135": "62910e539cab0d89b8edcbb6bbf3a599a89c7e63a3b6f8d71ba83b02d9ee0bf9"
+    },
+    "tiles_absent": [],
+    "boundary": {
+      "source": "data/big_boundaries/big-villages-91.geojson",
+      "sha256": "b15962cae477aa8dcc2a3d1171bd73933d790a8c4b0930bcb647f8bfce9313ad",
+      "method": "shapely.union_all(grid_size=1e-8) per code prefix; no simplify, no island/hole dropping (data/big_boundaries/dissolve.py:dissolve)"
+    },
+    "crs_stats": "EPSG:32753",
+    "pixel_size_m": 10.0,
+    "resampling_to_utm": "nearest",
+    "shares_from": "10 m UTM pixels (EPSG:32753) whose centre lies inside the polygon; shares are of classified pixels",
+    "area_km2_method": "share × geodesic polygon area (WGS84 ellipsoid)",
+    "display_resampling": "mode",
+    "caveat": "Kelas 10 'Tutupan pohon' mencakup perkebunan (sawit, akasia); jangan sebut 'hutan'.",
+    "config_sha256": "cf0713550fb2fc58b2fae33bf270d90afc44a31c24d2d51990d7ca6d1811c0a5",
+    "computed_at": "2026-10-10T08:57:04+00:00"
+  }
+}

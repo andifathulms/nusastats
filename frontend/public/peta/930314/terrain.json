@@ -1,0 +1,160 @@
+{
+  "kode": "930314",
+  "name": "PASSUE BAWAH",
+  "level": "kecamatan",
+  "provinsi": {
+    "kode": "93",
+    "name": "PAPUA SELATAN"
+  },
+  "area_km2": 1190.6,
+  "elevation_m": {
+    "min": -0.2,
+    "max": 66.9,
+    "mean": 26.0,
+    "median": 25.5,
+    "p5": 4.1,
+    "p95": 48.6
+  },
+  "relief_m": 44.5,
+  "highest_point": {
+    "elevation_m": 66.9,
+    "lon": 139.65722,
+    "lat": -5.88278
+  },
+  "elevation_bands_pct": {
+    "<100": 100.0,
+    "100-500": 0.0,
+    "500-1000": 0.0,
+    "1000-2000": 0.0,
+    ">=2000": 0.0
+  },
+  "slope_deg": {
+    "mean": 3.35
+  },
+  "slope_classes_pct": {
+    "<8": 94.42,
+    "8-25": 5.58,
+    ">=25": 0.0
+  },
+  "metrics_pct": {
+    "share_elev_ge_1000": 0.0,
+    "share_elev_ge_200": 0.0,
+    "share_elev_lt_100": 100.0,
+    "share_slope_ge_25": 0.0,
+    "share_slope_ge_8": 5.58,
+    "share_slope_lt_8": 94.42
+  },
+  "lowland_pct": {
+    "lt_5": 8.06,
+    "lt_10": 17.75
+  },
+  "local_relief": {
+    "window_m": 1000,
+    "mean_m": 26.0,
+    "classes_pct": {
+      "datar": 71.08,
+      "bergelombang": 28.92,
+      "berbukit": 0.0,
+      "bergunung": 0.0
+    },
+    "breaks_m": [
+      30,
+      100,
+      300
+    ]
+  },
+  "terrain_class": "dataran_rendah",
+  "terrain_class_label": "Dataran rendah",
+  "terrain_class_reason": "Dataran rendah: 100,0% area <100 m dan 94,4% area lereng <8°",
+  "classification": {
+    "official": false,
+    "note": "Klasifikasi NusaStats (aturan di config/terrain_rules.yaml), bukan klasifikasi resmi.",
+    "rules_sha256": "e55d201ddba19c12723be4d6b648e72d5f013c3c5cb23d4db38ac7c3fb16ce3d"
+  },
+  "checks": {
+    "area_geodesic_km2": 1190.56,
+    "area_utm_polygon_km2": 1190.4,
+    "area_utm_pixels_km2": 1190.37,
+    "utm_vs_geodesic_pct": -0.014,
+    "pixels_vs_utm_pct": -0.002,
+    "nodata_pct": 0.0,
+    "polygon_pixels_utm": 1322638
+  },
+  "metadata": {
+    "dataset": "Copernicus DEM GLO-30 Public",
+    "dataset_type": "DSM (surface model: includes canopy and buildings)",
+    "vertical_datum": "EGM2008 geoid (EPSG:3855), metres",
+    "year": 2015,
+    "attribution": "produced using Copernicus WorldDEM-30 © DLR e.V. 2010-2014 and © Airbus Defence and Space GmbH 2014-2018 provided under COPERNICUS by the European Union and ESA; all rights reserved",
+    "tile_version_tag": null,
+    "tiles": {
+      "Copernicus_DSM_COG_10_S07_00_E139_00_DEM": "545484208e569332cade5373541a486a4f70e3bd4a4a374c1c71d3d95c1fe352",
+      "Copernicus_DSM_COG_10_S06_00_E139_00_DEM": "5d75db83a6aafc7c64cbccc77ccfd135f6d51176a2c115772c047c26e23f4a98"
+    },
+    "ocean_tiles_absent": [],
+    "boundary": {
+      "source": "data/big_boundaries/big-villages-93.geojson",
+      "sha256": "0fdcd5d10fa641709b721722a9671e7bd2396e5e9d4acc7d7601ec477c91e3b6",
+      "method": "shapely.union_all(grid_size=1e-8) per code prefix; no simplify, no island/hole dropping (data/big_boundaries/dissolve.py:dissolve)"
+    },
+    "crs_stats": "EPSG:32754",
+    "pixel_size_m": 30.0,
+    "resampling_to_utm": "bilinear",
+    "min_max_from": "native DEM pixels (EPSG:4326, 1 arc-second) inside the polygon",
+    "shares_from": "30 m UTM pixels (EPSG:32754) whose centre lies inside the polygon",
+    "slope_method": "Horn 3x3 on the UTM grid",
+    "hillshade": {
+      "azimuth_deg": 315,
+      "altitude_deg": 45,
+      "z_factor": 1.0
+    },
+    "tint": [
+      [
+        0,
+        "#4f8f4a"
+      ],
+      [
+        100,
+        "#8fb36a"
+      ],
+      [
+        300,
+        "#cfd28c"
+      ],
+      [
+        500,
+        "#e3cf98"
+      ],
+      [
+        1000,
+        "#c8a06a"
+      ],
+      [
+        2000,
+        "#9a6a43"
+      ],
+      [
+        3000,
+        "#7b5a4a"
+      ],
+      [
+        4000,
+        "#ffffff"
+      ]
+    ],
+    "lowland_colors": [
+      "#1d4f91",
+      "#6fa8dc"
+    ],
+    "relief_colors": [
+      "#eef0dc",
+      "#c9d7a0",
+      "#c99a5b",
+      "#7a4b2e"
+    ],
+    "lowland_note": "Batas bawah: model permukaan (tajuk pohon, bangunan) terbaca lebih tinggi dari tanah.",
+    "local_relief_method": "max - min elevation in a 33x33 px (990 m) window on the UTM grid; NusaStats classes, shown alongside (not replacing) the terrain class",
+    "config_sha256": "bc1b902c8fa23d79936518aa2cb1fa9a1a01e3fba4c13ac3c5ce884e190c482d",
+    "computed_at": "2026-10-10T12:00:48+00:00"
+  }
+}
