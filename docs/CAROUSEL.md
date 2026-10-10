@@ -88,6 +88,7 @@ npm run card -- --template wilayah --kode 3201    # one template
 | `kepadatan` | population density per desa on fixed classes (< 10 … ≥ 5.000 jiwa/km²), "half the residents live in X% of the area" | boundaries + Dukcapil + BIG area |
 | `cahaya` | registered residents per desa next to night lights: "X% penduduk tinggal di desa yang terang malam hari" (a desa is lit when ≥ 50% of its area is) | `desa.json` + Peta night lights |
 | `kecamatan` | one Dukcapil ratio per kecamatan, named on the map (`--indicator`: `median_age` default, `pct_elderly`, `pct_productive`, `sex_ratio`, `pct_sarjana`, `dependency_ratio`) | boundaries + Dukcapil |
+| `rendah` | the lowland layer, desa mostly under 10 m outlined, and "N penduduk tinggal di desa yang sebagian besar wilayahnya di bawah 10 m" (a lower bound: surface model) | `desa.json` + Peta lowland |
 | `terrain`, `lowland`, `relief`, `landcover`, `nightlights` | the Peta Wilayah layers | Peta outputs for that kode |
 
 Output goes to `exports/cards/profil/{kode}/{NN}_{template}.png`. The first two work everywhere,

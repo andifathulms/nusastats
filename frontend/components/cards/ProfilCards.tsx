@@ -13,17 +13,18 @@ import { BREAKS, CLASS_COLORS, Column, Fact, LabelLegend, MapLabels, Title, bula
  * a Dukcapil ratio per kecamatan. Same exporter contract as ShareCard.
  *
  *   /card/cahaya/{kab}                 registered residents per desa vs night lights
+ *   /card/rendah/{kab}                 residents of desa mostly under 10 m
  *   /card/kecamatan/{kab}?indicator=…  one Dukcapil ratio per kecamatan (default median_age)
  *
  * The desa join is by Kemendagri code; a join covering under 98% of the
  * registered population is refused rather than drawn.
  */
 
-export type ProfilTemplate = "cahaya" | "kecamatan";
-export const PROFIL_TEMPLATES: ProfilTemplate[] = ["cahaya", "kecamatan"];
+export type ProfilTemplate = "cahaya" | "rendah" | "kecamatan";
+export const PROFIL_TEMPLATES: ProfilTemplate[] = ["cahaya", "rendah", "kecamatan"];
 // Ratios that are meaningful per kecamatan (aggregates, never desa-level).
 export const KECAMATAN_INDICATORS = ["median_age", "pct_elderly", "pct_productive", "sex_ratio", "pct_sarjana", "dependency_ratio"];
-const MAJORITY = 50; // a desa is "mostly" lit at this share of its area
+const MAJORITY = 50; // a desa is "mostly" lit / under 10 m at this share of its area
 
 type DesaStats = {
   desa: Record<string, { area_km2: number; px: number; lt_5_pct: number | null; lt_10_pct: number | null; lit_pct: number | null; mean_nw: number | null }>;
@@ -79,7 +80,8 @@ function problems(template: ProfilTemplate, kode: string, d: Loaded, indicator: 
   }
   if (!d.desa) return [`desa.json belum dihitung untuk ${kode} (data/peta_wilayah: python -m desa --kode ${kode})`];
   if (!d.peta) return ["area Peta belum dihitung"];
-  if (!d.peta.present.nightlights) out.push("lapisan cahaya malam tidak ada di perangkat ini");
+  const layer = template === "cahaya" ? d.peta.present.nightlights : d.peta.present.lowland;
+  if (!layer) out.push(`lapisan ${template === "cahaya" ? "cahaya malam" : "dataran rendah"} tidak ada di perangkat ini`);
   const pop = d.villages.reduce((a, v) => a + v.value, 0);
   const joined = d.villages.filter((v) => d.desa!.desa[v.domain_id]).reduce((a, v) => a + v.value, 0);
   if (pop <= 0 || joined / pop < 0.98) out.push(`hanya ${pct1((joined / Math.max(pop, 1)) * 100)} penduduk tergabung ke data desa`);
@@ -100,8 +102,8 @@ export function ProfilCard({ template, kode, query, debug }: { template: ProfilT
 
   const issues = useMemo(() => (data ? problems(template, kode, data, indicator) : []), [template, kode, data, indicator]);
   const error = fatal ?? (issues.length ? issues.join("; ") : null);
-  // Raster images the card waits for: the night-lights layer.
-  const images = !data?.peta || error ? 0 : template === "cahaya" ? 1 : 0;
+  // Raster images the card waits for: night lights, or hillshade (if present) + lowland.
+  const images = !data?.peta || error ? 0 : template === "cahaya" ? 1 : template === "rendah" ? (data.peta.present.hillshade ? 2 : 1) : 0;
   const ready = !error && !!data && fontsReady && loaded >= images;
   const onImage = () => setLoaded((n) => n + 1);
   const onImageError = (src: string) => setFatal(`gambar gagal dimuat: ${src}`);
@@ -119,6 +121,8 @@ export function ProfilCard({ template, kode, query, debug }: { template: ProfilT
       ) : data ? (
         template === "cahaya" ? (
           <LightsBody kode={kode} d={data} onImage={onImage} onImageError={onImageError} />
+        ) : template === "rendah" ? (
+          <LowBody kode={kode} d={data} onImage={onImage} onImageError={onImageError} />
         ) : (
           <KecamatanBody kode={kode} d={data} />
         )
@@ -258,6 +262,73 @@ function LightsBody({ kode, d, onImage, onImageError }: { kode: string; d: Loade
           menunjukkan permukiman dan aktivitas, bukan jumlah penduduk.
         </p>
         <Footer source={`Penduduk: Ditjen Dukcapil Kemendagri, data ${bulanTahun(d.period)} (terdaftar); cahaya: World Bank Light Every Night, VIIRS ${year} (CC BY 4.0); desa: BIG 1:10.000; dihitung NusaStats`} />
+      </div>
+    </Column>
+  );
+}
+
+function LowBody({ kode, d, onImage, onImageError }: { kode: string; d: Loaded; onImage: () => void; onImageError: (s: string) => void }) {
+  const { own, fit, outer, view } = useFrame(kode, d);
+  const rows = useMemo(() => joinDesa(d), [d]);
+  const edge = useMemo(() => project(own, outer).paths, [own, outer]);
+  // Desa where most of the area is under 10 m: drawn with a cream outline over the layer.
+  const lowIds = new Set(rows.filter((r) => (r.lt_10_pct ?? 0) >= MAJORITY).map((r) => r.id));
+  const low = rows.filter((r) => lowIds.has(r.id));
+  const pop = rows.reduce((a, r) => a + r.pop, 0);
+  const lowPop = low.reduce((a, r) => a + r.pop, 0);
+  const t = d.peta!.terrain!;
+  const [c5, c10] = t.metadata.lowland_colors!;
+  const lowPaths = useMemo(
+    () => project(d.villagesGeo!.features.filter((f) => lowIds.has(f.properties.domain_id)), outer).paths,
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [d, outer, rows]
+  );
+  const shade = d.peta!.present.hillshade;
+  const top = [...low].sort((a, b) => b.pop - a.pop).slice(0, 4);
+
+  return (
+    <Column>
+      <Title eyebrow="Penduduk di dataran rendah" kab={d.kab} />
+      <div className="mt-6 flex min-h-0 flex-1 items-center justify-center">
+        <RasterMap
+          layers={[
+            ...(shade ? [{ src: petaAsset(kode, d.peta!.bounds.layers.hillshade!), opacity: 0.55 }] : []),
+            { src: petaAsset(kode, d.peta!.bounds.layers.lowland!), pixelated: true },
+          ]}
+          view={view}
+          outer={outer}
+          onImage={onImage}
+          onImageError={onImageError}
+        >
+          {lowPaths.map((p) => <path key={p.id} d={p.d} fill="none" stroke="#F3ECDD" strokeWidth={1.4} vectorEffect="non-scaling-stroke" />)}
+          {edge.map((p) => <path key={`e-${p.id}`} d={p.d} fill="none" stroke="#F3ECDD" strokeWidth={2.4} vectorEffect="non-scaling-stroke" />)}
+        </RasterMap>
+      </div>
+      <OffFrameNote items={fit.offFrame} />
+      <div className="mt-4 shrink-0">
+        <ul className="flex flex-wrap gap-x-6 gap-y-2 text-[22px] text-coal-muted">
+          <li className="inline-flex items-center gap-2"><span className="inline-block h-5 w-5 rounded" style={{ background: c5 }} />di bawah 5 m</li>
+          <li className="inline-flex items-center gap-2"><span className="inline-block h-5 w-5 rounded" style={{ background: c10 }} />5–10 m</li>
+        </ul>
+        <p className="mt-5 text-[32px] font-semibold leading-tight">
+          {low.length ? (
+            <>
+              <span className="text-ink-gold">{compact(lowPop)}</span> penduduk ({pct1((lowPop / pop) * 100)}) tinggal di {formatNumber(low.length)} desa yang
+              sebagian besar wilayahnya di bawah 10 m.
+            </>
+          ) : (
+            <>Tidak ada desa yang sebagian besar wilayahnya di bawah 10 m.</>
+          )}
+        </p>
+        {top.length > 0 && (
+          <p className="mt-3 text-[22px] text-coal-muted">
+            Terbanyak: {top.map((r) => `${r.name} (${compact(r.pop)})`).join(", ")}.
+          </p>
+        )}
+        <p className="mt-3 text-[19px] text-coal-muted">
+          Batas bawah: model permukaan membaca puncak pohon dan atap, bukan tanah, jadi daratan rendah yang sebenarnya bisa lebih luas.
+        </p>
+        <Footer source={`Penduduk: Ditjen Dukcapil Kemendagri, data ${bulanTahun(d.period)} (terdaftar); ketinggian: Copernicus DEM GLO-30 (© DLR e.V., © Airbus DS; Copernicus/EU/ESA); desa: BIG 1:10.000; dihitung NusaStats`} />
       </div>
     </Column>
   );

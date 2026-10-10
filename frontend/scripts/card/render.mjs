@@ -6,8 +6,8 @@
 //
 // Templates: terrain, landcover, nightlights, lowland, relief (Peta layers),
 // wilayah (kecamatan map with names), kepadatan (population density per desa),
-// cahaya (residents vs night lights), kecamatan (a Dukcapil ratio per
-// kecamatan; --indicator, default median_age).
+// cahaya (residents vs night lights), rendah (residents of desa mostly < 10 m),
+// kecamatan (a Dukcapil ratio per kecamatan; --indicator, default median_age).
 // `profil` renders all of them in posting order into
 // exports/cards/profil/{kode}/{NN}_{template}.png; a template whose data isn't
 // there for an area is reported, not saved.
@@ -31,9 +31,9 @@ const OUT = join(FRONTEND, "..", "exports", "cards");
 const TEMPLATES = {
   terrain: "terrain.json", landcover: "landcover.json", nightlights: "nightlights.json",
   lowland: "terrain.json", relief: "terrain.json", wilayah: "bounds.json", kepadatan: "bounds.json",
-  cahaya: "desa.json", kecamatan: "bounds.json",
+  cahaya: "desa.json", rendah: "desa.json", kecamatan: "bounds.json",
 };
-const PROFIL = ["wilayah", "kepadatan", "cahaya", "kecamatan", "terrain", "lowland", "relief", "landcover", "nightlights"];
+const PROFIL = ["wilayah", "kepadatan", "cahaya", "kecamatan", "terrain", "lowland", "rendah", "relief", "landcover", "nightlights"];
 const LEVEL_LEN = { provinsi: 2, kabupaten: 4, kecamatan: 6 };
 
 function parse(argv) {
