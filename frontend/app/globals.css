@@ -178,3 +178,41 @@ select {
     scroll-behavior: auto !important;
   }
 }
+
+/* --- Nusantara Mapper cards ("Atlas Malam") --------------------------------
+   The /card/* components keep the site's token class names; inside .nm-card
+   they map to the card brand instead of Laut & Kertas: an ink background with a
+   slight green bias, warm white text, one theme colour per card (--nm-theme:
+   penduduk coral, lahan green, air blue, cahaya purple) and saffron for the one
+   thing to look at (rank chips, the hook number). Archivo throughout: narrow
+   (wdth 68) for titles and numbers, normal for sentences. */
+.nm-card {
+  --nm-bg: #0f1416;
+  --nm-ink: #f1ede3;
+  --nm-muted: #a3aeaf;
+  --nm-line: #2a3539;
+  --nm-sorot: #f4b740;
+  --nm-theme: #f1ede3;
+  background: var(--nm-bg);
+  color: var(--nm-ink);
+  font-family: var(--font-archivo), "Arial Narrow", sans-serif;
+}
+.nm-card .bg-coal-bg { background: var(--nm-bg); }
+.nm-card .text-coal-text { color: var(--nm-ink); }
+.nm-card .text-coal-muted { color: var(--nm-muted); }
+.nm-card .border-coal-border { border-color: var(--nm-line); }
+.nm-card .text-ink-gold { color: var(--nm-theme); }
+.nm-card .bg-kunyit-light { background: var(--nm-sorot); }
+.nm-card .text-laut-950 { color: var(--nm-bg); }
+.nm-card .text-nm-sorot { color: var(--nm-sorot); }
+.nm-card .font-sans { font-family: var(--font-archivo), "Arial Narrow", sans-serif; }
+.nm-card .font-display {
+  font-family: var(--font-archivo), "Arial Narrow", sans-serif;
+  font-variation-settings: "wdth" 68;
+  font-weight: 850;
+}
+.nm-card .font-mono {
+  font-family: var(--font-archivo), "Arial Narrow", sans-serif;
+  font-weight: 700;
+}
+.nm-card .tabular-nums, .nm-card .font-extrabold { font-variation-settings: "wdth" 75; }

@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { formatNumber, regionLabel, titleCase } from "@/lib/api";
 import { litGrowth, loadPeta, MIN_BASE_LIT_KM2, petaAsset, type Peta } from "@/lib/peta";
+import { themeVar } from "./brand";
 import { cropBox, framing, type Feature, type OffFrame } from "./geo";
 
 /**
@@ -142,8 +143,8 @@ export function ShareCard({ template, kode, debug }: { template: Template; kode:
       id="card"
       data-card-ready={ready ? "1" : undefined}
       data-card-error={error ?? undefined}
-      className="relative overflow-hidden bg-coal-bg font-sans text-coal-text"
-      style={{ width: W, height: H }}
+      className="nm-card relative overflow-hidden bg-coal-bg font-sans text-coal-text"
+      style={{ width: W, height: H, ...themeVar(template) }}
     >
       {error ? (
         <div className="p-16 text-[28px] text-coal-text">Kartu tidak dibuat: {error}</div>
@@ -166,19 +167,24 @@ export function ShareCard({ template, kode, debug }: { template: Template; kode:
 }
 
 export function CornerTag({ label = "Nusantara Mapper" }: { label?: string }) {
-  // Fixed position and style on every card (spec §6.2), inside the safe area.
+  // The wordmark, fixed position and style on every card (spec §6.2), inside the
+  // safe area: a framed grid square with a dot in the card's theme colour.
   return (
-    <div
-      className="absolute rounded-full bg-kunyit-light px-5 py-2 font-mono text-[24px] font-semibold tracking-[0.04em] text-laut-950"
-      style={{ left: PAD, top: SAFE.top + 24 }}
-    >
-      {label}
+    <div className="absolute flex items-center gap-[14px]" style={{ left: PAD, top: SAFE.top + 24 }}>
+      <svg width="40" height="40" viewBox="0 0 40 40" aria-hidden="true">
+        <rect x="3" y="3" width="34" height="34" rx="4" fill="none" stroke="currentColor" strokeWidth="3" />
+        <path d="M3 20h34M20 3v34" stroke="currentColor" strokeWidth="2" opacity=".5" />
+        <circle cx="26" cy="14" r="5" style={{ fill: "var(--nm-theme)" }} />
+      </svg>
+      <span className="text-[28px] font-extrabold uppercase leading-none tracking-[0.06em]" style={{ fontVariationSettings: '"wdth" 68' }}>
+        {label}
+      </span>
     </div>
   );
 }
 
 export function SafeZones() {
-  const z = "absolute flex items-center justify-center bg-red-600/35 font-mono text-[22px] text-white outline outline-2 outline-red-500";
+  const z = "absolute flex items-center justify-center bg-red-600/35 font-mono text-[26px] text-white outline outline-2 outline-red-500";
   return (
     <>
       <div className={z} style={{ left: 0, top: 0, width: W, height: SAFE.top }}>UI atas {SAFE.top}px</div>
@@ -252,7 +258,7 @@ function CardBody({
           : template === "relief"
             ? "Relief lokal"
             : `Tutupan lahan ${peta.landcover?.year ?? ""}`;
-  const titleSize = title.length > 26 ? 60 : title.length > 18 ? 72 : 84;
+  const titleSize = title.length > 26 ? 84 : title.length > 18 ? 100 : 120;
   const top = SAFE.top + 100; // below the corner tag
 
   // A fixed-height column that ends exactly where the bottom UI zone starts:
@@ -333,14 +339,14 @@ function TerrainFacts({ peta }: { peta: Peta }) {
   const gradient = shown.map(([m, c]) => `${c} ${((m / top) * 100).toFixed(2)}%`).join(", ");
   return (
     <div className="mt-6 shrink-0">
-      <div className="flex items-center gap-4 font-mono text-[20px] text-coal-muted">
+      <div className="flex items-center gap-4 font-mono text-[26px] text-coal-muted">
         <span>0</span>
         <div className="h-3 min-w-0 flex-1 rounded-full" style={{ background: `linear-gradient(90deg, ${gradient})` }} />
         <span className="whitespace-nowrap">{formatNumber(top)} m</span>
       </div>
       <div className="mt-6 flex items-baseline gap-4">
         <span className="font-display text-[64px] font-medium leading-none">{t.terrain_class_label}</span>
-        <span className="rounded-full border border-coal-border px-4 py-1 text-[20px] text-coal-muted">klasifikasi NusaStats</span>
+        <span className="rounded-full border border-coal-border px-4 py-1 text-[26px] text-coal-muted">klasifikasi NusaStats</span>
       </div>
       <div className="mt-6 grid grid-cols-3 gap-6">
         <Fact value={metres(t.elevation_m.mean)} label="rata-rata elevasi" />
@@ -359,7 +365,7 @@ function LandcoverFacts({ peta }: { peta: Peta }) {
   const legend = lc.classes.filter((c) => c.share_pct >= 0.1);
   return (
     <div className="mt-6 shrink-0">
-      <ul className="flex flex-wrap gap-x-6 gap-y-2 text-[22px] text-coal-muted">
+      <ul className="flex flex-wrap gap-x-6 gap-y-2 text-[26px] text-coal-muted">
         {legend.map((c) => (
           <li key={c.code} className="inline-flex items-center gap-2">
             <span className="inline-block h-5 w-5 rounded" style={{ background: c.color }} />
@@ -379,7 +385,7 @@ function LandcoverFacts({ peta }: { peta: Peta }) {
         ))}
       </div>
       {top3.some((c) => c.code === 10) && (
-        <p className="mt-6 text-[20px] text-coal-muted">Tutupan pohon termasuk hutan dan perkebunan (sawit, akasia).</p>
+        <p className="mt-6 text-[26px] text-coal-muted">Tutupan pohon termasuk hutan dan perkebunan (sawit, akasia).</p>
       )}
       <Footer source={`ESA WorldCover ${lc.year} v200 (CC BY 4.0)`} />
     </div>
@@ -399,7 +405,7 @@ function NightlightsFacts({ peta }: { peta: Peta }) {
         {years.map((y) => (
           <div key={y} className="flex flex-1 flex-col items-center gap-2">
             <div className="w-full rounded-t-md bg-kunyit-light" style={{ height: Math.max(4, (nl.years[y].lit_pct / max) * 60) }} />
-            <span className="font-mono text-[18px] text-coal-muted">{y}</span>
+            <span className="font-mono text-[24px] text-coal-muted">{y}</span>
           </div>
         ))}
       </div>
@@ -412,7 +418,7 @@ function NightlightsFacts({ peta }: { peta: Peta }) {
           <Fact value={`${formatNumber(Math.round(last.lit_km2))} km²`} label={`bercahaya ${nl.latest_year} (dari <${MIN_BASE_LIT_KM2} km²)`} />
         )}
       </div>
-      <p className="mt-6 text-[20px] text-coal-muted">Cahaya malam menunjukkan permukiman dan aktivitas, bukan jumlah penduduk.</p>
+      <p className="mt-6 text-[26px] text-coal-muted">Cahaya malam menunjukkan permukiman dan aktivitas, bukan jumlah penduduk.</p>
       <Footer source={`World Bank Light Every Night, VIIRS ${nl.base_year}–${nl.latest_year} (CC BY 4.0)`} />
     </div>
   );
@@ -424,7 +430,7 @@ function LowlandFacts({ peta }: { peta: Peta }) {
   const lp = t.lowland_pct!;
   return (
     <div className="mt-6 shrink-0">
-      <ul className="flex flex-wrap gap-x-6 gap-y-2 text-[22px] text-coal-muted">
+      <ul className="flex flex-wrap gap-x-6 gap-y-2 text-[26px] text-coal-muted">
         <li className="inline-flex items-center gap-2"><span className="inline-block h-5 w-5 rounded" style={{ background: c5 }} />di bawah 5 m</li>
         <li className="inline-flex items-center gap-2"><span className="inline-block h-5 w-5 rounded" style={{ background: c10 }} />5–10 m</li>
       </ul>
@@ -434,7 +440,7 @@ function LowlandFacts({ peta }: { peta: Peta }) {
         <Fact value={pctInt(t.metrics_pct.share_elev_lt_100)} label="luas di bawah 100 m" />
       </div>
       {/* Same caveat as the Peta Wilayah page: the surface model reads canopy and roofs. */}
-      <p className="mt-6 text-[20px] text-coal-muted">
+      <p className="mt-6 text-[26px] text-coal-muted">
         Batas bawah: hutan, mangrove dan bangunan terbaca lebih tinggi dari tanahnya, jadi daratan rendah yang sebenarnya bisa lebih luas.
       </p>
       <Footer source="Copernicus DEM GLO-30, data 2011–2015 (© DLR e.V., © Airbus DS; Copernicus/EU/ESA)" />
@@ -455,7 +461,7 @@ function ReliefFacts({ peta }: { peta: Peta }) {
   ];
   return (
     <div className="mt-6 shrink-0">
-      <div className="text-[22px] text-coal-muted">Beda tinggi dalam {formatNumber(lr.window_m / 1000)} km · klasifikasi NusaStats</div>
+      <div className="text-[26px] text-coal-muted">Beda tinggi dalam {formatNumber(lr.window_m / 1000)} km · klasifikasi NusaStats</div>
       <div className="mt-6 grid grid-cols-4 gap-4">
         {classes.map(([label, range, pct], i) => (
           <div key={label}>
@@ -463,8 +469,8 @@ function ReliefFacts({ peta }: { peta: Peta }) {
               <span className="inline-block h-5 w-5 shrink-0 rounded" style={{ background: colors[i] }} />
               <span className="whitespace-nowrap text-[44px] font-extrabold leading-none tabular-nums">{pctInt(pct)}</span>
             </div>
-            <div className="mt-2 text-[22px] text-coal-muted">{label}</div>
-            <div className="font-mono text-[18px] text-coal-muted">{range}</div>
+            <div className="mt-2 text-[26px] text-coal-muted">{label}</div>
+            <div className="font-mono text-[24px] text-coal-muted">{range}</div>
           </div>
         ))}
       </div>
@@ -478,12 +484,12 @@ export function OffFrameNote({ items }: { items: OffFrame[] }) {
   if (!items.length) return null;
   const shown = items.slice(0, 3).map((o) => `${titleCase(o.name)} (± ${formatNumber(o.km)} km ${o.dir})`);
   const more = items.length > 3 ? ` dan ${items.length - 3} lainnya` : "";
-  return <p className="mt-3 shrink-0 text-[20px] text-coal-muted">Di luar bingkai: {shown.join(", ")}{more}.</p>;
+  return <p className="mt-3 shrink-0 text-[26px] text-coal-muted">Di luar bingkai: {shown.join(", ")}{more}.</p>;
 }
 
 export function Footer({ source }: { source: string }) {
   return (
-    <p className="mt-6 border-t border-coal-border pt-4 text-[19px] leading-snug text-coal-muted">
+    <p className="mt-6 border-t border-coal-border pt-4 text-[26px] leading-snug text-coal-muted">
       Sumber: {source}. Batas wilayah indikatif (BIG).
     </p>
   );

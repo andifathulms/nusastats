@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { dukcapilApi, formatNumber, titleCase, type DukcapilRank, type DukcapilRankRow } from "@/lib/api";
 import { loadPeta, petaAsset, type Peta } from "@/lib/peta";
 import { NO_DATA, RAMP, cropBox, framing, placeLabels, project, rampColor, type Geo } from "./geo";
+import { themeVar } from "./brand";
 import { CornerTag, Footer, H, OffFrameNote, SafeZones, W } from "./ShareCard";
 import { BREAKS, CLASS_COLORS, Column, Fact, LabelLegend, MapLabels, Title, bulanTahun, compact, kabInfo, pct1, type KabInfo } from "./WilayahCard";
 
@@ -113,8 +114,8 @@ export function ProfilCard({ template, kode, query, debug }: { template: ProfilT
       id="card"
       data-card-ready={ready ? "1" : undefined}
       data-card-error={error ?? undefined}
-      className="relative overflow-hidden bg-coal-bg font-sans text-coal-text"
-      style={{ width: W, height: H }}
+      className="nm-card relative overflow-hidden bg-coal-bg font-sans text-coal-text"
+      style={{ width: W, height: H, ...themeVar(template) }}
     >
       {error ? (
         <div className="p-16 text-[28px] text-coal-text">Kartu tidak dibuat: {error}</div>
@@ -220,7 +221,7 @@ function LightsBody({ kode, d, onImage, onImageError }: { kode: string; d: Loade
       {/* Same frame for both maps; a tall kabupaten (Barru) sits side by side, a wide one stacks. */}
       <div className={`mt-4 grid min-h-0 flex-1 gap-4 ${view.h > view.w ? "grid-cols-2" : "grid-rows-2"}`}>
         <div className="flex min-h-0 flex-col">
-          <div className="font-mono text-[18px] uppercase tracking-[0.12em] text-coal-muted">Penduduk terdaftar per desa</div>
+          <div className="font-mono text-[24px] uppercase tracking-[0.12em] text-coal-muted">Penduduk terdaftar per desa</div>
           <div className="mt-2 min-h-0 flex-1">
             <RasterMap layers={[]} view={view} outer={outer} onImage={onImage} onImageError={onImageError}>
               {villagePaths.map((p) => {
@@ -232,7 +233,7 @@ function LightsBody({ kode, d, onImage, onImageError }: { kode: string; d: Loade
           </div>
         </div>
         <div className="flex min-h-0 flex-col">
-          <div className="font-mono text-[18px] uppercase tracking-[0.12em] text-coal-muted">Cahaya malam {year}</div>
+          <div className="font-mono text-[24px] uppercase tracking-[0.12em] text-coal-muted">Cahaya malam {year}</div>
           <div className="mt-2 min-h-0 flex-1">
             <RasterMap
               layers={[{ src: petaAsset(kode, d.peta!.bounds.layers.nightlights!), pixelated: true }]}
@@ -257,7 +258,7 @@ function LightsBody({ kode, d, onImage, onImageError }: { kode: string; d: Loade
           <Fact value={compact(litPop)} label="penduduk di desa terang" />
           <Fact value={formatNumber(darkDesa)} label={`dari ${formatNumber(rows.length)} desa sebagian besar gelap`} />
         </div>
-        <p className="mt-4 text-[19px] text-coal-muted">
+        <p className="mt-4 text-[26px] text-coal-muted">
           Desa terang: separuh luasnya atau lebih bercahaya (≥ {d.desa!.metadata.lights.lit_threshold_nw} nW/cm²/sr). Cahaya malam
           menunjukkan permukiman dan aktivitas, bukan jumlah penduduk.
         </p>
@@ -306,7 +307,7 @@ function LowBody({ kode, d, onImage, onImageError }: { kode: string; d: Loaded; 
       </div>
       <OffFrameNote items={fit.offFrame} />
       <div className="mt-4 shrink-0">
-        <ul className="flex flex-wrap gap-x-6 gap-y-2 text-[22px] text-coal-muted">
+        <ul className="flex flex-wrap gap-x-6 gap-y-2 text-[26px] text-coal-muted">
           <li className="inline-flex items-center gap-2"><span className="inline-block h-5 w-5 rounded" style={{ background: c5 }} />di bawah 5 m</li>
           <li className="inline-flex items-center gap-2"><span className="inline-block h-5 w-5 rounded" style={{ background: c10 }} />5–10 m</li>
         </ul>
@@ -321,11 +322,11 @@ function LowBody({ kode, d, onImage, onImageError }: { kode: string; d: Loaded; 
           )}
         </p>
         {top.length > 0 && (
-          <p className="mt-3 text-[22px] text-coal-muted">
+          <p className="mt-3 text-[26px] text-coal-muted">
             Terbanyak: {top.map((r) => `${r.name} (${compact(r.pop)})`).join(", ")}.
           </p>
         )}
-        <p className="mt-3 text-[19px] text-coal-muted">
+        <p className="mt-3 text-[26px] text-coal-muted">
           Batas bawah: model permukaan membaca puncak pohon dan atap, bukan tanah, jadi daratan rendah yang sebenarnya bisa lebih luas.
         </p>
         <Footer source={`Penduduk: Ditjen Dukcapil Kemendagri, data ${bulanTahun(d.period)} (terdaftar); ketinggian: Copernicus DEM GLO-30 (© DLR e.V., © Airbus DS; Copernicus/EU/ESA); desa: BIG 1:10.000; dihitung NusaStats`} />
@@ -368,7 +369,7 @@ function KecamatanBody({ kode, d }: { kode: string; d: Loaded }) {
       <OffFrameNote items={fit.offFrame} />
       <LabelLegend numbered={numbered} />
       <div className="mt-4 shrink-0">
-        <div className="flex items-center gap-4 font-mono text-[20px] text-coal-muted">
+        <div className="flex items-center gap-4 font-mono text-[26px] text-coal-muted">
           <span className="whitespace-nowrap">{fmt(min)}</span>
           <div className="h-3 min-w-0 flex-1 rounded-full" style={{ background: `linear-gradient(90deg, ${RAMP.join(", ")})` }} />
           <span className="whitespace-nowrap">{fmt(max)}</span>

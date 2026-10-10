@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { carouselApi, type CarouselMapValue, type CarouselPackResult } from "@/lib/api";
 import { loadPeta, petaAsset, type Peta } from "@/lib/peta";
 import { NO_DATA, RAMP, cropBox, frameOf, framing, project, rampColor, type Feature, type Geo } from "./geo";
+import { themeVar } from "./brand";
 import { CONTENT_W, CornerTag, Footer, H, OffFrameNote, PAD, SAFE, SafeZones, W } from "./ShareCard";
 
 /**
@@ -131,8 +132,8 @@ export function AngkaCard({ scope, query, debug }: { scope: string; query: URLSe
       data-card-ready={ready ? "1" : undefined}
       data-card-error={error ?? undefined}
       data-card-note={note}
-      className="relative overflow-hidden bg-coal-bg font-sans text-coal-text"
-      style={{ width: W, height: H }}
+      className="nm-card relative overflow-hidden bg-coal-bg font-sans text-coal-text"
+      style={{ width: W, height: H, ...themeVar("angka") }}
     >
       {error ? (
         <div className="p-16 text-[28px] text-coal-text">Kartu tidak dibuat: {error}</div>
@@ -173,7 +174,7 @@ function Column({ children }: { children: React.ReactNode }) {
 }
 
 function Header({ eyebrow, title, sub }: { eyebrow: string; title: string; sub?: string }) {
-  const size = title.length > 34 ? 52 : title.length > 26 ? 60 : title.length > 18 ? 72 : 84;
+  const size = title.length > 34 ? 72 : title.length > 26 ? 84 : title.length > 18 ? 100 : 120;
   return (
     <>
       <div className="font-mono text-[24px] uppercase tracking-[0.14em] text-ink-gold">{eyebrow}</div>
@@ -230,12 +231,12 @@ function OverviewBody({ data, geo, scope, asc }: { data: CarouselPackResult; geo
         </svg>
       </div>
       <div className="mt-6 shrink-0">
-        <div className="flex items-center gap-4 font-mono text-[20px] text-coal-muted">
+        <div className="flex items-center gap-4 font-mono text-[26px] text-coal-muted">
           <span className="whitespace-nowrap">{lowest.display}</span>
           <div className="h-3 min-w-0 flex-1 rounded-full" style={{ background: `linear-gradient(90deg, ${RAMP.join(", ")})` }} />
           <span className="whitespace-nowrap">{highest.display}</span>
         </div>
-        <div className="mt-6 font-mono text-[20px] uppercase tracking-[0.12em] text-coal-muted">{asc ? "Terendah" : "Tertinggi"}</div>
+        <div className="mt-6 font-mono text-[26px] uppercase tracking-[0.12em] text-coal-muted">{asc ? "Terendah" : "Tertinggi"}</div>
         <ol className="mt-3 space-y-3">
           {top3.map((v) => (
             <li key={v.geo} className="flex items-baseline gap-4">
@@ -245,7 +246,7 @@ function OverviewBody({ data, geo, scope, asc }: { data: CarouselPackResult; geo
             </li>
           ))}
         </ol>
-        {partial && <p className="mt-4 text-[20px] text-coal-muted">{partial}</p>}
+        {partial && <p className="mt-4 text-[26px] text-coal-muted">{partial}</p>}
         <Footer source={pack.source} />
       </div>
     </Column>
@@ -306,7 +307,7 @@ function FocusBody({
     <Column>
       <div className="flex items-center gap-4">
         <span className="rounded-full bg-kunyit-light px-5 py-1 font-mono text-[34px] font-bold text-laut-950">#{place}</span>
-        <span className="font-mono text-[22px] uppercase tracking-[0.12em] text-coal-muted">
+        <span className="font-mono text-[26px] uppercase tracking-[0.12em] text-coal-muted">
           {word} dari {map.n.toLocaleString("id-ID")} {scopeLabel(data)}
         </span>
       </div>
@@ -356,7 +357,7 @@ function FocusBody({
         <div className="mt-3 text-[26px] text-coal-muted">
           {map.title}, {map.period_label}
         </div>
-        {partial && <p className="mt-4 text-[20px] text-coal-muted">{partial}</p>}
+        {partial && <p className="mt-4 text-[26px] text-coal-muted">{partial}</p>}
         <Footer source={pack.source + layerSource} />
       </div>
     </Column>
@@ -368,7 +369,7 @@ function LayerLegend({ peta, bg }: { peta: Peta; bg: Bg }) {
   if (bg === "landcover" && peta.landcover) {
     const shown = peta.landcover.classes.filter((c) => c.share_pct >= 1).slice(0, 5);
     return (
-      <ul className="mt-4 flex shrink-0 flex-wrap gap-x-6 gap-y-2 text-[22px] text-coal-muted">
+      <ul className="mt-4 flex shrink-0 flex-wrap gap-x-6 gap-y-2 text-[26px] text-coal-muted">
         {shown.map((c) => (
           <li key={c.code} className="inline-flex items-center gap-2">
             <span className="inline-block h-5 w-5 rounded" style={{ background: c.color }} />
@@ -386,7 +387,7 @@ function LayerLegend({ peta, bg }: { peta: Peta; bg: Bg }) {
     const top = shown[shown.length - 1][0] || 1;
     const gradient = shown.map(([m, c]) => `${c} ${((m / top) * 100).toFixed(2)}%`).join(", ");
     return (
-      <div className="mt-4 flex shrink-0 items-center gap-4 font-mono text-[20px] text-coal-muted">
+      <div className="mt-4 flex shrink-0 items-center gap-4 font-mono text-[26px] text-coal-muted">
         <span>0</span>
         <div className="h-3 min-w-0 flex-1 rounded-full" style={{ background: `linear-gradient(90deg, ${gradient})` }} />
         <span className="whitespace-nowrap">{top.toLocaleString("id-ID")} m</span>
@@ -438,7 +439,7 @@ function TopBody({ data, asc }: { data: CarouselPackResult; asc: boolean }) {
         })}
       </ol>
       <div className="mt-8 shrink-0">
-        {partial && <p className="mb-4 text-[20px] text-coal-muted">{partial}</p>}
+        {partial && <p className="mb-4 text-[26px] text-coal-muted">{partial}</p>}
         <Footer source={pack.source} />
       </div>
     </Column>

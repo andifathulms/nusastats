@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { dukcapilApi, formatNumber, regionLabel, titleCase, type DukcapilRankRow } from "@/lib/api";
 import { NO_DATA, RAMP, framing, lerpHex, neighbourColours, placeLabels, project, type Geo, type Label, type OffFrame } from "./geo";
+import { themeVar } from "./brand";
 import { CONTENT_W, CornerTag, Footer, H, OffFrameNote, PAD, SAFE, SafeZones, W } from "./ShareCard";
 
 /**
@@ -120,8 +121,8 @@ export function WilayahCard({ template, kode, debug }: { template: WilayahTempla
       id="card"
       data-card-ready={ready ? "1" : undefined}
       data-card-error={error ?? undefined}
-      className="relative overflow-hidden bg-coal-bg font-sans text-coal-text"
-      style={{ width: W, height: H }}
+      className="nm-card relative overflow-hidden bg-coal-bg font-sans text-coal-text"
+      style={{ width: W, height: H, ...themeVar(template) }}
     >
       {error ? (
         <div className="p-16 text-[28px] text-coal-text">Kartu tidak dibuat: {error}</div>
@@ -160,7 +161,7 @@ export function Column({ children }: { children: React.ReactNode }) {
 }
 
 export function Title({ eyebrow, kab }: { eyebrow: string; kab: KabInfo }) {
-  const size = kab.name.length > 26 ? 60 : kab.name.length > 18 ? 72 : 84;
+  const size = kab.name.length > 26 ? 84 : kab.name.length > 18 ? 100 : 120;
   return (
     <>
       <div className="font-mono text-[24px] uppercase tracking-[0.14em] text-ink-gold">{eyebrow}</div>
@@ -176,7 +177,7 @@ export function Fact({ value, label }: { value: string; label: string }) {
   return (
     <div>
       <div className="whitespace-nowrap text-[48px] font-extrabold leading-none tracking-[-0.02em] tabular-nums">{value}</div>
-      <div className="mt-2 text-[22px] text-coal-muted">{label}</div>
+      <div className="mt-2 text-[26px] text-coal-muted">{label}</div>
     </div>
   );
 }
@@ -300,11 +301,11 @@ function DensityBody({ kode, data, geo }: { kode: string; data: Data; geo: Geos 
           {CLASS_COLORS.map((c, i) => (
             <div key={c} className="flex-1">
               <div className="h-4 rounded-sm" style={{ background: c }} />
-              <div className="mt-1 text-center font-mono text-[16px] text-coal-muted">{ranges[i]}</div>
+              <div className="mt-1 text-center font-mono text-[24px] text-coal-muted">{ranges[i]}</div>
             </div>
           ))}
         </div>
-        <div className="mt-1 text-right font-mono text-[16px] text-coal-muted">jiwa/km²{missing > 0 ? ` · abu-abu: ${missing} desa tanpa data` : ""}</div>
+        <div className="mt-1 text-right font-mono text-[24px] text-coal-muted">jiwa/km²{missing > 0 ? ` · abu-abu: ${missing} desa tanpa data` : ""}</div>
         <p className="mt-6 text-[34px] font-semibold leading-tight">
           Separuh penduduk tinggal di <span className="text-ink-gold">{pct1(facts.halfAreaPct)}</span> wilayahnya.
         </p>
@@ -334,7 +335,7 @@ export function MapLabels({ labels, numbered, k }: { labels: Label[]; numbered: 
                 fontSize={l.size}
                 fontWeight={600}
                 fill="#F3ECDD"
-                stroke="#0B1A33"
+                stroke="#0F1416"
                 strokeWidth={l.size * 0.18}
                 paintOrder="stroke"
                 style={{ fontFamily: "inherit" }}
@@ -344,8 +345,8 @@ export function MapLabels({ labels, numbered, k }: { labels: Label[]; numbered: 
             ))}
             {numbered.map((l) => (
               <g key={l.id}>
-                <circle cx={l.x} cy={l.y} r={14 * k} fill="#F3ECDD" />
-                <text x={l.x} y={l.y} textAnchor="middle" dominantBaseline="central" fontSize={16 * k} fontWeight={700} fill="#0B1A33">
+                <circle cx={l.x} cy={l.y} r={17 * k} fill="#F1EDE3" />
+                <text x={l.x} y={l.y} textAnchor="middle" dominantBaseline="central" fontSize={21 * k} fontWeight={800} fill="#0F1416">
                   {l.n}
                 </text>
               </g>
@@ -359,7 +360,7 @@ export function LabelLegend({ numbered }: { numbered: Label[] }) {
   return (
     <>
     {numbered.length > 0 && (
-      <ol className="mt-4 shrink-0 columns-3 gap-6 text-[19px] leading-snug text-coal-muted">
+      <ol className="mt-4 shrink-0 columns-3 gap-6 text-[26px] leading-snug text-coal-muted">
         {numbered.map((l) => (
           <li key={l.id} className="break-inside-avoid">
             <span className="font-mono text-ink-gold">{l.n}</span> {l.name}
