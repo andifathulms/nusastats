@@ -36,7 +36,9 @@ to `exports/carousels/{id}/` (gitignored), plus `carousel-press.url`, which open
 Press (`#deck=<base64url>`; the base URL comes from `CAROUSEL_PRESS_URL`). Then open it, or paste
 `deck.txt` there, unzip its
 PNGs into the same folder, and upload everything in name order: `{id}_01.png`, `{id}_01a_peta.png`,
-`{id}_02.png`, `{id}_02a_6409.png`, …
+`{id}_02.png`, `{id}_02a_6409.png`, … and, after the #1 reveal, `{id}_NNb_top10.png`, a bar chart
+of the top (or bottom) 10. Cards carry the "Nusantara Mapper" tag, and the caption says "Diolah oleh
+Nusantara Mapper" (`BRAND` in `AngkaCard.tsx` and `carousel_deck.py`).
 
 | Option | Meaning |
 |---|---|

@@ -34,6 +34,9 @@ const NO_DATA = "#2E3442";
 // the big number, and a ramp colour without a legend would only hide the lowest
 // values against the coal surface.
 const SILHOUETTE = "#3F73CC";
+// The TikTok account these carousels are posted on.
+const BRAND = "Nusantara Mapper";
+const TOP_N = 10;
 const PACK_KEYS = ["source", "metric", "level", "period", "prov", "turvar", "th", "unit", "label_metric", "notes",
   "top", "bottom", "allow_partial"];
 const LEVEL_NOUN = { provinsi: "provinsi", kabupaten: "kabupaten/kota", kecamatan: "kecamatan" } as const;
@@ -119,6 +122,7 @@ export function AngkaCard({ scope, query, debug }: { scope: string; query: URLSe
   const focus = query.get("focus");
   const bg = (query.get("bg") ?? "none") as Bg;
   const asc = query.get("order") === "asc";
+  const view = query.get("view");
   const packQuery = useMemo(() => {
     const q = new URLSearchParams();
     for (const k of PACK_KEYS) {
@@ -131,6 +135,8 @@ export function AngkaCard({ scope, query, debug }: { scope: string; query: URLSe
 
   const [data, setData] = useState<CarouselPackResult | null>(null);
   const [geo, setGeo] = useState<Geo | null>(null);
+  // A focused kabupaten's own boundary, drawn strong over faint kecamatan lines.
+  const [outline, setOutline] = useState<Geo | null | undefined>(undefined);
   const [peta, setPeta] = useState<Peta | null | undefined>(undefined);
   const [fatal, setFatal] = useState<string | null>(null);
   const [loaded, setLoaded] = useState(0);
@@ -152,6 +158,12 @@ export function AngkaCard({ scope, query, debug }: { scope: string; query: URLSe
       .catch((e) => setFatal(String(e.message ?? e)));
     if (wantsPeta) loadPeta(focus!).then(setPeta).catch(() => setPeta(null));
     else setPeta(null);
+    if (focus?.length === 4)
+      fetch("/dukcapil-regencies.geojson")
+        .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`batas kabupaten -> ${r.status}`))))
+        .then(setOutline)
+        .catch((e) => setFatal(String(e.message ?? e)));
+    else setOutline(null);
   }, [data, scope, focus, wantsPeta]);
 
   const issues = data ? problems(data, focus) : [];
@@ -167,7 +179,8 @@ export function AngkaCard({ scope, query, debug }: { scope: string; query: URLSe
           : []
       : [];
   const note = wantsPeta && peta !== undefined && !layers.length ? `lapisan ${bg} belum ada untuk ${focus}; siluet` : undefined;
-  const ready = !error && !!data && !!geo && peta !== undefined && fontsReady && loaded === layers.length;
+  const ready =
+    !error && !!data && !!geo && peta !== undefined && outline !== undefined && fontsReady && loaded === layers.length;
 
   return (
     <div
@@ -180,14 +193,17 @@ export function AngkaCard({ scope, query, debug }: { scope: string; query: URLSe
     >
       {error ? (
         <div className="p-16 text-[28px] text-coal-text">Kartu tidak dibuat: {error}</div>
-      ) : data && geo && peta !== undefined ? (
-        focus ? (
+      ) : data && geo && peta !== undefined && outline !== undefined ? (
+        view === "top10" ? (
+          <TopBody data={data} asc={asc} />
+        ) : focus ? (
           <FocusBody
             data={data}
             geo={geo}
             focus={focus}
             asc={asc}
             peta={layers.length ? peta : null}
+            outline={outline}
             bg={bg}
             layers={layers}
             onImage={() => setLoaded((n) => n + 1)}
@@ -197,7 +213,7 @@ export function AngkaCard({ scope, query, debug }: { scope: string; query: URLSe
           <OverviewBody data={data} geo={geo} scope={scope} asc={asc} />
         )
       ) : null}
-      <CornerTag />
+      <CornerTag label={BRAND} />
       {debug && <SafeZones />}
     </div>
   );
@@ -299,6 +315,7 @@ function FocusBody({
   focus,
   asc,
   peta,
+  outline,
   bg,
   layers,
   onImage,
@@ -309,6 +326,7 @@ function FocusBody({
   focus: string;
   asc: boolean;
   peta: Peta | null;
+  outline: Geo | null;
   bg: Bg;
   layers: string[];
   onImage: () => void;
@@ -316,10 +334,12 @@ function FocusBody({
 }) {
   const { map, pack } = data;
   const v = map.values.find((x) => x.geo === focus) as CarouselMapValue;
-  const { paths, vw, vh } = useMemo(() => {
+  const { paths, edge, vw, vh } = useMemo(() => {
     const feats = selectFeatures(geo, map.level, "", focus);
-    return project(feats, peta ? peta.bounds : frameOf(feats));
-  }, [geo, map.level, focus, peta]);
+    const frame = peta ? peta.bounds : frameOf(feats);
+    const own = outline?.features.filter((f) => f.properties.domain_id === focus) ?? [];
+    return { ...project(feats, frame), edge: own.length ? project(own, frame).paths : [] };
+  }, [geo, map.level, focus, peta, outline]);
   const counted = useRef(new Set<string>());
   const done = (src: string) => {
     if (counted.current.has(src)) return;
@@ -362,15 +382,21 @@ function FocusBody({
               onError={() => onImageError(src)}
             />
           ))}
+          {/* Kecamatan as faint hairlines (or none on a silhouette), so the
+              kabupaten's own outline and its terrain carry the map. */}
           {paths.map((p) => (
             <path
               key={p.id}
               d={p.d}
               fill={peta ? "none" : SILHOUETTE}
-              stroke={peta ? "rgba(243,236,221,0.85)" : "rgba(243,236,221,0.45)"}
-              strokeWidth={peta ? 1.6 : 0.8}
+              stroke={edge.length ? "rgba(243,236,221,0.22)" : "rgba(243,236,221,0.85)"}
+              strokeWidth={edge.length ? 0.6 : 1.6}
+              strokeOpacity={peta || !edge.length ? 1 : 0.5}
               vectorEffect="non-scaling-stroke"
             />
+          ))}
+          {edge.map((p) => (
+            <path key={`edge-${p.id}`} d={p.d} fill="none" stroke="#F3ECDD" strokeWidth={2.6} strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
           ))}
         </svg>
       </div>
@@ -420,4 +446,53 @@ function LayerLegend({ peta, bg }: { peta: Peta; bg: Bg }) {
     );
   }
   return null;
+}
+
+/** The tally after the countdown: the top (or bottom, order=asc) 10 as bars from
+ * zero. The regions the deck counted down to are drawn in cream, the rest in sea. */
+function TopBody({ data, asc }: { data: CarouselPackResult; asc: boolean }) {
+  const { map, pack } = data;
+  // Regions without a map code (map.unmatched) are left out here as on the maps;
+  // the guardrails above already refuse packs where that would matter.
+  const rows = [...map.values]
+    .sort((a, b) => (asc ? a.rank_asc - b.rank_asc : a.rank - b.rank) || a.code.localeCompare(b.code))
+    .slice(0, TOP_N);
+  const featured = new Set(pack.rows.slice(0, 5).map((r) => r.code));
+  if (asc) {
+    featured.clear();
+    pack.rows.slice(-5).forEach((r) => featured.add(r.code));
+  }
+  const max = Math.max(...rows.map((r) => Math.abs(r.value)), 1e-9);
+  const partial = partialNote(data);
+  const word = asc ? "terendah" : "tertinggi";
+
+  return (
+    <Column>
+      <Header eyebrow={map.kicker} title={`${rows.length} ${word}`} sub={`${map.title} · ${scopeLabel(data)} · ${map.period_label}`} />
+      <ol className="mt-10 flex min-h-0 flex-1 flex-col justify-center gap-5">
+        {rows.map((r) => {
+          const place = asc ? r.rank_asc : r.rank;
+          return (
+            <li key={r.code}>
+              <div className="flex items-baseline gap-3">
+                <span className="w-12 shrink-0 font-mono text-[24px] text-ink-gold">#{place}</span>
+                <span className="min-w-0 flex-1 truncate text-[28px] font-semibold">{r.label}</span>
+                <span className="whitespace-nowrap text-[28px] font-extrabold tabular-nums">{r.display}</span>
+              </div>
+              <div className="ml-[60px] mt-2 h-4 rounded-full bg-white/5">
+                <div
+                  className="h-4 rounded-full"
+                  style={{ width: `${Math.max(1, (Math.abs(r.value) / max) * 100)}%`, background: featured.has(r.code) ? "#F3ECDD" : "#4F82DC" }}
+                />
+              </div>
+            </li>
+          );
+        })}
+      </ol>
+      <div className="mt-8 shrink-0">
+        {partial && <p className="mb-4 text-[20px] text-coal-muted">{partial}</p>}
+        <Footer source={pack.source} />
+      </div>
+    </Column>
+  );
 }

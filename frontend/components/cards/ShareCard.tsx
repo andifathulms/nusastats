@@ -131,14 +131,14 @@ export function ShareCard({ template, kode, debug }: { template: Template; kode:
   );
 }
 
-export function CornerTag() {
+export function CornerTag({ label = "Fathul · Dev" }: { label?: string }) {
   // Fixed position and style on every card (spec §6.2), inside the safe area.
   return (
     <div
       className="absolute rounded-full bg-kunyit-light px-5 py-2 font-mono text-[24px] font-semibold tracking-[0.04em] text-laut-950"
       style={{ left: PAD, top: SAFE.top + 24 }}
     >
-      Fathul · Dev
+      {label}
     </div>
   );
 }

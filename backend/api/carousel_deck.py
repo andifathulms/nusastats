@@ -25,6 +25,7 @@ MAP_BACKGROUNDS = ("terrain", "landcover", "none")
 _PAPUA_KEMENDAGRI = {"91", "92", "93", "94", "95", "96"}
 # "Kabupaten/Kota" can't wrap at the slash, so cover headlines spell it out.
 _HEAD_NOUN = {"provinsi": "Provinsi", "kabupaten": "Kabupaten dan Kota", "kecamatan": "Kecamatan"}
+BRAND = "Nusantara Mapper"  # the TikTok account these carousels are posted on
 MAX_COUNTDOWN = 5
 MAX_NOTE_CHARS = 240
 MAX_HEAD_METRIC = 40  # longer metric names stay out of the cover headline
@@ -163,6 +164,10 @@ def deck_bundle(result, spec, recipe="top", map_bg="terrain", template="editoria
             body = f"*{fmt_value(row['value'], unit)}*" + (f", {', '.join(extra)}." if extra else "")
             slides.append(f"[number={place} icon={icon}]\n{_text(row['label'])}\n{body}")
             focus(row["code"], "desc" if recipe == "top" else "asc")
+        # After the reveal: the top (or bottom) 10 as a bar chart.
+        order = "&order=asc" if recipe == "terendah" else ""
+        cards.append({"file": f"{slug}_{len(slides):02d}b_top10.png",
+                      "path": f"/card/angka/{m['prov'] or '00'}?{query}&view=top10{order}"})
         if recipe == "terendah":
             warnings.append("Fairness: at most 1 in 4 posts may headline a lowest ranking; frame it as a gap, "
                             "not a verdict.")
@@ -206,7 +211,7 @@ def deck_bundle(result, spec, recipe="top", map_bg="terrain", template="editoria
     slides.append("[end]\nDaerahmu nomor berapa?\nTulis di komen, nanti kami cek datanya.")
 
     hook = slides[0].split("\n")[1].replace("\\|", "|").replace(" | ", " ").replace("|", " ")
-    caption = f"{hook}. Sumber: {pack['source']} · Diolah oleh Peta Angka {_hashtags(m['prov_name'])}"
+    caption = f"{hook}. Sumber: {pack['source']} · Diolah oleh {BRAND} {_hashtags(m['prov_name'])}"
     # The map cards sit between the deck's slides, so Carousel Press' own "i/N"
     # counter would count the wrong total: switch it off (Carousel Press F18).
     header = f"template: {template}\nlang: id\ntitle: {slug}\ncounter: off\ncaption: {_text(caption)}"

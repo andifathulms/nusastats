@@ -64,6 +64,7 @@ def _slides(deck):
 def test_top_recipe_counts_down_to_the_highest():
     b = deck_bundle(_result(ROWS), SPEC, recipe="top")
     slides = _slides(b["deck"])
+    assert "Diolah oleh Nusantara Mapper" in slides[0]
     assert slides[0].startswith("template: editorial/midnight\nlang: id\ntitle: bps-415-kab-2025\ncounter: off\n"
                                 "caption: ")
     assert slides[1] == ('[cover kicker="DATA • BPS 2025"]\nRata-rata Lama Sekolah | 5 Tertinggi\n'
@@ -82,7 +83,9 @@ def test_map_cards_sort_next_to_their_slides():
     # (Madiun is slide 02 ... Banda Aceh slide 06).
     assert files == ["bps-415-kab-2025_01a_peta.png", "bps-415-kab-2025_02a_3577.png",
                      "bps-415-kab-2025_03a_3471.png", "bps-415-kab-2025_04a_8171.png",
-                     "bps-415-kab-2025_05a_7471.png", "bps-415-kab-2025_06a_1171.png"]
+                     "bps-415-kab-2025_05a_7471.png", "bps-415-kab-2025_06a_1171.png",
+                     "bps-415-kab-2025_06b_top10.png"]
+    assert b["cards"][-1]["path"].endswith("&view=top10")
     assert sorted(files + [f"bps-415-kab-2025_{i:02d}.png" for i in range(1, 10)])[:3] == [
         "bps-415-kab-2025_01.png", "bps-415-kab-2025_01a_peta.png", "bps-415-kab-2025_02.png"]
     assert b["cards"][1]["path"] == ("/card/angka/00?source=bps&metric=415&level=kabupaten&period=2025"
@@ -96,8 +99,9 @@ def test_terendah_ranks_ascending_and_warns_on_fairness():
     assert slides[2].startswith("[number=5 icon=map-pin]\nKab. Lanny Jaya\n")
     assert slides[6].startswith("[number=1 icon=star]\nKab. Nduga\n*2,19 tahun*, terendah dari 514")
     assert b["cards"][0]["path"].endswith("&order=asc")
-    assert b["cards"][-1]["file"] == "bps-415-kab-2025_06a_9508.png"
-    assert "&order=asc" in b["cards"][-1]["path"]
+    assert b["cards"][-2]["file"] == "bps-415-kab-2025_06a_9508.png"
+    assert "&order=asc" in b["cards"][-2]["path"]
+    assert b["cards"][-1]["path"].endswith("&view=top10&order=asc")
     assert any("1 in 4" in w for w in b["warnings"])
     assert any("Papua" in w for w in b["warnings"])
 
