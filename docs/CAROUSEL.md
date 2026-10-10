@@ -106,6 +106,12 @@ Output goes to `exports/cards/profil/{kode}/{NN}_{template}.png`, in this postin
 the kabupaten ringed, "Kabupaten mana berikutnya?"). Each raster layer comes right before the card
 that weighs it by population (lowland → rendah, nightlights → cahaya).
 
+Layout (`components/cards/layout.tsx`): text stays in x 64–920, y 160–1500, clear of TikTok's
+top bar, icon column and caption; the map may run to x 1016. Each card puts the facts below the
+map (wide kabupaten) or beside it on the left (tall ones, e.g. Barru), whichever gives the bigger
+map, and the 22 px source line sits at y 1514. `?debug=1` on any /card URL draws the zones and a
+mock of TikTok's carousel UI on top.
+
 The cards have their own look, "Atlas Malam" (proposal: "Arah Visual Nusantara Mapper"):
 Archivo, an ink background, one theme colour per subject (`components/cards/brand.ts`, the
 `.nm-card` layer in `globals.css`) and a palette per kind of number (`geo.PALETTES`: magma for

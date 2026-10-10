@@ -23,12 +23,9 @@ export const TEMPLATES: Template[] = ["terrain", "landcover", "nightlights", "lo
 /** One raster in a card's stack, drawn in order (as on the Peta Wilayah page). */
 type Layer = { src: string; blend?: "multiply"; opacity?: number; pixelated?: boolean };
 
-export const W = 1080;
-export const H = 1920;
-// TikTok UI zones (spec §6.2): keep text and key content out of them.
-export const SAFE = { top: 220, bottom: 420, right: 160 };
-export const PAD = 64; // left margin
-export const CONTENT_W = W - PAD - SAFE.right; // 856
+// Canvas and zones live in layout.tsx (one rule for text, a looser one for maps).
+import { CONTENT_W, CardHeader, H, MapLayout, PAD, SAFE, TikTokOverlay, W, ZONE } from "./layout";
+export { CONTENT_W, H, PAD, SAFE, W };
 
 type Outline = { id: string; d: string };
 const NO_FEATURES = { features: [] };
@@ -161,7 +158,7 @@ export function ShareCard({ template, kode, debug }: { template: Template; kode:
         />
       ) : null}
       <CornerTag />
-      {debug && <SafeZones />}
+      {debug && <TikTokOverlay />}
     </div>
   );
 }
@@ -170,7 +167,7 @@ export function CornerTag({ label = "Nusantara Mapper" }: { label?: string }) {
   // The wordmark, fixed position and style on every card (spec §6.2), inside the
   // safe area: a framed grid square with a dot in the card's theme colour.
   return (
-    <div className="absolute flex items-center gap-[14px]" style={{ left: PAD, top: SAFE.top + 24 }}>
+    <div className="absolute flex items-center gap-[14px]" style={{ left: PAD, top: ZONE.wordmarkTop }}>
       <svg width="40" height="40" viewBox="0 0 40 40" aria-hidden="true">
         <rect x="3" y="3" width="34" height="34" rx="4" fill="none" stroke="currentColor" strokeWidth="3" />
         <path d="M3 20h34M20 3v34" stroke="currentColor" strokeWidth="2" opacity=".5" />
@@ -180,19 +177,6 @@ export function CornerTag({ label = "Nusantara Mapper" }: { label?: string }) {
         {label}
       </span>
     </div>
-  );
-}
-
-export function SafeZones() {
-  const z = "absolute flex items-center justify-center bg-red-600/35 font-mono text-[26px] text-white outline outline-2 outline-red-500";
-  return (
-    <>
-      <div className={z} style={{ left: 0, top: 0, width: W, height: SAFE.top }}>UI atas {SAFE.top}px</div>
-      <div className={z} style={{ left: 0, bottom: 0, width: W, height: SAFE.bottom }}>UI bawah {SAFE.bottom}px</div>
-      <div className={z} style={{ right: 0, top: SAFE.top, width: SAFE.right, height: H - SAFE.top - SAFE.bottom }}>
-        <span className="-rotate-90 whitespace-nowrap">UI kanan {SAFE.right}px</span>
-      </div>
-    </>
   );
 }
 
@@ -258,20 +242,30 @@ function CardBody({
           : template === "relief"
             ? "Relief lokal"
             : `Tutupan lahan ${peta.landcover?.year ?? ""}`;
-  const titleSize = title.length > 26 ? 84 : title.length > 18 ? 100 : 120;
-  const top = SAFE.top + 100; // below the corner tag
+  const facts =
+    template === "terrain" ? (
+      <TerrainFacts peta={peta} />
+    ) : template === "nightlights" ? (
+      <NightlightsFacts peta={peta} />
+    ) : template === "lowland" ? (
+      <LowlandFacts peta={peta} />
+    ) : template === "relief" ? (
+      <ReliefFacts peta={peta} />
+    ) : (
+      <LandcoverFacts peta={peta} />
+    );
 
-  // A fixed-height column that ends exactly where the bottom UI zone starts:
-  // the map takes whatever height is left, so text can never spill into a zone.
   return (
-    <div className="absolute flex flex-col" style={{ left: PAD, top, width: CONTENT_W, height: H - SAFE.bottom - top }}>
-      <div className="font-mono text-[24px] uppercase tracking-[0.14em] text-ink-gold">{eyebrow}</div>
-      <h1 className="mt-3 font-display font-medium leading-[1.02] tracking-[-0.02em]" style={{ fontSize: titleSize }}>
-        {title}
-      </h1>
-      <div className="mt-2 text-[34px] text-coal-muted">{sub}</div>
-
-      <div className="mt-6 flex min-h-0 flex-1 items-center justify-center">
+    <MapLayout
+      aspect={view.h / view.w}
+      header={<CardHeader kicker={`${eyebrow} · ${sub}`} title={title} />}
+      info={
+        <>
+          <OffFrameNote items={fit.offFrame} />
+          {facts}
+        </>
+      }
+      map={
         <svg viewBox={`${view.x.toFixed(1)} ${view.y.toFixed(1)} ${view.w.toFixed(1)} ${view.h.toFixed(1)}`} preserveAspectRatio="xMidYMid meet" className="h-full w-full">
           {layers.map((l) => (
             <image
@@ -303,21 +297,8 @@ function CardBody({
             <path key={`o-${p.id}`} d={p.d} fill="none" stroke="#F3ECDD" strokeWidth={2.6} strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
           ))}
         </svg>
-      </div>
-      <OffFrameNote items={fit.offFrame} />
-
-      {template === "terrain" ? (
-        <TerrainFacts peta={peta} />
-      ) : template === "nightlights" ? (
-        <NightlightsFacts peta={peta} />
-      ) : template === "lowland" ? (
-        <LowlandFacts peta={peta} />
-      ) : template === "relief" ? (
-        <ReliefFacts peta={peta} />
-      ) : (
-        <LandcoverFacts peta={peta} />
-      )}
-    </div>
+      }
+    />
   );
 }
 
@@ -338,13 +319,13 @@ function TerrainFacts({ peta }: { peta: Peta }) {
   const top = shown[shown.length - 1][0] || 1;
   const gradient = shown.map(([m, c]) => `${c} ${((m / top) * 100).toFixed(2)}%`).join(", ");
   return (
-    <div className="mt-6 shrink-0">
+    <div className="shrink-0">
       <div className="flex items-center gap-4 font-mono text-[26px] text-coal-muted">
         <span>0</span>
         <div className="h-3 min-w-0 flex-1 rounded-full" style={{ background: `linear-gradient(90deg, ${gradient})` }} />
         <span className="whitespace-nowrap">{formatNumber(top)} m</span>
       </div>
-      <div className="mt-6 flex items-baseline gap-4">
+      <div className="mt-6 flex flex-wrap items-baseline gap-x-4 gap-y-2">
         <span className="font-display text-[64px] font-medium leading-none">{t.terrain_class_label}</span>
         <span className="rounded-full border border-coal-border px-4 py-1 text-[26px] text-coal-muted">klasifikasi NusaStats</span>
       </div>
@@ -361,7 +342,7 @@ function TerrainFacts({ peta }: { peta: Peta }) {
             .join(", ")}
         </p>
       )}
-      <div className="mt-6 grid grid-cols-3 gap-6">
+      <div className="mt-6 nm-facts grid grid-cols-3 gap-6">
         <Fact value={metres(t.elevation_m.mean)} label="rata-rata elevasi" />
         <Fact value={peak(t.highest_point.elevation_m)} label="titik tertinggi" />
         <Fact value={pctInt(t.metrics_pct.share_elev_ge_1000)} label="luas di atas 1.000 m" />
@@ -377,8 +358,8 @@ function LandcoverFacts({ peta }: { peta: Peta }) {
   // Legend: only classes the area actually has at a visible share.
   const legend = lc.classes.filter((c) => c.share_pct >= 0.1);
   return (
-    <div className="mt-6 shrink-0">
-      <ul className="flex flex-wrap gap-x-6 gap-y-2 text-[26px] text-coal-muted">
+    <div className="shrink-0">
+      <ul className="flex flex-wrap gap-x-6 gap-y-2 text-[24px] text-coal-muted">
         {legend.map((c) => (
           <li key={c.code} className="inline-flex items-center gap-2">
             <span className="inline-block h-5 w-5 rounded" style={{ background: c.color }} />
@@ -386,7 +367,7 @@ function LandcoverFacts({ peta }: { peta: Peta }) {
           </li>
         ))}
       </ul>
-      <div className="mt-6 grid grid-cols-3 gap-6">
+      <div className="mt-6 nm-facts grid grid-cols-3 gap-6">
         {top3.map((c) => (
           <div key={c.code}>
             <div className="flex items-center gap-3">
@@ -413,16 +394,16 @@ function NightlightsFacts({ peta }: { peta: Peta }) {
   const max = Math.max(...years.map((y) => nl.years[y].lit_pct), 0.1);
   const x = litGrowth(nl);
   return (
-    <div className="mt-6 shrink-0">
-      <div className="flex h-[86px] items-end gap-3">
+    <div className="shrink-0">
+      <div className="nm-years flex h-[86px] items-end gap-3">
         {years.map((y) => (
-          <div key={y} className="flex flex-1 flex-col items-center gap-2">
+          <div key={y} className="flex min-w-0 flex-1 flex-col items-center gap-2">
             <div className="w-full rounded-t-md bg-kunyit-light" style={{ height: Math.max(4, (nl.years[y].lit_pct / max) * 60) }} />
-            <span className="font-mono text-[24px] text-coal-muted">{y}</span>
+            <span className="whitespace-nowrap font-mono text-[24px] text-coal-muted">{y}</span>
           </div>
         ))}
       </div>
-      <div className="mt-6 grid grid-cols-3 gap-6">
+      <div className="mt-6 nm-facts grid grid-cols-3 gap-6">
         <Fact value={pctInt(base.lit_pct)} label={`bercahaya ${nl.base_year}`} />
         <Fact value={pctInt(last.lit_pct)} label={`bercahaya ${nl.latest_year}`} />
         {x ? (
@@ -442,12 +423,12 @@ function LowlandFacts({ peta }: { peta: Peta }) {
   const [c5, c10] = t.metadata.lowland_colors!;
   const lp = t.lowland_pct!;
   return (
-    <div className="mt-6 shrink-0">
-      <ul className="flex flex-wrap gap-x-6 gap-y-2 text-[26px] text-coal-muted">
+    <div className="shrink-0">
+      <ul className="flex flex-wrap gap-x-6 gap-y-2 text-[24px] text-coal-muted">
         <li className="inline-flex items-center gap-2"><span className="inline-block h-5 w-5 rounded" style={{ background: c5 }} />di bawah 5 m</li>
         <li className="inline-flex items-center gap-2"><span className="inline-block h-5 w-5 rounded" style={{ background: c10 }} />5–10 m</li>
       </ul>
-      <div className="mt-6 grid grid-cols-3 gap-6">
+      <div className="mt-6 nm-facts grid grid-cols-3 gap-6">
         <Fact value={pctInt(lp.lt_10)} label="luas di bawah 10 m" />
         <Fact value={pctInt(lp.lt_5)} label="luas di bawah 5 m" />
         <Fact value={pctInt(t.metrics_pct.share_elev_lt_100)} label="luas di bawah 100 m" />
@@ -473,9 +454,9 @@ function ReliefFacts({ peta }: { peta: Peta }) {
     ["Bergunung", `≥ ${b[2]} m`, lr.classes_pct.bergunung],
   ];
   return (
-    <div className="mt-6 shrink-0">
+    <div className="shrink-0">
       <div className="text-[26px] text-coal-muted">Beda tinggi dalam {formatNumber(lr.window_m / 1000)} km · klasifikasi NusaStats</div>
-      <div className="mt-6 grid grid-cols-4 gap-4">
+      <div className="mt-6 nm-facts grid grid-cols-4 gap-4">
         {classes.map(([label, range, pct], i) => (
           <div key={label}>
             <div className="flex items-center gap-2">
@@ -497,12 +478,16 @@ export function OffFrameNote({ items }: { items: OffFrame[] }) {
   if (!items.length) return null;
   const shown = items.slice(0, 3).map((o) => `${titleCase(o.name)} (± ${formatNumber(o.km)} km ${o.dir})`);
   const more = items.length > 3 ? ` dan ${items.length - 3} lainnya` : "";
-  return <p className="mt-3 shrink-0 text-[26px] text-coal-muted">Di luar bingkai: {shown.join(", ")}{more}.</p>;
+  return <p className="mb-4 shrink-0 text-[24px] leading-snug text-coal-muted">Di luar bingkai: {shown.join(", ")}{more}.</p>;
 }
 
+/** The source line: 22 px in the band just under the text zone (y 1514), the
+ * same spot on every card whatever the layout. It's attribution, repeated in the
+ * caption, so it may sit where TikTok's caption starts. Fixed to the card's own
+ * 1080×1920 viewport (the /card page is exactly the card). */
 export function Footer({ source }: { source: string }) {
   return (
-    <p className="mt-6 border-t border-coal-border pt-4 text-[26px] leading-snug text-coal-muted">
+    <p className="fixed text-[22px] leading-snug text-coal-muted" style={{ left: PAD, top: ZONE.sourceTop, width: CONTENT_W }}>
       Sumber: {source}. Batas wilayah indikatif (BIG).
     </p>
   );

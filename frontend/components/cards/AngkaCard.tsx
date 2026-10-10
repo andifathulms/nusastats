@@ -5,7 +5,8 @@ import { carouselApi, type CarouselMapValue, type CarouselPackResult } from "@/l
 import { loadPeta, petaAsset, type Peta } from "@/lib/peta";
 import { NO_DATA, cropBox, frameOf, framing, kindFor, project, scaleFor, type Feature, type Geo } from "./geo";
 import { themeVar } from "./brand";
-import { CONTENT_W, CornerTag, Footer, H, OffFrameNote, PAD, SAFE, SafeZones, W } from "./ShareCard";
+import { CornerTag, Footer, OffFrameNote } from "./ShareCard";
+import { CONTENT_W, CardHeader, H, MapLayout, PAD, TikTokOverlay, W, ZONE } from "./layout";
 
 /**
  * 1080×1920 "angka" card: one carousel-data/1 pack (backend api/carousel.py) on
@@ -158,31 +159,17 @@ export function AngkaCard({ scope, query, debug }: { scope: string; query: URLSe
         )
       ) : null}
       <CornerTag label={BRAND} />
-      {debug && <SafeZones />}
+      {debug && <TikTokOverlay />}
     </div>
   );
 }
 
-function Column({ children }: { children: React.ReactNode }) {
-  const top = SAFE.top + 100; // below the corner tag
-  // Fixed-height column ending where the bottom UI zone starts; the map takes the rest.
+/** A text-only body (the top-10 card): the text zone, no map. */
+function TextBody({ children }: { children: React.ReactNode }) {
   return (
-    <div className="absolute flex flex-col" style={{ left: PAD, top, width: CONTENT_W, height: H - SAFE.bottom - top }}>
+    <div className="absolute flex flex-col" style={{ left: PAD, top: ZONE.bodyTop, width: CONTENT_W, height: ZONE.textBottom - ZONE.bodyTop }}>
       {children}
     </div>
-  );
-}
-
-function Header({ eyebrow, title, sub }: { eyebrow: string; title: string; sub?: string }) {
-  const size = title.length > 34 ? 72 : title.length > 26 ? 84 : title.length > 18 ? 100 : 120;
-  return (
-    <>
-      <div className="font-mono text-[24px] uppercase tracking-[0.14em] text-ink-gold">{eyebrow}</div>
-      <h1 className="mt-3 font-display font-medium leading-[1.02] tracking-[-0.02em]" style={{ fontSize: size }}>
-        {title}
-      </h1>
-      {sub && <div className="mt-2 text-[32px] text-coal-muted">{sub}</div>}
-    </>
   );
 }
 
@@ -212,45 +199,43 @@ function OverviewBody({ data, geo, scope, asc }: { data: CarouselPackResult; geo
   const partial = partialNote(data);
 
   return (
-    <Column>
-      <Header eyebrow={map.kicker} title={map.title} sub={`${scopeLabel(data)} · ${map.period_label}`} />
-      <div className="mt-6 flex min-h-0 flex-1 items-center justify-center">
+    <MapLayout
+      aspect={vh / vw}
+      header={
+        <CardHeader kicker={map.kicker} title={map.title}>
+          <div className="mt-2 text-[32px] text-coal-muted">{`${scopeLabel(data)} · ${map.period_label}`}</div>
+        </CardHeader>
+      }
+      info={
+        <>
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2 font-mono text-[22px] text-coal-muted">
+            <span className="whitespace-nowrap">{lowest.display}</span>
+            <div className="h-3 min-w-[120px] flex-1 rounded-full" style={{ background: `linear-gradient(90deg, ${scale.gradient})` }} />
+            <span className="whitespace-nowrap">{highest.display}</span>
+          </div>
+          <div className="mt-6 font-mono text-[24px] uppercase tracking-[0.12em] text-coal-muted">{asc ? "Terendah" : "Tertinggi"}</div>
+          <ol className="mt-3 space-y-3">
+            {top3.map((v) => (
+              <li key={v.geo} className="flex flex-wrap items-baseline gap-x-4">
+                <span className="w-12 shrink-0 font-mono text-[28px] text-ink-gold">#{asc ? v.rank_asc : v.rank}</span>
+                <span className="min-w-0 flex-1 text-[32px] font-semibold">{v.label}</span>
+                <span className="whitespace-nowrap text-[32px] font-extrabold tabular-nums">{v.display}</span>
+              </li>
+            ))}
+          </ol>
+          {partial && <p className="mt-4 text-[22px] text-coal-muted">{partial}</p>}
+          <Footer source={pack.source} />
+        </>
+      }
+      map={
         <svg viewBox={`0 0 ${vw.toFixed(0)} ${vh.toFixed(0)}`} preserveAspectRatio="xMidYMid meet" className="h-full w-full">
           {paths.map((p) => {
             const v = byGeo.get(p.id);
-            return (
-              <path
-                key={p.id}
-                d={p.d}
-                fill={v ? scale.color(v.value) : NO_DATA}
-                stroke="#0F1416"
-                strokeWidth={0.6}
-                vectorEffect="non-scaling-stroke"
-              />
-            );
+            return <path key={p.id} d={p.d} fill={v ? scale.color(v.value) : NO_DATA} stroke="#0F1416" strokeWidth={0.6} vectorEffect="non-scaling-stroke" />;
           })}
         </svg>
-      </div>
-      <div className="mt-6 shrink-0">
-        <div className="flex items-center gap-4 font-mono text-[26px] text-coal-muted">
-          <span className="whitespace-nowrap">{lowest.display}</span>
-          <div className="h-3 min-w-0 flex-1 rounded-full" style={{ background: `linear-gradient(90deg, ${scale.gradient})` }} />
-          <span className="whitespace-nowrap">{highest.display}</span>
-        </div>
-        <div className="mt-6 font-mono text-[26px] uppercase tracking-[0.12em] text-coal-muted">{asc ? "Terendah" : "Tertinggi"}</div>
-        <ol className="mt-3 space-y-3">
-          {top3.map((v) => (
-            <li key={v.geo} className="flex items-baseline gap-4">
-              <span className="w-12 shrink-0 font-mono text-[28px] text-ink-gold">#{asc ? v.rank_asc : v.rank}</span>
-              <span className="min-w-0 flex-1 truncate text-[34px] font-semibold">{v.label}</span>
-              <span className="whitespace-nowrap text-[34px] font-extrabold tabular-nums">{v.display}</span>
-            </li>
-          ))}
-        </ol>
-        {partial && <p className="mt-4 text-[26px] text-coal-muted">{partial}</p>}
-        <Footer source={pack.source} />
-      </div>
-    </Column>
+      }
+    />
   );
 }
 
@@ -279,14 +264,14 @@ function FocusBody({
 }) {
   const { map, pack } = data;
   const v = map.values.find((x) => x.geo === focus) as CarouselMapValue;
-  const { paths, edge, view, fit } = useMemo(() => {
+  const { paths, edge, view, fit, full } = useMemo(() => {
     const feats = selectFeatures(geo, map.level, "", focus);
     const fit = framing(feats);
     const frame = peta ? peta.bounds : fit.frame;
     const own = outline?.features.filter((f) => f.properties.domain_id === focus) ?? [];
     const { paths, vw, vh } = project(feats, frame);
     const view = peta && fit.cropped ? cropBox(fit.frame, peta.bounds) : { x: 0, y: 0, w: vw, h: vh };
-    return { paths, edge: own.length ? project(own, frame).paths : [], view, fit };
+    return { paths, edge: own.length ? project(own, frame).paths : [], view, fit, full: { vw, vh } };
   }, [geo, map.level, focus, peta, outline]);
   const { w: vw, h: vh } = view;
   const counted = useRef(new Set<string>());
@@ -305,17 +290,32 @@ function FocusBody({
   const partial = partialNote(data);
 
   return (
-    <Column>
-      <div className="flex items-center gap-4">
-        <span className="rounded-full bg-kunyit-light px-5 py-1 font-mono text-[34px] font-bold text-laut-950">#{place}</span>
-        <span className="font-mono text-[26px] uppercase tracking-[0.12em] text-coal-muted">
-          {word} dari {map.n.toLocaleString("id-ID")} {scopeLabel(data)}
-        </span>
-      </div>
-      <div className="mt-6">
-        <Header eyebrow={map.kicker} title={v.label} />
-      </div>
-      <div className="mt-6 flex min-h-0 flex-1 items-center justify-center">
+    <MapLayout
+      aspect={vh / vw}
+      headerH={300}
+      header={
+        <CardHeader kicker={map.kicker} title={v.label}>
+          <div className="mt-4 flex flex-wrap items-center gap-4">
+            <span className="rounded-full bg-kunyit-light px-5 py-1 font-mono text-[34px] font-bold text-laut-950">#{place}</span>
+            <span className="font-mono text-[24px] uppercase tracking-[0.1em] text-coal-muted">
+              {word} dari {map.n.toLocaleString("id-ID")} {scopeLabel(data)}
+            </span>
+          </div>
+        </CardHeader>
+      }
+      info={
+        <>
+          <OffFrameNote items={fit.offFrame} />
+          {peta && <LayerLegend peta={peta} bg={bg} />}
+          <div className="mt-6 text-[96px] font-extrabold leading-none tracking-[-0.02em] tabular-nums">{v.display}</div>
+          <div className="mt-3 text-[26px] text-coal-muted">
+            {map.title}, {map.period_label}
+          </div>
+          {partial && <p className="mt-4 text-[22px] text-coal-muted">{partial}</p>}
+          <Footer source={pack.source + layerSource} />
+        </>
+      }
+      map={
         <svg viewBox={`${view.x.toFixed(1)} ${view.y.toFixed(1)} ${vw.toFixed(1)} ${vh.toFixed(1)}`} preserveAspectRatio="xMidYMid meet" className="h-full w-full">
           {layers.map((src, i) => (
             <image
@@ -323,8 +323,8 @@ function FocusBody({
               href={src}
               x={0}
               y={0}
-              width={vw}
-              height={vh}
+              width={full.vw}
+              height={full.vh}
               preserveAspectRatio="none"
               style={{ mixBlendMode: i === 1 ? "multiply" : "normal", imageRendering: bg === "terrain" ? "auto" : "pixelated" }}
               onLoad={() => done(src)}
@@ -348,20 +348,8 @@ function FocusBody({
             <path key={`edge-${p.id}`} d={p.d} fill="none" stroke="#F3ECDD" strokeWidth={2.6} strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
           ))}
         </svg>
-      </div>
-      <OffFrameNote items={fit.offFrame} />
-      {peta && <LayerLegend peta={peta} bg={bg} />}
-      <div className="mt-6 shrink-0">
-        <div className="text-[96px] font-extrabold leading-none tracking-[-0.02em] tabular-nums">
-          {v.display}
-        </div>
-        <div className="mt-3 text-[26px] text-coal-muted">
-          {map.title}, {map.period_label}
-        </div>
-        {partial && <p className="mt-4 text-[26px] text-coal-muted">{partial}</p>}
-        <Footer source={pack.source + layerSource} />
-      </div>
-    </Column>
+      }
+    />
   );
 }
 
@@ -370,7 +358,7 @@ function LayerLegend({ peta, bg }: { peta: Peta; bg: Bg }) {
   if (bg === "landcover" && peta.landcover) {
     const shown = peta.landcover.classes.filter((c) => c.share_pct >= 1).slice(0, 5);
     return (
-      <ul className="mt-4 flex shrink-0 flex-wrap gap-x-6 gap-y-2 text-[26px] text-coal-muted">
+      <ul className="nm-legend flex shrink-0 flex-wrap gap-x-6 gap-y-2 text-[24px] text-coal-muted">
         {shown.map((c) => (
           <li key={c.code} className="inline-flex items-center gap-2">
             <span className="inline-block h-5 w-5 rounded" style={{ background: c.color }} />
@@ -388,7 +376,7 @@ function LayerLegend({ peta, bg }: { peta: Peta; bg: Bg }) {
     const top = shown[shown.length - 1][0] || 1;
     const gradient = shown.map(([m, c]) => `${c} ${((m / top) * 100).toFixed(2)}%`).join(", ");
     return (
-      <div className="mt-4 flex shrink-0 items-center gap-4 font-mono text-[26px] text-coal-muted">
+      <div className="flex shrink-0 items-center gap-4 font-mono text-[22px] text-coal-muted">
         <span>0</span>
         <div className="h-3 min-w-0 flex-1 rounded-full" style={{ background: `linear-gradient(90deg, ${gradient})` }} />
         <span className="whitespace-nowrap">{top.toLocaleString("id-ID")} m</span>
@@ -417,8 +405,10 @@ function TopBody({ data, asc }: { data: CarouselPackResult; asc: boolean }) {
   const word = asc ? "terendah" : "tertinggi";
 
   return (
-    <Column>
-      <Header eyebrow={map.kicker} title={`${rows.length} ${word}`} sub={`${map.title} · ${scopeLabel(data)} · ${map.period_label}`} />
+    <TextBody>
+      <CardHeader kicker={map.kicker} title={`${rows.length} ${word}`}>
+        <div className="mt-2 text-[30px] leading-snug text-coal-muted">{`${map.title} · ${scopeLabel(data)} · ${map.period_label}`}</div>
+      </CardHeader>
       <ol className="mt-6 flex min-h-0 flex-1 flex-col justify-start gap-3">
         {rows.map((r) => {
           const place = asc ? r.rank_asc : r.rank;
@@ -440,9 +430,9 @@ function TopBody({ data, asc }: { data: CarouselPackResult; asc: boolean }) {
         })}
       </ol>
       <div className="mt-8 shrink-0">
-        {partial && <p className="mb-4 text-[26px] text-coal-muted">{partial}</p>}
+        {partial && <p className="mb-4 text-[22px] text-coal-muted">{partial}</p>}
         <Footer source={pack.source} />
       </div>
-    </Column>
+    </TextBody>
   );
 }

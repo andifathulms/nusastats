@@ -216,3 +216,21 @@ select {
   font-weight: 700;
 }
 .nm-card .tabular-nums, .nm-card .font-extrabold { font-variation-settings: "wdth" 75; }
+/* The facts block adapts to its column: below the map (856 px) facts sit in a
+   row; beside it (360 px) they stack and legends run vertically. */
+.nm-card .nm-info { container-type: inline-size; }
+@container (max-width: 480px) {
+  .nm-card .nm-facts { grid-template-columns: 1fr !important; row-gap: 22px; }
+  .nm-card .nm-years > :not(:first-child):not(:last-child) > span { visibility: hidden; }
+  .nm-card .nm-legend { flex-direction: column; gap: 6px; }
+  .nm-card .nm-legend > * { display: flex; align-items: center; gap: 12px; }
+  .nm-card .nm-legend > * > :first-child { width: 44px; flex: none; }
+  .nm-card .nm-legend > * > :last-child { margin-top: 0; text-align: left; }
+}
+@container (max-width: 480px) {
+  .nm-card .nm-numbered { columns: 1; }
+}
+/* Year labels under the night-light bars: the outer ones align to the row's
+   edges so they never stick out of a narrow column. */
+.nm-card .nm-years > :first-child { align-items: flex-start; }
+.nm-card .nm-years > :last-child { align-items: flex-end; }

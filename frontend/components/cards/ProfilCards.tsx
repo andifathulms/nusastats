@@ -5,8 +5,9 @@ import { dukcapilApi, formatNumber, titleCase, type DukcapilRank, type DukcapilR
 import { loadPeta, petaAsset, type Peta } from "@/lib/peta";
 import { NO_DATA, cropBox, framing, kindFor, placeLabels, project, scaleFor, type Geo } from "./geo";
 import { themeVar } from "./brand";
-import { CornerTag, Footer, H, OffFrameNote, SafeZones, W } from "./ShareCard";
-import { BREAKS, CLASS_COLORS, Column, Fact, LabelLegend, MapLabels, Title, bulanTahun, compact, kabInfo, pct1, type KabInfo } from "./WilayahCard";
+import { CornerTag, Footer, H, OffFrameNote, W } from "./ShareCard";
+import { BREAKS, CLASS_COLORS, Fact, LabelLegend, MapLabels, bulanTahun, compact, kabInfo, pct1, type KabInfo } from "./WilayahCard";
+import { CardHeader, MapLayout, TikTokOverlay, mapBoxFor } from "./layout";
 
 /**
  * Kabupaten profile cards that join Dukcapil population with per-desa raster
@@ -129,7 +130,7 @@ export function ProfilCard({ template, kode, query, debug }: { template: ProfilT
         )
       ) : null}
       <CornerTag />
-      {debug && <SafeZones />}
+      {debug && <TikTokOverlay />}
     </div>
   );
 }
@@ -214,57 +215,65 @@ function LightsBody({ kode, d, onImage, onImageError }: { kode: string; d: Loade
   const areaShare = (litArea / area) * 100;
   const year = d.desa!.metadata.lights.year;
   const outlineEls = edge.map((p) => <path key={`e-${p.id}`} d={p.d} fill="none" stroke="#F3ECDD" strokeWidth={2.2} vectorEffect="non-scaling-stroke" />);
+  // Same frame for both maps: a tall kabupaten pairs them side by side, a wide one stacks them.
+  const pairSide = view.h > view.w;
+  const pairAspect = pairSide ? view.h / (2 * view.w) : (2 * view.h) / view.w;
+  const label = "font-mono text-[22px] uppercase tracking-[0.1em] text-coal-muted";
 
   return (
-    <Column>
-      <Title eyebrow={`Penduduk vs cahaya malam ${year}`} kab={d.kab} />
-      {/* Same frame for both maps; a tall kabupaten (Barru) sits side by side, a wide one stacks. */}
-      <div className={`mt-4 grid min-h-0 flex-1 gap-4 ${view.h > view.w ? "grid-cols-2" : "grid-rows-2"}`}>
-        <div className="flex min-h-0 flex-col">
-          <div className="font-mono text-[24px] uppercase tracking-[0.12em] text-coal-muted">Penduduk terdaftar per desa</div>
-          <div className="mt-2 min-h-0 flex-1">
-            <RasterMap layers={[]} view={view} outer={outer} onImage={onImage} onImageError={onImageError}>
-              {villagePaths.map((p) => {
-                const r = byId.get(p.id);
-                return <path key={p.id} d={p.d} fill={r ? CLASS_COLORS[cls(r.pop / r.area_km2)] : NO_DATA} stroke="rgba(15,20,22,0.55)" strokeWidth={0.4} vectorEffect="non-scaling-stroke" />;
-              })}
-              {outlineEls}
-            </RasterMap>
+    <MapLayout
+      aspect={pairAspect}
+      header={<CardHeader kicker={`Penduduk vs cahaya malam ${year} · ${d.kab.prov}`} title={d.kab.name} />}
+      info={
+        <>
+          <OffFrameNote items={fit.offFrame} />
+          <p className="text-[34px] font-semibold leading-tight">
+            <span className="text-ink-gold">{pct1(popShare)}</span> penduduk tinggal di desa yang terang malam hari
+            {/* "padahal hanya" only when people are clearly more concentrated than light. */}
+            {popShare - areaShare >= 20 ? <>, padahal hanya {pct1(areaShare)} wilayahnya bercahaya.</> : <>; {pct1(areaShare)} wilayahnya bercahaya.</>}
+          </p>
+          <div className="nm-facts mt-5 grid grid-cols-2 gap-6">
+            <Fact value={compact(litPop)} label="penduduk di desa terang" />
+            <Fact value={formatNumber(darkDesa)} label={`dari ${formatNumber(rows.length)} desa sebagian besar gelap`} />
+          </div>
+          <p className="mt-4 text-[22px] leading-snug text-coal-muted">
+            Desa terang: separuh luasnya atau lebih bercahaya (≥ {d.desa!.metadata.lights.lit_threshold_nw} nW/cm²/sr). Cahaya menunjukkan
+            permukiman dan aktivitas, bukan jumlah penduduk.
+          </p>
+          <Footer source={`Penduduk: Ditjen Dukcapil Kemendagri, data ${bulanTahun(d.period)} (terdaftar); cahaya: World Bank Light Every Night, VIIRS ${year} (CC BY 4.0); desa: BIG 1:10.000; dihitung NusaStats`} />
+        </>
+      }
+      map={
+        <div className={`grid h-full w-full gap-4 ${pairSide ? "grid-cols-2" : "grid-rows-2"}`}>
+          <div className="flex min-h-0 min-w-0 flex-col">
+            <div className={label}>Penduduk per desa</div>
+            <div className="mt-2 min-h-0 flex-1">
+              <RasterMap layers={[]} view={view} outer={outer} onImage={onImage} onImageError={onImageError}>
+                {villagePaths.map((p) => {
+                  const r = byId.get(p.id);
+                  return <path key={p.id} d={p.d} fill={r ? CLASS_COLORS[cls(r.pop / r.area_km2)] : NO_DATA} stroke="rgba(15,20,22,0.55)" strokeWidth={0.4} vectorEffect="non-scaling-stroke" />;
+                })}
+                {outlineEls}
+              </RasterMap>
+            </div>
+          </div>
+          <div className="flex min-h-0 min-w-0 flex-col">
+            <div className={label}>Cahaya malam {year}</div>
+            <div className="mt-2 min-h-0 flex-1">
+              <RasterMap
+                layers={[{ src: petaAsset(kode, d.peta!.bounds.layers.nightlights!), pixelated: true }]}
+                view={view}
+                outer={outer}
+                onImage={onImage}
+                onImageError={onImageError}
+              >
+                {outlineEls}
+              </RasterMap>
+            </div>
           </div>
         </div>
-        <div className="flex min-h-0 flex-col">
-          <div className="font-mono text-[24px] uppercase tracking-[0.12em] text-coal-muted">Cahaya malam {year}</div>
-          <div className="mt-2 min-h-0 flex-1">
-            <RasterMap
-              layers={[{ src: petaAsset(kode, d.peta!.bounds.layers.nightlights!), pixelated: true }]}
-              view={view}
-              outer={outer}
-              onImage={onImage}
-              onImageError={onImageError}
-            >
-              {outlineEls}
-            </RasterMap>
-          </div>
-        </div>
-      </div>
-      <OffFrameNote items={fit.offFrame} />
-      <div className="mt-4 shrink-0">
-        <p className="text-[32px] font-semibold leading-tight">
-          <span className="text-ink-gold">{pct1(popShare)}</span> penduduk tinggal di desa yang terang malam hari
-          {/* "padahal hanya" only when people are clearly more concentrated than light. */}
-          {popShare - areaShare >= 20 ? <>, padahal hanya {pct1(areaShare)} wilayahnya bercahaya.</> : <>; {pct1(areaShare)} wilayahnya bercahaya.</>}
-        </p>
-        <div className="mt-5 grid grid-cols-2 gap-6">
-          <Fact value={compact(litPop)} label="penduduk di desa terang" />
-          <Fact value={formatNumber(darkDesa)} label={`dari ${formatNumber(rows.length)} desa sebagian besar gelap`} />
-        </div>
-        <p className="mt-4 text-[26px] text-coal-muted">
-          Desa terang: separuh luasnya atau lebih bercahaya (≥ {d.desa!.metadata.lights.lit_threshold_nw} nW/cm²/sr). Cahaya malam
-          menunjukkan permukiman dan aktivitas, bukan jumlah penduduk.
-        </p>
-        <Footer source={`Penduduk: Ditjen Dukcapil Kemendagri, data ${bulanTahun(d.period)} (terdaftar); cahaya: World Bank Light Every Night, VIIRS ${year} (CC BY 4.0); desa: BIG 1:10.000; dihitung NusaStats`} />
-      </div>
-    </Column>
+      }
+    />
   );
 }
 
@@ -288,9 +297,36 @@ function LowBody({ kode, d, onImage, onImageError }: { kode: string; d: Loaded; 
   const top = [...low].sort((a, b) => b.pop - a.pop).slice(0, 4);
 
   return (
-    <Column>
-      <Title eyebrow="Penduduk di dataran rendah" kab={d.kab} />
-      <div className="mt-6 flex min-h-0 flex-1 items-center justify-center">
+    <MapLayout
+      aspect={view.h / view.w}
+      header={<CardHeader kicker={`Penduduk di dataran rendah · ${d.kab.prov}`} title={d.kab.name} />}
+      info={
+        <>
+          <OffFrameNote items={fit.offFrame} />
+          <ul className="nm-legend flex flex-wrap gap-x-6 gap-y-2 text-[24px] text-coal-muted">
+            <li className="inline-flex items-center gap-2"><span className="inline-block h-5 w-5 rounded" style={{ background: c5 }} />di bawah 5 m</li>
+            <li className="inline-flex items-center gap-2"><span className="inline-block h-5 w-5 rounded" style={{ background: c10 }} />5–10 m</li>
+          </ul>
+          <p className="mt-5 text-[34px] font-semibold leading-tight">
+            {low.length ? (
+              <>
+                <span className="text-ink-gold">{compact(lowPop)}</span> penduduk ({pct1((lowPop / pop) * 100)}) tinggal di {formatNumber(low.length)} desa yang
+                sebagian besar wilayahnya di bawah 10 m.
+              </>
+            ) : (
+              <>Tidak ada desa yang sebagian besar wilayahnya di bawah 10 m.</>
+            )}
+          </p>
+          {top.length > 0 && (
+            <p className="mt-3 text-[24px] leading-snug text-coal-muted">
+              Terbanyak: {top.map((r) => `${r.name} (${compact(r.pop)})`).join(", ")}.
+            </p>
+          )}
+          <p className="mt-3 text-[22px] leading-snug text-coal-muted">Batas bawah: tajuk pohon dan atap terbaca lebih tinggi dari tanah.</p>
+          <Footer source={`Penduduk: Ditjen Dukcapil Kemendagri, data ${bulanTahun(d.period)} (terdaftar); ketinggian: Copernicus DEM GLO-30 (© DLR e.V., © Airbus DS; Copernicus/EU/ESA); desa: BIG 1:10.000; dihitung NusaStats`} />
+        </>
+      }
+      map={
         <RasterMap
           layers={[
             ...(shade ? [{ src: petaAsset(kode, d.peta!.bounds.layers.hillshade!), opacity: 0.55 }] : []),
@@ -304,46 +340,21 @@ function LowBody({ kode, d, onImage, onImageError }: { kode: string; d: Loaded; 
           {lowPaths.map((p) => <path key={p.id} d={p.d} fill="none" stroke="#F3ECDD" strokeWidth={1.4} vectorEffect="non-scaling-stroke" />)}
           {edge.map((p) => <path key={`e-${p.id}`} d={p.d} fill="none" stroke="#F3ECDD" strokeWidth={2.4} vectorEffect="non-scaling-stroke" />)}
         </RasterMap>
-      </div>
-      <OffFrameNote items={fit.offFrame} />
-      <div className="mt-4 shrink-0">
-        <ul className="flex flex-wrap gap-x-6 gap-y-2 text-[26px] text-coal-muted">
-          <li className="inline-flex items-center gap-2"><span className="inline-block h-5 w-5 rounded" style={{ background: c5 }} />di bawah 5 m</li>
-          <li className="inline-flex items-center gap-2"><span className="inline-block h-5 w-5 rounded" style={{ background: c10 }} />5–10 m</li>
-        </ul>
-        <p className="mt-5 text-[32px] font-semibold leading-tight">
-          {low.length ? (
-            <>
-              <span className="text-ink-gold">{compact(lowPop)}</span> penduduk ({pct1((lowPop / pop) * 100)}) tinggal di {formatNumber(low.length)} desa yang
-              sebagian besar wilayahnya di bawah 10 m.
-            </>
-          ) : (
-            <>Tidak ada desa yang sebagian besar wilayahnya di bawah 10 m.</>
-          )}
-        </p>
-        {top.length > 0 && (
-          <p className="mt-3 text-[26px] text-coal-muted">
-            Terbanyak: {top.map((r) => `${r.name} (${compact(r.pop)})`).join(", ")}.
-          </p>
-        )}
-        <p className="mt-3 text-[26px] text-coal-muted">
-          Batas bawah: model permukaan membaca puncak pohon dan atap, bukan tanah, jadi daratan rendah yang sebenarnya bisa lebih luas.
-        </p>
-        <Footer source={`Penduduk: Ditjen Dukcapil Kemendagri, data ${bulanTahun(d.period)} (terdaftar); ketinggian: Copernicus DEM GLO-30 (© DLR e.V., © Airbus DS; Copernicus/EU/ESA); desa: BIG 1:10.000; dihitung NusaStats`} />
-      </div>
-    </Column>
+      }
+    />
   );
 }
 
 function KecamatanBody({ kode, d }: { kode: string; d: Loaded }) {
   const kec = d.kec!;
-  const { paths, edge, labels, numbered, vw, vh, fit } = useMemo(() => {
+  const { paths, edge, labels, numbered, vw, vh, fit, box } = useMemo(() => {
     const feats = d.districts.features.filter((f) => f.properties.domain_id.startsWith(kode));
     const own = d.outline.features.filter((f) => f.properties.domain_id === kode);
     const fit = framing(feats);
     const { paths, vw, vh } = project(feats, fit.frame);
+    const box = mapBoxFor(vh / vw);
     const names = new Map(kec.results.map((r) => [r.domain_id, titleCase(r.domain_name)]));
-    return { paths, vw, vh, fit, edge: project(own, fit.frame).paths, ...placeLabels(feats, fit.frame, vw, vh, names, 856, 760) };
+    return { paths, vw, vh, fit, box, edge: project(own, fit.frame).paths, ...placeLabels(feats, fit.frame, vw, vh, names, box.w, box.h) };
   }, [d, kode, kec]);
   const byId = new Map(kec.results.map((r) => [r.domain_id, r]));
   const vals = kec.results.map((r) => r.value);
@@ -355,12 +366,32 @@ function KecamatanBody({ kode, d }: { kode: string; d: Loaded }) {
   const unit = kec.unit ? ` ${kec.unit}` : "";
   const fmt = (v: number) => `${v.toLocaleString("id-ID", { maximumFractionDigits: 1 })}${unit === " %" ? "%" : unit}`;
   const sorted = [...kec.results].sort((a, b) => b.value - a.value);
-  const k = 1 / Math.min(856 / vw, 760 / vh);
+  const k = 1 / Math.min(box.w / vw, box.h / vh);
 
   return (
-    <Column>
-      <Title eyebrow={`${kec.indicator.label_id} per kecamatan`} kab={d.kab} />
-      <div className="mt-6 flex min-h-0 flex-1 items-center justify-center">
+    <MapLayout
+      aspect={vh / vw}
+      side={box.side}
+      header={<CardHeader kicker={`${kec.indicator.label_id} per kecamatan · ${d.kab.prov}`} title={d.kab.name} />}
+      info={
+        <>
+          <OffFrameNote items={fit.offFrame} />
+          <LabelLegend numbered={numbered} />
+          <div className="mt-6 flex flex-wrap items-center gap-x-4 gap-y-2 font-mono text-[22px] text-coal-muted">
+            <span className="whitespace-nowrap">{fmt(scale.lo)}</span>
+            <div className="relative h-3 min-w-[120px] flex-1 rounded-full" style={{ background: `linear-gradient(90deg, ${scale.gradient})` }}>
+              {scale.mid !== undefined && <span className="absolute left-1/2 top-5 -translate-x-1/2 whitespace-nowrap">{fmt(scale.mid)}</span>}
+            </div>
+            <span className="whitespace-nowrap">{fmt(scale.hi)}</span>
+          </div>
+          <div className={`nm-facts ${scale.mid !== undefined ? "mt-12" : "mt-5"} grid grid-cols-2 gap-6`}>
+            <Fact value={fmt(sorted[0].value)} label={`tertinggi: ${titleCase(sorted[0].domain_name)}`} />
+            <Fact value={fmt(sorted[sorted.length - 1].value)} label={`terendah: ${titleCase(sorted[sorted.length - 1].domain_name)}`} />
+          </div>
+          <Footer source={`Diolah dari Ditjen Dukcapil Kemendagri, data ${bulanTahun(d.period)} (penduduk terdaftar, bukan sensus)`} />
+        </>
+      }
+      map={
         <svg viewBox={`0 0 ${vw.toFixed(0)} ${vh.toFixed(0)}`} preserveAspectRatio="xMidYMid meet" className="h-full w-full">
           {paths.map((p) => {
             const r = byId.get(p.id);
@@ -369,23 +400,7 @@ function KecamatanBody({ kode, d }: { kode: string; d: Loaded }) {
           {edge.map((p) => <path key={`e-${p.id}`} d={p.d} fill="none" stroke="#F3ECDD" strokeWidth={2.4} vectorEffect="non-scaling-stroke" />)}
           <MapLabels labels={labels} numbered={numbered} k={k} />
         </svg>
-      </div>
-      <OffFrameNote items={fit.offFrame} />
-      <LabelLegend numbered={numbered} />
-      <div className="mt-4 shrink-0">
-        <div className="flex items-center gap-4 font-mono text-[26px] text-coal-muted">
-          <span className="whitespace-nowrap">{fmt(scale.lo)}</span>
-          <div className="relative h-3 min-w-0 flex-1 rounded-full" style={{ background: `linear-gradient(90deg, ${scale.gradient})` }}>
-            {scale.mid !== undefined && <span className="absolute left-1/2 top-5 -translate-x-1/2 whitespace-nowrap">{fmt(scale.mid)}</span>}
-          </div>
-          <span className="whitespace-nowrap">{fmt(scale.hi)}</span>
-        </div>
-        <div className={`${scale.mid !== undefined ? "mt-12" : "mt-5"} grid grid-cols-2 gap-6`}>
-          <Fact value={fmt(sorted[0].value)} label={`tertinggi: ${titleCase(sorted[0].domain_name)}`} />
-          <Fact value={fmt(sorted[sorted.length - 1].value)} label={`terendah: ${titleCase(sorted[sorted.length - 1].domain_name)}`} />
-        </div>
-        <Footer source={`Diolah dari Ditjen Dukcapil Kemendagri, data ${bulanTahun(d.period)} (penduduk terdaftar, bukan sensus)`} />
-      </div>
-    </Column>
+      }
+    />
   );
 }
