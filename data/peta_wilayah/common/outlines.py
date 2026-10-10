@@ -86,6 +86,39 @@ def _log_skip(prov: str, reason: str) -> None:
     sys.stderr.write(f"outlines: provinsi {prov} SKIPPED — {reason}\n")
 
 
+def _read_desa(src, take, leave_out):
+    """[(code, geometry)] from a BIG desa archive, applying the regency remap
+    (see _source); invalid polygons are repaired with make_valid and counted."""
+    desa = []
+    invalid = recoded = left_out = 0
+    for f in json.loads(src.read_text())["features"]:
+        code = f["properties"]["domain_id"]
+        if take is not None:
+            if code[:4] not in take:
+                continue
+            code = take[code[:4]] + code[4:]
+            recoded += 1
+        elif code[:4] in leave_out:
+            left_out += 1
+            continue
+        g = shape(f["geometry"])
+        if not g.is_valid:
+            invalid += 1
+            g = make_valid(g)
+        desa.append((code, g))
+    return desa, invalid, recoded, left_out
+
+
+def desa_of(kode: str):
+    """Full-resolution BIG desa polygons [(10-digit code, geometry)] inside a
+    kabupaten/kecamatan kode, plus the archive's sha256. Same remap as build()."""
+    src, take, leave_out = _source(kode[:2])
+    if not src.exists():
+        raise ProvinceSkipped(f"provinsi {kode[:2]}: no BIG desa archive ({src.name})")
+    desa, _invalid, _recoded, _left = _read_desa(src, take, leave_out)
+    return [(c, g) for c, g in desa if c.startswith(kode)], sha256(src)
+
+
 def build(prov: str, force: bool = False) -> dict:
     src, take, leave_out = _source(prov)
     if not src.exists():
@@ -107,24 +140,7 @@ def build(prov: str, force: bool = False) -> dict:
 
     sys.stderr.write(f"outlines: dissolving provinsi {prov} from {src.name}…\n")
     dissolve = _dissolve_fn()
-    desa = []
-    invalid = 0
-    recoded = left_out = 0
-    for f in json.loads(src.read_text())["features"]:
-        code = f["properties"]["domain_id"]
-        if take is not None:
-            if code[:4] not in take:
-                continue
-            code = take[code[:4]] + code[4:]
-            recoded += 1
-        elif code[:4] in leave_out:
-            left_out += 1
-            continue
-        g = shape(f["geometry"])
-        if not g.is_valid:
-            invalid += 1
-            g = make_valid(g)
-        desa.append((code, g))
+    desa, invalid, recoded, left_out = _read_desa(src, take, leave_out)
     if take is not None and {c[:4] for c, _ in desa} != set(take.values()):
         raise RuntimeError(f"provinsi {prov}: remap expected regencies {sorted(take.values())}, "
                            f"got {sorted({c[:4] for c, _ in desa})}")
