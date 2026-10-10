@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { carouselApi, type CarouselMapValue, type CarouselPackResult } from "@/lib/api";
 import { loadPeta, petaAsset, type Peta } from "@/lib/peta";
+import { NO_DATA, RAMP, frameOf, project, rampColor, type Feature, type Frame, type Geo } from "./geo";
 import { CONTENT_W, CornerTag, Footer, H, PAD, SAFE, SafeZones, W } from "./ShareCard";
 
 /**
@@ -21,15 +22,8 @@ import { CONTENT_W, CornerTag, Footer, H, PAD, SAFE, SafeZones, W } from "./Shar
  * region, the card draws its silhouette instead and says so in data-card-note.
  */
 
-type Feature = { properties: { domain_id: string }; geometry: { type: string; coordinates: unknown } };
-type Geo = { features: Feature[] };
-type Frame = { west: number; south: number; east: number; north: number };
 type Bg = "terrain" | "landcover" | "none";
 
-// DESIGN.md: on a dark surface choropleths run dark sea -> cream, so high values
-// read as the strongest colour; "no data" stays neutral grey, off the ramp.
-const RAMP = ["#1A2E55", "#2B57A3", "#4F82DC", "#A3BEF0", "#F3ECDD"];
-const NO_DATA = "#2E3442";
 // A focused region without its Peta layer: one fixed sea fill. Its value is in
 // the big number, and a ramp colour without a legend would only hide the lowest
 // values against the coal surface.
@@ -40,57 +34,6 @@ const TOP_N = 10;
 const PACK_KEYS = ["source", "metric", "level", "period", "prov", "turvar", "th", "unit", "label_metric", "notes",
   "top", "bottom", "allow_partial"];
 const LEVEL_NOUN = { provinsi: "provinsi", kabupaten: "kabupaten/kota", kecamatan: "kecamatan" } as const;
-
-function lerpHex(a: string, b: string, t: number): string {
-  const pa = [1, 3, 5].map((i) => parseInt(a.slice(i, i + 2), 16));
-  const pb = [1, 3, 5].map((i) => parseInt(b.slice(i, i + 2), 16));
-  return `#${pa.map((v, i) => Math.round(v + (pb[i] - v) * t).toString(16).padStart(2, "0")).join("")}`;
-}
-
-function rampColor(t: number): string {
-  const x = Math.max(0, Math.min(1, t)) * (RAMP.length - 1);
-  const i = Math.min(RAMP.length - 2, Math.floor(x));
-  return lerpHex(RAMP[i], RAMP[i + 1], x - i);
-}
-
-function polygons(f: Feature): number[][][][] {
-  return (f.geometry.type === "Polygon" ? [f.geometry.coordinates] : f.geometry.coordinates) as number[][][][];
-}
-
-function frameOf(features: Feature[]): Frame {
-  const fr = { west: 180, south: 90, east: -180, north: -90 };
-  for (const f of features)
-    for (const poly of polygons(f))
-      for (const ring of poly)
-        for (const [x, y] of ring) {
-          fr.west = Math.min(fr.west, x);
-          fr.east = Math.max(fr.east, x);
-          fr.south = Math.min(fr.south, y);
-          fr.north = Math.max(fr.north, y);
-        }
-  return fr;
-}
-
-/** Equirectangular with the mid-latitude cosine (same as ShareCard), in a 1000-wide viewBox. */
-function project(features: Feature[], frame: Frame) {
-  const cosMid = Math.cos((((frame.south + frame.north) / 2) * Math.PI) / 180);
-  const vw = 1000;
-  const s = vw / ((frame.east - frame.west) * cosMid || 1);
-  const vh = (frame.north - frame.south) * s;
-  const paths = features.map((f) => ({
-    id: f.properties.domain_id,
-    d: polygons(f)
-      .map((poly) =>
-        poly
-          .map((ring) =>
-            ring.map(([x, y], i) => `${i ? "L" : "M"}${((x - frame.west) * s * cosMid).toFixed(1)} ${((frame.north - y) * s).toFixed(1)}`).join("") + "Z"
-          )
-          .join("")
-      )
-      .join(""),
-  }));
-  return { paths, vw, vh };
-}
 
 function geometryUrl(level: string, scope: string, focus: string | null): string {
   const g = focus ?? "";

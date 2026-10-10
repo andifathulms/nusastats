@@ -71,3 +71,22 @@ a lowest ranking; a bottom that is mostly Papua), a cover headline at risk of br
 metric name too long for the headline, and regions without a Peta layer (those cards show the
 region's outline). Every number on a slide and a card is the pack's value, formatted once by the
 backend (`fmt_value`). Edit only the cover hook.
+
+## Kabupaten profile cards (`npm run card`)
+
+Besides rankings, one kabupaten can be posted as a set of maps:
+
+```bash
+cd frontend
+npm run card -- --template profil --kode 6409     # all seven, numbered in posting order
+npm run card -- --template wilayah --kode 3201    # one template
+```
+
+| Template | Shows | Needs |
+|---|---|---|
+| `wilayah` | kecamatan map with their names (small ones numbered, with a legend), counts, population, area | boundaries + Dukcapil |
+| `kepadatan` | population density per desa on fixed classes (< 10 … ≥ 5.000 jiwa/km²), "half the residents live in X% of the area" | boundaries + Dukcapil + BIG area |
+| `terrain`, `lowland`, `relief`, `landcover`, `nightlights` | the Peta Wilayah layers | Peta outputs for that kode |
+
+Output goes to `exports/cards/profil/{kode}/{NN}_{template}.png`. The first two work everywhere,
+Papua included, and the Peta layers wherever the pipeline has run.

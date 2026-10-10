@@ -4,6 +4,7 @@ import { useSearchParams } from "next/navigation";
 import { Suspense } from "react";
 import { AngkaCard } from "@/components/cards/AngkaCard";
 import { ShareCard, TEMPLATES, type Template } from "@/components/cards/ShareCard";
+import { WILAYAH_TEMPLATES, WilayahCard, type WilayahTemplate } from "@/components/cards/WilayahCard";
 
 // /card/{template}/{kode}[?debug=1] — a bare 1080×1920 share card for the PNG
 // exporters (`npm run card`, `npm run carousel`). `debug=1` draws the TikTok UI
@@ -12,6 +13,8 @@ import { ShareCard, TEMPLATES, type Template } from "@/components/cards/ShareCar
 function Card({ template, kode }: { template: string; kode: string }) {
   const params = useSearchParams();
   const debug = params.get("debug") === "1";
+  if ((WILAYAH_TEMPLATES as string[]).includes(template))
+    return <WilayahCard template={template as WilayahTemplate} kode={kode} debug={debug} />;
   if (template === "angka") {
     if (!/^\d{2}$/.test(kode)) return <div id="card" data-card-error={`cakupan tidak dikenal: ${kode}`} />;
     return <AngkaCard scope={kode} query={params} debug={debug} />;

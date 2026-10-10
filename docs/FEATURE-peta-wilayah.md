@@ -217,7 +217,7 @@ Card layout rules:
 
 - Title: area name, with provinsi underneath.
 - Keep text and key content out of TikTok's UI zones: roughly the top 220 px, bottom 420 px, and right 160 px. Add a debug toggle that draws these zones.
-- Corner tag `Fathul · Dev` in a fixed position and style on every card.
+- Corner tag `Nusantara Mapper` (the TikTok account) in a fixed position and style on every card.
 - Footer with data source, year, and "Batas wilayah indikatif".
 - Numbers rounded for reading (e.g. "62%", "1.240 m") using Indonesian number formatting.
 - Rendering must be deterministic: same kode and template produce the same image.

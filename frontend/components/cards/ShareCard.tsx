@@ -15,8 +15,11 @@ import { litGrowth, loadPeta, MIN_BASE_LIT_KM2, petaAsset, type Peta } from "@/l
  * the image does not depend on the viewer's theme. No animation.
  */
 
-export type Template = "terrain" | "landcover" | "nightlights";
-export const TEMPLATES: Template[] = ["terrain", "landcover", "nightlights"];
+export type Template = "terrain" | "landcover" | "nightlights" | "lowland" | "relief";
+export const TEMPLATES: Template[] = ["terrain", "landcover", "nightlights", "lowland", "relief"];
+
+/** One raster in a card's stack, drawn in order (as on the Peta Wilayah page). */
+type Layer = { src: string; blend?: "multiply"; opacity?: number; pixelated?: boolean };
 
 export const W = 1080;
 export const H = 1920;
@@ -26,6 +29,7 @@ export const PAD = 64; // left margin
 export const CONTENT_W = W - PAD - SAFE.right; // 856
 
 type Outline = { id: string; d: string };
+const NO_FEATURES = { features: [] };
 type Geo = { features: { properties: { domain_id: string }; geometry: { type: string; coordinates: unknown } }[] };
 
 const pctInt = (v: number) => (v > 0 && v < 1 ? "<1%" : `${formatNumber(Math.round(v))}%`);
@@ -55,6 +59,20 @@ function problems(peta: Peta | null, template: Template): string[] {
     const bands = Object.values(t.elevation_bands_pct).reduce((a, b) => a + b, 0);
     if (Math.abs(bands - 100) > 0.5) out.push(`pita elevasi berjumlah ${bands.toFixed(2)}%`);
     if (t.classification.official !== false) out.push("klasifikasi medan tidak ditandai sebagai klasifikasi NusaStats");
+  } else if (template === "lowland" || template === "relief") {
+    const t = peta.terrain;
+    if (!t) return ["terrain.json tidak ada"];
+    if (template === "lowland") {
+      if (!peta.present.lowland || !t.lowland_pct || !t.metadata.lowland_colors) out.push("lapisan dataran rendah tidak ada");
+      else if (t.lowland_pct.lt_5 > t.lowland_pct.lt_10 || t.lowland_pct.lt_10 > 100) out.push("porsi <5 m melebihi porsi <10 m");
+    } else {
+      const lr = t.local_relief;
+      if (!peta.present.relief || !lr || !t.metadata.relief_colors) out.push("lapisan relief tidak ada");
+      else {
+        const sum = Object.values(lr.classes_pct).reduce((a, b) => a + b, 0);
+        if (Math.abs(sum - 100) > 0.5) out.push(`kelas relief berjumlah ${sum.toFixed(2)}%`);
+      }
+    }
   } else if (template === "nightlights") {
     const nl = peta.nightlights;
     if (!nl) return ["nightlights.json tidak ada"];
@@ -77,6 +95,8 @@ function problems(peta: Peta | null, template: Template): string[] {
 export function ShareCard({ template, kode, debug }: { template: Template; kode: string; debug: boolean }) {
   const [peta, setPeta] = useState<Peta | null | undefined>(undefined);
   const [geo, setGeo] = useState<Geo | null>(null);
+  // A kabupaten's own boundary (null for a kecamatan card, which has no inner lines).
+  const [regGeo, setRegGeo] = useState<Geo | null | undefined>(undefined);
   const [fatal, setFatal] = useState<string | null>(null);
   const [loaded, setLoaded] = useState(0);
   const [fontsReady, setFontsReady] = useState(false);
@@ -87,6 +107,12 @@ export function ShareCard({ template, kode, debug }: { template: Template; kode:
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`batas kecamatan -> ${r.status}`))))
       .then(setGeo)
       .catch((e) => setFatal(String(e)));
+    if (kode.length === 4)
+      fetch("/dukcapil-regencies.geojson")
+        .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`batas kabupaten -> ${r.status}`))))
+        .then(setRegGeo)
+        .catch((e) => setFatal(String(e)));
+    else setRegGeo(null);
     document.fonts.ready.then(() => setFontsReady(true));
   }, [kode]);
 
@@ -94,15 +120,21 @@ export function ShareCard({ template, kode, debug }: { template: Template; kode:
   // "Not computed" explains everything else that 404s, so it wins.
   const error = peta === null ? issues.join("; ") : fatal ?? (issues.length ? issues.join("; ") : null);
 
-  const layers =
+  const asset = (k: keyof Peta["bounds"]["layers"]) => petaAsset(kode, peta!.bounds.layers[k]!);
+  const shade = peta?.present.hillshade;
+  const layers: Layer[] =
     peta && !error
       ? template === "terrain"
-        ? [petaAsset(kode, peta.bounds.layers.elevation!), petaAsset(kode, peta.bounds.layers.hillshade!)]
+        ? [{ src: asset("elevation") }, { src: asset("hillshade"), blend: "multiply" }]
         : template === "nightlights"
-          ? [petaAsset(kode, peta.bounds.layers.nightlights!)]
-          : [petaAsset(kode, peta.bounds.layers.landcover!)]
+          ? [{ src: asset("nightlights"), pixelated: true }]
+          : template === "lowland"
+            ? [...(shade ? [{ src: asset("hillshade"), opacity: 0.55 }] : []), { src: asset("lowland"), pixelated: true }]
+            : template === "relief"
+              ? [{ src: asset("relief"), pixelated: true }, ...(shade ? [{ src: asset("hillshade"), blend: "multiply" as const }] : [])]
+              : [{ src: asset("landcover"), pixelated: true }]
       : [];
-  const ready = !error && !!peta && !!geo && fontsReady && loaded === layers.length;
+  const ready = !error && !!peta && !!geo && regGeo !== undefined && fontsReady && loaded === layers.length;
 
   return (
     <div
@@ -121,6 +153,7 @@ export function ShareCard({ template, kode, debug }: { template: Template; kode:
           peta={peta}
           geo={geo}
           layers={layers}
+          regGeo={regGeo ?? null}
           onImage={() => setLoaded((n) => n + 1)}
           onImageError={(src) => setFatal(`gambar gagal dimuat: ${src}`)}
         />
@@ -131,7 +164,7 @@ export function ShareCard({ template, kode, debug }: { template: Template; kode:
   );
 }
 
-export function CornerTag({ label = "Fathul · Dev" }: { label?: string }) {
+export function CornerTag({ label = "Nusantara Mapper" }: { label?: string }) {
   // Fixed position and style on every card (spec §6.2), inside the safe area.
   return (
     <div
@@ -183,6 +216,7 @@ function CardBody({
   peta,
   geo,
   layers,
+  regGeo,
   onImage,
   onImageError,
 }: {
@@ -190,12 +224,14 @@ function CardBody({
   kode: string;
   peta: Peta;
   geo: Geo;
-  layers: string[];
+  layers: Layer[];
+  regGeo: Geo | null;
   onImage: () => void;
   onImageError: (src: string) => void;
 }) {
   const { title, sub } = areaTitle(peta, kode);
   const { paths, vw, vh } = useOutlines(geo, kode, peta.bounds);
+  const outline = useOutlines(regGeo ?? NO_FEATURES, kode, peta.bounds).paths;
   const counted = useRef(new Set<string>());
   const done = (src: string) => {
     if (counted.current.has(src)) return;
@@ -207,7 +243,11 @@ function CardBody({
       ? "Peta medan"
       : template === "nightlights"
         ? `Cahaya malam ${peta.nightlights?.base_year}–${peta.nightlights?.latest_year}`
-        : `Tutupan lahan ${peta.landcover?.year ?? ""}`;
+        : template === "lowland"
+          ? "Dataran sangat rendah"
+          : template === "relief"
+            ? "Relief lokal"
+            : `Tutupan lahan ${peta.landcover?.year ?? ""}`;
   const titleSize = title.length > 26 ? 60 : title.length > 18 ? 72 : 84;
   const top = SAFE.top + 100; // below the corner tag
 
@@ -223,22 +263,34 @@ function CardBody({
 
       <div className="mt-6 flex min-h-0 flex-1 items-center justify-center">
         <svg viewBox={`0 0 ${vw.toFixed(0)} ${vh.toFixed(0)}`} preserveAspectRatio="xMidYMid meet" className="h-full w-full">
-          {layers.map((src, i) => (
+          {layers.map((l) => (
             <image
-              key={src}
-              href={src}
+              key={l.src}
+              href={l.src}
               x={0}
               y={0}
               width={vw}
               height={vh}
               preserveAspectRatio="none"
-              style={{ mixBlendMode: i === 1 ? "multiply" : "normal", imageRendering: template === "terrain" ? "auto" : "pixelated" }}
-              onLoad={() => done(src)}
-              onError={() => onImageError(src)}
+              opacity={l.opacity ?? 1}
+              style={{ mixBlendMode: l.blend ?? "normal", imageRendering: l.pixelated ? "pixelated" : "auto" }}
+              onLoad={() => done(l.src)}
+              onError={() => onImageError(l.src)}
             />
           ))}
+          {/* A kabupaten: kecamatan as faint hairlines under its own strong outline. */}
           {paths.map((p) => (
-            <path key={p.id} d={p.d} fill="none" stroke="rgba(243,236,221,0.85)" strokeWidth={kode.length === 4 ? 1.6 : 2.4} vectorEffect="non-scaling-stroke" />
+            <path
+              key={p.id}
+              d={p.d}
+              fill="none"
+              stroke={outline.length ? "rgba(243,236,221,0.22)" : "rgba(243,236,221,0.85)"}
+              strokeWidth={outline.length ? 0.6 : kode.length === 4 ? 1.6 : 2.4}
+              vectorEffect="non-scaling-stroke"
+            />
+          ))}
+          {outline.map((p) => (
+            <path key={`o-${p.id}`} d={p.d} fill="none" stroke="#F3ECDD" strokeWidth={2.6} strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
           ))}
         </svg>
       </div>
@@ -247,6 +299,10 @@ function CardBody({
         <TerrainFacts peta={peta} />
       ) : template === "nightlights" ? (
         <NightlightsFacts peta={peta} />
+      ) : template === "lowland" ? (
+        <LowlandFacts peta={peta} />
+      ) : template === "relief" ? (
+        <ReliefFacts peta={peta} />
       ) : (
         <LandcoverFacts peta={peta} />
       )}
@@ -353,6 +409,61 @@ function NightlightsFacts({ peta }: { peta: Peta }) {
       </div>
       <p className="mt-6 text-[20px] text-coal-muted">Cahaya malam menunjukkan permukiman dan aktivitas, bukan jumlah penduduk.</p>
       <Footer source={`World Bank Light Every Night, VIIRS ${nl.base_year}–${nl.latest_year} (CC BY 4.0)`} />
+    </div>
+  );
+}
+
+function LowlandFacts({ peta }: { peta: Peta }) {
+  const t = peta.terrain!;
+  const [c5, c10] = t.metadata.lowland_colors!;
+  const lp = t.lowland_pct!;
+  return (
+    <div className="mt-6 shrink-0">
+      <ul className="flex flex-wrap gap-x-6 gap-y-2 text-[22px] text-coal-muted">
+        <li className="inline-flex items-center gap-2"><span className="inline-block h-5 w-5 rounded" style={{ background: c5 }} />di bawah 5 m</li>
+        <li className="inline-flex items-center gap-2"><span className="inline-block h-5 w-5 rounded" style={{ background: c10 }} />5–10 m</li>
+      </ul>
+      <div className="mt-6 grid grid-cols-3 gap-6">
+        <Fact value={pctInt(lp.lt_10)} label="luas di bawah 10 m" />
+        <Fact value={pctInt(lp.lt_5)} label="luas di bawah 5 m" />
+        <Fact value={pctInt(t.metrics_pct.share_elev_lt_100)} label="luas di bawah 100 m" />
+      </div>
+      {/* Same caveat as the Peta Wilayah page: the surface model reads canopy and roofs. */}
+      <p className="mt-6 text-[20px] text-coal-muted">
+        Batas bawah: hutan, mangrove dan bangunan terbaca lebih tinggi dari tanahnya, jadi daratan rendah yang sebenarnya bisa lebih luas.
+      </p>
+      <Footer source="Copernicus DEM GLO-30, data 2011–2015 (© DLR e.V., © Airbus DS; Copernicus/EU/ESA)" />
+    </div>
+  );
+}
+
+function ReliefFacts({ peta }: { peta: Peta }) {
+  const t = peta.terrain!;
+  const lr = t.local_relief!;
+  const colors = t.metadata.relief_colors!;
+  const b = lr.breaks_m;
+  const classes: [string, string, number][] = [
+    ["Datar", `< ${b[0]} m`, lr.classes_pct.datar],
+    ["Bergelombang", `${b[0]}–${b[1]} m`, lr.classes_pct.bergelombang],
+    ["Berbukit", `${b[1]}–${b[2]} m`, lr.classes_pct.berbukit],
+    ["Bergunung", `≥ ${b[2]} m`, lr.classes_pct.bergunung],
+  ];
+  return (
+    <div className="mt-6 shrink-0">
+      <div className="text-[22px] text-coal-muted">Beda tinggi dalam {formatNumber(lr.window_m / 1000)} km · klasifikasi NusaStats</div>
+      <div className="mt-6 grid grid-cols-4 gap-4">
+        {classes.map(([label, range, pct], i) => (
+          <div key={label}>
+            <div className="flex items-center gap-2">
+              <span className="inline-block h-5 w-5 shrink-0 rounded" style={{ background: colors[i] }} />
+              <span className="whitespace-nowrap text-[44px] font-extrabold leading-none tabular-nums">{pctInt(pct)}</span>
+            </div>
+            <div className="mt-2 text-[22px] text-coal-muted">{label}</div>
+            <div className="font-mono text-[18px] text-coal-muted">{range}</div>
+          </div>
+        ))}
+      </div>
+      <Footer source="Copernicus DEM GLO-30, data 2011–2015 (© DLR e.V., © Airbus DS; Copernicus/EU/ESA)" />
     </div>
   );
 }
