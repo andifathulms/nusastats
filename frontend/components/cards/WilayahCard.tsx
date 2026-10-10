@@ -23,8 +23,8 @@ export const WILAYAH_TEMPLATES: WilayahTemplate[] = ["wilayah", "kepadatan"];
 // Muted sea/sand tones for neighbouring kecamatan: distinct, never a ranking.
 const ADMIN_TONES = ["#22417A", "#2E5A8F", "#3B4F6B", "#1F5C6E", "#4A4A6A"];
 // Density classes in jiwa/km². Fixed, log-spaced, so 6409 and 3273 read on one scale.
-const BREAKS = [10, 50, 250, 1000, 5000];
-const CLASS_COLORS = Array.from({ length: BREAKS.length + 1 }, (_, i) => {
+export const BREAKS = [10, 50, 250, 1000, 5000];
+export const CLASS_COLORS = Array.from({ length: BREAKS.length + 1 }, (_, i) => {
   const x = (i / BREAKS.length) * (RAMP.length - 1);
   const j = Math.min(RAMP.length - 2, Math.floor(x));
   return lerpHex(RAMP[j], RAMP[j + 1], x - j);
@@ -33,8 +33,8 @@ const CLASS_COLORS = Array.from({ length: BREAKS.length + 1 }, (_, i) => {
 const MAP_W = CONTENT_W;
 const MAP_H = 820;
 
-type Geos = { inner: Geo; outline: Geo; kec: Geo | null };
-type KabInfo = { name: string; prov: string; pop: number | null; area: number | null };
+export type Geos = { inner: Geo; outline: Geo; kec: Geo | null };
+export type KabInfo = { name: string; prov: string; pop: number | null; area: number | null };
 type Data = {
   kab: KabInfo;
   districts: DukcapilRankRow[];
@@ -43,14 +43,27 @@ type Data = {
   period: string | null;
 };
 
-const compact = (n: number) =>
+export const compact = (n: number) =>
   n >= 1e6 ? `${(n / 1e6).toLocaleString("id-ID", { maximumFractionDigits: 2 })} juta` : formatNumber(Math.round(n));
-const pct1 = (v: number) => `${v.toLocaleString("id-ID", { maximumFractionDigits: v < 10 ? 1 : 0 })}%`;
+export const pct1 = (v: number) => `${v.toLocaleString("id-ID", { maximumFractionDigits: v < 10 ? 1 : 0 })}%`;
 
-function bulanTahun(period: string | null): string {
+export function bulanTahun(period: string | null): string {
   if (!period) return "";
   const b = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"];
   return `${b[Number(period.slice(5, 7)) - 1]} ${period.slice(0, 4)}`;
+}
+
+/** Name, province, registered population and BIG area of a kabupaten, from
+ * the province's regency rankings (jumlah_penduduk, luas_big). */
+export function kabInfo(kode: string, pops: DukcapilRankRow[], areas: DukcapilRankRow[]): KabInfo {
+  const row = pops.find((r) => r.domain_id === kode);
+  if (!row) throw new Error(`kabupaten ${kode} tidak ada di data Dukcapil`);
+  return {
+    name: regionLabel(titleCase(row.domain_name), row.status),
+    prov: titleCase(row.nama_prop ?? ""),
+    pop: row.value,
+    area: areas.find((r) => r.domain_id === kode)?.value ?? null,
+  };
 }
 
 async function loadData(template: WilayahTemplate, kode: string): Promise<Data> {
@@ -65,15 +78,8 @@ async function loadData(template: WilayahTemplate, kode: string): Promise<Data> 
       ? dukcapilApi.rank({ indicator: "pop_density_big", level: "village", kab: kode, limit: "10000" }).then((r) => r.results)
       : Promise.resolve([] as DukcapilRankRow[]),
   ]);
-  const row = pops.results.find((r) => r.domain_id === kode);
-  if (!row) throw new Error(`kabupaten ${kode} tidak ada di data Dukcapil`);
   return {
-    kab: {
-      name: regionLabel(titleCase(row.domain_name), row.status),
-      prov: titleCase(row.nama_prop ?? ""),
-      pop: row.value,
-      area: areas.results.find((r) => r.domain_id === kode)?.value ?? null,
-    },
+    kab: kabInfo(kode, pops.results, areas.results),
     districts: districts.results,
     villageTotal: villageList.length,
     villages,
@@ -144,7 +150,7 @@ function problems(template: WilayahTemplate, kode: string, data: Data, geo: Geos
   return out;
 }
 
-function Column({ children }: { children: React.ReactNode }) {
+export function Column({ children }: { children: React.ReactNode }) {
   const top = SAFE.top + 100;
   return (
     <div className="absolute flex flex-col" style={{ left: PAD, top, width: CONTENT_W, height: H - SAFE.bottom - top }}>
@@ -153,7 +159,7 @@ function Column({ children }: { children: React.ReactNode }) {
   );
 }
 
-function Title({ eyebrow, kab }: { eyebrow: string; kab: KabInfo }) {
+export function Title({ eyebrow, kab }: { eyebrow: string; kab: KabInfo }) {
   const size = kab.name.length > 26 ? 60 : kab.name.length > 18 ? 72 : 84;
   return (
     <>
@@ -166,7 +172,7 @@ function Title({ eyebrow, kab }: { eyebrow: string; kab: KabInfo }) {
   );
 }
 
-function Fact({ value, label }: { value: string; label: string }) {
+export function Fact({ value, label }: { value: string; label: string }) {
   return (
     <div>
       <div className="whitespace-nowrap text-[48px] font-extrabold leading-none tracking-[-0.02em] tabular-nums">{value}</div>

@@ -5,6 +5,7 @@ import { Suspense } from "react";
 import { AngkaCard } from "@/components/cards/AngkaCard";
 import { ShareCard, TEMPLATES, type Template } from "@/components/cards/ShareCard";
 import { WILAYAH_TEMPLATES, WilayahCard, type WilayahTemplate } from "@/components/cards/WilayahCard";
+import { PROFIL_TEMPLATES, ProfilCard, type ProfilTemplate } from "@/components/cards/ProfilCards";
 
 // /card/{template}/{kode}[?debug=1] — a bare 1080×1920 share card for the PNG
 // exporters (`npm run card`, `npm run carousel`). `debug=1` draws the TikTok UI
@@ -13,6 +14,8 @@ import { WILAYAH_TEMPLATES, WilayahCard, type WilayahTemplate } from "@/componen
 function Card({ template, kode }: { template: string; kode: string }) {
   const params = useSearchParams();
   const debug = params.get("debug") === "1";
+  if ((PROFIL_TEMPLATES as string[]).includes(template))
+    return <ProfilCard template={template as ProfilTemplate} kode={kode} query={params} debug={debug} />;
   if ((WILAYAH_TEMPLATES as string[]).includes(template))
     return <WilayahCard template={template as WilayahTemplate} kode={kode} debug={debug} />;
   if (template === "angka") {
