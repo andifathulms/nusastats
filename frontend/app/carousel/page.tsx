@@ -13,6 +13,7 @@ import {
 } from "@/lib/api";
 import { Badge, ErrorState, PageHeader, Panel, SectionTitle } from "@/components/ui";
 import { routes } from "@/lib/routes";
+import { TikTokText } from "@/components/carousel/TikTokText";
 import { ProfilTool } from "@/components/carousel/ProfilTool";
 
 // /carousel — two ways to make a TikTok carousel (docs/CAROUSEL.md):
@@ -361,6 +362,8 @@ function Result({ result, form }: { result: CarouselDeckResult; form: Form }) {
           </p>
         )}
       </Panel>
+
+      <TikTokText title={result.tiktok.title} description={result.tiktok.description} />
 
       <Panel>
         <SectionTitle hint="1080×1920, nama file menempatkannya di antara slide deck">Kartu peta</SectionTitle>

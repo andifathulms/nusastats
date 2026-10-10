@@ -902,6 +902,7 @@ export type CarouselDeckResult = CarouselPackResult & {
   cards: { file: string; path: string }[];
   warnings: string[];
   carousel_press_url: string; // opens the deck in Carousel Press (#deck=base64url)
+  tiktok: { title: string; description: string }; // ready to paste when posting
 };
 
 /** Pack/deck requests. A refusal (422) rejects with the backend's reason. */

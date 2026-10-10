@@ -52,6 +52,7 @@ writeFileSync(join(dir, "provenance.json"), json(body.provenance));
 writeFileSync(join(dir, "map.json"), json(body.map));
 writeFileSync(join(dir, "deck.txt"), body.deck);
 writeFileSync(join(dir, "README.md"), body.readme);
+writeFileSync(join(dir, "tiktok.txt"), `JUDUL\n${body.tiktok.title}\n\nDESKRIPSI\n${body.tiktok.description}\n`);
 console.log(`carousel: ${body.pack.id}: deck + pack written to ${dir}`);
 for (const w of body.warnings) console.log(`  ! ${w}`);
 

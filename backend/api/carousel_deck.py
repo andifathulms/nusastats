@@ -100,6 +100,78 @@ def _hashtags(prov_name):
     return " ".join(tags)
 
 
+TIKTOK_TITLE_MAX = 90  # TikTok's title field for photo posts
+TIKTOK_DESC_MAX = 2200  # well under TikTok's caption limit, and safe to cross-post
+
+
+def _fit_title(*candidates):
+    """The first candidate that fits TikTok's title field."""
+    for c in candidates:
+        if c and len(c) <= TIKTOK_TITLE_MAX:
+            return c
+    return candidates[-1][: TIKTOK_TITLE_MAX - 1].rstrip() + "…"
+
+
+def tiktok_text(result, recipe="top"):
+    """A ready-to-paste TikTok title and description for a ranking carousel,
+    from the same pack rows and formatter as the slides: the ranked rows with
+    their shared ranks, the pack's caveats, the source and hashtags."""
+    pack, m = result["pack"], result["map"]
+    unit, level, n = pack["unit"], pack["level"], m["n"]
+    noun = LEVEL_NOUN[level]
+    where = f" di {m['prov_name']}" if m["prov_name"] else ""
+    short = short_metric(pack["metric"])
+    period = m["period_label"]
+    ranks = {v["code"]: (v["rank"], v["rank_asc"]) for v in m["values"] + m["unmatched"]}
+    rows = pack["rows"]
+    k = min(MAX_COUNTDOWN, len(rows), n)
+    lines = []
+    if recipe in ("top", "terendah"):
+        word = "tertinggi" if recipe == "top" else "terendah"
+        picked = rows[:k] if recipe == "top" else rows[len(rows) - k:][::-1]
+        title = _fit_title(
+            f"{k} {noun}{where} dengan {short} {word} ({period})",
+            f"{k} {noun}{where} dengan {short} {word}",
+            f"{short} {word}{where}, {period}",
+            f"{k} {noun} {word}{where}, {period}",
+        )
+        place = lambda r: ranks[r["code"]][0 if recipe == "top" else 1]  # noqa: E731
+        firsts = [r for r in picked if place(r) == 1]
+        if len(firsts) > 1:
+            names = ", ".join(r["label"] for r in firsts[:-1]) + " dan " + firsts[-1]["label"]
+            lines.append(f"{names} sama-sama di peringkat 1: {fmt_value(firsts[0]['value'], unit)}.")
+        else:
+            lead = "Nomor 1" if recipe == "top" else "Paling rendah"
+            lines.append(f"{lead}: {firsts[0]['label']}, {fmt_value(firsts[0]['value'], unit)}.")
+        lines.append("")
+        lines.append(f"{k} {word} dari {fmt_num(n, 0)} {noun}{where} ({period}):")
+        lines += [f"{place(r)}. {r['label']}: {fmt_value(r['value'], unit)}" for r in picked]
+    else:
+        hi, lo = rows[0], rows[-1]
+        hi_d, lo_d = fmt_value(hi["value"], unit), fmt_value(lo["value"], unit)
+        title = _fit_title(f"{short}{where}: {hi_d} vs {lo_d}", f"{short}: {hi_d} vs {lo_d}", f"Tertinggi vs terendah{where}")
+        lines.append(f"Tertinggi: {hi['label']}, {hi_d}.")
+        lines.append(f"Terendah: {lo['label']}, {lo_d}.")
+        lines.append(f"Selisihnya {_difference(hi['value'] - lo['value'], unit)} di antara {fmt_num(n, 0)} {noun}{where} ({period}).")
+    notes = [x for x in re.split(r"(?<=[.;])\s+(?=[A-Z0-9])", pack["notes"]) if x and not re.match(r"Kode wilayah|Dihitung |\d+ tertinggi|Semua \d+", x)]
+    tail = [
+        "",
+        "Daerahmu nomor berapa? Tulis di komentar.",
+        "",
+        f"Sumber: {pack['source']}. Diolah oleh {BRAND}.",
+        f"{_hashtags(m['prov_name'])} #nusantaramapper",
+    ]
+    # Caveats go in whole sentences, as many as fit under the limit.
+    body = "\n".join(lines)
+    extra = ""
+    for note in notes:
+        if len(body + "\n\n" + (extra + " " + note).strip() + "\n".join(tail)) > TIKTOK_DESC_MAX:
+            break
+        extra = (extra + " " + note).strip()
+    description = body + (f"\n\n{extra}" if extra else "") + "\n" + "\n".join(tail)
+    return {"title": title, "description": description[:TIKTOK_DESC_MAX]}
+
+
 def deck_bundle(result, spec, recipe="top", map_bg="terrain", template="editorial/midnight"):
     """`result` is build_pack()'s output, `spec` the query that built it (for
     the map card URLs). Returns {deck, readme, cards, warnings}."""
@@ -229,7 +301,7 @@ Carousel bundle from NusaStats (`carousel-data/1`, recipe `{recipe}`).
 3. The map cards below are already here. Their names sort into place next to the deck slides
    (`{slug}_01.png`, `{slug}_01a_peta.png`, `{slug}_02.png`, ...). Upload the PNGs to TikTok in
    name order.
-4. The caption is in the deck header (`caption:`).
+4. The TikTok title and description are in `tiktok.txt`.
 
 Map cards:
 {card_lines}
@@ -237,4 +309,5 @@ Map cards:
 Every value traces to a stored response in `provenance.json` (URL with the key redacted, SHA-256,
 fetch time).
 """
-    return {"deck": deck, "readme": readme, "cards": cards, "warnings": warnings, "carousel_press_url": link}
+    return {"deck": deck, "readme": readme, "cards": cards, "warnings": warnings, "carousel_press_url": link,
+            "tiktok": tiktok_text(result, recipe)}

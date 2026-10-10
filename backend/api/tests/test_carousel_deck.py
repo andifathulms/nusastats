@@ -203,3 +203,33 @@ def test_tied_regions_share_the_rank_and_say_so():
     assert slides[4].endswith("sama dengan Kota Samarinda.")
     gap = _slides(deck_bundle(r, SPEC, recipe="gap")["deck"])
     assert gap[2].endswith("tertinggi dari 3 kabupaten/kota, sama dengan Kota Samarinda.")
+
+
+def test_tiktok_text_for_a_countdown():
+    t = deck_bundle(_result(ROWS), SPEC, recipe="top")["tiktok"]
+    assert t["title"] == "5 kabupaten/kota dengan Rata-rata Lama Sekolah tertinggi (2025)"
+    assert len(t["title"]) <= 90
+    d = t["description"]
+    assert d.startswith("Nomor 1: Kota Banda Aceh, 13,37 tahun.")
+    assert "1. Kota Banda Aceh: 13,37 tahun" in d and "5. Kota Madiun: 12,12 tahun" in d
+    assert "Sumber: BPS — RLS, 2025. Diolah oleh Nusantara Mapper." in d
+    assert d.rstrip().endswith("#nusantaramapper") and len(d) <= 2200
+
+
+def test_tiktok_text_names_a_tie_at_the_top_and_the_gap():
+    rows = [("Kota Balikpapan", "6471", 11.04), ("Kota Samarinda", "6472", 11.04), ("Kota Bontang", "6474", 11.03)]
+    r = _result(rows, n=3, notes="Semua 3.")
+    r["map"]["values"][1]["rank"] = 1
+    d = deck_bundle(r, SPEC, recipe="top")["tiktok"]["description"]
+    assert d.startswith("Kota Balikpapan dan Kota Samarinda sama-sama di peringkat 1: 11,04 tahun.")
+    assert "1. Kota Samarinda: 11,04 tahun" in d and "1. Kota Balikpapan: 11,04 tahun" in d
+    gap = deck_bundle(_result(ROWS), SPEC, recipe="gap")["tiktok"]
+    assert gap["title"] == "Rata-rata Lama Sekolah: 13,37 tahun vs 2,19 tahun"
+    assert "Selisihnya 11,18 tahun" in gap["description"]
+
+
+def test_tiktok_title_falls_back_when_too_long():
+    long = _result(ROWS)
+    long["pack"]["metric"] = "Persentase Rumah Tangga yang Memiliki Akses terhadap Hunian Layak dan Terjangkau di Perkotaan"
+    long["map"]["prov_name"] = "Kepulauan Bangka Belitung"
+    assert len(deck_bundle(long, SPEC, recipe="top")["tiktok"]["title"]) <= 90
