@@ -87,7 +87,7 @@ Besides rankings, one kabupaten can be posted as a set of maps:
 
 ```bash
 cd frontend
-npm run card -- --template profil --kode 6409     # the 8-slide profile, numbered in posting order
+npm run card -- --template profil --kode 6409     # the 11-slide profile, numbered in posting order
 npm run card -- --template wilayah --kode 3201    # one template
 ```
 
@@ -101,10 +101,10 @@ npm run card -- --template wilayah --kode 3201    # one template
 | `terrain`, `lowland`, `relief`, `landcover`, `nightlights` | the Peta Wilayah layers | Peta outputs for that kode |
 
 Output goes to `exports/cards/profil/{kode}/{NN}_{template}.png`, in this posting order:
-`kepadatan` (the hook: "Separuh warga X tinggal di Y% wilayahnya"), `wilayah`, `terrain` (with
-local relief), `landcover`, `cahaya`, `rendah`, `kecamatan`, `penutup` (the province with the
-kabupaten ringed, "Kabupaten mana berikutnya?"). `lowland`, `relief` and `nightlights` remain as
-single cards.
+`kepadatan` (the hook: "Separuh warga X tinggal di Y% wilayahnya"), `wilayah`, `terrain`, `relief`,
+`lowland`, `rendah`, `landcover`, `nightlights`, `cahaya`, `kecamatan`, `penutup` (the province with
+the kabupaten ringed, "Kabupaten mana berikutnya?"). Each raster layer comes right before the card
+that weighs it by population (lowland → rendah, nightlights → cahaya).
 
 The cards have their own look, "Atlas Malam" (proposal: "Arah Visual Nusantara Mapper"):
 Archivo, an ink background, one theme colour per subject (`components/cards/brand.ts`, the
