@@ -88,7 +88,7 @@ def short_metric(name):
     trailing 'menurut/per Kabupaten/Kota' or 'Kabupaten/Kota', and a trailing
     '(...)'."""
     s = re.sub(r"^\[[^\]]*\]\s*", "", name)
-    s = re.sub(r"^\d+(\.\w+)*\.?(\(\w\))?\s+", "", s)
+    s = re.sub(r"^\d+(\.\w+)*\.?(\(\w\))?\*?\s+", "", s)
     s = re.sub(r"\s+(menurut|per)\s+(kabupaten|kab|provinsi|kecamatan).*$", "", s, flags=re.I)
     s = re.sub(r"\s+kabupaten/kota$", "", s, flags=re.I)
     s = re.sub(r"\s*\([^)]*\)\s*$", "", s)
@@ -123,9 +123,12 @@ def fmt_value(v, unit):
             if abs(v) >= size:
                 return f"Rp{fmt_num(v / size, 1)} {word}"
         return f"Rp{fmt_num(v, 0)}"
+    if ul.startswith("ribu rupiah"):
+        # BPS per-capita spending comes in thousands: 26.387 ribu -> Rp26,4 juta/orang/tahun.
+        return fmt_value(v * 1000, "Rp") + ul[len("ribu rupiah"):]
     if ul.startswith("rupiah"):
         return f"Rp{fmt_num(v, 0)}{u[len('rupiah'):]}"
-    if ul.startswith("indeks") or not u:
+    if ul.startswith("indeks") or not u or re.fullmatch(r"0\s*[-–]\s*100", u):
         return fmt_num(v)
     return f"{fmt_num(v)} {ul if u.istitle() and ' ' not in u else u}"
 
@@ -318,7 +321,9 @@ def _djpk(metric, level, period, opts):
     }
     rows, prov_refs = [], []
     for djpk_code, (rname, value, kemen) in values.items():
-        label = re.sub(r"^Prov(insi|\.)?\s+", "", rname) if dlevel == "province" else rname
+        # DJPK names are verbatim; a few drop the dot ("Kab Musi Rawas Utara").
+        label = (re.sub(r"^Prov(insi|\.)?\s+", "", rname) if dlevel == "province"
+                 else re.sub(r"^Kab\s+", "Kab. ", rname))
         rows.append({"code": kemen or djpk_code, "label": label, "value": value, "geo": kemen})
         rep = reports.get(djpk_code, {})
         prov_refs.append({"code": kemen, "djpk_code": djpk_code, "fetch_log_id": rep.get("fetch_log_id"),

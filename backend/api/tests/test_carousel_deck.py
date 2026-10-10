@@ -23,6 +23,8 @@ from .test_carousel import bps  # noqa: F401  (shared fixture)
         (1253343, "Rupiah/kapita/bulan", "Rp1.253.343/kapita/bulan"),
         (115.19, "L per 100 P", "115,19 L per 100 P"),
         (52.0, "indeks", "52"),
+        (26387, "Ribu Rupiah/Orang/Tahun", "Rp26,4 juta/orang/tahun"),
+        (70.01, "0-100", "70,01"),
     ],
 )
 def test_fmt_value(value, unit, expected):
@@ -158,6 +160,7 @@ def test_bps_breakdown_words_stay_out_of_the_headline():
     assert short_metric("Prevalensi Ketidakcukupan Konsumsi Pangan (Persen) Per Kabupaten/kota") == (
         "Prevalensi Ketidakcukupan Konsumsi Pangan")
     assert short_metric("Indeks Kemahalan Konstruksi Kabupaten/Kota") == "Indeks Kemahalan Konstruksi"
+    assert short_metric("3.a.1* Persentase Penduduk yang Merokok") == "Persentase Penduduk yang Merokok"
 
 
 def test_long_metric_names_leave_the_headline_and_warn():
