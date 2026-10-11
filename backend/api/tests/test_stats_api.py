@@ -169,6 +169,18 @@ def test_search_finds_regions_and_indicators(api_client, dataset):
 
 
 @pytest.mark.django_db
+def test_search_lists_only_the_current_domain_of_a_replaced_kabupaten(api_client, dataset):
+    papua = Domain.objects.create(domain_id="9400", domain_name="Papua", admin_level=AdminLevel.PROVINCE)
+    pegunungan = Domain.objects.create(domain_id="9700", domain_name="Papua Pegunungan", admin_level=AdminLevel.PROVINCE)
+    old = Domain.objects.create(domain_id="9429", domain_name="Nduga", admin_level=AdminLevel.REGENCY,
+                                parent_province=papua)
+    Domain.objects.create(domain_id="9701", domain_name="Nduga", admin_level=AdminLevel.REGENCY,
+                          parent_province=pegunungan, predecessor=old)
+    regions = api_client.get("/api/search/", {"q": "nduga"}).json()["regions"]
+    assert [(r["code"], r["context"]) for r in regions] == [("9701", "Papua Pegunungan")]
+
+
+@pytest.mark.django_db
 def test_search_ignores_too_short_queries(api_client, dataset):
     body = api_client.get("/api/search/", {"q": "a"}).json()
     assert body["regions"] == [] and body["variables"] == [] and body["subregions"] == []

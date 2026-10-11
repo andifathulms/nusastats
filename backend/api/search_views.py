@@ -65,9 +65,11 @@ def search(request):
     if len(q) < MIN_QUERY:
         return Response({"q": q, "regions": [], "subregions": [], "variables": []})
 
-    # BPS domains: nasional, provinsi, kab/kota.
+    # BPS domains: nasional, provinsi, kab/kota. A pre-2022 Papua kabupaten that a
+    # 2022-province domain replaces (Domain.predecessor) would show as a twin
+    # ("Nduga · Papua" next to "Nduga · Papua Pegunungan"): list only the current one.
     domains = (
-        Domain.objects.filter(_all_tokens("domain_name", tokens))
+        Domain.objects.filter(_all_tokens("domain_name", tokens), successors__isnull=True)
         .select_related("parent_province")
         .annotate(rank=_prefix_first("domain_name", tokens[0]))
         .order_by("rank", "admin_level", "domain_name")[: LIMITS["region"]]
