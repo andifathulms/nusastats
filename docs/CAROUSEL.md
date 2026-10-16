@@ -19,8 +19,12 @@ province. It previews the map cards, shows the deck text (copy, or download `dec
 and the exact `npm run carousel` command for the PNGs. The
 form lives in the URL. **Pilih cepat** above the form holds one-click rankings (penduduk, usia &
 keluarga, pendidikan & kesejahteraan, pekerjaan & budaya, keuangan daerah), each checked against
-the live packs; a click fills the form and builds, keeping the chosen Cakupan, so the same chip
-makes a one-province "Daerahmu" version (`PRESETS` in `app/carousel/page.tsx`). "Buat carousel" links on BPS variable pages, `/dukcapil` and `/keuangan`
+the live packs; a click fills the form and builds. Switch the level there (kabupaten/kota,
+provinsi, kecamatan) and pick a province for a one-province "Daerahmu" version. Kecamatan presets
+are Dukcapil only and need a province: across Indonesia 39 of 7.285 kecamatan have no values, so a
+national kecamatan list may not be called the highest. A preset that a province can't fill
+completely (e.g. kecamatan density in 5 provinces) is refused with the reason
+(`PRESETS` in `app/carousel/page.tsx`). "Buat carousel" links on BPS variable pages, `/dukcapil` and `/keuangan`
 prefill it.
 
 ## One command

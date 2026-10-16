@@ -53,9 +53,27 @@ const BGS = [
 const SCALE = 0.25;
 
 // One-click rankings: each fills the form and builds. All checked against the
-// live packs (nationally and for one province). The chosen Cakupan is kept, so
-// the same chip makes a "Daerahmu" version for one province.
-type Preset = { label: string; source: Source; metric: string; recipe: string; period?: string; unit?: string; label_metric?: string };
+// live packs: kabupaten nationally and per province, provinsi nationally, and
+// kecamatan in all 38 provinces (a preset refused in a few provinces says why).
+// Kecamatan needs a province: across Indonesia 39 kecamatan have no values, so
+// the pack may not be called the highest/lowest nationally.
+type Level = "kabupaten" | "provinsi" | "kecamatan";
+type Preset = {
+  label: string;
+  source: Source;
+  metric: string;
+  recipe: string;
+  period?: string;
+  unit?: string;
+  label_metric?: string;
+  levels?: Level[]; // default: all three (kecamatan only for Dukcapil)
+};
+const PRESET_LEVELS: { id: Level; label: string }[] = [
+  { id: "kabupaten", label: "Kabupaten/kota" },
+  { id: "provinsi", label: "Provinsi" },
+  { id: "kecamatan", label: "Kecamatan" },
+];
+const presetLevels = (p: Preset): Level[] => p.levels ?? (p.source === "dukcapil" ? ["kabupaten", "provinsi", "kecamatan"] : ["kabupaten", "provinsi"]);
 const IPM = { source: "bps", metric: "2205", period: "2025", unit: "indeks", label_metric: "Indeks Pembangunan Manusia" } as const;
 const PRESETS: { group: string; items: Preset[] }[] = [
   {
@@ -93,7 +111,8 @@ const PRESETS: { group: string; items: Preset[] }[] = [
   {
     group: "Pekerjaan & budaya",
     items: [
-      { label: "Kabupaten nelayan", source: "dukcapil", metric: "pct_fisher", recipe: "top" },
+      // 9–15% of kecamatan have no value: kabupaten and provinsi only.
+      { label: "Nelayan terbanyak", source: "dukcapil", metric: "pct_fisher", recipe: "top", levels: ["kabupaten", "provinsi"] },
       { label: "Wiraswasta terbanyak", source: "dukcapil", metric: "pct_entrepreneur", recipe: "top" },
       { label: "Agama paling beragam", source: "dukcapil", metric: "religion_diversity", recipe: "top" },
       { label: "Golongan darah O", source: "dukcapil", metric: "pct_blood_o", recipe: "top" },
@@ -111,14 +130,14 @@ const PRESETS: { group: string; items: Preset[] }[] = [
   },
 ];
 
-/** A preset as a full form, keeping the chosen province and map background. */
-function presetForm(p: Preset, current: Form): Form {
+/** A preset as a full form at one level, keeping the chosen province and map background. */
+function presetForm(p: Preset, level: Level, prov: string, current: Form): Form {
   return {
     source: p.source,
     metric: p.metric,
-    level: "kabupaten",
+    level,
     period: p.period ?? "",
-    prov: current.prov,
+    prov: level === "provinsi" ? "" : prov,
     recipe: p.recipe,
     bg: current.bg,
     turvar: "",
@@ -129,7 +148,7 @@ function presetForm(p: Preset, current: Form): Form {
 }
 
 const isPreset = (p: Preset, f: Form) =>
-  f.source === p.source && f.metric === p.metric && f.recipe === p.recipe && f.level === "kabupaten" && f.period === (p.period ?? "");
+  f.source === p.source && f.metric === p.metric && f.recipe === p.recipe && f.period === (p.period ?? "");
 
 const input =
   "w-full rounded-lg border border-ink-border bg-ink-panel2 px-3 py-2 text-sm text-ink-text focus:border-ink-accent focus:outline-none";
@@ -237,6 +256,13 @@ function CarouselTool() {
   const [provinces, setProvinces] = useState<DukcapilRegionRow[]>([]);
   const [dukIndicators, setDukIndicators] = useState<DukcapilIndicatorGroups | null>(null);
   const [djpkAccounts, setDjpkAccounts] = useState<DjpkAccountGroups | null>(null);
+  const [presetLevel, setPresetLevel] = useState<Level>(
+    (["kabupaten", "provinsi", "kecamatan"].includes(form.level) ? form.level : "kabupaten") as Level
+  );
+  const [presetProv, setPresetProv] = useState(form.prov);
+  const presetGroups = PRESETS.map((g) => ({ ...g, items: g.items.filter((p) => presetLevels(p).includes(presetLevel)) })).filter(
+    (g) => g.items.length
+  );
 
   useEffect(() => {
     dukcapilApi.regions({ level: "province" }).then(setProvinces).catch(() => setProvinces([]));
@@ -272,11 +298,46 @@ function CarouselTool() {
   return (
     <div className="space-y-8">
       <Panel>
-        <SectionTitle hint={`kabupaten/kota · ${provinces.find((p) => p.code === form.prov)?.name ?? "seluruh Indonesia"} (ubah di Cakupan)`}>
-          Pilih cepat
-        </SectionTitle>
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <SectionTitle>Pilih cepat</SectionTitle>
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="inline-flex rounded-full border border-ink-border p-0.5">
+              {PRESET_LEVELS.map((l) => (
+                <button
+                  key={l.id}
+                  type="button"
+                  onClick={() => setPresetLevel(l.id)}
+                  className={`rounded-full px-3 py-1 text-sm transition-colors ${
+                    presetLevel === l.id ? "bg-ink-accent/15 text-ink-accent" : "text-ink-muted hover:text-ink-text"
+                  }`}
+                >
+                  {l.label}
+                </button>
+              ))}
+            </div>
+            <select
+              className="rounded-full border border-ink-border bg-ink-panel2 px-3 py-1 text-sm text-ink-text focus:border-ink-accent focus:outline-none disabled:opacity-50"
+              value={presetLevel === "provinsi" ? "" : presetProv}
+              onChange={(e) => setPresetProv(e.target.value)}
+              disabled={presetLevel === "provinsi"}
+              aria-label="Cakupan"
+            >
+              <option value="">{presetLevel === "kecamatan" ? "Pilih provinsi…" : "Seluruh Indonesia"}</option>
+              {provinces.map((p) => (
+                <option key={p.code} value={p.code}>
+                  {p.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+        {presetLevel === "kecamatan" && !presetProv && (
+          <p className="mb-3 text-sm text-ink-muted">
+            Peringkat kecamatan dibuat per provinsi: se-Indonesia, 39 dari 7.285 kecamatan tidak punya nilai.
+          </p>
+        )}
         <div className="space-y-3">
-          {PRESETS.map((g) => (
+          {presetGroups.map((g) => (
             <div key={g.group} className="flex flex-col gap-2 sm:flex-row sm:items-baseline">
               <span className="text-xs font-semibold text-ink-muted sm:w-48 sm:shrink-0">{g.group}</span>
               <div className="flex flex-wrap gap-2">
@@ -284,14 +345,14 @@ function CarouselTool() {
                   <button
                     key={p.label}
                     type="button"
-                    disabled={busy}
+                    disabled={busy || (presetLevel === "kecamatan" && !presetProv)}
                     onClick={() => {
-                      const f = presetForm(p, form);
+                      const f = presetForm(p, presetLevel, presetProv, form);
                       setForm(f);
                       build(f);
                     }}
                     className={`rounded-full border px-3 py-1 text-sm transition-colors disabled:opacity-50 ${
-                      isPreset(p, form)
+                      isPreset(p, form) && form.level === presetLevel && (presetLevel === "provinsi" || form.prov === presetProv)
                         ? "border-ink-accent bg-ink-accent/15 text-ink-accent"
                         : "border-ink-border text-ink-text hover:border-ink-accent hover:text-ink-accent"
                     }`}
