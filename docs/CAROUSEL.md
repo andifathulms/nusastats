@@ -17,7 +17,10 @@ scripts/card/carousel.mjs             all of the above into exports/carousels/{i
 province. It previews the map cards, shows the deck text (copy, or download `deck.txt`,
 `pack.json`, `provenance.json`), a ready-to-paste TikTok title (≤ 90 characters) and description,
 and the exact `npm run carousel` command for the PNGs. The
-form lives in the URL. "Buat carousel" links on BPS variable pages, `/dukcapil` and `/keuangan`
+form lives in the URL. **Pilih cepat** above the form holds one-click rankings (penduduk, usia &
+keluarga, pendidikan & kesejahteraan, pekerjaan & budaya, keuangan daerah), each checked against
+the live packs; a click fills the form and builds, keeping the chosen Cakupan, so the same chip
+makes a one-province "Daerahmu" version (`PRESETS` in `app/carousel/page.tsx`). "Buat carousel" links on BPS variable pages, `/dukcapil` and `/keuangan`
 prefill it.
 
 ## One command

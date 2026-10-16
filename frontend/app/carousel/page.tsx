@@ -34,10 +34,11 @@ type Form = {
   bg: string;
   turvar: string;
   unit: string;
+  label_metric: string;
   allow_partial: string;
 };
 
-const FIELDS: (keyof Form)[] = ["source", "metric", "level", "period", "prov", "recipe", "bg", "turvar", "unit", "allow_partial"];
+const FIELDS: (keyof Form)[] = ["source", "metric", "level", "period", "prov", "recipe", "bg", "turvar", "unit", "label_metric", "allow_partial"];
 const LEVELS: Record<Source, string[]> = { bps: ["provinsi", "kabupaten"], dukcapil: ["provinsi", "kabupaten", "kecamatan"], djpk: ["provinsi", "kabupaten"] };
 const RECIPES = [
   { id: "top", label: "Hitung mundur ke #1" },
@@ -50,6 +51,85 @@ const BGS = [
   { id: "none", label: "Siluet" },
 ];
 const SCALE = 0.25;
+
+// One-click rankings: each fills the form and builds. All checked against the
+// live packs (nationally and for one province). The chosen Cakupan is kept, so
+// the same chip makes a "Daerahmu" version for one province.
+type Preset = { label: string; source: Source; metric: string; recipe: string; period?: string; unit?: string; label_metric?: string };
+const IPM = { source: "bps", metric: "2205", period: "2025", unit: "indeks", label_metric: "Indeks Pembangunan Manusia" } as const;
+const PRESETS: { group: string; items: Preset[] }[] = [
+  {
+    group: "Penduduk",
+    items: [
+      { label: "Penduduk terbanyak", source: "dukcapil", metric: "jumlah_penduduk", recipe: "top" },
+      { label: "Paling padat", source: "dukcapil", metric: "pop_density_big", recipe: "top" },
+      { label: "Paling lengang", source: "dukcapil", metric: "pop_density_big", recipe: "terendah" },
+      { label: "Pria vs wanita", source: "dukcapil", metric: "sex_ratio", recipe: "gap" },
+    ],
+  },
+  {
+    group: "Usia & keluarga",
+    items: [
+      { label: "Warga paling tua", source: "dukcapil", metric: "median_age", recipe: "top" },
+      { label: "Warga paling muda", source: "dukcapil", metric: "median_age", recipe: "terendah" },
+      { label: "Lansia terbanyak", source: "dukcapil", metric: "pct_elderly", recipe: "top" },
+      { label: "Beban tanggungan tertinggi", source: "dukcapil", metric: "dependency_ratio", recipe: "top" },
+      { label: "Cerai tertinggi", source: "dukcapil", metric: "pct_divorced", recipe: "top" },
+      { label: "Lajang terbanyak", source: "dukcapil", metric: "pct_unmarried", recipe: "top" },
+    ],
+  },
+  {
+    group: "Pendidikan & kesejahteraan",
+    items: [
+      { label: "Sarjana terbanyak", source: "dukcapil", metric: "pct_sarjana", recipe: "top" },
+      { label: "Sarjana paling sedikit", source: "dukcapil", metric: "pct_sarjana", recipe: "terendah" },
+      { label: "IPM tertinggi", ...IPM, recipe: "top" },
+      { label: "IPM terendah", ...IPM, recipe: "terendah" },
+      { label: "Sekolah paling lama", source: "bps", metric: "415", recipe: "top", period: "2025" },
+      { label: "Umur harapan hidup", source: "bps", metric: "414", recipe: "top", period: "2024" },
+      { label: "Pengeluaran per kapita", source: "bps", metric: "416", recipe: "top", period: "2025" },
+    ],
+  },
+  {
+    group: "Pekerjaan & budaya",
+    items: [
+      { label: "Kabupaten nelayan", source: "dukcapil", metric: "pct_fisher", recipe: "top" },
+      { label: "Wiraswasta terbanyak", source: "dukcapil", metric: "pct_entrepreneur", recipe: "top" },
+      { label: "Agama paling beragam", source: "dukcapil", metric: "religion_diversity", recipe: "top" },
+      { label: "Golongan darah O", source: "dukcapil", metric: "pct_blood_o", recipe: "top" },
+    ],
+  },
+  {
+    group: "Keuangan daerah",
+    items: [
+      { label: "Paling mandiri", source: "djpk", metric: "rasio_kemandirian", recipe: "top", period: "2024" },
+      { label: "Paling bergantung pusat", source: "djpk", metric: "rasio_kemandirian", recipe: "terendah", period: "2024" },
+      { label: "PAD terbesar", source: "djpk", metric: "pad", recipe: "top", period: "2024" },
+      { label: "Belanja pegawai tertinggi", source: "djpk", metric: "rasio_belanja_pegawai", recipe: "top", period: "2024" },
+      { label: "Belanja modal tertinggi", source: "djpk", metric: "rasio_belanja_modal", recipe: "top", period: "2024" },
+    ],
+  },
+];
+
+/** A preset as a full form, keeping the chosen province and map background. */
+function presetForm(p: Preset, current: Form): Form {
+  return {
+    source: p.source,
+    metric: p.metric,
+    level: "kabupaten",
+    period: p.period ?? "",
+    prov: current.prov,
+    recipe: p.recipe,
+    bg: current.bg,
+    turvar: "",
+    unit: p.unit ?? "",
+    label_metric: p.label_metric ?? "",
+    allow_partial: "",
+  };
+}
+
+const isPreset = (p: Preset, f: Form) =>
+  f.source === p.source && f.metric === p.metric && f.recipe === p.recipe && f.level === "kabupaten" && f.period === (p.period ?? "");
 
 const input =
   "w-full rounded-lg border border-ink-border bg-ink-panel2 px-3 py-2 text-sm text-ink-text focus:border-ink-accent focus:outline-none";
@@ -66,6 +146,7 @@ function formFrom(params: URLSearchParams): Form {
     bg: params.get("bg") ?? "terrain",
     turvar: params.get("turvar") ?? "",
     unit: params.get("unit") ?? "",
+    label_metric: params.get("label_metric") ?? "",
     allow_partial: params.get("allow_partial") ?? "",
   };
 }
@@ -190,6 +271,39 @@ function CarouselTool() {
 
   return (
     <div className="space-y-8">
+      <Panel>
+        <SectionTitle hint={`kabupaten/kota · ${provinces.find((p) => p.code === form.prov)?.name ?? "seluruh Indonesia"} (ubah di Cakupan)`}>
+          Pilih cepat
+        </SectionTitle>
+        <div className="space-y-3">
+          {PRESETS.map((g) => (
+            <div key={g.group} className="flex flex-col gap-2 sm:flex-row sm:items-baseline">
+              <span className="text-xs font-semibold text-ink-muted sm:w-48 sm:shrink-0">{g.group}</span>
+              <div className="flex flex-wrap gap-2">
+                {g.items.map((p) => (
+                  <button
+                    key={p.label}
+                    type="button"
+                    disabled={busy}
+                    onClick={() => {
+                      const f = presetForm(p, form);
+                      setForm(f);
+                      build(f);
+                    }}
+                    className={`rounded-full border px-3 py-1 text-sm transition-colors disabled:opacity-50 ${
+                      isPreset(p, form)
+                        ? "border-ink-accent bg-ink-accent/15 text-ink-accent"
+                        : "border-ink-border text-ink-text hover:border-ink-accent hover:text-ink-accent"
+                    }`}
+                  >
+                    {p.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      </Panel>
 
       <Panel>
         <form
