@@ -14,7 +14,7 @@ import {
 import { Badge, ErrorState, PageHeader, Panel, SectionTitle } from "@/components/ui";
 import { routes } from "@/lib/routes";
 import { TikTokText } from "@/components/carousel/TikTokText";
-import { ProfilTool } from "@/components/carousel/ProfilTool";
+import { CARDS, ProfilTool } from "@/components/carousel/ProfilTool";
 
 // /carousel — two ways to make a TikTok carousel (docs/CAROUSEL.md):
 //   Peringkat (default): one ranking -> deck text for Carousel Press, the map
@@ -496,9 +496,48 @@ function Field({ label, hint, children }: { label: string; hint?: string; childr
   );
 }
 
+const SECONDS_PER_CARD = 1.5;
+
 function Result({ result, form }: { result: CarouselDeckResult; form: Form }) {
   const { pack, map } = result;
   const [copied, setCopied] = useState<string | null>(null);
+  const [service, setService] = useState<"checking" | "up" | "down">("checking");
+  const [zipping, setZipping] = useState<number | null>(null);
+  const [now, setNow] = useState(Date.now());
+  const [zipError, setZipError] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetch(`${CARDS}/health`)
+      .then((r) => setService(r.ok ? "up" : "down"))
+      .catch(() => setService("down"));
+  }, []);
+  useEffect(() => {
+    if (zipping === null) return;
+    const t = setInterval(() => setNow(Date.now()), 500);
+    return () => clearInterval(t);
+  }, [zipping]);
+
+  // The map cards as PNGs plus the deck and TikTok text, rendered by the `cards` service.
+  const downloadZip = async () => {
+    setZipError(null);
+    setZipping(Date.now());
+    try {
+      const r = await fetch(`${CARDS}/deck-zip?${queryOf(form)}`);
+      if (!r.ok) throw new Error((await r.json().catch(() => null))?.error ?? `layanan kartu -> ${r.status}`);
+      const url = URL.createObjectURL(await r.blob());
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${pack.id}.zip`;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      const skipped = Number(r.headers.get("x-cards-skipped") ?? 0);
+      if (skipped) setZipError(`${skipped} kartu tidak dibuat; alasannya ada di TIDAK-DIBUAT.txt di dalam ZIP.`);
+    } catch (e) {
+      setZipError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setZipping(null);
+    }
+  };
   const cmd = useMemo(() => command(form), [form]);
   const copy = (key: string, text: string) =>
     navigator.clipboard.writeText(text).then(() => {
@@ -541,7 +580,30 @@ function Result({ result, form }: { result: CarouselDeckResult; form: Form }) {
       <TikTokText title={result.tiktok.title} description={result.tiktok.description} />
 
       <Panel>
-        <SectionTitle hint="1080×1920, nama file menempatkannya di antara slide deck">Kartu peta</SectionTitle>
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <SectionTitle hint="1080×1920, nama file menempatkannya di antara slide deck">Kartu peta</SectionTitle>
+          <button
+            type="button"
+            onClick={downloadZip}
+            disabled={service !== "up" || zipping !== null}
+            className="inline-flex h-11 items-center rounded-full bg-brand-gradient px-6 text-sm font-bold text-white shadow-glow transition-transform hover:-translate-y-0.5 disabled:opacity-50"
+          >
+            {zipping !== null
+              ? `Membuat ${result.cards.length} kartu… ${Math.round((now - zipping) / 1000)} / ~${Math.ceil(result.cards.length * SECONDS_PER_CARD)} dtk`
+              : "Unduh semua (ZIP)"}
+          </button>
+        </div>
+        {service === "down" && (
+          <p className="mb-4 rounded-lg bg-ink-panel2 p-3 text-sm text-ink-muted">
+            Layanan kartu belum jalan, jadi unduhan PNG/ZIP belum bisa. Jalankan{" "}
+            <code className="font-mono text-xs">docker compose up -d cards</code>, lalu muat ulang halaman ini.
+          </p>
+        )}
+        {zipError && <ErrorState message={zipError} />}
+        <p className="mb-4 text-sm text-ink-muted">
+          ZIP berisi semua kartu peta (PNG) ditambah deck.txt, tiktok.txt, README.md, pack.json, provenance.json dan
+          tautan Carousel Press. Slide teksnya dibuat di Carousel Press.
+        </p>
         <div className="flex gap-4 overflow-x-auto pb-2">
           {result.cards.map((c) => (
             <figure key={c.file} className="shrink-0">
@@ -553,7 +615,17 @@ function Result({ result, form }: { result: CarouselDeckResult; form: Form }) {
                   style={{ width: 1080, height: 1920, transform: `scale(${SCALE})`, transformOrigin: "0 0", border: 0 }}
                 />
               </div>
-              <figcaption className="mt-2 max-w-[270px] truncate font-mono text-[11px] text-ink-faint">{c.file}</figcaption>
+              <figcaption className="mt-2 flex max-w-[270px] items-baseline justify-between gap-2">
+                <span className="truncate font-mono text-[11px] text-ink-faint">{c.file}</span>
+                {service === "up" && (
+                  <a
+                    className="shrink-0 text-xs font-semibold text-ink-accent hover:underline"
+                    href={`${CARDS}/shot?${new URLSearchParams({ path: c.path, name: c.file })}`}
+                  >
+                    PNG
+                  </a>
+                )}
+              </figcaption>
             </figure>
           ))}
         </div>
@@ -584,7 +656,7 @@ function Result({ result, form }: { result: CarouselDeckResult; form: Form }) {
 
       <Panel>
         <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-          <SectionTitle hint="dari folder frontend; PNG masuk ke exports/carousels/">Simpan semua sebagai PNG</SectionTitle>
+          <SectionTitle hint="tanpa layanan kartu; dari folder frontend, PNG masuk ke exports/carousels/">Lewat terminal</SectionTitle>
           <Action onClick={() => copy("cmd", cmd)}>{copied === "cmd" ? "Tersalin" : "Salin perintah"}</Action>
         </div>
         <pre className="overflow-x-auto rounded-lg bg-ink-panel2 p-4 font-mono text-[12.5px] text-ink-text">{cmd}</pre>

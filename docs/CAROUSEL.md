@@ -16,7 +16,11 @@ scripts/card/carousel.mjs             all of the above into exports/carousels/{i
 `/carousel` builds the same bundle in the browser: pick a source, indicator, level, period and
 province. It previews the map cards, shows the deck text (copy, or download `deck.txt`,
 `pack.json`, `provenance.json`), a ready-to-paste TikTok title (≤ 90 characters) and description,
-and the exact `npm run carousel` command for the PNGs. The
+**Unduh semua (ZIP)** (every map card as PNG, named to sit between the deck slides, plus
+`deck.txt`, `tiktok.txt`, `README.md`, `pack.json`, `provenance.json` and `carousel-press.url`;
+or **PNG** under one card), and the `npm run carousel` command as the no-service alternative.
+The downloads come from the `cards` service (`GET :3012/deck-zip?<deck query>`,
+`/shot?path=/card/…`). The
 form lives in the URL. **Pilih cepat** above the form holds one-click rankings (penduduk, usia &
 keluarga, pendidikan & kesejahteraan, pekerjaan & budaya, keuangan daerah), each checked against
 the live packs; a click fills the form and builds. Switch the level there (kabupaten/kota,

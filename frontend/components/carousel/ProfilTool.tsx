@@ -11,7 +11,7 @@ import { TikTokText } from "./TikTokText";
 // the `cards` service (docker-compose; frontend/scripts/card/serve.mjs), which
 // renders with the same headless Chromium as `npm run card`.
 
-const CARDS = process.env.NEXT_PUBLIC_CARDS_BASE || "http://localhost:3012";
+export const CARDS = process.env.NEXT_PUBLIC_CARDS_BASE || "http://localhost:3012";
 const SCALE = 0.25;
 const SECONDS_PER_CARD = 4.5;
 
