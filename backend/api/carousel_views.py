@@ -9,7 +9,7 @@ from rest_framework.response import Response
 
 from .caching import cached_api
 from .carousel import PackError, build_pack
-from .carousel_deck import MAP_BACKGROUNDS, RECIPES, deck_bundle
+from .carousel_deck import MAP_BACKGROUNDS, RECIPES, TABLE_SIZES, deck_bundle
 
 PACK_PARAMS = ("source", "metric", "level", "period", "prov", "turvar", "th", "unit", "label_metric", "notes",
                "top", "bottom", "allow_partial")
@@ -22,7 +22,8 @@ def _int(request, name, default):
         return default
 
 
-def _build(request):
+def _build(request, top=None, bottom=None):
+    """`top`/`bottom` raise the query's counts (a deck's table shows more rows than the default 5)."""
     q = request.query_params
     return build_pack(
         q.get("source", ""),
@@ -30,8 +31,8 @@ def _build(request):
         q.get("level", ""),
         q.get("period") or None,
         prov=q.get("prov") or None,
-        top=_int(request, "top", 5),
-        bottom=_int(request, "bottom", 5),
+        top=max(_int(request, "top", 5), top or 0),
+        bottom=max(_int(request, "bottom", 5), bottom or 0),
         allow_partial=q.get("allow_partial") in ("1", "true"),
         turvar=q.get("turvar") or None,
         th=q.get("th") or None,
@@ -60,8 +61,16 @@ def deck(request):
     if recipe not in RECIPES or bg not in MAP_BACKGROUNDS:
         return Response({"error": f"recipe: {', '.join(RECIPES)}; bg: {', '.join(MAP_BACKGROUNDS)}"}, status=422)
     try:
-        result = _build(request)
+        table = int(request.query_params.get("table", TABLE_SIZES[0]))
+    except ValueError:
+        table = -1
+    maps = request.query_params.get("maps", "1") not in ("0", "false")
+    if table not in TABLE_SIZES:
+        return Response({"error": f"table: {', '.join(map(str, TABLE_SIZES))}"}, status=422)
+    try:
+        # The pack holds every row the table shows, so its notes describe the post.
+        result = _build(request, top=table if recipe == "top" else None, bottom=table if recipe == "terendah" else None)
     except PackError as exc:
         return Response({"error": str(exc), **exc.details}, status=422)
     spec = {k: request.query_params.get(k) for k in PACK_PARAMS}
-    return Response({**result, **deck_bundle(result, spec, recipe=recipe, map_bg=bg)})
+    return Response({**result, **deck_bundle(result, spec, recipe=recipe, map_bg=bg, table=table, maps=maps)})

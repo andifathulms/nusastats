@@ -50,7 +50,7 @@ Press (`#deck=<base64url>`; the base URL comes from `CAROUSEL_PRESS_URL`). Then 
 `deck.txt` there, unzip its
 PNGs into the same folder, and upload everything in name order: `{id}_01.png`, `{id}_01a_peta.png`,
 `{id}_02.png`, `{id}_02a_6409.png`, … and, after the #1 reveal, `{id}_NNb_top10.png`, a bar chart
-of the top (or bottom) 10. Cards carry the "Nusantara Mapper" tag, and the caption says "Diolah oleh
+of the top (or bottom) 10 (or 20/50, see `--table`). The overview map names no regions: it ends with "Siapa nomor 1? Geser untuk lihat peringkatnya", so the ranking stays the payoff. Cards carry the "Nusantara Mapper" tag, and the caption says "Diolah oleh
 Nusantara Mapper" (`BRAND` in `AngkaCard.tsx` and `carousel_deck.py`).
 
 | Option | Meaning |
@@ -61,6 +61,8 @@ Nusantara Mapper" (`BRAND` in `AngkaCard.tsx` and `carousel_deck.py`).
 | `--prov` | Kemendagri province code: rank one province's regions ("Daerahmu" posts) |
 | `--recipe` | `top` (countdown to #1), `terendah` (countdown to the lowest), `gap` (highest vs lowest) |
 | `--bg` | Peta Wilayah layer behind each region's map: `terrain`, `landcover`, `none` |
+| `--table` | rows in the ranking table: `10` (default), `20`, `50`; one table card per 10 rows (`/card/angka/…&view=top10&start=11`) |
+| `--maps` | `0` = table only: no countdown slides or focus maps; the table cards count down (#41–50 first, #1–10 last) |
 | `--turvar`, `--th`, `--unit`, `--label-metric`, `--allow-partial` | see refusals below |
 
 Without the frontend, `manage.py export_carousel_pack … --out-dir exports/carousels` writes the

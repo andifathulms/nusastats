@@ -38,10 +38,12 @@ type Form = {
   turvar: string;
   unit: string;
   label_metric: string;
+  table: string; // rows in the ranking table: 10 | 20 | 50 (one card per 10)
+  maps: string; // "0" = table only, no countdown maps
   allow_partial: string;
 };
 
-const FIELDS: (keyof Form)[] = ["source", "metric", "level", "period", "prov", "recipe", "bg", "turvar", "unit", "label_metric", "allow_partial"];
+const FIELDS: (keyof Form)[] = ["source", "metric", "level", "period", "prov", "recipe", "bg", "turvar", "unit", "label_metric", "table", "maps", "allow_partial"];
 const LEVELS: Record<Source, string[]> = { bps: ["provinsi", "kabupaten"], dukcapil: ["provinsi", "kabupaten", "kecamatan"], djpk: ["provinsi", "kabupaten"] };
 const RECIPES = [
   { id: "top", label: "Hitung mundur ke #1" },
@@ -146,6 +148,8 @@ function presetForm(p: Preset, level: Level, prov: string, current: Form): Form 
     turvar: "",
     unit: p.unit ?? "",
     label_metric: p.label_metric ?? "",
+    table: current.table,
+    maps: current.maps,
     allow_partial: "",
   };
 }
@@ -169,6 +173,8 @@ function formFrom(params: URLSearchParams): Form {
     turvar: params.get("turvar") ?? "",
     unit: params.get("unit") ?? "",
     label_metric: params.get("label_metric") ?? "",
+    table: params.get("table") ?? "",
+    maps: params.get("maps") ?? "",
     allow_partial: params.get("allow_partial") ?? "",
   };
 }
@@ -451,8 +457,21 @@ function CarouselTool({ tema }: { tema: Tema }) {
               ))}
             </select>
           </Field>
-          <Field label="Peta tiap wilayah">
-            <select className={input} value={form.bg} onChange={(e) => set({ bg: e.target.value })}>
+          <Field label="Tabel peringkat" hint={form.recipe === "gap" ? "tidak untuk resep ini" : "10 baris per slide"}>
+            <select className={input} value={form.table} onChange={(e) => set({ table: e.target.value })} disabled={form.recipe === "gap"}>
+              <option value="">Top 10</option>
+              <option value="20">Top 20</option>
+              <option value="50">Top 50</option>
+            </select>
+          </Field>
+          <Field label="Hitung mundur peta" hint={form.recipe === "gap" ? "tidak untuk resep ini" : undefined}>
+            <select className={input} value={form.maps} onChange={(e) => set({ maps: e.target.value })} disabled={form.recipe === "gap"}>
+              <option value="">Ya, peta top 5 lalu tabel</option>
+              <option value="0">Tidak, tabel saja</option>
+            </select>
+          </Field>
+          <Field label="Peta tiap wilayah" hint={form.maps === "0" ? "tidak dipakai (tabel saja)" : undefined}>
+            <select className={input} value={form.bg} onChange={(e) => set({ bg: e.target.value })} disabled={form.maps === "0"}>
               {BGS.map((b) => (
                 <option key={b.id} value={b.id}>
                   {b.label}

@@ -27,6 +27,8 @@ _PAPUA_KEMENDAGRI = {"91", "92", "93", "94", "95", "96"}
 _HEAD_NOUN = {"provinsi": "Provinsi", "kabupaten": "Kabupaten dan Kota", "kecamatan": "Kecamatan"}
 BRAND = "Nusantara Mapper"  # the TikTok account these carousels are posted on
 MAX_COUNTDOWN = 5
+TABLE_SIZES = (10, 20, 50)  # rows in the ranking table; one card holds 10 (view=top10&start=)
+TABLE_PAGE = 10
 MAX_NOTE_CHARS = 240
 MAX_HEAD_METRIC = 40  # longer metric names stay out of the cover headline
 MAX_HEAD_WORD = 13  # at cover size a longer word may be broken mid-word
@@ -112,7 +114,7 @@ def _fit_title(*candidates):
     return candidates[-1][: TIKTOK_TITLE_MAX - 1].rstrip() + "…"
 
 
-def tiktok_text(result, recipe="top"):
+def tiktok_text(result, recipe="top", table=TABLE_SIZES[0], maps=True):
     """A ready-to-paste TikTok title and description for a ranking carousel,
     from the same pack rows and formatter as the slides: the ranked rows with
     their shared ranks, the pack's caveats, the source and hashtags."""
@@ -125,15 +127,17 @@ def tiktok_text(result, recipe="top"):
     ranks = {v["code"]: (v["rank"], v["rank_asc"]) for v in m["values"] + m["unmatched"]}
     rows = pack["rows"]
     k = min(MAX_COUNTDOWN, len(rows), n)
+    shown = min(table, len(m["values"]))
+    cover_n = k if maps and table == TABLE_SIZES[0] else shown  # same count as the cover (deck_bundle)
     lines = []
     if recipe in ("top", "terendah"):
         word = "tertinggi" if recipe == "top" else "terendah"
         picked = rows[:k] if recipe == "top" else rows[len(rows) - k:][::-1]
         title = _fit_title(
-            f"{k} {noun}{where} dengan {short} {word} ({period})",
-            f"{k} {noun}{where} dengan {short} {word}",
+            f"{cover_n} {noun}{where} dengan {short} {word} ({period})",
+            f"{cover_n} {noun}{where} dengan {short} {word}",
             f"{short} {word}{where}, {period}",
-            f"{k} {noun} {word}{where}, {period}",
+            f"{cover_n} {noun} {word}{where}, {period}",
         )
         place = lambda r: ranks[r["code"]][0 if recipe == "top" else 1]  # noqa: E731
         firsts = [r for r in picked if place(r) == 1]
@@ -146,6 +150,8 @@ def tiktok_text(result, recipe="top"):
         lines.append("")
         lines.append(f"{k} {word} dari {fmt_num(n, 0)} {noun}{where} ({period}):")
         lines += [f"{place(r)}. {r['label']}: {fmt_value(r['value'], unit)}" for r in picked]
+        if shown > k:
+            lines.append(f"Peringkat #1–{shown} lengkap ada di slide.")
     else:
         hi, lo = rows[0], rows[-1]
         hi_d, lo_d = fmt_value(hi["value"], unit), fmt_value(lo["value"], unit)
@@ -172,9 +178,14 @@ def tiktok_text(result, recipe="top"):
     return {"title": title, "description": description[:TIKTOK_DESC_MAX]}
 
 
-def deck_bundle(result, spec, recipe="top", map_bg="terrain", template="editorial/midnight"):
+def deck_bundle(result, spec, recipe="top", map_bg="terrain", template="editorial/midnight", table=10, maps=True):
     """`result` is build_pack()'s output, `spec` the query that built it (for
-    the map card URLs). Returns {deck, readme, cards, warnings}."""
+    the map card URLs). `table` = rows in the ranking table (10/20/50, one card
+    per 10); `maps=False` drops the countdown (text slides and focus maps) and
+    counts the table down instead, #1 on the last card. Returns
+    {deck, readme, cards, warnings, carousel_press_url, tiktok}."""
+    if table not in TABLE_SIZES:
+        raise ValueError(f"table must be one of {TABLE_SIZES}")
     if recipe not in RECIPES:
         raise ValueError(f"recipe must be one of {RECIPES}")
     if map_bg not in MAP_BACKGROUNDS:
@@ -216,16 +227,32 @@ def deck_bundle(result, spec, recipe="top", map_bg="terrain", template="editoria
         k = min(MAX_COUNTDOWN, len(rows), n)
         picked = rows[:k] if recipe == "top" else rows[len(rows) - k:][::-1]
         word = "Tertinggi" if recipe == "top" else "Terendah"
+        shown = min(table, len(m["values"]))  # regions on a map; the table leaves out unmatched ones
+        pages = [(start, min(start + TABLE_PAGE - 1, shown)) for start in range(1, shown + 1, TABLE_PAGE)]
+        # The cover counts what the post shows: the countdown's 5 by default, else the table.
+        cover_n = k if maps and table == TABLE_SIZES[0] else shown
         # "{metric} | 5 Tertinggi" fits Carousel Press' cover best (tested on every
         # kabupaten indicator); a metric name too long for it is left to the subtitle.
-        headline = (f"{_text(short)} | {k} {word}" if len(short) <= MAX_HEAD_METRIC
-                    else f"{k} {_HEAD_NOUN[level]} | {word}")
+        headline = (f"{_text(short)} | {cover_n} {word}" if len(short) <= MAX_HEAD_METRIC
+                    else f"{cover_n} {_HEAD_NOUN[level]} | {word}")
         slides.append(f'[cover kicker="{_attr(kicker)}"]\n{headline}\n{_text(subtitle)}')
         if level != "kecamatan" or m["prov"]:
             order = "&order=asc" if recipe == "terendah" else ""
             cards.append({"file": f"{slug}_01a_peta.png", "path": f"/card/angka/{m['prov'] or '00'}?{query}{order}"})
         else:
             warnings.append("No overview map: kecamatan level needs a province scope (prov=).")
+        order = "&order=asc" if recipe == "terendah" else ""
+
+        def table_card(letter, start, end):
+            cards.append({"file": f"{slug}_{len(slides):02d}{letter}_top{end}.png",
+                          "path": f"/card/angka/{m['prov'] or '00'}?{query}&view=top10"
+                                  f"{f'&start={start}' if start > 1 else ''}{order}"})
+
+        if not maps:
+            # Table only: the pages count down to #1 (#41–50 first), like the countdown would.
+            for i, (start, end) in enumerate(reversed(pages)):
+                table_card("bcdefghij"[i], start, end)
+            picked = []
         # Countdown: the reveal (#1) is the last card.
         # Badges show the shared rank, so tied regions get the same number.
         for row in reversed(picked):
@@ -236,10 +263,10 @@ def deck_bundle(result, spec, recipe="top", map_bg="terrain", template="editoria
             body = f"*{fmt_value(row['value'], unit)}*" + (f", {', '.join(extra)}." if extra else "")
             slides.append(f"[number={place} icon={icon}]\n{_text(row['label'])}\n{body}")
             focus(row["code"], "desc" if recipe == "top" else "asc")
-        # After the reveal: the top (or bottom) 10 as a bar chart.
-        order = "&order=asc" if recipe == "terendah" else ""
-        cards.append({"file": f"{slug}_{len(slides):02d}b_top10.png",
-                      "path": f"/card/angka/{m['prov'] or '00'}?{query}&view=top10{order}"})
+        # After the reveal: the top (or bottom) table as bar charts, #1–10 first.
+        if maps:
+            for i, (start, end) in enumerate(pages):
+                table_card("bcdefghij"[i], start, end)
         if recipe == "terendah":
             warnings.append("Fairness: at most 1 in 4 posts may headline a lowest ranking; frame it as a gap, "
                             "not a verdict.")
@@ -310,4 +337,4 @@ Every value traces to a stored response in `provenance.json` (URL with the key r
 fetch time).
 """
     return {"deck": deck, "readme": readme, "cards": cards, "warnings": warnings, "carousel_press_url": link,
-            "tiktok": tiktok_text(result, recipe)}
+            "tiktok": tiktok_text(result, recipe, table, maps)}

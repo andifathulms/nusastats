@@ -233,3 +233,33 @@ def test_tiktok_title_falls_back_when_too_long():
     long["pack"]["metric"] = "Persentase Rumah Tangga yang Memiliki Akses terhadap Hunian Layak dan Terjangkau di Perkotaan"
     long["map"]["prov_name"] = "Kepulauan Bangka Belitung"
     assert len(deck_bundle(long, SPEC, recipe="top")["tiktok"]["title"]) <= 90
+
+
+def _with_regions(r, k):
+    """Pad the map to k regions (low values, ranked after the pack's rows), so the table can run past 5 + 5."""
+    have = len(r["map"]["values"])
+    r["map"]["values"] += [{"code": f"99{i:02d}", "geo": f"99{i:02d}", "label": f"Kab. {i}", "value": 0.5,
+                            "display": "0,5", "rank": have + 1, "rank_asc": 1} for i in range(k - have)]
+    return r
+
+
+def test_table_20_adds_a_second_table_card_after_the_reveal():
+    r = _with_regions(_result(ROWS), 24)
+    b = deck_bundle(r, SPEC, recipe="top", table=20)
+    tables = [c for c in b["cards"] if "view=top10" in c["path"]]
+    assert [c["file"].rsplit("_", 1)[-1] for c in tables] == ["top10.png", "top20.png"]
+    assert tables[1]["path"].endswith("&view=top10&start=11")
+    assert "| 20 Tertinggi" in b["deck"]
+    assert b["tiktok"]["title"].startswith("20 kabupaten/kota")
+    assert "Peringkat #1–20 lengkap ada di slide." in b["tiktok"]["description"]
+
+
+def test_table_only_counts_the_table_down_without_countdown_maps():
+    r = _with_regions(_result(ROWS), 38)
+    b = deck_bundle(r, SPEC, recipe="top", table=50, maps=False)
+    files = [c["file"].split("_", 1)[1] for c in b["cards"]]
+    # Overview, then the table from #31–38 down to #1–10; no focus maps.
+    assert files == ["01a_peta.png", "01b_top38.png", "01c_top30.png", "01d_top20.png", "01e_top10.png"]
+    assert b["cards"][1]["path"].endswith("&view=top10&start=31")
+    assert "[number=" not in b["deck"]
+    assert "| 38 Tertinggi" in b["deck"]

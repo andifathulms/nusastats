@@ -20,7 +20,7 @@ import { chromium } from "playwright";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const OUT = join(HERE, "..", "..", "..", "exports", "carousels");
-const PASS = ["source", "metric", "level", "period", "prov", "turvar", "th", "unit", "label-metric", "notes", "top", "bottom", "recipe", "bg"];
+const PASS = ["source", "metric", "level", "period", "prov", "turvar", "th", "unit", "label-metric", "notes", "top", "bottom", "recipe", "bg", "table", "maps"];
 
 function parse(argv) {
   const a = { q: new URLSearchParams(), api: "http://localhost:8010", base: "http://localhost:3010", debug: false };

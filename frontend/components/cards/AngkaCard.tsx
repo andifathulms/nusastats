@@ -111,7 +111,9 @@ export function AngkaCard({ scope, query, debug, tema = "malam" }: { scope: stri
     else setOutline(null);
   }, [data, scope, focus, wantsPeta]);
 
+  const start = Math.max(1, Number(query.get("start")) || 1);
   const issues = data ? problems(data, focus) : [];
+  if (data && view === "top10" && start > data.map.values.length) issues.push(`peringkat #${start} tidak ada (${data.map.values.length} wilayah)`);
   const error = fatal ?? (issues.length ? issues.join("; ") : null);
 
   // The Peta layer behind a focused region, when it exists on this machine.
@@ -140,7 +142,7 @@ export function AngkaCard({ scope, query, debug, tema = "malam" }: { scope: stri
         <div className="p-16 text-[28px] text-coal-text">Kartu tidak dibuat: {error}</div>
       ) : data && geo && peta !== undefined && outline !== undefined ? (
         view === "top10" ? (
-          <TopBody data={data} asc={asc} />
+          <TopBody data={data} asc={asc} start={start} />
         ) : focus ? (
           <FocusBody
             data={data}
@@ -192,8 +194,6 @@ function OverviewBody({ data, geo, scope, asc }: { data: CarouselPackResult; geo
   }, [geo, map.level, scope]);
   const { kind, mid } = kindFor(pack.unit);
   const scale = scaleFor(kind, map.min, map.max, mid);
-  // The three the deck counts down to: highest, or lowest for a `terendah` deck (order=asc).
-  const top3 = [...map.values].sort((a, b) => (asc ? a.rank_asc - b.rank_asc : a.rank - b.rank) || a.code.localeCompare(b.code)).slice(0, 3);
   const lowest = map.values.reduce((a, b) => (b.value < a.value ? b : a));
   const highest = map.values.reduce((a, b) => (b.value > a.value ? b : a));
   const partial = partialNote(data);
@@ -213,16 +213,11 @@ function OverviewBody({ data, geo, scope, asc }: { data: CarouselPackResult; geo
             <div className="h-3 min-w-[120px] flex-1 rounded-full" style={{ background: `linear-gradient(90deg, ${scale.gradient})` }} />
             <span className="whitespace-nowrap">{highest.display}</span>
           </div>
-          <div className="mt-6 font-mono text-[24px] uppercase tracking-[0.12em] text-coal-muted">{asc ? "Terendah" : "Tertinggi"}</div>
-          <ol className="mt-3 space-y-3">
-            {top3.map((v) => (
-              <li key={v.geo} className="flex flex-wrap items-baseline gap-x-4">
-                <span className="w-12 shrink-0 font-mono text-[28px] text-ink-gold">#{asc ? v.rank_asc : v.rank}</span>
-                <span className="min-w-0 flex-1 text-[32px] font-semibold">{v.label}</span>
-                <span className="whitespace-nowrap text-[32px] font-extrabold tabular-nums">{v.display}</span>
-              </li>
-            ))}
-          </ol>
+          {/* No names here: the ranking is the payoff of the next slides. */}
+          <p className="mt-8 font-display text-[64px] leading-[1.02]">
+            {asc ? "Siapa paling rendah?" : "Siapa nomor 1?"}
+          </p>
+          <p className="mt-3 text-[32px] text-ink-gold">Geser untuk lihat peringkatnya →</p>
           {partial && <p className="mt-4 text-[22px] text-coal-muted">{partial}</p>}
           <Footer source={pack.source} />
         </>
@@ -386,42 +381,44 @@ function LayerLegend({ peta, bg }: { peta: Peta; bg: Bg }) {
   return null;
 }
 
-/** The tally after the countdown: the top (or bottom, order=asc) 10 as bars from
- * zero. The regions the deck counted down to are drawn in cream, the rest in slate. */
-function TopBody({ data, asc }: { data: CarouselPackResult; asc: boolean }) {
+/** The ranking table, 10 rows per card: #start to #start+9 of the top (or bottom,
+ * order=asc), as bars from zero on one scale with the rows above them. The regions
+ * the deck counted down to are drawn in the ink colour, the rest muted. */
+function TopBody({ data, asc, start = 1 }: { data: CarouselPackResult; asc: boolean; start?: number }) {
   const { map, pack } = data;
   // Regions without a map code (map.unmatched) are left out here as on the maps;
   // the guardrails above already refuse packs where that would matter.
-  const rows = [...map.values]
-    .sort((a, b) => (asc ? a.rank_asc - b.rank_asc : a.rank - b.rank) || a.code.localeCompare(b.code))
-    .slice(0, TOP_N);
+  const ranked = [...map.values].sort((a, b) => (asc ? a.rank_asc - b.rank_asc : a.rank - b.rank) || a.code.localeCompare(b.code));
+  const rows = ranked.slice(start - 1, start - 1 + TOP_N);
+  const upto = ranked.slice(0, start - 1 + TOP_N);
   const featured = new Set(pack.rows.slice(0, 5).map((r) => r.code));
   if (asc) {
     featured.clear();
     pack.rows.slice(-5).forEach((r) => featured.add(r.code));
   }
-  const max = Math.max(...rows.map((r) => Math.abs(r.value)), 1e-9);
+  const max = Math.max(...upto.map((r) => Math.abs(r.value)), 1e-9);
   const partial = partialNote(data);
   const word = asc ? "terendah" : "tertinggi";
 
   return (
     <TextBody>
-      <CardHeader kicker={map.kicker} title={`${rows.length} ${word}`}>
+      <CardHeader kicker={map.kicker} title={start === 1 ? `${rows.length} ${word}` : `#${start}–${start + rows.length - 1} ${word}`}>
         <div className="mt-2 text-[30px] leading-snug text-coal-muted">{`${map.title} · ${scopeLabel(data)} · ${map.period_label}`}</div>
       </CardHeader>
-      <ol className="mt-6 flex min-h-0 flex-1 flex-col justify-start gap-3">
+      {/* Ten rows fill the slide: sized for a phone at arm's length. */}
+      <ol className="mt-8 flex min-h-0 flex-1 flex-col justify-start gap-5">
         {rows.map((r) => {
           const place = asc ? r.rank_asc : r.rank;
           return (
             <li key={r.code}>
               <div className="flex items-baseline gap-3">
-                <span className="w-12 shrink-0 font-mono text-[24px] text-ink-gold">#{place}</span>
-                <span className="min-w-0 flex-1 truncate text-[28px] font-semibold">{r.label}</span>
-                <span className="whitespace-nowrap text-[28px] font-extrabold tabular-nums">{r.display}</span>
+                <span className="w-[72px] shrink-0 font-mono text-[30px] text-ink-gold">#{place}</span>
+                <span className="min-w-0 flex-1 truncate text-[36px] font-semibold">{r.label}</span>
+                <span className="whitespace-nowrap text-[36px] font-extrabold tabular-nums">{r.display}</span>
               </div>
-              <div className="ml-[60px] mt-1 h-3 rounded-full bg-white/5">
+              <div className="ml-[84px] mt-2 h-4 rounded-full bg-white/5">
                 <div
-                  className="h-3 rounded-full"
+                  className="h-4 rounded-full"
                   style={{ width: `${Math.max(1, (Math.abs(r.value) / max) * 100)}%`, background: featured.has(r.code) ? "var(--nm-ink)" : "var(--nm-bar)" }}
                 />
               </div>
