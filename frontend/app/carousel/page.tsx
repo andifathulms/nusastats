@@ -3,6 +3,7 @@
 import { Suspense, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
+  CarouselRefusal,
   carouselApi,
   djpkApi,
   dukcapilApi,
@@ -252,6 +253,7 @@ function CarouselTool() {
   const [form, setForm] = useState<Form>(() => formFrom(params));
   const [result, setResult] = useState<CarouselDeckResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [refusal, setRefusal] = useState<CarouselRefusal | null>(null);
   const [busy, setBusy] = useState(false);
   const [provinces, setProvinces] = useState<DukcapilRegionRow[]>([]);
   const [dukIndicators, setDukIndicators] = useState<DukcapilIndicatorGroups | null>(null);
@@ -279,12 +281,14 @@ function CarouselTool() {
     router.replace(`${routes.carousel}?${q}`, { scroll: false });
     setBusy(true);
     setError(null);
+    setRefusal(null);
     carouselApi
       .deck(q)
       .then(setResult)
       .catch((e) => {
         setResult(null);
-        setError(e.message ?? String(e));
+        if (e instanceof CarouselRefusal) setRefusal(e);
+        else setError(e.message ?? String(e));
       })
       .finally(() => setBusy(false));
   };
@@ -473,6 +477,17 @@ function CarouselTool() {
         </form>
       </Panel>
 
+      {refusal && (
+        <Refused
+          refusal={refusal}
+          busy={busy}
+          onPartial={() => {
+            const f = { ...form, allow_partial: "1" };
+            setForm(f);
+            build(f);
+          }}
+        />
+      )}
       {error && (
         <Panel>
           <SectionTitle>Pack tidak dibuat</SectionTitle>
@@ -481,6 +496,39 @@ function CarouselTool() {
       )}
       {result && <Result result={result} form={form} />}
     </div>
+  );
+}
+
+/** A pack the backend refused to build: its reason in full, the regions without a value,
+ * and (when only coverage is the problem) a one-click build with the "n = X dari Y" note. */
+function Refused({ refusal, busy, onPartial }: { refusal: CarouselRefusal; busy: boolean; onPartial: () => void }) {
+  const p = refusal.partial;
+  const reason = p ? refusal.message.split(" Tanpa nilai:")[0] : refusal.message;
+  return (
+    <Panel>
+      <SectionTitle>Pack tidak dibuat</SectionTitle>
+      <p className="text-base text-ink-text">{reason}</p>
+      {p && (
+        <>
+          <p className="mt-3 text-sm text-ink-muted">
+            Tanpa nilai: {p.missing.join(", ")}
+            {p.more > 0 ? ` dan ${p.more.toLocaleString("id-ID")} lainnya` : ""}.
+          </p>
+          <p className="mt-1 text-sm text-ink-muted">
+            Kalau tetap dibuat, peringkatnya dari {p.n.toLocaleString("id-ID")} wilayah dan catatan &ldquo;n ={" "}
+            {p.n.toLocaleString("id-ID")} dari {p.total.toLocaleString("id-ID")}&rdquo; ditulis di deck.
+          </p>
+          <button
+            type="button"
+            onClick={onPartial}
+            disabled={busy}
+            className="mt-4 inline-flex h-10 items-center rounded-full border border-ink-accent px-5 text-sm font-semibold text-ink-accent transition-colors hover:bg-ink-accent/10 disabled:opacity-50"
+          >
+            Tetap buat, dengan catatan n = {p.n.toLocaleString("id-ID")} dari {p.total.toLocaleString("id-ID")}
+          </button>
+        </>
+      )}
+    </Panel>
   );
 }
 

@@ -29,6 +29,7 @@ from djpk.derived import DERIVED_BY_KEY as DJPK_DERIVED
 from djpk.models import ApbdRegion, ApbdReport
 from dukcapil.derived import DERIVED_BY_FIELD
 from dukcapil.models import DukcapilIndicator, DukcapilRegion
+from dukcapil.twins import polygon_twins
 from stats.models import DataPoint
 
 from .djpk_views import _metric_values as djpk_metric_values
@@ -52,7 +53,31 @@ _DUKCAPIL_PREFIX = {"Kota": "Kota", "Kabupaten": "Kab.", "Kota Administrasi": "K
 
 
 class PackError(ValueError):
-    """The pack can't be built honestly. The message says why and what to pass."""
+    """The pack can't be built honestly. The message says why and what to pass.
+    `details` (JSON-safe) lets a client act on it, e.g. offer allow_partial."""
+
+    def __init__(self, message, **details):
+        super().__init__(message)
+        self.details = details
+
+
+def _region_names(geos, level):
+    """Kemendagri code -> "Name, Kab. X" from the latest Dukcapil snapshot, for refusal messages."""
+    dlevel = {"provinsi": "province", "kabupaten": "regency", "kecamatan": "district"}[level]
+    periods = dukcapil_periods()
+    if not geos or not periods:
+        return {}
+    qs = DukcapilRegion.objects.filter(period=periods[0])
+    rows = list(qs.filter(level=dlevel, code__in=geos).values("code", "name", "status", "kab_code"))
+    kabs = {r["code"]: f"{_DUKCAPIL_PREFIX.get(r['status'], '')} {r['name']}".strip()
+            for r in qs.filter(level="regency", code__in={x["kab_code"] for x in rows}).values("code", "name", "status")}
+    out = {}
+    for r in rows:
+        name = r["name"] if dlevel == "province" else f"{_DUKCAPIL_PREFIX.get(r['status'], '')} {r['name']}".strip()
+        if dlevel == "district" and kabs.get(r["kab_code"]):
+            name = f"{r['name']}, {kabs[r['kab_code']]}"
+        out[r["code"]] = name
+    return out
 
 
 def slugify(text, limit=40):
@@ -245,12 +270,16 @@ def _dukcapil(metric, level, period, opts):
         raise PackError(f"Indikator Dukcapil '{metric}' tidak dikenal.")
     dlevel = {"provinsi": "province", "kabupaten": "regency", "kecamatan": "district"}[level]
     qs = DukcapilRegion.objects.filter(level=dlevel, period=period)
-    values = dukcapil_metric_values(qs, metric)
+    # A region drawn as two polygons arrives as two rows with the same numbers:
+    # count it once (dukcapil/twins.py), and say so in the notes (build_pack).
+    twins = polygon_twins(qs)
+    values = {c: v for c, v in dukcapil_metric_values(qs, metric).items() if c not in twins}
 
     regions = {
         r["code"]: r
         for r in qs.values("code", "name", "status", "kab_code", "fetch_log_id", "fetch_log__url",
                            "fetch_log__response_sha256", "fetch_log__fetched_at")
+        if r["code"] not in twins
     }
     kab_label = {}
     if dlevel == "district":
@@ -289,6 +318,7 @@ def _dukcapil(metric, level, period, opts):
     return {
         "rows": rows,
         "expected": [(c, c) for c in regions],
+        "twins": twins,
         "metric": name,
         "unit": unit,
         "period": period,
@@ -401,10 +431,23 @@ def build_pack(source, metric, level, period=None, *, prov=None, top=5, bottom=5
         pname = DukcapilRegion.objects.filter(level="province", code=prov).values_list("name", flat=True).first()
         where = f" di {pname or prov}"
     pack_notes = []
+    twins = [t for t, base in built.get("twins", {}).items() if not prov or base[:2] == prov]
+    if twins:
+        pack_notes.append(f"{fmt_int(len(twins))} baris ganda di sumber (wilayah yang sama, digambar sebagai dua "
+                          "poligon dengan angka yang identik) dihitung sekali.")
     if n < total:
         if not allow_partial:
-            raise PackError(f"n = {fmt_int(n)} dari {fmt_int(total)} {scope}{where} punya nilai. "
-                            "Pakai allow_partial bila tetap ingin dibuat (catatan n akan ditulis).")
+            have = {r["code"] for r in rows}
+            missing = [geo or code for code, geo in expected if code not in have]
+            names = _region_names([m for m in missing if m], level)
+            listed = [names.get(m, m) for m in missing[:5]]
+            more = f" dan {fmt_int(len(missing) - 5)} lainnya" if len(missing) > 5 else ""
+            raise PackError(
+                f"n = {fmt_int(n)} dari {fmt_int(total)} {scope}{where} punya nilai. "
+                f"Tanpa nilai: {', '.join(listed)}{more}. "
+                "Pakai allow_partial bila tetap ingin dibuat (catatan n akan ditulis).",
+                partial={"n": n, "total": total, "missing": listed, "more": max(0, len(missing) - 5)},
+            )
         pack_notes.append(f"n = {fmt_int(n)} dari {fmt_int(total)} {scope}{where}; jangan disebut "
                           "tertinggi/terendah se-Indonesia.")
     if n <= top + bottom:

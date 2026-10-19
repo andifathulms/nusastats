@@ -203,3 +203,37 @@ def test_ties_share_competition_ranks_both_ways(bps):
     DataPoint.objects.filter(domain__domain_id="1101").update(value=13.37)
     vals = {v["code"]: (v["rank"], v["rank_asc"]) for v in build_pack("bps", "415", "kabupaten", "2025")["map"]["values"]}
     assert vals == {"1101": (1, 3), "1171": (1, 3), "1102": (3, 2), "9707": (4, 1)}
+
+
+@pytest.mark.django_db
+def test_dukcapil_polygon_twin_is_counted_once(db):
+    """A kecamatan drawn as two polygons arrives as two rows with the same
+    numbers (the second under `{code}-{objectid}`): one region, said in the notes."""
+    DukcapilIndicator.objects.create(field="jumlah_penduduk", label_id="Jumlah Penduduk", group="Umum", unit="jiwa")
+    _duk("7306", "Gowa", "Kabupaten", jumlah_penduduk=780000)
+    _duk("730610", "Tombolopao", "", level="district", jumlah_penduduk=31809, objectid=48629)
+    _duk("730610-48649", "Tombolopao", "", level="district", jumlah_penduduk=31809, objectid=48649)
+    _duk("730611", "Tinggimoncong", "", level="district", jumlah_penduduk=24000, objectid=48630)
+    # Same fallback code shape but different numbers: a different row, kept.
+    _duk("730612", "Parangloe", "", level="district", jumlah_penduduk=18000, objectid=48631)
+    _duk("730612-48700", "Parangloe", "", level="district", jumlah_penduduk=1, objectid=48700)
+
+    result = build_pack("dukcapil", "jumlah_penduduk", "kecamatan", prov="73")
+    codes = [r["code"] for r in result["pack"]["rows"]]
+    assert codes.count("730610") == 1 and "730610-48649" not in codes
+    assert "730612-48700" in codes
+    assert result["map"]["expected"] == 4
+    assert "1 baris ganda di sumber" in result["pack"]["notes"]
+
+
+@pytest.mark.django_db
+def test_partial_refusal_names_the_missing_regions(db):
+    DukcapilIndicator.objects.create(field="jumlah_penduduk", label_id="Jumlah Penduduk", group="Umum", unit="jiwa")
+    _duk("7306", "Gowa", "Kabupaten", jumlah_penduduk=780000)
+    _duk("730610", "Tombolopao", "", level="district", jumlah_penduduk=31809)
+    _duk("730611", "Tinggimoncong", "", level="district")
+    with pytest.raises(PackError, match="Tanpa nilai: Tinggimoncong, Kab. Gowa") as exc:
+        build_pack("dukcapil", "jumlah_penduduk", "kecamatan", prov="73")
+    assert exc.value.details["partial"] == {"n": 1, "total": 2, "missing": ["Tinggimoncong, Kab. Gowa"], "more": 0}
+    bad = APIClient().get("/api/carousel/pack/?source=dukcapil&metric=jumlah_penduduk&level=kecamatan&prov=73")
+    assert bad.status_code == 422 and bad.data["partial"]["missing"] == ["Tinggimoncong, Kab. Gowa"]

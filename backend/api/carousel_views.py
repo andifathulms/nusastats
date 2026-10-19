@@ -47,7 +47,7 @@ def pack(request):
     try:
         return Response(_build(request))
     except PackError as exc:
-        return Response({"error": str(exc)}, status=422)
+        return Response({"error": str(exc), **exc.details}, status=422)
 
 
 @api_view(["GET"])
@@ -62,6 +62,6 @@ def deck(request):
     try:
         result = _build(request)
     except PackError as exc:
-        return Response({"error": str(exc)}, status=422)
+        return Response({"error": str(exc), **exc.details}, status=422)
     spec = {k: request.query_params.get(k) for k in PACK_PARAMS}
     return Response({**result, **deck_bundle(result, spec, recipe=recipe, map_bg=bg)})

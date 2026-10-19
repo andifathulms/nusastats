@@ -905,10 +905,21 @@ export type CarouselDeckResult = CarouselPackResult & {
   tiktok: { title: string; description: string }; // ready to paste when posting
 };
 
-/** Pack/deck requests. A refusal (422) rejects with the backend's reason. */
+/** Why a pack was refused when too few regions have a value (allow_partial builds it with a note). */
+export type CarouselPartial = { n: number; total: number; missing: string[]; more: number };
+
+/** A refusal (422): the backend's reason, plus `partial` when allow_partial would build it. */
+export class CarouselRefusal extends Error {
+  constructor(message: string, public partial: CarouselPartial | null) {
+    super(message);
+  }
+}
+
+/** Pack/deck requests. A refusal (422) rejects with a CarouselRefusal; other failures with an Error. */
 async function carouselGet<T>(path: string, query: string): Promise<T> {
   const res = await fetch(`${API_BASE}/api/carousel/${path}/?${query}`);
   const body = await res.json().catch(() => null);
+  if (res.status === 422 && body?.error) throw new CarouselRefusal(body.error, body.partial ?? null);
   if (!res.ok) throw new Error(body?.error ?? `API carousel/${path} -> ${res.status}`);
   return body as T;
 }
