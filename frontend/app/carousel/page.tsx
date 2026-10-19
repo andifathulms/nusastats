@@ -15,6 +15,8 @@ import {
 import { Badge, ErrorState, PageHeader, Panel, SectionTitle } from "@/components/ui";
 import { routes } from "@/lib/routes";
 import { TikTokText } from "@/components/carousel/TikTokText";
+import { TemaPicker, useTema } from "@/components/carousel/TemaPicker";
+import type { Tema } from "@/components/cards/brand";
 import { CARDS, ProfilTool } from "@/components/carousel/ProfilTool";
 
 // /carousel — two ways to make a TikTok carousel (docs/CAROUSEL.md):
@@ -208,6 +210,7 @@ function Modes() {
   const params = useSearchParams();
   const router = useRouter();
   const mode = params.get("mode") === "profil" ? "profil" : "peringkat";
+  const [tema, setTema] = useTema();
   const go = (q: Record<string, string>) => router.replace(`${routes.carousel}?${new URLSearchParams(q)}`, { scroll: false });
   const tab = (id: "peringkat" | "profil", label: string) => (
     <button
@@ -228,26 +231,30 @@ function Modes() {
           ? "Satu kabupaten jadi rangkaian kartu peta: wilayah, kepadatan, medan, dataran rendah, tutupan lahan, cahaya malam dan lainnya, siap diunggah."
           : "Satu peringkat jadi carousel TikTok: teks deck untuk Carousel Press, kartu peta di antara slidenya, dan perintah untuk menyimpan semuanya sebagai PNG. Angka diambil dari satu sumber saja, apa adanya."}
       </PageHeader>
-      <div className="inline-flex gap-1 rounded-full border border-ink-border p-1">
-        {tab("peringkat", "Peringkat")}
-        {tab("profil", "Profil kabupaten")}
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div className="inline-flex gap-1 rounded-full border border-ink-border p-1">
+          {tab("peringkat", "Peringkat")}
+          {tab("profil", "Profil kabupaten")}
+        </div>
+        <TemaPicker tema={tema} onChange={setTema} />
       </div>
       {mode === "profil" ? (
         <ProfilTool
           kode={params.get("kode") ?? ""}
           indicator={params.get("indicator") ?? "median_age"}
+          tema={tema}
           onChange={(patch) =>
             go({ mode: "profil", kode: patch.kode ?? params.get("kode") ?? "", indicator: patch.indicator ?? params.get("indicator") ?? "median_age" })
           }
         />
       ) : (
-        <CarouselTool />
+        <CarouselTool tema={tema} />
       )}
     </div>
   );
 }
 
-function CarouselTool() {
+function CarouselTool({ tema }: { tema: Tema }) {
   const params = useSearchParams();
   const router = useRouter();
   const [form, setForm] = useState<Form>(() => formFrom(params));
@@ -494,7 +501,7 @@ function CarouselTool() {
           <ErrorState message={error} />
         </Panel>
       )}
-      {result && <Result result={result} form={form} />}
+      {result && <Result result={result} form={form} tema={tema} />}
     </div>
   );
 }
@@ -546,7 +553,7 @@ function Field({ label, hint, children }: { label: string; hint?: string; childr
 
 const SECONDS_PER_CARD = 1.5;
 
-function Result({ result, form }: { result: CarouselDeckResult; form: Form }) {
+function Result({ result, form, tema }: { result: CarouselDeckResult; form: Form; tema: Tema }) {
   const { pack, map } = result;
   const [copied, setCopied] = useState<string | null>(null);
   const [service, setService] = useState<"checking" | "up" | "down">("checking");
@@ -570,7 +577,7 @@ function Result({ result, form }: { result: CarouselDeckResult; form: Form }) {
     setZipError(null);
     setZipping(Date.now());
     try {
-      const r = await fetch(`${CARDS}/deck-zip?${queryOf(form)}`);
+      const r = await fetch(`${CARDS}/deck-zip?${queryOf(form)}&tema=${tema}`);
       if (!r.ok) throw new Error((await r.json().catch(() => null))?.error ?? `layanan kartu -> ${r.status}`);
       const url = URL.createObjectURL(await r.blob());
       const a = document.createElement("a");
@@ -657,7 +664,7 @@ function Result({ result, form }: { result: CarouselDeckResult; form: Form }) {
             <figure key={c.file} className="shrink-0">
               <div className="overflow-hidden rounded-xl ring-1 ring-ink-border" style={{ width: 1080 * SCALE, height: 1920 * SCALE }}>
                 <iframe
-                  src={c.path}
+                  src={`${c.path}&tema=${tema}`}
                   title={c.file}
                   loading="lazy"
                   style={{ width: 1080, height: 1920, transform: `scale(${SCALE})`, transformOrigin: "0 0", border: 0 }}
@@ -668,7 +675,7 @@ function Result({ result, form }: { result: CarouselDeckResult; form: Form }) {
                 {service === "up" && (
                   <a
                     className="shrink-0 text-xs font-semibold text-ink-accent hover:underline"
-                    href={`${CARDS}/shot?${new URLSearchParams({ path: c.path, name: c.file })}`}
+                    href={`${CARDS}/shot?${new URLSearchParams({ path: `${c.path}&tema=${tema}`, name: c.file })}`}
                   >
                     PNG
                   </a>

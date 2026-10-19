@@ -5,6 +5,7 @@ import { dukcapilApi, regionLabel, type DukcapilRegionRow } from "@/lib/api";
 import { ErrorState, Panel, SectionTitle } from "@/components/ui";
 import { profilCaption, type ProfilCaption } from "@/components/cards/caption";
 import { TikTokText } from "./TikTokText";
+import type { Tema } from "@/components/cards/brand";
 
 // "Profil kabupaten" mode of /carousel: pick a kabupaten, preview its profile
 // cards (the real /card routes, scaled down) and download them. PNGs come from
@@ -52,10 +53,12 @@ function slug(s: string) {
 export function ProfilTool({
   kode,
   indicator,
+  tema,
   onChange,
 }: {
   kode: string;
   indicator: string;
+  tema: Tema;
   onChange: (patch: { kode?: string; indicator?: string }) => void;
 }) {
   const [regencies, setRegencies] = useState<DukcapilRegionRow[]>([]);
@@ -120,13 +123,13 @@ export function ProfilTool({
     return { ...c, available: !!files && !missing, reason: missing ? missingReason(missing, kode) : null };
   });
   const available = cards.filter((c) => c.available);
-  const path = (c: Card) => `/card/${c.id}/${kode}${c.id === "kecamatan" ? `?indicator=${indicator}` : ""}`;
+  const path = (c: Card) => `/card/${c.id}/${kode}?${new URLSearchParams({ tema, ...(c.id === "kecamatan" ? { indicator } : {}) })}`;
 
   const downloadZip = async () => {
     setError(null);
     setBusy({ started: Date.now(), total: available.length });
     try {
-      const q = new URLSearchParams({ kode, indicator, templates: available.map((c) => c.id).join(",") });
+      const q = new URLSearchParams({ kode, indicator, tema, templates: available.map((c) => c.id).join(",") });
       const r = await fetch(`${CARDS}/zip?${q}`);
       if (!r.ok) throw new Error((await r.json().catch(() => null))?.error ?? `layanan kartu -> ${r.status}`);
       const url = URL.createObjectURL(await r.blob());
@@ -250,7 +253,7 @@ export function ProfilTool({
                   {c.available && service === "up" && (
                     <a
                       className="shrink-0 font-semibold text-ink-accent hover:underline"
-                      href={`${CARDS}/png?${new URLSearchParams({ template: c.id, kode, ...(c.id === "kecamatan" ? { indicator } : {}) })}`}
+                      href={`${CARDS}/png?${new URLSearchParams({ template: c.id, kode, tema, ...(c.id === "kecamatan" ? { indicator } : {}) })}`}
                     >
                       PNG
                     </a>

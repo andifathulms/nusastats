@@ -132,6 +132,13 @@ map (wide kabupaten) or beside it on the left (tall ones, e.g. Barru), whichever
 map, and the 22 px source line sits at y 1514. `?debug=1` on any /card URL draws the zones and a
 mock of TikTok's carousel UI on top.
 
+**Tema kartu** (next to the mode tabs on `/carousel`, remembered in the browser) picks the
+palette for every card, preview and download: **Malam** (ink, the default), **Laut** (deep
+navy), **Kertas** (warm paper) and **Putih** (white). Cards and the `cards` service take
+`?tema=malam|laut|kertas|putih` (`TEMAS` in `components/cards/brand.ts`). Every map colour is a CSS
+variable from that palette; on the light palettes the data ramps flip (more = darker) so the top
+class doesn't vanish into the paper. The night-light satellite image stays dark in every palette.
+
 The cards have their own look, "Atlas Malam" (proposal: "Arah Visual Nusantara Mapper"):
 Archivo, an ink background, one theme colour per subject (`components/cards/brand.ts`, the
 `.nm-card` layer in `globals.css`) and a palette per kind of number (`geo.PALETTES`: magma for

@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { formatNumber, regionLabel, titleCase } from "@/lib/api";
 import { loadPeta, MIN_BASE_LIT_KM2, petaAsset, type Peta } from "@/lib/peta";
-import { themeVar } from "./brand";
+import { temaStyle, type Tema } from "./brand";
 import { cropBox, framing, type Feature, type OffFrame } from "./geo";
 import { landcoverTop3, lightsYears, metres, peak, pctInt, reliefTop2 } from "./facts";
 
@@ -88,7 +88,7 @@ export function problems(peta: Peta | null, template: Template): string[] {
   return out;
 }
 
-export function ShareCard({ template, kode, debug }: { template: Template; kode: string; debug: boolean }) {
+export function ShareCard({ template, kode, debug, tema = "malam" }: { template: Template; kode: string; debug: boolean; tema?: Tema }) {
   const [peta, setPeta] = useState<Peta | null | undefined>(undefined);
   const [geo, setGeo] = useState<Geo | null>(null);
   // A kabupaten's own boundary (null for a kecamatan card, which has no inner lines).
@@ -138,7 +138,7 @@ export function ShareCard({ template, kode, debug }: { template: Template; kode:
       data-card-ready={ready ? "1" : undefined}
       data-card-error={error ?? undefined}
       className="nm-card relative overflow-hidden bg-coal-bg font-sans text-coal-text"
-      style={{ width: W, height: H, ...themeVar(template) }}
+      style={{ width: W, height: H, ...temaStyle(template, tema) }}
     >
       {error ? (
         <div className="p-16 text-[28px] text-coal-text">Kartu tidak dibuat: {error}</div>
@@ -285,13 +285,13 @@ function CardBody({
               key={p.id}
               d={p.d}
               fill="none"
-              stroke={outline.length ? "rgba(243,236,221,0.22)" : "rgba(243,236,221,0.85)"}
+              stroke={outline.length ? "var(--nm-border-soft)" : "var(--nm-border-strong)"}
               strokeWidth={outline.length ? 0.6 : kode.length === 4 ? 1.6 : 2.4}
               vectorEffect="non-scaling-stroke"
             />
           ))}
           {outline.map((p) => (
-            <path key={`o-${p.id}`} d={p.d} fill="none" stroke="#F3ECDD" strokeWidth={2.6} strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
+            <path key={`o-${p.id}`} d={p.d} fill="none" stroke="var(--nm-edge)" strokeWidth={2.6} strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
           ))}
         </svg>
       }

@@ -4,9 +4,9 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { dukcapilApi, formatNumber, titleCase, type DukcapilRank, type DukcapilRankRow } from "@/lib/api";
 import { loadPeta, petaAsset, type Peta } from "@/lib/peta";
 import { NO_DATA, cropBox, framing, kindFor, placeLabels, project, scaleFor, type Geo } from "./geo";
-import { themeVar } from "./brand";
+import { temaStyle, type Tema } from "./brand";
 import { CornerTag, Footer, H, OffFrameNote, W } from "./ShareCard";
-import { BREAKS, CLASS_COLORS, Fact, LabelLegend, MapLabels, bulanTahun, compact, kabInfo, pct1, type KabInfo } from "./WilayahCard";
+import { BREAKS, classColors, Fact, LabelLegend, MapLabels, bulanTahun, compact, kabInfo, pct1, type KabInfo } from "./WilayahCard";
 import { CardHeader, MapLayout, TikTokOverlay, mapBoxFor } from "./layout";
 import { kecFacts, litFacts, lowFacts } from "./facts";
 
@@ -90,7 +90,7 @@ export function problems(template: ProfilTemplate, kode: string, d: Loaded, indi
   return out;
 }
 
-export function ProfilCard({ template, kode, query, debug }: { template: ProfilTemplate; kode: string; query: URLSearchParams; debug: boolean }) {
+export function ProfilCard({ template, kode, query, debug, tema = "malam" }: { template: ProfilTemplate; kode: string; query: URLSearchParams; debug: boolean; tema?: Tema }) {
   const indicator = query.get("indicator") ?? "median_age";
   const [data, setData] = useState<Loaded | null>(null);
   const [fatal, setFatal] = useState<string | null>(null);
@@ -116,7 +116,7 @@ export function ProfilCard({ template, kode, query, debug }: { template: ProfilT
       data-card-ready={ready ? "1" : undefined}
       data-card-error={error ?? undefined}
       className="nm-card relative overflow-hidden bg-coal-bg font-sans text-coal-text"
-      style={{ width: W, height: H, ...themeVar(template) }}
+      style={{ width: W, height: H, ...temaStyle(template, tema) }}
     >
       {error ? (
         <div className="p-16 text-[28px] text-coal-text">Kartu tidak dibuat: {error}</div>
@@ -206,7 +206,7 @@ function LightsBody({ kode, d, onImage, onImageError }: { kode: string; d: Loade
 
   const { litPop, darkDesa, popShare, areaShare, contrast } = litFacts(rows);
   const year = d.desa!.metadata.lights.year;
-  const outlineEls = edge.map((p) => <path key={`e-${p.id}`} d={p.d} fill="none" stroke="#F3ECDD" strokeWidth={2.2} vectorEffect="non-scaling-stroke" />);
+  const outlineEls = edge.map((p) => <path key={`e-${p.id}`} d={p.d} fill="none" stroke="var(--nm-edge)" strokeWidth={2.2} vectorEffect="non-scaling-stroke" />);
   // Same frame for both maps: a tall kabupaten pairs them side by side, a wide one stacks them.
   const pairSide = view.h > view.w;
   const pairAspect = pairSide ? view.h / (2 * view.w) : (2 * view.h) / view.w;
@@ -242,7 +242,7 @@ function LightsBody({ kode, d, onImage, onImageError }: { kode: string; d: Loade
               <RasterMap layers={[]} view={view} outer={outer} onImage={onImage} onImageError={onImageError}>
                 {villagePaths.map((p) => {
                   const r = byId.get(p.id);
-                  return <path key={p.id} d={p.d} fill={r ? CLASS_COLORS[cls(r.pop / r.area_km2)] : NO_DATA} stroke="rgba(15,20,22,0.55)" strokeWidth={0.4} vectorEffect="non-scaling-stroke" />;
+                  return <path key={p.id} d={p.d} fill={r ? classColors()[cls(r.pop / r.area_km2)] : NO_DATA} stroke="var(--nm-seam)" strokeWidth={0.4} vectorEffect="non-scaling-stroke" />;
                 })}
                 {outlineEls}
               </RasterMap>
@@ -325,8 +325,8 @@ function LowBody({ kode, d, onImage, onImageError }: { kode: string; d: Loaded; 
           onImage={onImage}
           onImageError={onImageError}
         >
-          {lowPaths.map((p) => <path key={p.id} d={p.d} fill="none" stroke="#F3ECDD" strokeWidth={1.4} vectorEffect="non-scaling-stroke" />)}
-          {edge.map((p) => <path key={`e-${p.id}`} d={p.d} fill="none" stroke="#F3ECDD" strokeWidth={2.4} vectorEffect="non-scaling-stroke" />)}
+          {lowPaths.map((p) => <path key={p.id} d={p.d} fill="none" stroke="var(--nm-edge)" strokeWidth={1.4} vectorEffect="non-scaling-stroke" />)}
+          {edge.map((p) => <path key={`e-${p.id}`} d={p.d} fill="none" stroke="var(--nm-edge)" strokeWidth={2.4} vectorEffect="non-scaling-stroke" />)}
         </RasterMap>
       }
     />
@@ -381,9 +381,9 @@ function KecamatanBody({ kode, d }: { kode: string; d: Loaded }) {
         <svg viewBox={`0 0 ${vw.toFixed(0)} ${vh.toFixed(0)}`} preserveAspectRatio="xMidYMid meet" className="h-full w-full">
           {paths.map((p) => {
             const r = byId.get(p.id);
-            return <path key={p.id} d={p.d} fill={r ? scale.color(r.value) : NO_DATA} stroke="rgba(15,20,22,0.6)" strokeWidth={0.8} vectorEffect="non-scaling-stroke" />;
+            return <path key={p.id} d={p.d} fill={r ? scale.color(r.value) : NO_DATA} stroke="var(--nm-seam)" strokeWidth={0.8} vectorEffect="non-scaling-stroke" />;
           })}
-          {edge.map((p) => <path key={`e-${p.id}`} d={p.d} fill="none" stroke="#F3ECDD" strokeWidth={2.4} vectorEffect="non-scaling-stroke" />)}
+          {edge.map((p) => <path key={`e-${p.id}`} d={p.d} fill="none" stroke="var(--nm-edge)" strokeWidth={2.4} vectorEffect="non-scaling-stroke" />)}
           <MapLabels labels={labels} numbered={numbered} k={k} />
         </svg>
       }

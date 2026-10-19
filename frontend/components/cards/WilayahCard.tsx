@@ -2,8 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { dukcapilApi, formatNumber, regionLabel, titleCase, type DukcapilRankRow } from "@/lib/api";
-import { NO_DATA, PALETTES, frameOf, framing, neighbourColours, placeLabels, project, projector, type Geo, type Label, type OffFrame } from "./geo";
-import { themeVar } from "./brand";
+import { NO_DATA, frameOf, palette, framing, neighbourColours, placeLabels, project, projector, type Geo, type Label, type OffFrame } from "./geo";
+import { temaStyle, type Tema } from "./brand";
 import { CornerTag, Footer, OffFrameNote } from "./ShareCard";
 import { CONTENT_W, CardHeader, H, MapLayout, PAD, TikTokOverlay, W, ZONE, mapBoxFor } from "./layout";
 import { compact, densityFacts, pct1, shortName } from "./facts";
@@ -26,11 +26,12 @@ export type WilayahTemplate = "wilayah" | "kepadatan" | "penutup";
 export const WILAYAH_TEMPLATES: WilayahTemplate[] = ["wilayah", "kepadatan", "penutup"];
 
 // Muted sea/sand tones for neighbouring kecamatan: distinct, never a ranking.
-const ADMIN_TONES = ["#22417A", "#2E5A8F", "#3B4F6B", "#1F5C6E", "#4A4A6A"];
+const ADMIN_TONES = [0, 1, 2, 3, 4].map((i) => `var(--nm-admin-${i})`); // brand.ts palettes
 // Density classes in jiwa/km². Fixed, log-spaced, so 6409 and 3273 read on one scale.
 export const BREAKS = [10, 50, 250, 1000, 5000];
 // Fixed classes take the six stops of the "amount" palette as they are.
-export const CLASS_COLORS = PALETTES.amount;
+/** Density class colours in the current palette (geo.palette). */
+export const classColors = () => palette("amount");
 // Typical header and facts heights (card px), for choosing the layout.
 const HEADER_H = 170;
 const HOOK_HEADER_H = 330;
@@ -102,7 +103,7 @@ export async function loadGeo(template: WilayahTemplate, kode: string): Promise<
   return { inner, outline, kec };
 }
 
-export function WilayahCard({ template, kode, debug }: { template: WilayahTemplate; kode: string; debug: boolean }) {
+export function WilayahCard({ template, kode, debug, tema = "malam" }: { template: WilayahTemplate; kode: string; debug: boolean; tema?: Tema }) {
   const [data, setData] = useState<Data | null>(null);
   const [geo, setGeo] = useState<Geos | null>(null);
   const [fatal, setFatal] = useState<string | null>(null);
@@ -128,7 +129,7 @@ export function WilayahCard({ template, kode, debug }: { template: WilayahTempla
       data-card-ready={ready ? "1" : undefined}
       data-card-error={error ?? undefined}
       className="nm-card relative overflow-hidden bg-coal-bg font-sans text-coal-text"
-      style={{ width: W, height: H, ...themeVar(template) }}
+      style={{ width: W, height: H, ...temaStyle(template, tema) }}
     >
       {error ? (
         <div className="p-16 text-[28px] text-coal-text">Kartu tidak dibuat: {error}</div>
@@ -210,10 +211,10 @@ function AdminBody({ kode, data, geo }: { kode: string; data: Data; geo: Geos })
       map={
         <svg viewBox={`0 0 ${vw.toFixed(0)} ${vh.toFixed(0)}`} preserveAspectRatio="xMidYMid meet" className="h-full w-full">
           {paths.map((p) => (
-            <path key={p.id} d={p.d} fill={ADMIN_TONES[tones.get(p.id) ?? 0]} stroke="rgba(243,236,221,0.55)" strokeWidth={1} vectorEffect="non-scaling-stroke" />
+            <path key={p.id} d={p.d} fill={ADMIN_TONES[tones.get(p.id) ?? 0]} stroke="var(--nm-border)" strokeWidth={1} vectorEffect="non-scaling-stroke" />
           ))}
           {edge.map((p) => (
-            <path key={`e-${p.id}`} d={p.d} fill="none" stroke="#F3ECDD" strokeWidth={2.6} strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
+            <path key={`e-${p.id}`} d={p.d} fill="none" stroke="var(--nm-edge)" strokeWidth={2.6} strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
           ))}
           <MapLabels labels={labels} numbered={numbered} k={k} />
         </svg>
@@ -229,7 +230,7 @@ export function DensityLegend({ note }: { note?: string }) {
   return (
     <>
       <div className="nm-legend flex gap-1">
-        {CLASS_COLORS.map((c, i) => (
+        {classColors().map((c, i) => (
           <div key={c} className="flex-1">
             <div className="h-4 rounded-sm" style={{ background: c }} />
             <div className="mt-1 text-center font-mono text-[22px] text-coal-muted">{DENSITY_RANGES[i]}</div>
@@ -288,13 +289,13 @@ function DensityBody({ kode, data, geo }: { kode: string; data: Data; geo: Geos 
         <svg viewBox={`0 0 ${vw.toFixed(0)} ${vh.toFixed(0)}`} preserveAspectRatio="xMidYMid meet" className="h-full w-full">
           {paths.map((p) => {
             const v = byId.get(p.id);
-            return <path key={p.id} d={p.d} fill={v ? CLASS_COLORS[cls(v.value)] : NO_DATA} stroke="rgba(15,20,22,0.55)" strokeWidth={0.4} vectorEffect="non-scaling-stroke" />;
+            return <path key={p.id} d={p.d} fill={v ? classColors()[cls(v.value)] : NO_DATA} stroke="var(--nm-seam)" strokeWidth={0.4} vectorEffect="non-scaling-stroke" />;
           })}
           {kec.map((p) => (
-            <path key={`k-${p.id}`} d={p.d} fill="none" stroke="rgba(243,236,221,0.3)" strokeWidth={0.8} vectorEffect="non-scaling-stroke" />
+            <path key={`k-${p.id}`} d={p.d} fill="none" stroke="var(--nm-border-soft)" strokeWidth={0.8} vectorEffect="non-scaling-stroke" />
           ))}
           {edge.map((p) => (
-            <path key={`e-${p.id}`} d={p.d} fill="none" stroke="#F3ECDD" strokeWidth={2.6} strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
+            <path key={`e-${p.id}`} d={p.d} fill="none" stroke="var(--nm-edge)" strokeWidth={2.6} strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
           ))}
         </svg>
       }
@@ -315,8 +316,8 @@ export function MapLabels({ labels, numbered, k }: { labels: Label[]; numbered: 
                 dominantBaseline="middle"
                 fontSize={l.size}
                 fontWeight={600}
-                fill="#F3ECDD"
-                stroke="#0F1416"
+                fill="var(--nm-edge)"
+                stroke="var(--nm-bg)"
                 strokeWidth={l.size * 0.18}
                 paintOrder="stroke"
                 style={{ fontFamily: "inherit" }}
@@ -326,8 +327,8 @@ export function MapLabels({ labels, numbered, k }: { labels: Label[]; numbered: 
             ))}
             {numbered.map((l) => (
               <g key={l.id}>
-                <circle cx={l.x} cy={l.y} r={17 * k} fill="#F1EDE3" />
-                <text x={l.x} y={l.y} textAnchor="middle" dominantBaseline="central" fontSize={21 * k} fontWeight={800} fill="#0F1416">
+                <circle cx={l.x} cy={l.y} r={17 * k} fill="var(--nm-edge)" />
+                <text x={l.x} y={l.y} textAnchor="middle" dominantBaseline="central" fontSize={21 * k} fontWeight={800} fill="var(--nm-bg)">
                   {l.n}
                 </text>
               </g>
@@ -396,10 +397,10 @@ function ClosingBody({ kode, data, geo }: { kode: string; data: Data; geo: Geos 
       map={
         <svg viewBox={`0 0 ${vw.toFixed(0)} ${vh.toFixed(0)}`} preserveAspectRatio="xMidYMid meet" className="h-full w-full">
           {paths.map((p) => (
-            <path key={p.id} d={p.d} fill={p.id === kode ? "var(--nm-sorot)" : "#26333A"} stroke="#0F1416" strokeWidth={1} vectorEffect="non-scaling-stroke" />
+            <path key={p.id} d={p.d} fill={p.id === kode ? "var(--nm-sorot)" : "var(--nm-prov)"} stroke="var(--nm-bg)" strokeWidth={1} vectorEffect="non-scaling-stroke" />
           ))}
           {own.map((p) => (
-            <path key={`o-${p.id}`} d={p.d} fill="none" stroke="#F1EDE3" strokeWidth={2.6} vectorEffect="non-scaling-stroke" />
+            <path key={`o-${p.id}`} d={p.d} fill="none" stroke="var(--nm-edge)" strokeWidth={2.6} vectorEffect="non-scaling-stroke" />
           ))}
           <circle cx={ring.cx} cy={ring.cy} r={ring.r} fill="none" stroke="var(--nm-sorot)" strokeWidth={ring.w} />
         </svg>

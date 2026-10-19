@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { carouselApi, type CarouselMapValue, type CarouselPackResult } from "@/lib/api";
 import { loadPeta, petaAsset, type Peta } from "@/lib/peta";
 import { NO_DATA, cropBox, frameOf, framing, kindFor, project, scaleFor, type Feature, type Geo } from "./geo";
-import { themeVar } from "./brand";
+import { temaStyle, type Tema } from "./brand";
 import { CornerTag, Footer, OffFrameNote } from "./ShareCard";
 import { CONTENT_W, CardHeader, H, MapLayout, PAD, TikTokOverlay, W, ZONE } from "./layout";
 
@@ -63,7 +63,7 @@ function problems(data: CarouselPackResult, focus: string | null): string[] {
   return out;
 }
 
-export function AngkaCard({ scope, query, debug }: { scope: string; query: URLSearchParams; debug: boolean }) {
+export function AngkaCard({ scope, query, debug, tema = "malam" }: { scope: string; query: URLSearchParams; debug: boolean; tema?: Tema }) {
   const focus = query.get("focus");
   const bg = (query.get("bg") ?? "none") as Bg;
   const asc = query.get("order") === "asc";
@@ -134,7 +134,7 @@ export function AngkaCard({ scope, query, debug }: { scope: string; query: URLSe
       data-card-error={error ?? undefined}
       data-card-note={note}
       className="nm-card relative overflow-hidden bg-coal-bg font-sans text-coal-text"
-      style={{ width: W, height: H, ...themeVar("angka") }}
+      style={{ width: W, height: H, ...temaStyle("angka", tema) }}
     >
       {error ? (
         <div className="p-16 text-[28px] text-coal-text">Kartu tidak dibuat: {error}</div>
@@ -231,7 +231,7 @@ function OverviewBody({ data, geo, scope, asc }: { data: CarouselPackResult; geo
         <svg viewBox={`0 0 ${vw.toFixed(0)} ${vh.toFixed(0)}`} preserveAspectRatio="xMidYMid meet" className="h-full w-full">
           {paths.map((p) => {
             const v = byGeo.get(p.id);
-            return <path key={p.id} d={p.d} fill={v ? scale.color(v.value) : NO_DATA} stroke="#0F1416" strokeWidth={0.6} vectorEffect="non-scaling-stroke" />;
+            return <path key={p.id} d={p.d} fill={v ? scale.color(v.value) : NO_DATA} stroke="var(--nm-bg)" strokeWidth={0.6} vectorEffect="non-scaling-stroke" />;
           })}
         </svg>
       }
@@ -338,14 +338,14 @@ function FocusBody({
               key={p.id}
               d={p.d}
               fill={peta ? "none" : SILHOUETTE}
-              stroke={edge.length ? "rgba(243,236,221,0.22)" : "rgba(243,236,221,0.85)"}
+              stroke={edge.length ? "var(--nm-border-soft)" : "var(--nm-border-strong)"}
               strokeWidth={edge.length ? 0.6 : 1.6}
               strokeOpacity={peta || !edge.length ? 1 : 0.5}
               vectorEffect="non-scaling-stroke"
             />
           ))}
           {edge.map((p) => (
-            <path key={`edge-${p.id}`} d={p.d} fill="none" stroke="#F3ECDD" strokeWidth={2.6} strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
+            <path key={`edge-${p.id}`} d={p.d} fill="none" stroke="var(--nm-edge)" strokeWidth={2.6} strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
           ))}
         </svg>
       }
@@ -422,7 +422,7 @@ function TopBody({ data, asc }: { data: CarouselPackResult; asc: boolean }) {
               <div className="ml-[60px] mt-1 h-3 rounded-full bg-white/5">
                 <div
                   className="h-3 rounded-full"
-                  style={{ width: `${Math.max(1, (Math.abs(r.value) / max) * 100)}%`, background: featured.has(r.code) ? "#F1EDE3" : "#5B6E74" }}
+                  style={{ width: `${Math.max(1, (Math.abs(r.value) / max) * 100)}%`, background: featured.has(r.code) ? "var(--nm-ink)" : "var(--nm-bar)" }}
                 />
               </div>
             </li>

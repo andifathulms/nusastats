@@ -9,7 +9,7 @@ export type Frame = { west: number; south: number; east: number; north: number }
 // DESIGN.md: on a dark surface choropleths run dark sea -> cream, so high values
 // read as the strongest colour; "no data" stays neutral grey, off the ramp.
 export const RAMP = ["#1A2E55", "#2B57A3", "#4F82DC", "#A3BEF0", "#F3ECDD"];
-export const NO_DATA = "#2E3442";
+export const NO_DATA = "var(--nm-nodata)"; // brand.ts palettes
 
 export function lerpHex(a: string, b: string, t: number): string {
   const pa = [1, 3, 5].map((i) => parseInt(a.slice(i, i + 2), 16));
@@ -36,13 +36,25 @@ export const PALETTES = {
   diverging: ["#1F8A8A", "#6FC2B8", "#E8E4DA", "#F2A27A", "#D9573B"],
 };
 
+// Light palettes (brand.ts) flip the data ramps so more = darker: the bright
+// end of magma/viridis would vanish on paper. Set once per card page, before
+// the card renders (app/card/[template]/[kode]/page.tsx).
+let LIGHT_RAMPS = false;
+export function setLightRamps(light: boolean): void {
+  LIGHT_RAMPS = light;
+}
+/** A palette as the current card draws it. Diverging keeps its order (the middle is the point). */
+export function palette(kind: keyof typeof PALETTES): string[] {
+  return LIGHT_RAMPS && kind !== "diverging" ? [...PALETTES[kind]].reverse() : PALETTES[kind];
+}
+
 export type Scale = { color: (v: number) => string; gradient: string; mid?: number; lo: number; hi: number };
 
 /** A colour scale for values in [lo, hi]. `mid` makes it diverging and
  * symmetric around that value (e.g. 100 for L per 100 P), so which side a
  * region is on is visible without the legend. */
 export function scaleFor(kind: keyof typeof PALETTES, lo: number, hi: number, mid?: number): Scale {
-  const colors = PALETTES[kind];
+  const colors = palette(kind);
   if (mid !== undefined) {
     const dev = Math.max(Math.abs(lo - mid), Math.abs(hi - mid)) || 1;
     return { color: (v) => rampColor(0.5 + (v - mid) / (2 * dev), colors), gradient: colors.join(", "), mid, lo: mid - dev, hi: mid + dev };

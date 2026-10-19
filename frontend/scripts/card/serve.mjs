@@ -6,6 +6,7 @@
 //   GET /zip?kode=7311[&indicator=…][&templates=wilayah,terrain] -> {kode}-profil.zip
 //   GET /deck-zip?<the /api/carousel/deck/ query>                -> {pack id}.zip
 //   GET /shot?path=/card/angka/…[&name=x.png]                     -> one card as image/png
+// Every route takes `tema=malam|laut|kertas|putih` (the card palette, brand.ts).
 //
 // The zip holds {NN}_{template}.png in posting order, 00_judul-dan-deskripsi.txt
 // (the TikTok title and description for the slides it holds), and
@@ -72,6 +73,7 @@ function getDeck(query) {
       .on("error", reject);
   });
 }
+const TEMAS = ["malam", "laut", "kertas", "putih"];
 // Only card pages are rendered from a path.
 const cardPath = (p) => typeof p === "string" && /^\/card\/[a-z]+\/\d+(\?[^#\s]*)?$/.test(p);
 
@@ -81,6 +83,10 @@ http
     const kode = u.searchParams.get("kode") ?? "";
     const indicator = u.searchParams.get("indicator") ?? undefined;
     if (u.pathname === "/health") return json(res, 200, { ok: true, base: BASE });
+    const tema = u.searchParams.get("tema") ?? "malam";
+    if (!TEMAS.includes(tema)) return json(res, 400, { error: `tema: ${TEMAS.join(", ")}` });
+    u.searchParams.delete("tema");
+    const withTema = (path) => (tema === "malam" ? path : `${path}${path.includes("?") ? "&" : "?"}tema=${tema}`);
 
     if (u.pathname === "/shot") {
       const path = u.searchParams.get("path");
@@ -105,7 +111,7 @@ http
           skipped.push(`${c.file}: bukan halaman kartu`);
           continue;
         }
-        const r = await serial(() => shoot(page, `${BASE}${c.path}`));
+        const r = await serial(() => shoot(page, `${BASE}${withTema(c.path)}`));
         if (r.error) skipped.push(`${c.file}: ${r.error}`);
         else files.push({ name: c.file, data: r.png });
       }
@@ -130,7 +136,7 @@ http
     if (u.pathname === "/png") {
       const t = u.searchParams.get("template") ?? "";
       if (!TEMPLATES[t]) return json(res, 400, { error: `template: ${Object.keys(TEMPLATES).join(", ")}` });
-      const r = await serial(() => shoot(page, cardUrl(BASE, t, kode, { indicator })));
+      const r = await serial(() => shoot(page, cardUrl(BASE, t, kode, { indicator, tema })));
       if (r.error) return json(res, 422, { error: r.error });
       return send(res, 200, "image/png", r.png, { "content-disposition": `attachment; filename="${kode}_${t}.png"` });
     }
@@ -141,7 +147,7 @@ http
       const skipped = [];
       const made = [];
       for (const t of PROFIL.filter((x) => wanted.includes(x))) {
-        const r = await serial(() => shoot(page, cardUrl(BASE, t, kode, { indicator })));
+        const r = await serial(() => shoot(page, cardUrl(BASE, t, kode, { indicator, tema })));
         if (r.error) skipped.push(`${t}: ${r.error}`);
         else {
           made.push(t);
