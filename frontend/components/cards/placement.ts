@@ -65,6 +65,13 @@ export class FreeSpace {
     return true;
   }
 
+  /** Whether every cell under `rect` is free (and inside the grid). */
+  isFree(rect: Rect): boolean {
+    const c0 = Math.floor(rect.x / CELL);
+    const r0 = Math.floor(rect.y / CELL);
+    return this.free(c0, r0, Math.ceil((rect.x + rect.w) / CELL) - c0, Math.ceil((rect.y + rect.h) / CELL) - r0);
+  }
+
   /** The free w x h rectangle nearest to `anchor` (distance from the rectangle's
    * nearest edge point), or null when none fits. `within` limits the cells
    * (e.g. inside a neighbour's polygon). The rectangle is then marked used. */

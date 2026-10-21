@@ -5,6 +5,7 @@ import { dukcapilApi, regionLabel, type DukcapilRegionRow } from "@/lib/api";
 import { ErrorState, Panel, SectionTitle } from "@/components/ui";
 import { profilCaption, type ProfilCaption } from "@/components/cards/caption";
 import { TikTokText } from "./TikTokText";
+import { CardLightbox } from "./CardLightbox";
 import type { Tema } from "@/components/cards/brand";
 
 // "Profil kabupaten" mode of /carousel: pick a kabupaten, preview its profile
@@ -72,6 +73,25 @@ export function ProfilTool({
   const [caption, setCaption] = useState<ProfilCaption | null>(null);
   // A dense desa map spreads over several slides; the card says how many once it has laid out.
   const [desaPanels, setDesaPanels] = useState(1);
+  const [zoom, setZoom] = useState<number | null>(null);
+  // Admin maps: standard, or "tinggi penuh" (the map takes the whole height). Remembered in this browser.
+  const [peta, setPeta] = useState<"standar" | "penuh">("standar");
+  useEffect(() => {
+    try {
+      if (localStorage.getItem("nusastats:carousel:peta") === "penuh") setPeta("penuh");
+    } catch {
+      /* default */
+    }
+  }, []);
+  const choosePeta = (p: "standar" | "penuh") => {
+    setPeta(p);
+    setDesaPanels(1);
+    try {
+      localStorage.setItem("nusastats:carousel:peta", p);
+    } catch {
+      /* not remembered */
+    }
+  };
   useEffect(() => setDesaPanels(1), [kode]);
   const [captionError, setCaptionError] = useState<string | null>(null);
 
@@ -131,7 +151,12 @@ export function ProfilTool({
     return { ...c, available: !!files && !missing, reason: missing ? missingReason(missing, kode) : null };
   });
   const available = cards.filter((c) => c.available);
-  const query = (c: Card, panel = 1) => ({ tema, ...(c.id === "kecamatan" ? { indicator } : {}), ...(panel > 1 ? { panel: String(panel) } : {}) });
+  const query = (c: Card, panel = 1) => ({
+    tema,
+    ...(c.id === "kecamatan" ? { indicator } : {}),
+    ...(peta === "penuh" && (c.id === "wilayah" || c.id === "desa") ? { peta } : {}),
+    ...(panel > 1 ? { panel: String(panel) } : {}),
+  });
   const path = (c: Card, panel = 1) => `/card/${c.id}/${kode}?${new URLSearchParams(query(c, panel))}`;
   // One preview per slide: the desa map may be a panorama of 2-3 slides.
   const slides = cards.flatMap((c) =>
@@ -156,7 +181,7 @@ export function ProfilTool({
     setError(null);
     setBusy({ started: Date.now(), total: available.length + (desaPanels - 1) });
     try {
-      const q = new URLSearchParams({ kode, indicator, tema, templates: available.map((c) => c.id).join(",") });
+      const q = new URLSearchParams({ kode, indicator, tema, ...(peta === "penuh" ? { peta } : {}), templates: available.map((c) => c.id).join(",") });
       const r = await fetch(`${CARDS}/zip?${q}`);
       if (!r.ok) throw new Error((await r.json().catch(() => null))?.error ?? `layanan kartu -> ${r.status}`);
       const url = URL.createObjectURL(await r.blob());
@@ -252,12 +277,25 @@ export function ProfilTool({
             </p>
           )}
           {error && <ErrorState message={error} />}
-          <SectionTitle hint="1080×1920, urutan unggah">Kartu</SectionTitle>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <SectionTitle hint="1080×1920, urutan unggah · klik untuk memperbesar">Kartu</SectionTitle>
+            <div className="mb-3 inline-flex items-center gap-2 text-sm">
+              <span className="text-xs font-semibold text-ink-muted">Peta wilayah &amp; desa</span>
+              <div className="inline-flex rounded-full border border-ink-border p-0.5" role="radiogroup" aria-label="Tata letak peta">
+                {(["standar", "penuh"] as const).map((p) => (
+                  <button key={p} type="button" role="radio" aria-checked={peta === p} onClick={() => choosePeta(p)}
+                    className={`rounded-full px-3 py-1 ${peta === p ? "bg-ink-accent/15 text-ink-accent" : "text-ink-muted hover:text-ink-text"}`}>
+                    {p === "standar" ? "Standar" : "Tinggi penuh"}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
           <div className="flex gap-4 overflow-x-auto pb-2">
             {slides.map((c, i) => (
               <figure key={`${c.id}-${c.panel}`} className="shrink-0" style={{ width: 1080 * SCALE }}>
                 {c.available ? (
-                  <div className="overflow-hidden rounded-xl ring-1 ring-ink-border" style={{ width: 1080 * SCALE, height: 1920 * SCALE }}>
+                  <div className="relative overflow-hidden rounded-xl ring-1 ring-ink-border" style={{ width: 1080 * SCALE, height: 1920 * SCALE }}>
                     <iframe
                       src={path(c, c.panel)}
                       title={c.label}
@@ -265,6 +303,9 @@ export function ProfilTool({
                       onLoad={c.id === "desa" && c.panel === 1 ? (e) => watchPanels(e.currentTarget) : undefined}
                       style={{ width: 1080, height: 1920, transform: `scale(${SCALE})`, transformOrigin: "0 0", border: 0 }}
                     />
+                    {/* The iframe would swallow the click: a transparent button on top opens the zoom. */}
+                    <button type="button" aria-label={`Perbesar ${c.label}`} className="absolute inset-0 cursor-zoom-in"
+                      onClick={() => setZoom(slides.filter((x) => x.available).findIndex((x) => x.id === c.id && x.panel === c.panel))} />
                   </div>
                 ) : (
                   <div
@@ -293,6 +334,14 @@ export function ProfilTool({
         </Panel>
       )}
 
+      {zoom !== null && (
+        <CardLightbox
+          slides={slides.filter((x) => x.available).map((x) => ({ src: path(x, x.panel), label: x.label }))}
+          index={zoom}
+          onIndex={setZoom}
+          onClose={() => setZoom(null)}
+        />
+      )}
       {kode &&
         (caption ? (
           <TikTokText title={caption.title} description={caption.description} hint="satu baris per slide; juga ada di ZIP" />

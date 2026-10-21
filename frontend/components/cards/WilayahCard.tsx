@@ -116,8 +116,8 @@ export async function loadGeo(template: WilayahTemplate, kode: string): Promise<
 }
 
 export function WilayahCard({
-  template, kode, debug, tema = "malam", sorot = false, panel = 1,
-}: { template: WilayahTemplate; kode: string; debug: boolean; tema?: Tema; sorot?: boolean; panel?: number }) {
+  template, kode, debug, tema = "malam", sorot = false, panel = 1, full = false,
+}: { template: WilayahTemplate; kode: string; debug: boolean; tema?: Tema; sorot?: boolean; panel?: number; full?: boolean }) {
   // How many slides the desa map spreads over (AdminMap decides; the exporter reads data-card-panels).
   const [panels, setPanels] = useState<number | null>(null);
   const [data, setData] = useState<Data | null>(null);
@@ -153,9 +153,9 @@ export function WilayahCard({
         <div className="p-16 text-[28px] text-coal-text">Kartu tidak dibuat: {error}</div>
       ) : data && geo ? (
         template === "wilayah" ? (
-          <KecamatanMapBody kode={kode} data={data} geo={geo} sorot={sorot} />
+          <KecamatanMapBody kode={kode} data={data} geo={geo} sorot={sorot} full={full} />
         ) : template === "desa" ? (
-          <DesaMapBody kode={kode} data={data} geo={geo} panel={panel} onPanels={setPanels} />
+          <DesaMapBody kode={kode} data={data} geo={geo} panel={panel} onPanels={setPanels} full={full} />
         ) : template === "penutup" ? (
           <ClosingBody kode={kode} data={data} geo={geo} />
         ) : (

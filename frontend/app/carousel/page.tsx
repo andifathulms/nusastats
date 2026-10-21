@@ -16,6 +16,7 @@ import { Badge, ErrorState, PageHeader, Panel, SectionTitle } from "@/components
 import { routes } from "@/lib/routes";
 import { TikTokText } from "@/components/carousel/TikTokText";
 import { TemaPicker, useTema } from "@/components/carousel/TemaPicker";
+import { CardLightbox } from "@/components/carousel/CardLightbox";
 import type { Tema } from "@/components/cards/brand";
 import { CARDS, ProfilTool } from "@/components/carousel/ProfilTool";
 
@@ -579,6 +580,7 @@ function Result({ result, form, tema }: { result: CarouselDeckResult; form: Form
   const [zipping, setZipping] = useState<number | null>(null);
   const [now, setNow] = useState(Date.now());
   const [zipError, setZipError] = useState<string | null>(null);
+  const [zoom, setZoom] = useState<number | null>(null);
 
   useEffect(() => {
     fetch(`${CARDS}/health`)
@@ -651,11 +653,19 @@ function Result({ result, form, tema }: { result: CarouselDeckResult; form: Form
         )}
       </Panel>
 
+      {zoom !== null && (
+        <CardLightbox
+          slides={result.cards.map((c) => ({ src: `${c.path}&tema=${tema}`, label: c.file }))}
+          index={zoom}
+          onIndex={setZoom}
+          onClose={() => setZoom(null)}
+        />
+      )}
       <TikTokText title={result.tiktok.title} description={result.tiktok.description} />
 
       <Panel>
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-          <SectionTitle hint="1080×1920, nama file menempatkannya di antara slide deck">Kartu peta</SectionTitle>
+          <SectionTitle hint="1080×1920, nama file menempatkannya di antara slide deck · klik untuk memperbesar">Kartu peta</SectionTitle>
           <button
             type="button"
             onClick={downloadZip}
@@ -679,15 +689,16 @@ function Result({ result, form, tema }: { result: CarouselDeckResult; form: Form
           tautan Carousel Press. Slide teksnya dibuat di Carousel Press.
         </p>
         <div className="flex gap-4 overflow-x-auto pb-2">
-          {result.cards.map((c) => (
+          {result.cards.map((c, i) => (
             <figure key={c.file} className="shrink-0">
-              <div className="overflow-hidden rounded-xl ring-1 ring-ink-border" style={{ width: 1080 * SCALE, height: 1920 * SCALE }}>
+              <div className="relative overflow-hidden rounded-xl ring-1 ring-ink-border" style={{ width: 1080 * SCALE, height: 1920 * SCALE }}>
                 <iframe
                   src={`${c.path}&tema=${tema}`}
                   title={c.file}
                   loading="lazy"
                   style={{ width: 1080, height: 1920, transform: `scale(${SCALE})`, transformOrigin: "0 0", border: 0 }}
                 />
+                <button type="button" aria-label={`Perbesar ${c.file}`} className="absolute inset-0 cursor-zoom-in" onClick={() => setZoom(i)} />
               </div>
               <figcaption className="mt-2 flex max-w-[270px] items-baseline justify-between gap-2">
                 <span className="truncate font-mono text-[11px] text-ink-faint">{c.file}</span>

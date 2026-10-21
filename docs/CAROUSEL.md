@@ -90,7 +90,7 @@ backend (`fmt_value`). Edit only the cover hook.
 ## Kabupaten profile cards
 
 In the app: `/carousel` → **Profil kabupaten** (`/carousel?mode=profil&kode=7311`). Pick a
-kabupaten to preview its cards, then **Unduh semua (ZIP)** or one **PNG**. Cards whose data isn't
+kabupaten to preview its cards (click one to see it full size; ←/→ to page), then **Unduh semua (ZIP)** or one **PNG**. Cards whose data isn't
 there yet say why instead of showing. The PNGs come from the `cards` service in docker-compose
 (`frontend/scripts/card/serve.mjs`, the same Playwright as `npm run card`; `GET :3012/zip?kode=7311`,
 `/png?template=terrain&kode=7311`). If it isn't running, the page says so:
@@ -116,6 +116,7 @@ npm run card -- --template wilayah --kode 3201    # one template
 | Template | Shows | Needs |
 |---|---|---|
 | `wilayah` | kecamatan map, one colour each, named inside (two lines if needed); names too big for their kecamatan go in free space around the map with a leader line; the neighbouring kabupaten as full-bleed land with their names; kecamatan, desa/kelurahan, population, area and density. `?sorot=1` adds callouts for the highest/lowest population, density and area | boundaries + Dukcapil + BIG area |
+| `wilayah`, `desa` with `?peta=penuh` | **Tinggi penuh**: the map takes the whole text height (y 232–1500); the title (wrapped over two lines when needed) sits in the empty top-left and the stats/legend in an empty bottom corner, at the largest map size that keeps both off the kabupaten. Switch "Peta wilayah & desa" on `/carousel` → Profil (remembered); passed to the ZIP and PNG downloads. Every name on these maps uses one size (kecamatan 24 px, desa 18 px) | as below |
 | `desa` | every desa: desa vs kelurahan (Dukcapil status; unknown status grey, counted), kecamatan borders on top, every name inside or on a leader line. More than 40 leader names = too dense for one slide: the map becomes a panorama over 2 (or 3) slides, cut at the slide edge so swiping pans across it, with the crowded names in columns beside the map and leaders fanning to their desa; no text crosses a cut or sits under TikTok's icon column. The card reports `data-card-panels`; `?panel=2` shows the next slide; the ZIP names them `03_desa-1.png`, `04_desa-2.png`; past 3 slides the rest stay unnamed and the card says how many | boundaries + Dukcapil |
 | `kepadatan` | population density per desa on fixed classes (< 10 … ≥ 5.000 jiwa/km²), "half the residents live in X% of the area" | boundaries + Dukcapil + BIG area |
 | `cahaya` | registered residents per desa next to night lights: "X% penduduk tinggal di desa yang terang malam hari" (a desa is lit when ≥ 50% of its area is) | `desa.json` + Peta night lights |

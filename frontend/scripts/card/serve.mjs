@@ -83,6 +83,7 @@ http
     const kode = u.searchParams.get("kode") ?? "";
     const indicator = u.searchParams.get("indicator") ?? undefined;
     if (u.pathname === "/health") return json(res, 200, { ok: true, base: BASE });
+    const peta = u.searchParams.get("peta") === "penuh" ? "penuh" : undefined; // full-height admin maps
     const tema = u.searchParams.get("tema") ?? "malam";
     if (!TEMAS.includes(tema)) return json(res, 400, { error: `tema: ${TEMAS.join(", ")}` });
     u.searchParams.delete("tema");
@@ -137,7 +138,7 @@ http
       const t = u.searchParams.get("template") ?? "";
       if (!TEMPLATES[t]) return json(res, 400, { error: `template: ${Object.keys(TEMPLATES).join(", ")}` });
       const panel = Math.max(1, Number(u.searchParams.get("panel")) || 1);
-      const r = await serial(() => shoot(page, cardUrl(BASE, t, kode, { indicator, tema, panel })));
+      const r = await serial(() => shoot(page, cardUrl(BASE, t, kode, { indicator, tema, panel, peta })));
       if (r.error) return json(res, 422, { error: r.error });
       return send(res, 200, "image/png", r.png, {
         "content-disposition": `attachment; filename="${kode}_${t}${panel > 1 || r.panels > 1 ? `-${panel}` : ""}.png"`,
@@ -150,7 +151,7 @@ http
       const skipped = [];
       const made = [];
       for (const t of PROFIL.filter((x) => wanted.includes(x))) {
-        const r = await serial(() => shoot(page, cardUrl(BASE, t, kode, { indicator, tema })));
+        const r = await serial(() => shoot(page, cardUrl(BASE, t, kode, { indicator, tema, peta })));
         if (r.error) skipped.push(`${t}: ${r.error}`);
         else {
           made.push(t);
@@ -158,7 +159,7 @@ http
           files.push({ name: `${String(files.length + 1).padStart(2, "0")}_${t}${multi ? "-1" : ""}.png`, data: r.png });
           // The rest of a panorama: one slide each, right after the first.
           for (let p = 2; p <= r.panels; p++) {
-            const rp = await serial(() => shoot(page, cardUrl(BASE, t, kode, { indicator, tema, panel: p })));
+            const rp = await serial(() => shoot(page, cardUrl(BASE, t, kode, { indicator, tema, panel: p, peta })));
             if (rp.error) skipped.push(`${t} ${p}/${r.panels}: ${rp.error}`);
             else {
               made.push(t);

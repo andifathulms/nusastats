@@ -14,8 +14,9 @@ export const TEMPLATES = {
 // (lowland -> rendah, nightlights -> cahaya).
 export const PROFIL = ["kepadatan", "wilayah", "desa", "terrain", "relief", "lowland", "rendah", "landcover", "nightlights", "cahaya", "kecamatan", "penutup"];
 
-export function cardUrl(base, template, kode, { indicator, debug, tema, panel } = {}) {
+export function cardUrl(base, template, kode, { indicator, debug, tema, panel, peta } = {}) {
   const q = new URLSearchParams();
+  if (peta === "penuh" && (template === "wilayah" || template === "desa")) q.set("peta", "penuh");
   if (panel && panel > 1) q.set("panel", String(panel));
   if (template === "kecamatan" && indicator) q.set("indicator", indicator);
   if (tema && tema !== "malam") q.set("tema", tema);

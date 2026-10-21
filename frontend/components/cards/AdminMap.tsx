@@ -75,12 +75,12 @@ type Spec = {
 
 /** Card-x bands where no text may go: each cut between slides (and the next slide's left margin)
  * and TikTok's icon column on every slide. Box coordinates (x from PAD). */
-function noTextBands(panels: number, boxH: number): Rect[] {
+function noTextBands(panels: number, boxH: number, boxTop = BOX_TOP): Rect[] {
   const out: Rect[] = [];
   for (let i = 0; i < panels; i++) {
     const x0 = i * SLIDE + (920 - PAD);
     if (i < panels - 1) out.push({ x: x0, y: 0, w: SLIDE - (920 - PAD) + PAD, h: boxH });
-    else out.push({ x: x0, y: ICONS_TOP - BOX_TOP, w: SLIDE - 920, h: boxH });
+    else out.push({ x: x0, y: ICONS_TOP - boxTop, w: SLIDE - 920, h: boxH });
   }
   return out;
 }
@@ -131,19 +131,69 @@ function columnLeaders(items: { l: Label; anchor: Pt }[], mapLeft: number, mapRi
   });
 }
 
-function layout(spec: Spec, geo: Geos, BOX: { w: number; h: number }, panels = 1) {
+type Blocks = { header: { w: number; h: number }; info: { w: number; h: number } };
+
+/** Tinggi penuh: the largest map (and its position) that leaves the header's top-left corner and the
+ * info block's bottom-left corner on empty space, tested on sample points against the outline. */
+function fitAround(rings: (s: number, mx: number, my: number) => Pt[][], vw: number, vh: number, BOX: { w: number; h: number }, b: Blocks, share: number) {
+  const base = Math.min((BOX.w * share) / vw, BOX.h / vh);
+  const header: Rect = { x: 0, y: 0, ...b.header };
+  // The info block takes the bottom-left corner, or the bottom-right one (still left of the icons).
+  const infos: Rect[] = [
+    { x: 0, y: BOX.h - b.info.h, ...b.info },
+    { x: Math.max(0, 920 - PAD - b.info.w), y: BOX.h - b.info.h, ...b.info },
+  ];
+  const sample = (rect: Rect) => {
+    const pts: Pt[] = [];
+    for (let y = rect.y; y <= rect.y + rect.h; y += 14) for (let x = rect.x; x <= rect.x + rect.w; x += 14) pts.push([x, y]);
+    return pts;
+  };
+  const headerProbes = sample({ ...header, w: header.w + 16, h: header.h + 16 });
+  const infoProbes = infos.map((info) => sample({ ...info, x: info.x - 16, y: info.y - 16, w: info.w + 32, h: info.h + 16 }));
+  for (let f = 1; f >= 0.5; f -= 0.04) {
+    const s = base * f;
+    const free = BOX.w - vw * s;
+    const freeY = BOX.h - vh * s;
+    for (const ax of [0.5, 0.75, 1, 0.25, 0]) {
+      for (const ay of [0.5, 0.25, 0.75, 0, 1]) {
+        const mx = free * ax;
+        const my = freeY * ay;
+        const inside = inRings(rings(s, mx, my));
+        if (headerProbes.some(([x, y]) => inside(x, y))) continue;
+        const k = infoProbes.findIndex((probes) => !probes.some(([x, y]) => inside(x, y)));
+        if (k >= 0) return { s, mx, my, header, info: infos[k] };
+      }
+    }
+  }
+  const info = infos[0];
+  const s = base * 0.5;
+  return { s, mx: BOX.w - vw * s, my: (BOX.h - vh * s) / 2, header, info };
+}
+
+function layout(spec: Spec, geo: Geos, BOX: { w: number; h: number }, panels = 1, blocks?: Blocks) {
   const { kode, feats, names } = spec;
   const own = geo.outline.features.filter((f) => f.properties.domain_id === kode);
   const fit = framing(feats);
   const { paths, vw, vh } = project(feats, fit.frame);
-  const s = Math.min((BOX.w * (panels > 1 ? PANO_SHARE : MAP_SHARE)) / vw, BOX.h / vh);
-  const mx = (BOX.w - vw * s) / 2;
-  const my = (BOX.h - vh * s) / 2;
   const to = projector(fit.frame);
+  const share = panels > 1 ? PANO_SHARE : MAP_SHARE;
+  const boxTop = blocks ? ZONE.bodyTop : BOX_TOP;
+  let s = Math.min((BOX.w * share) / vw, BOX.h / vh);
+  let mx = (BOX.w - vw * s) / 2;
+  let my = (BOX.h - vh * s) / 2;
+  let headerRect: Rect | null = null;
+  let infoRect: Rect | null = null;
+  if (blocks) {
+    const outline = own.length ? own : feats;
+    const f = fitAround((ss, x, y) => outline.flatMap((o) => ringsPx(o, to, x, y, ss)), vw, vh, BOX, blocks, panels > 1 ? PANO_SHARE : 0.98);
+    ({ s, mx, my } = f);
+    headerRect = f.header;
+    infoRect = f.info;
+  }
   const { min, max, minRoom } = spec.labelSize;
   const placed = placeLabels(feats, fit.frame, vw, vh, names, vw * s, vh * s, { min, max, minRoom });
   // A name on a cut between slides or under the icons can't stay inside its unit: give it a leader.
-  const bands = noTextBands(panels, BOX.h);
+  const bands = noTextBands(panels, BOX.h, boxTop);
   placed.labels = placed.labels.filter((l) => {
     const w = (l.lines ? Math.max(...l.lines.map((t) => t.length)) : l.name.length) * l.size * 0.56 * s;
     const h = (l.lines ? 2.3 : 1.2) * l.size * s;
@@ -158,7 +208,7 @@ function layout(spec: Spec, geo: Geos, BOX: { w: number; h: number }, panels = 1
   const borderPaths = spec.borders ? project(spec.borders, fit.frame).paths : [];
 
   // Neighbouring kabupaten anywhere on the card (the land layer is full-bleed).
-  const win = { x0: -(PAD + mx) / s, x1: (SLIDE * panels - PAD - mx) / s, y0: -(BOX_TOP + my) / s, y1: (1920 - BOX_TOP - my) / s };
+  const win = { x0: -(PAD + mx) / s, x1: (SLIDE * panels - PAD - mx) / s, y0: -(boxTop + my) / s, y1: (1920 - boxTop - my) / s };
   const near = geo.outline.features.filter((f) => {
     if (f.properties.domain_id === kode) return false;
     const fr = frameOf([f]);
@@ -172,6 +222,8 @@ function layout(spec: Spec, geo: Geos, BOX: { w: number; h: number }, panels = 1
   const space = new FreeSpace(BOX.w, BOX.h);
   for (const f of own.length ? own : feats) space.occupyShape(ringsPx(f, to, mx, my, s), 1);
   for (const b of bands) space.occupyRect(b);
+  if (headerRect) space.occupyRect(headerRect, 1);
+  if (infoRect) space.occupyRect(infoRect, 1);
   const px = (l: Label): Pt => [mx + l.x * s, my + l.y * s];
   const anchorOf = (id: string): { pt: Pt; off: boolean } => {
     const l = [...placed.labels, ...placed.numbered].find((x) => x.id === id);
@@ -234,106 +286,150 @@ function layout(spec: Spec, geo: Geos, BOX: { w: number; h: number }, panels = 1
     const rect = space.place(textWidth(name, 26) + 12, 34, centre, inRings(ringsPx(f, to, mx, my, s)), 0);
     if (rect) neighbourNames.push({ name, rect });
   }
-  return { BOX, panels, crowded, paths, edge, borderPaths, nearPaths, labels: placed.labels, numbered, leaders, tones, s, mx, my, callouts, neighbourNames, offFrame: fit.offFrame };
+  return { BOX, boxTop, headerRect, infoRect, panels, crowded, paths, edge, borderPaths, nearPaths, labels: placed.labels, numbered, leaders, tones, s, mx, my, callouts, neighbourNames, offFrame: fit.offFrame };
+}
+
+/** Tinggi penuh header: kicker, the name over two lines if needed, the province. */
+const FULL = { headerW: 560, kicker: 28, sub: 30 };
+function titleSize(title: string) {
+  return title.length > 22 ? 84 : title.length > 14 ? 96 : 110;
+}
+function fullHeaderH(title: string) {
+  const size = titleSize(title);
+  const lines = Math.ceil((title.length * size * 0.46) / FULL.headerW);
+  return 40 + lines * size * 0.98 + 50;
 }
 
 function AdminMap({
-  spec, geo, kicker, title, info, source, panel = 1, onPanels,
+  spec, geo, kicker, title, sub, info, infoW, source, panel = 1, onPanels, full = false,
 }: {
-  spec: Spec; geo: Geos; kicker: string; title: string; info: ReactNode; source: string;
+  spec: Spec; geo: Geos; kicker: string; title: string; sub: string; info: ReactNode; infoW: number; source: string;
   /** Which slide of a panorama this card shows (1-based). */
   panel?: number;
   onPanels?: (n: number) => void;
+  /** Tinggi penuh: the map takes the whole text height; header and info sit in its empty corners. */
+  full?: boolean;
 }) {
-  // The info block's height depends on how many names end up numbered: shrink the map until it fits.
+  // The info block's height depends on how many names end up numbered: re-fit until it's stable.
   // Too crowded for one slide: the same map over 2, then 3 slides (desa).
   const m = useMemo(() => {
-    const full = ZONE.textBottom - BOX_TOP;
+    const top = full ? ZONE.bodyTop : BOX_TOP;
+    const avail = ZONE.textBottom - top;
     let cur: ReturnType<typeof layout> | null = null;
     for (const n of spec.panorama ? [1, 2, 3] : [1]) {
       const w = n === 1 ? W : SLIDE * n - 2 * PAD;
-      const pass = (h: number) => layout(spec, geo, { w, h }, n);
-      const unplaced = (x: ReturnType<typeof pass>) => x.callouts.some((c) => !c.rect);
-      cur = pass(full - spec.infoHeight(0, false, false));
-      for (let i = 0; i < 2; i++) {
-        const h = full - spec.infoHeight(cur.numbered.length, cur.offFrame.length > 0, unplaced(cur)) - (cur.crowded ? 36 : 0);
-        if (h >= cur.BOX.h) break;
-        cur = pass(h);
+      const infoH = (x: ReturnType<typeof layout> | null) =>
+        spec.infoHeight(x?.numbered.length ?? 0, (x?.offFrame.length ?? 0) > 0, !!x?.callouts.some((c) => !c.rect)) + (x?.crowded ? 36 : 0);
+      if (full) {
+        const blocks = (x: ReturnType<typeof layout> | null): Blocks => ({
+          header: { w: FULL.headerW, h: fullHeaderH(title) },
+          info: { w: infoW, h: infoH(x) - GAP },
+        });
+        cur = layout(spec, geo, { w, h: avail }, n, blocks(null));
+        const again = layout(spec, geo, { w, h: avail }, n, blocks(cur));
+        if (again.infoRect!.h !== cur.infoRect!.h) cur = again;
+      } else {
+        const pass = (h: number) => layout(spec, geo, { w, h }, n);
+        cur = pass(avail - infoH(null));
+        for (let i = 0; i < 2; i++) {
+          const h = avail - infoH(cur);
+          if (h >= cur.BOX.h) break;
+          cur = pass(h);
+        }
       }
       if (!cur.crowded) break;
     }
     return cur!;
-  }, [spec, geo]);
+  }, [spec, geo, full, title, infoW]);
   const { BOX } = m;
   useEffect(() => onPanels?.(m.panels), [m.panels, onPanels]);
+
+  const mapSvg = (
+    <svg width={BOX.w} height={BOX.h} viewBox={`0 0 ${BOX.w} ${BOX.h}`} className="overflow-visible">
+      <g transform={`translate(${m.mx} ${m.my}) scale(${m.s})`}>
+        {m.paths.map((p) => (
+          <path key={p.id} d={p.d} fill={spec.fill(p.id, m.tones)} stroke="var(--nm-bg)" strokeWidth={spec.borders ? 0.7 : 1.4} vectorEffect="non-scaling-stroke" />
+        ))}
+        {m.borderPaths.map((p) => (
+          <path key={`b-${p.id}`} d={p.d} fill="none" stroke="var(--nm-edge)" strokeOpacity={0.55} strokeWidth={1.3} vectorEffect="non-scaling-stroke" />
+        ))}
+        {m.edge.map((p) => (
+          <path key={`e-${p.id}`} d={p.d} fill="none" stroke="var(--nm-edge)" strokeWidth={2.6} strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
+        ))}
+        {m.labels.map((l) => (
+          <text key={l.id} x={l.x} y={l.y} textAnchor="middle" dominantBaseline="middle" fontSize={l.size} fontWeight={600}
+            fill="var(--nm-edge)" stroke="var(--nm-bg)" strokeWidth={l.size * 0.18} paintOrder="stroke">
+            {l.lines ? l.lines.map((t, i) => (
+              <tspan key={i} x={l.x} dy={i === 0 ? -l.size * 0.55 : l.size * 1.1}>{t}</tspan>
+            )) : l.name}
+          </text>
+        ))}
+        {m.numbered.map((l) => (
+          <g key={`n-${l.id}`}>
+            <circle cx={l.x} cy={l.y} r={15 / m.s} fill="var(--nm-edge)" />
+            <text x={l.x} y={l.y} textAnchor="middle" dominantBaseline="central" fontSize={19 / m.s} fontWeight={800} fill="var(--nm-bg)">{l.n}</text>
+          </g>
+        ))}
+      </g>
+      {m.leaders.map((l) => <LeaderName key={l.id} l={l} />)}
+      {m.neighbourNames.map((n) => (
+        <text key={n.name} x={n.rect.x + 6} y={n.rect.y + 26} fontSize={26} fontStyle="italic" letterSpacing={2} fill="var(--nm-muted)">
+          {n.name}
+        </text>
+      ))}
+      {m.callouts.map((c) => (c.rect ? <CalloutBlock key={c.id} c={c as Required<Callout>} /> : null))}
+    </svg>
+  );
+  const notes = (
+    <>
+      <OffFrameNote items={m.offFrame} />
+      <LabelLegend numbered={m.numbered} />
+      {m.crowded > 0 && (
+        <p className="mb-2 text-[22px] text-coal-muted">
+          {m.crowded.toLocaleString("id-ID")} nama terlalu rapat untuk satu slide; tidak dinamai di peta ini.
+        </p>
+      )}
+      {info}
+      {m.callouts.some((c) => !c.rect) && (
+        <p className="mt-2 text-[22px] text-coal-muted">
+          {m.callouts.filter((c) => !c.rect).map((c) => `${c.name}: ${c.items.map((i) => `${i.label.toLowerCase()} ${i.value}`).join(", ")}`).join(" · ")}
+        </p>
+      )}
+    </>
+  );
 
   return (
     // A panorama is laid out once across all its slides; each card shows its own slice.
     <div className="absolute top-0" style={{ left: -(Math.min(panel, m.panels) - 1) * SLIDE, width: SLIDE * m.panels, height: 1920 }}>
       {/* The neighbours' land runs to the card edges, behind the header and the numbers. */}
       <svg className="absolute left-0 top-0" width={SLIDE * m.panels} height={1920} viewBox={`0 0 ${SLIDE * m.panels} 1920`}>
-        <g transform={`translate(${PAD + m.mx} ${BOX_TOP + m.my}) scale(${m.s})`}>
+        <g transform={`translate(${PAD + m.mx} ${m.boxTop + m.my}) scale(${m.s})`}>
           {m.nearPaths.map((p) => (
             <path key={`n-${p.id}`} d={p.d} fill="var(--nm-prov)" stroke="var(--nm-border-soft)" strokeWidth={1} vectorEffect="non-scaling-stroke" />
           ))}
         </g>
       </svg>
-      <div className="absolute flex flex-col" style={{ left: PAD, top: ZONE.bodyTop, width: W, height: ZONE.textBottom - ZONE.bodyTop }}>
-        <div className="shrink-0" style={{ height: HEADER_H }}>
-          <CardHeader kicker={kicker} title={title} />
+      {full && m.headerRect && m.infoRect ? (
+        <>
+          <div className="absolute" style={{ left: PAD, top: m.boxTop }}>{mapSvg}</div>
+          <div className="absolute" style={{ left: PAD + m.headerRect.x, top: m.boxTop + m.headerRect.y, width: m.headerRect.w }}>
+            <div className="font-mono text-[28px] uppercase tracking-[0.1em] text-ink-gold">{kicker}</div>
+            <h1 className="mt-2 font-display leading-[0.98]" style={{ fontSize: titleSize(title) }}>{title}</h1>
+            <div className="mt-2 text-[30px] text-coal-muted">{sub}</div>
+          </div>
+          <div className="absolute flex flex-col justify-end" style={{ left: PAD + m.infoRect.x, top: m.boxTop + m.infoRect.y, width: m.infoRect.w, height: m.infoRect.h }}>
+            {notes}
+          </div>
+        </>
+      ) : (
+        <div className="absolute flex flex-col" style={{ left: PAD, top: ZONE.bodyTop, width: W, height: ZONE.textBottom - ZONE.bodyTop }}>
+          <div className="shrink-0" style={{ height: HEADER_H }}>
+            <CardHeader kicker={`${kicker} · ${sub}`} title={title} />
+          </div>
+          <div className="shrink-0" style={{ marginTop: GAP, width: BOX.w, height: BOX.h }}>{mapSvg}</div>
+          <div className="flex min-h-0 flex-1 flex-col" style={{ marginTop: GAP, maxWidth: SLIDE - 2 * PAD - 96 }}>{notes}</div>
         </div>
-        <div className="shrink-0" style={{ marginTop: GAP, width: BOX.w, height: BOX.h }}>
-          <svg width={BOX.w} height={BOX.h} viewBox={`0 0 ${BOX.w} ${BOX.h}`} className="overflow-visible">
-            <g transform={`translate(${m.mx} ${m.my}) scale(${m.s})`}>
-              {m.paths.map((p) => (
-                <path key={p.id} d={p.d} fill={spec.fill(p.id, m.tones)} stroke="var(--nm-bg)" strokeWidth={spec.borders ? 0.7 : 1.4} vectorEffect="non-scaling-stroke" />
-              ))}
-              {m.borderPaths.map((p) => (
-                <path key={`b-${p.id}`} d={p.d} fill="none" stroke="var(--nm-edge)" strokeOpacity={0.55} strokeWidth={1.3} vectorEffect="non-scaling-stroke" />
-              ))}
-              {m.edge.map((p) => (
-                <path key={`e-${p.id}`} d={p.d} fill="none" stroke="var(--nm-edge)" strokeWidth={2.6} strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
-              ))}
-              {m.labels.map((l) => (
-                <text key={l.id} x={l.x} y={l.y} textAnchor="middle" dominantBaseline="middle" fontSize={l.size} fontWeight={600}
-                  fill="var(--nm-edge)" stroke="var(--nm-bg)" strokeWidth={l.size * 0.18} paintOrder="stroke">
-                  {l.lines ? l.lines.map((t, i) => (
-                    <tspan key={i} x={l.x} dy={i === 0 ? -l.size * 0.55 : l.size * 1.1}>{t}</tspan>
-                  )) : l.name}
-                </text>
-              ))}
-              {m.numbered.map((l) => (
-                <g key={`n-${l.id}`}>
-                  <circle cx={l.x} cy={l.y} r={15 / m.s} fill="var(--nm-edge)" />
-                  <text x={l.x} y={l.y} textAnchor="middle" dominantBaseline="central" fontSize={19 / m.s} fontWeight={800} fill="var(--nm-bg)">{l.n}</text>
-                </g>
-              ))}
-            </g>
-            {m.leaders.map((l) => <LeaderName key={l.id} l={l} />)}
-            {m.neighbourNames.map((n) => (
-              <text key={n.name} x={n.rect.x + 6} y={n.rect.y + 26} fontSize={26} fontStyle="italic" letterSpacing={2} fill="var(--nm-muted)">
-                {n.name}
-              </text>
-            ))}
-            {m.callouts.map((c) => (c.rect ? <CalloutBlock key={c.id} c={c as Required<Callout>} /> : null))}
-          </svg>
-        </div>
-        <div className="flex min-h-0 flex-1 flex-col" style={{ marginTop: GAP, maxWidth: SLIDE - 2 * PAD - 96 }}>
-          <OffFrameNote items={m.offFrame} />
-          <LabelLegend numbered={m.numbered} />
-          {m.crowded > 0 && (
-            <p className="mb-2 text-[22px] text-coal-muted">
-              {m.crowded.toLocaleString("id-ID")} nama terlalu rapat untuk satu slide; tidak dinamai di peta ini.
-            </p>
-          )}
-          {info}
-          {m.callouts.some((c) => !c.rect) && (
-            <p className="mt-2 text-[22px] text-coal-muted">
-              {m.callouts.filter((c) => !c.rect).map((c) => `${c.name}: ${c.items.map((i) => `${i.label.toLowerCase()} ${i.value}`).join(", ")}`).join(" · ")}
-            </p>
-          )}
-        </div>
-      </div>
+      )}
       {/* Footer is position: fixed, so it sits on whichever slide this card shows. */}
       <Footer source={m.panels > 1 ? `${source}. Peta ${Math.min(panel, m.panels)} dari ${m.panels}, geser untuk lanjutannya` : source} />
     </div>
@@ -394,14 +490,15 @@ function infoBase(rows: number) {
 }
 
 /** The kecamatan of a kabupaten (template `wilayah`). `sorot`: the extremes callouts. */
-export function KecamatanMapBody({ kode, data, geo, sorot }: { kode: string; data: Data; geo: Geos; sorot: boolean }) {
+export function KecamatanMapBody({ kode, data, geo, sorot, full = false }: { kode: string; data: Data; geo: Geos; sorot: boolean; full?: boolean }) {
   const spec = useMemo<Spec>(() => {
     const feats = geo.inner.features.filter((f) => f.properties.domain_id.startsWith(kode));
     const names = new Map(data.districts.map((d) => [d.domain_id, titleCase(d.domain_name)]));
     return {
       kode, feats, names,
       fill: (id, tones) => `var(--nm-cat-${tones.get(id) ?? 0})`,
-      labelSize: { min: 24, max: 34, minRoom: 14, leader: 24 },
+      // One size for every name on the map, inside or on a leader.
+      labelSize: { min: 24, max: 24, minRoom: 8, leader: 24 },
       infoHeight: infoBase(5),
       callouts: sorot ? (fs, anchorOf) => extremes(fs, data, names, anchorOf) : undefined,
     };
@@ -419,16 +516,21 @@ export function KecamatanMapBody({ kode, data, geo, sorot }: { kode: string; dat
     <AdminMap
       spec={spec}
       geo={geo}
-      kicker={`Peta wilayah administrasi · ${data.kab.prov}`}
+      kicker="Peta wilayah administrasi"
+      sub={data.kab.prov}
       title={data.kab.name}
       info={<StatsList rows={stats} />}
+      infoW={480}
+      full={full}
       source={`Penduduk: Ditjen Dukcapil Kemendagri, data ${bulanTahun(data.period)} (terdaftar); luas dan batas: BIG 1:10.000, dijumlahkan NusaStats`}
     />
   );
 }
 
 /** Desa vs kelurahan (template `desa`): status from Dukcapil, kecamatan borders on top. */
-export function DesaMapBody({ kode, data, geo, panel = 1, onPanels }: { kode: string; data: Data; geo: Geos; panel?: number; onPanels?: (n: number) => void }) {
+export function DesaMapBody({
+  kode, data, geo, panel = 1, onPanels, full = false,
+}: { kode: string; data: Data; geo: Geos; panel?: number; onPanels?: (n: number) => void; full?: boolean }) {
   const status = useMemo(() => new Map(data.villageRegions.map((v) => [v.code, v.status])), [data.villageRegions]);
   const spec = useMemo<Spec>(() => {
     const feats = geo.inner.features.filter((f) => f.properties.domain_id.startsWith(kode));
@@ -438,7 +540,8 @@ export function DesaMapBody({ kode, data, geo, panel = 1, onPanels }: { kode: st
       // Unknown status is drawn as no data, never guessed.
       fill: (id) => (status.get(id) === "Kelurahan" ? "var(--nm-kel)" : status.get(id) === "Desa" ? "var(--nm-desa)" : "var(--nm-nodata)"),
       borders: geo.kec?.features.filter((f) => f.properties.domain_id.startsWith(kode)),
-      labelSize: { min: 16, max: 24, minRoom: 10, leader: 18 },
+      // One size for every name on the map, inside or on a leader.
+      labelSize: { min: 18, max: 18, minRoom: 6, leader: 18 },
       maxLeaders: 40,
       panorama: true,
       infoHeight: infoBase(3),
@@ -454,8 +557,11 @@ export function DesaMapBody({ kode, data, geo, panel = 1, onPanels }: { kode: st
     <AdminMap
       spec={spec}
       geo={geo}
-      kicker={`Peta desa dan kelurahan · ${data.kab.prov}`}
+      kicker="Peta desa dan kelurahan"
+      sub={data.kab.prov}
       title={data.kab.name}
+      infoW={380}
+      full={full}
       info={
         <ul className="mt-2 space-y-2 text-[34px] font-semibold">
           {counts.Kelurahan > 0 && (
