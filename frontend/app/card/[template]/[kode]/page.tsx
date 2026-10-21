@@ -26,7 +26,7 @@ function Card({ template, kode }: { template: string; kode: string }) {
   if ((PROFIL_TEMPLATES as string[]).includes(template))
     return <ProfilCard template={template as ProfilTemplate} kode={kode} query={params} debug={debug} tema={tema} />;
   if ((WILAYAH_TEMPLATES as string[]).includes(template))
-    return <WilayahCard template={template as WilayahTemplate} kode={kode} debug={debug} tema={tema} />;
+    return <WilayahCard template={template as WilayahTemplate} kode={kode} debug={debug} tema={tema} sorot={params.get("sorot") === "1"} />;
   if (template === "caption") {
     if (!/^\d{4}$/.test(kode)) return <div id="card" data-card-error={`kode kabupaten: ${kode}`} />;
     return <CaptionText kode={kode} query={params} />;

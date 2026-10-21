@@ -28,6 +28,9 @@ type Palette = {
   bar: string; // non-featured bars in the top-10 chart
   /** Kecamatan fills on the admin map (adjacent ones differ): vivid on dark, tints on paper. */
   cat: [string, string, string, string, string, string, string, string];
+  /** Desa and kelurahan on the desa map. */
+  desa: string;
+  kel: string;
 };
 
 export const TEMAS = {
@@ -39,6 +42,8 @@ export const TEMAS = {
     edge: "#F3ECDD", seam: "rgba(15,20,22,0.55)", border: "rgba(243,236,221,0.55)", borderSoft: "rgba(243,236,221,0.26)",
     borderStrong: "rgba(243,236,221,0.85)", noData: "#2E3442", prov: "#26333A", bar: "#5B6E74",
     cat: ["#4F7FD6", "#C76FD0", "#7FB23A", "#1FA9BF", "#EE6A93", "#F2B53F", "#E5503F", "#2CB89D"],
+    desa: "#1E8A9C",
+    kel: "#D9475E",
   },
   laut: {
     label: "Laut",
@@ -48,6 +53,8 @@ export const TEMAS = {
     edge: "#EEF2F4", seam: "rgba(10,26,47,0.6)", border: "rgba(238,242,244,0.5)", borderSoft: "rgba(238,242,244,0.24)",
     borderStrong: "rgba(238,242,244,0.85)", noData: "#22344D", prov: "#18304D", bar: "#4C6788",
     cat: ["#4F7FD6", "#C76FD0", "#7FB23A", "#1FA9BF", "#EE6A93", "#F2B53F", "#E5503F", "#2CB89D"],
+    desa: "#2196A8",
+    kel: "#E2566A",
   },
   kertas: {
     label: "Kertas",
@@ -57,6 +64,8 @@ export const TEMAS = {
     edge: "#1C2124", seam: "rgba(242,236,224,0.75)", border: "rgba(28,33,36,0.45)", borderSoft: "rgba(28,33,36,0.22)",
     borderStrong: "rgba(28,33,36,0.7)", noData: "#D9D2C4", prov: "#DDD5C6", bar: "#A9A194",
     cat: ["#8FB0EA", "#DDA3E2", "#B3D47F", "#7FD0DD", "#F4A3BE", "#F7D08A", "#F1968B", "#86D9C6"],
+    desa: "#8CC9D3",
+    kel: "#EE9AA8",
   },
   putih: {
     label: "Putih",
@@ -66,6 +75,8 @@ export const TEMAS = {
     edge: "#111417", seam: "rgba(255,255,255,0.8)", border: "rgba(17,20,23,0.4)", borderSoft: "rgba(17,20,23,0.18)",
     borderStrong: "rgba(17,20,23,0.7)", noData: "#E4E6E9", prov: "#E9EBEE", bar: "#B9BEC4",
     cat: ["#8FB0EA", "#DDA3E2", "#B3D47F", "#7FD0DD", "#F4A3BE", "#F7D08A", "#F1968B", "#86D9C6"],
+    desa: "#8CC9D3",
+    kel: "#EE9AA8",
   },
 } satisfies Record<string, Palette>;
 
@@ -75,6 +86,7 @@ export const isTema = (t: string | null | undefined): t is Tema => !!t && t in T
 
 const CARD_SUBJECT: Record<string, Subject | "sorot"> = {
   wilayah: "wilayah",
+  desa: "wilayah",
   kepadatan: "penduduk",
   kecamatan: "penduduk",
   cahaya: "cahaya",
@@ -103,5 +115,7 @@ export function temaStyle(template: string, tema: Tema = "malam"): CSSProperties
   v["--nm-c-pop"] = p.subject.cahaya;
   v["--nm-c-dens"] = p.sorot;
   v["--nm-c-area"] = p.subject.air;
+  v["--nm-desa"] = p.desa;
+  v["--nm-kel"] = p.kel;
   return v as CSSProperties;
 }

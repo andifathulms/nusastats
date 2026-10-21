@@ -22,6 +22,7 @@ type Card = { id: string; label: string; needs: string[] };
 const CARDS_IN_ORDER: Card[] = [
   { id: "kepadatan", label: "Hook: kepadatan per desa", needs: [] },
   { id: "wilayah", label: "Wilayah administrasi", needs: [] },
+  { id: "desa", label: "Desa dan kelurahan", needs: [] },
   { id: "terrain", label: "Medan", needs: ["terrain.json"] },
   { id: "relief", label: "Relief", needs: ["terrain.json"] },
   { id: "lowland", label: "Dataran rendah", needs: ["terrain.json"] },

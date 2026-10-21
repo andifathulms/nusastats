@@ -14,7 +14,7 @@ import { joinDesa, load as loadProfil, problems as profilProblems } from "./Prof
  * guardrails run first, so a slide that won't render gets no line.
  */
 
-export const PROFIL = ["kepadatan", "wilayah", "terrain", "relief", "lowland", "rendah", "landcover", "nightlights", "cahaya", "kecamatan", "penutup"];
+export const PROFIL = ["kepadatan", "wilayah", "desa", "terrain", "relief", "lowland", "rendah", "landcover", "nightlights", "cahaya", "kecamatan", "penutup"];
 export const TITLE_MAX = 90;
 export const DESC_MAX = 2200;
 
@@ -59,6 +59,11 @@ export async function profilCaption(kode: string, indicator: string, only?: stri
     if (wil.kab.pop !== null) parts.push(`${compact(wil.kab.pop)} penduduk terdaftar`);
     if (wil.kab.area !== null) parts.push(`${formatNumber(Math.round(wil.kab.area))} km²`);
     lines.wilayah = `${name}: ${parts.join(", ")}.`;
+  }
+  if (check("desa", wilayahProblems("desa", kode, wil, geoKep))) {
+    const kel = wil.villageRegions.filter((v) => v.status === "Kelurahan").length;
+    const desa = wil.villageRegions.filter((v) => v.status === "Desa").length;
+    lines.desa = `${formatNumber(desa)} desa dan ${formatNumber(kel)} kelurahan.`;
   }
   if (t && check("terrain", shareProblems(peta, "terrain"))) {
     const high = t.metrics_pct.share_elev_ge_1000;

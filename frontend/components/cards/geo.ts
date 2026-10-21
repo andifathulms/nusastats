@@ -278,7 +278,15 @@ export function cropBox(inner: Frame, outer: Frame): { x: number; y: number; w: 
   return { x: x0, y: y0, w: x1 - x0, h: y1 - y0 };
 }
 
-export type Label = { id: string; name: string; x: number; y: number; size: number; n?: number };
+export type Label = { id: string; name: string; x: number; y: number; size: number; n?: number; lines?: string[] };
+
+/** A multi-word name split into two lines at the space nearest its middle ("Bonto / Lojong"). */
+export function twoLines(name: string): [string, string] | null {
+  const spaces = [...name.matchAll(/ /g)].map((m) => m.index!);
+  if (!spaces.length) return null;
+  const at = spaces.reduce((a, b) => (Math.abs(b - name.length / 2) < Math.abs(a - name.length / 2) ? b : a));
+  return [name.slice(0, at), name.slice(at + 1)];
+}
 
 /** Names for the features of a map in a box of boxW x boxH card pixels: the
  * roomiest features first, each name inside its feature at 26-34 px when it
@@ -287,6 +295,7 @@ export type Label = { id: string; name: string; x: number; y: number; size: numb
  * names them). */
 export function placeLabels(
   feats: Feature[], frame: Frame, vw: number, vh: number, names: Map<string, string>, boxW: number, boxH: number,
+  { min = 26, max = 34, minRoom = 16 }: { min?: number; max?: number; minRoom?: number } = {},
 ): { labels: Label[]; numbered: Label[] } {
   const to = projector(frame);
   const k = 1 / Math.min(boxW / vw, boxH / vh); // viewBox units per card pixel
@@ -298,14 +307,22 @@ export function placeLabels(
     if (s.x < 0 || s.x > vw || s.y < 0 || s.y > vh) continue;
     const id = s.f.properties.domain_id;
     const name = names.get(id) ?? s.f.properties.name ?? id;
-    const size = Math.max(26, Math.min(34, (s.room / k) * 0.55)) * k;
+    const size = Math.max(min, Math.min(max, (s.room / k) * 0.55)) * k;
+    const fits = (box: { x0: number; x1: number; y0: number; y1: number }) =>
+      !placed.some((p) => box.x0 < p.x1 && box.x1 > p.x0 && box.y0 < p.y1 && box.y1 > p.y0) &&
+      box.x0 > 0 && box.x1 < vw && box.y0 > 0 && box.y1 < vh;
     const w = name.length * size * 0.56;
-    const box = { x0: s.x - w / 2, x1: s.x + w / 2, y0: s.y - size * 0.7, y1: s.y + size * 0.5 };
-    const clear = !placed.some((p) => box.x0 < p.x1 && box.x1 > p.x0 && box.y0 < p.y1 && box.y1 > p.y0);
-    const inside = box.x0 > 0 && box.x1 < vw && box.y0 > 0 && box.y1 < vh;
-    if (s.room / k >= 16 && clear && inside) {
-      placed.push(box);
+    const one = { x0: s.x - w / 2, x1: s.x + w / 2, y0: s.y - size * 0.7, y1: s.y + size * 0.5 };
+    // Too wide or crowded on one line: try the name on two lines.
+    const split = twoLines(name);
+    const w2 = split ? Math.max(...split.map((t) => t.length)) * size * 0.56 : 0;
+    const two = { x0: s.x - w2 / 2, x1: s.x + w2 / 2, y0: s.y - size * 1.25, y1: s.y + size * 1.05 };
+    if (s.room / k >= minRoom && fits(one)) {
+      placed.push(one);
       labels.push({ id, name, x: s.x, y: s.y, size });
+    } else if (s.room / k >= minRoom && split && fits(two)) {
+      placed.push(two);
+      labels.push({ id, name, x: s.x, y: s.y, size, lines: split });
     } else numbered.push({ id, name, x: s.x, y: s.y, size: 18 * k });
   }
   numbered.sort((a, b) => a.name.localeCompare(b.name, "id"));

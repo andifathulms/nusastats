@@ -6,13 +6,13 @@ import { chromium } from "playwright";
 // Template -> the Peta file an area needs before it can be listed for a batch.
 export const TEMPLATES = {
   terrain: "terrain.json", landcover: "landcover.json", nightlights: "nightlights.json",
-  lowland: "terrain.json", relief: "terrain.json", wilayah: "bounds.json", kepadatan: "bounds.json",
+  lowland: "terrain.json", relief: "terrain.json", wilayah: "bounds.json", desa: "bounds.json", kepadatan: "bounds.json",
   cahaya: "desa.json", rendah: "desa.json", kecamatan: "bounds.json", penutup: "bounds.json",
 };
 // A kabupaten profile, in posting order: the hook first, the question last, and
 // each raster layer right before the card that weighs it by population
 // (lowland -> rendah, nightlights -> cahaya).
-export const PROFIL = ["kepadatan", "wilayah", "terrain", "relief", "lowland", "rendah", "landcover", "nightlights", "cahaya", "kecamatan", "penutup"];
+export const PROFIL = ["kepadatan", "wilayah", "desa", "terrain", "relief", "lowland", "rendah", "landcover", "nightlights", "cahaya", "kecamatan", "penutup"];
 
 export function cardUrl(base, template, kode, { indicator, debug, tema } = {}) {
   const q = new URLSearchParams();

@@ -109,13 +109,14 @@ Besides rankings, one kabupaten can be posted as a set of maps:
 
 ```bash
 cd frontend
-npm run card -- --template profil --kode 6409     # the 11-slide profile, numbered in posting order
+npm run card -- --template profil --kode 6409     # the 12-slide profile, numbered in posting order
 npm run card -- --template wilayah --kode 3201    # one template
 ```
 
 | Template | Shows | Needs |
 |---|---|---|
-| `wilayah` | kecamatan map, one colour each, with their names (small ones numbered, with a legend); the neighbouring kabupaten as full-bleed land with their names; callouts with dotted leaders for the kecamatan with the highest/lowest population, density and area, placed in free space around the map (`placement.ts`); kecamatan, desa/kelurahan, population, area and density | boundaries + Dukcapil + BIG area |
+| `wilayah` | kecamatan map, one colour each, named inside (two lines if needed); names too big for their kecamatan go in free space around the map with a leader line; the neighbouring kabupaten as full-bleed land with their names; kecamatan, desa/kelurahan, population, area and density. `?sorot=1` adds callouts for the highest/lowest population, density and area | boundaries + Dukcapil + BIG area |
+| `desa` | every desa: desa vs kelurahan (Dukcapil status; unknown status grey, counted), kecamatan borders on top, every name inside or on a leader line. More than 40 leader names = too dense for one slide: only the names that fit are drawn, and the card says how many are left out (auto-split into zoomed slides is the next step) | boundaries + Dukcapil |
 | `kepadatan` | population density per desa on fixed classes (< 10 … ≥ 5.000 jiwa/km²), "half the residents live in X% of the area" | boundaries + Dukcapil + BIG area |
 | `cahaya` | registered residents per desa next to night lights: "X% penduduk tinggal di desa yang terang malam hari" (a desa is lit when ≥ 50% of its area is) | `desa.json` + Peta night lights |
 | `kecamatan` | one Dukcapil ratio per kecamatan, named on the map (`--indicator`: `median_age` default, `pct_elderly`, `pct_productive`, `sex_ratio`, `pct_sarjana`, `dependency_ratio`) | boundaries + Dukcapil |
@@ -123,7 +124,7 @@ npm run card -- --template wilayah --kode 3201    # one template
 | `terrain`, `lowland`, `relief`, `landcover`, `nightlights` | the Peta Wilayah layers | Peta outputs for that kode |
 
 Output goes to `exports/cards/profil/{kode}/{NN}_{template}.png`, in this posting order:
-`kepadatan` (the hook: "Separuh warga X tinggal di Y% wilayahnya"), `wilayah`, `terrain`, `relief`,
+`kepadatan` (the hook: "Separuh warga X tinggal di Y% wilayahnya"), `wilayah`, `desa`, `terrain`, `relief`,
 `lowland`, `rendah`, `landcover`, `nightlights`, `cahaya`, `kecamatan`, `penutup` (the province with
 the kabupaten ringed, "Kabupaten mana berikutnya?"). Each raster layer comes right before the card
 that weighs it by population (lowland → rendah, nightlights → cahaya).

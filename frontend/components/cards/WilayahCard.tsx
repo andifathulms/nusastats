@@ -1,10 +1,10 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { dukcapilApi, formatNumber, regionLabel, titleCase, type DukcapilRankRow } from "@/lib/api";
+import { dukcapilApi, formatNumber, regionLabel, titleCase, type DukcapilRankRow, type DukcapilRegionRow } from "@/lib/api";
 import { NO_DATA, frameOf, palette, framing, project, projector, type Geo, type Label, type OffFrame } from "./geo";
 import { temaStyle, type Tema } from "./brand";
-import { AdminMapBody } from "./AdminMap";
+import { DesaMapBody, KecamatanMapBody } from "./AdminMap";
 import { CornerTag, Footer, OffFrameNote } from "./ShareCard";
 import { CONTENT_W, CardHeader, H, MapLayout, PAD, TikTokOverlay, W, ZONE, mapBoxFor } from "./layout";
 import { compact, densityFacts, pct1, shortName } from "./facts";
@@ -23,8 +23,8 @@ import { compact, densityFacts, pct1, shortName } from "./facts";
  *                          highlighted, "Kabupaten mana berikutnya?"
  */
 
-export type WilayahTemplate = "wilayah" | "kepadatan" | "penutup";
-export const WILAYAH_TEMPLATES: WilayahTemplate[] = ["wilayah", "kepadatan", "penutup"];
+export type WilayahTemplate = "wilayah" | "desa" | "kepadatan" | "penutup";
+export const WILAYAH_TEMPLATES: WilayahTemplate[] = ["wilayah", "desa", "kepadatan", "penutup"];
 
 // Muted sea/sand tones for neighbouring kecamatan: distinct, never a ranking.
 // Density classes in jiwa/km². Fixed, log-spaced, so 6409 and 3273 read on one scale.
@@ -42,6 +42,7 @@ export type Data = {
   kab: KabInfo;
   districts: DukcapilRankRow[];
   villageTotal: number;
+  villageRegions: DukcapilRegionRow[]; // name and Dukcapil status (Desa/Kelurahan) per desa
   villages: DukcapilRankRow[]; // kepadatan only
   districtAreas: DukcapilRankRow[]; // wilayah only: BIG area per kecamatan
   period: string | null;
@@ -95,6 +96,7 @@ export async function loadData(template: WilayahTemplate, kode: string): Promise
     districts: withoutTwins(districts.results),
     districtAreas: withoutTwins(districtAreas),
     villageTotal: villageList.length,
+    villageRegions: villageList,
     villages,
     period: summary.period ?? null,
   };
@@ -106,14 +108,14 @@ const json = (url: string) => fetch(url).then((r) => (r.ok ? r.json() : Promise.
 export async function loadGeo(template: WilayahTemplate, kode: string): Promise<Geos> {
   const districts = `/dukcapil-districts-${kode.slice(0, 2)}.geojson`;
   const [inner, outline, kec] = await Promise.all([
-    json(template === "kepadatan" ? `/dukcapil-villages-${kode.slice(0, 2)}.geojson` : districts),
+    json(template === "kepadatan" || template === "desa" ? `/dukcapil-villages-${kode.slice(0, 2)}.geojson` : districts),
     json("/dukcapil-regencies.geojson"),
-    template === "kepadatan" ? json(districts) : Promise.resolve(null),
+    template === "kepadatan" || template === "desa" ? json(districts) : Promise.resolve(null),
   ]);
   return { inner, outline, kec };
 }
 
-export function WilayahCard({ template, kode, debug, tema = "malam" }: { template: WilayahTemplate; kode: string; debug: boolean; tema?: Tema }) {
+export function WilayahCard({ template, kode, debug, tema = "malam", sorot = false }: { template: WilayahTemplate; kode: string; debug: boolean; tema?: Tema; sorot?: boolean }) {
   const [data, setData] = useState<Data | null>(null);
   const [geo, setGeo] = useState<Geos | null>(null);
   const [fatal, setFatal] = useState<string | null>(null);
@@ -145,7 +147,9 @@ export function WilayahCard({ template, kode, debug, tema = "malam" }: { templat
         <div className="p-16 text-[28px] text-coal-text">Kartu tidak dibuat: {error}</div>
       ) : data && geo ? (
         template === "wilayah" ? (
-          <AdminMapBody kode={kode} data={data} geo={geo} />
+          <KecamatanMapBody kode={kode} data={data} geo={geo} sorot={sorot} />
+        ) : template === "desa" ? (
+          <DesaMapBody kode={kode} data={data} geo={geo} />
         ) : template === "penutup" ? (
           <ClosingBody kode={kode} data={data} geo={geo} />
         ) : (
@@ -162,7 +166,7 @@ export function WilayahCard({ template, kode, debug, tema = "malam" }: { templat
 export function problems(template: WilayahTemplate, kode: string, data: Data, geo: Geos): string[] {
   const out: string[] = [];
   const inner = geo.inner.features.filter((f) => f.properties.domain_id.startsWith(kode));
-  if (!inner.length) out.push(`tidak ada batas ${template === "kepadatan" ? "desa" : "kecamatan"} untuk ${kode}`);
+  if (!inner.length) out.push(`tidak ada batas ${template === "kepadatan" || template === "desa" ? "desa" : "kecamatan"} untuk ${kode}`);
   if (!geo.outline.features.some((f) => f.properties.domain_id === kode)) out.push(`tidak ada batas kabupaten ${kode}`);
   if (!data.districts.length) out.push("tidak ada data kecamatan");
   if (template === "kepadatan") {
