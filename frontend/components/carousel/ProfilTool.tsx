@@ -70,6 +70,9 @@ export function ProfilTool({
   const [now, setNow] = useState(Date.now());
   const [error, setError] = useState<string | null>(null);
   const [caption, setCaption] = useState<ProfilCaption | null>(null);
+  // A dense desa map spreads over several slides; the card says how many once it has laid out.
+  const [desaPanels, setDesaPanels] = useState(1);
+  useEffect(() => setDesaPanels(1), [kode]);
   const [captionError, setCaptionError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -95,13 +98,17 @@ export function ProfilTool({
     setCaptionError(null);
     if (!kode) return;
     let live = true;
-    profilCaption(kode, indicator)
+    // Slide numbers in the caption follow the slides below (a panorama counts once per slide).
+    const only = files
+      ? CARDS_IN_ORDER.filter((c) => !c.needs.some((f) => !files[f])).flatMap((c) => (c.id === "desa" ? Array(desaPanels).fill("desa") : [c.id]))
+      : undefined;
+    profilCaption(kode, indicator, only)
       .then((c) => live && setCaption(c))
       .catch((e) => live && setCaptionError(String(e.message ?? e)));
     return () => {
       live = false;
     };
-  }, [kode, indicator]);
+  }, [kode, indicator, files, desaPanels]);
 
   useEffect(() => {
     if (!busy) return;
@@ -124,11 +131,30 @@ export function ProfilTool({
     return { ...c, available: !!files && !missing, reason: missing ? missingReason(missing, kode) : null };
   });
   const available = cards.filter((c) => c.available);
-  const path = (c: Card) => `/card/${c.id}/${kode}?${new URLSearchParams({ tema, ...(c.id === "kecamatan" ? { indicator } : {}) })}`;
+  const query = (c: Card, panel = 1) => ({ tema, ...(c.id === "kecamatan" ? { indicator } : {}), ...(panel > 1 ? { panel: String(panel) } : {}) });
+  const path = (c: Card, panel = 1) => `/card/${c.id}/${kode}?${new URLSearchParams(query(c, panel))}`;
+  // One preview per slide: the desa map may be a panorama of 2-3 slides.
+  const slides = cards.flatMap((c) =>
+    c.id === "desa" && c.available && desaPanels > 1
+      ? Array.from({ length: desaPanels }, (_, k) => ({ ...c, panel: k + 1, label: `${c.label} (${k + 1}/${desaPanels})` }))
+      : [{ ...c, panel: 1 }]
+  );
+  // Read the panorama size from the rendered desa card (same origin), once it reports ready.
+  const watchPanels = (frame: HTMLIFrameElement) => {
+    let tries = 0;
+    const t = setInterval(() => {
+      const el = frame.contentDocument?.querySelector("#card");
+      const n = Number(el?.getAttribute("data-card-panels"));
+      if (n || el?.hasAttribute("data-card-error") || ++tries > 120) {
+        clearInterval(t);
+        if (n) setDesaPanels(n);
+      }
+    }, 500);
+  };
 
   const downloadZip = async () => {
     setError(null);
-    setBusy({ started: Date.now(), total: available.length });
+    setBusy({ started: Date.now(), total: available.length + (desaPanels - 1) });
     try {
       const q = new URLSearchParams({ kode, indicator, tema, templates: available.map((c) => c.id).join(",") });
       const r = await fetch(`${CARDS}/zip?${q}`);
@@ -228,14 +254,15 @@ export function ProfilTool({
           {error && <ErrorState message={error} />}
           <SectionTitle hint="1080×1920, urutan unggah">Kartu</SectionTitle>
           <div className="flex gap-4 overflow-x-auto pb-2">
-            {cards.map((c, i) => (
-              <figure key={c.id} className="shrink-0" style={{ width: 1080 * SCALE }}>
+            {slides.map((c, i) => (
+              <figure key={`${c.id}-${c.panel}`} className="shrink-0" style={{ width: 1080 * SCALE }}>
                 {c.available ? (
                   <div className="overflow-hidden rounded-xl ring-1 ring-ink-border" style={{ width: 1080 * SCALE, height: 1920 * SCALE }}>
                     <iframe
-                      src={path(c)}
+                      src={path(c, c.panel)}
                       title={c.label}
                       loading="lazy"
+                      onLoad={c.id === "desa" && c.panel === 1 ? (e) => watchPanels(e.currentTarget) : undefined}
                       style={{ width: 1080, height: 1920, transform: `scale(${SCALE})`, transformOrigin: "0 0", border: 0 }}
                     />
                   </div>
@@ -254,7 +281,7 @@ export function ProfilTool({
                   {c.available && service === "up" && (
                     <a
                       className="shrink-0 font-semibold text-ink-accent hover:underline"
-                      href={`${CARDS}/png?${new URLSearchParams({ template: c.id, kode, tema, ...(c.id === "kecamatan" ? { indicator } : {}) })}`}
+                      href={`${CARDS}/png?${new URLSearchParams({ template: c.id, kode, ...query(c, c.panel) })}`}
                     >
                       PNG
                     </a>

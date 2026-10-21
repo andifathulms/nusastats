@@ -115,7 +115,11 @@ export async function loadGeo(template: WilayahTemplate, kode: string): Promise<
   return { inner, outline, kec };
 }
 
-export function WilayahCard({ template, kode, debug, tema = "malam", sorot = false }: { template: WilayahTemplate; kode: string; debug: boolean; tema?: Tema; sorot?: boolean }) {
+export function WilayahCard({
+  template, kode, debug, tema = "malam", sorot = false, panel = 1,
+}: { template: WilayahTemplate; kode: string; debug: boolean; tema?: Tema; sorot?: boolean; panel?: number }) {
+  // How many slides the desa map spreads over (AdminMap decides; the exporter reads data-card-panels).
+  const [panels, setPanels] = useState<number | null>(null);
   const [data, setData] = useState<Data | null>(null);
   const [geo, setGeo] = useState<Geos | null>(null);
   const [fatal, setFatal] = useState<string | null>(null);
@@ -133,13 +137,15 @@ export function WilayahCard({ template, kode, debug, tema = "malam", sorot = fal
 
   const issues = useMemo(() => (data && geo ? problems(template, kode, data, geo) : []), [template, kode, data, geo]);
   const error = fatal ?? (issues.length ? issues.join("; ") : null);
-  const ready = !error && !!data && !!geo && fontsReady;
+  // The desa map is ready once it has decided how many slides it spreads over.
+  const ready = !error && !!data && !!geo && fontsReady && (template !== "desa" || panels !== null);
 
   return (
     <div
       id="card"
       data-card-ready={ready ? "1" : undefined}
       data-card-error={error ?? undefined}
+      data-card-panels={template === "desa" && panels ? panels : undefined}
       className="nm-card relative overflow-hidden bg-coal-bg font-sans text-coal-text"
       style={{ width: W, height: H, ...temaStyle(template, tema) }}
     >
@@ -149,7 +155,7 @@ export function WilayahCard({ template, kode, debug, tema = "malam", sorot = fal
         template === "wilayah" ? (
           <KecamatanMapBody kode={kode} data={data} geo={geo} sorot={sorot} />
         ) : template === "desa" ? (
-          <DesaMapBody kode={kode} data={data} geo={geo} />
+          <DesaMapBody kode={kode} data={data} geo={geo} panel={panel} onPanels={setPanels} />
         ) : template === "penutup" ? (
           <ClosingBody kode={kode} data={data} geo={geo} />
         ) : (

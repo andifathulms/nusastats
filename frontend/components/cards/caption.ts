@@ -116,7 +116,9 @@ export async function profilCaption(kode: string, indicator: string, only?: stri
   const closing = check("penutup", wilayahProblems("penutup", kode, wil, geoKec));
 
   const order = PROFIL.filter((id) => lines[id] || (id === "penutup" && closing));
-  const slides = order.filter((id) => lines[id]).map((id) => `${order.indexOf(id) + 1}. ${lines[id]}`);
+  // Slide numbers follow the export when known (a panorama takes more than one slide).
+  const slideNo = (id: string) => (only ? only.indexOf(id) : order.indexOf(id)) + 1;
+  const slides = order.filter((id) => lines[id]).map((id) => `${slideNo(id)}. ${lines[id]}`);
   const has = (...ids: string[]) => ids.some((id) => lines[id]);
 
   const layers = [

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, type ReactNode } from "react";
+import { useEffect, useMemo, type ReactNode } from "react";
 import { formatNumber, titleCase } from "@/lib/api";
 import { frameOf, framing, neighbourColours, placeLabels, polygons, project, projector, type Feature, type Label } from "./geo";
 import { CardHeader, PAD, ZONE } from "./layout";
@@ -24,6 +24,9 @@ const HEADER_H = 170;
 const GAP = 24;
 const BOX_TOP = ZONE.bodyTop + HEADER_H + GAP; // card y of the map box
 const MAP_SHARE = 0.8; // of the box width at most: room for names beside wide shapes
+const PANO_SHARE = 0.94; // a panorama has room on its own
+const SLIDE = 1080;
+const ICONS_TOP = 760; // TikTok's like/comment/share column: x 920..1080, y 760..1680 on every slide
 const CAT = 8; // kecamatan colours (brand.ts --nm-cat-*)
 
 type Kind = "pop" | "dens" | "area";
@@ -61,30 +64,101 @@ type Spec = {
   fill: (id: string, tones: Map<string, number>) => string;
   borders?: Feature[]; // drawn over the units (kecamatan lines on the desa map)
   labelSize: { min: number; max: number; minRoom: number; leader: number };
-  /** More names than this needing a leader = too dense for one slide: leave them unnamed (and say so). */
+  /** More names than this needing a leader = too dense for one slide. With `panorama` the map then
+   * spreads over 2 or 3 slides; past 3 (or without it) the rest stay unnamed, and the card says so. */
   maxLeaders?: number;
+  panorama?: boolean;
   callouts?: (feats: Feature[], anchorOf: (id: string) => { pt: Pt; off: boolean }) => Callout[];
   /** Height of the info block for a number of numbered names. */
   infoHeight: (numbered: number, offFrame: boolean, unplacedCallouts: boolean) => number;
 };
 
-function layout(spec: Spec, geo: Geos, BOX: { w: number; h: number }) {
+/** Card-x bands where no text may go: each cut between slides (and the next slide's left margin)
+ * and TikTok's icon column on every slide. Box coordinates (x from PAD). */
+function noTextBands(panels: number, boxH: number): Rect[] {
+  const out: Rect[] = [];
+  for (let i = 0; i < panels; i++) {
+    const x0 = i * SLIDE + (920 - PAD);
+    if (i < panels - 1) out.push({ x: x0, y: 0, w: SLIDE - (920 - PAD) + PAD, h: boxH });
+    else out.push({ x: x0, y: ICONS_TOP - BOX_TOP, w: SLIDE - 920, h: boxH });
+  }
+  return out;
+}
+
+/** Leader names in columns beside the map: each side's names sorted top to bottom, each in the
+ * column nearest the map with a free row close to its desa's height. Columns never cross a no-text
+ * band. Returns every name with its rectangle, or none when no column has room. */
+function columnLeaders(items: { l: Label; anchor: Pt }[], mapLeft: number, mapRight: number, BOX: { w: number; h: number }, bands: Rect[], size: number) {
+  const row = Math.ceil(size * 1.25);
+  // Columns as wide as most names (90th percentile); the odd longer name runs into the gap.
+  const widths = items.map((i) => textWidth(i.l.name, size, true)).sort((a, b) => a - b);
+  const colW = Math.min(240, (widths[Math.floor(widths.length * 0.9)] ?? 120) + 12);
+  const clear = (x: number) => !bands.some((b) => x < b.x + b.w && x + colW > b.x);
+  const cols: { x: number; side: "l" | "r"; used: [number, number][] }[] = [];
+  for (let x = mapRight + 24; x + colW <= BOX.w; x += 8) if (clear(x)) { cols.push({ x, side: "r", used: [] }); x += colW + 22 - 8; }
+  for (let x = mapLeft - 24 - colW; x >= 0; x -= 8) if (clear(x)) { cols.push({ x, side: "l", used: [] }); x -= colW + 22 - 8; }
+  const mid = (mapLeft + mapRight) / 2;
+  const freeY = (used: [number, number][], target: number): number | null => {
+    const sorted = [...used].sort((a, b) => a[0] - b[0]);
+    let best: number | null = null;
+    let start = 0;
+    for (const gap of [...sorted, [BOX.h, BOX.h] as [number, number]]) {
+      const end = gap[0];
+      if (end - start >= row) {
+        const y = Math.min(Math.max(target, start), end - row);
+        if (best === null || Math.abs(y - target) < Math.abs(best - target)) best = y;
+      }
+      start = Math.max(start, gap[1]);
+    }
+    return best;
+  };
+  return items.map(({ l, anchor }) => {
+    const side = anchor[0] < mid ? "l" : "r";
+    const order = [...cols].sort((a, b) =>
+      (a.side === side ? 0 : 1) - (b.side === side ? 0 : 1) || Math.abs(a.x - anchor[0]) - Math.abs(b.x - anchor[0]));
+    let pick: { col: (typeof cols)[number]; y: number; cost: number } | null = null;
+    for (const [i, col] of order.entries()) {
+      const y = freeY(col.used, anchor[1] - row / 2);
+      if (y === null) continue;
+      const cost = Math.abs(y - (anchor[1] - row / 2)) + i * 60;
+      if (!pick || cost < pick.cost) pick = { col, y, cost };
+    }
+    if (!pick) return { l, anchor, rect: null };
+    pick.col.used.push([pick.y, pick.y + row]);
+    const w = textWidth(l.name, size, true) + 10;
+    const x = pick.col.side === "r" ? pick.col.x : pick.col.x + colW - w;
+    return { l, anchor, rect: { x, y: pick.y, w, h: row } as Rect };
+  });
+}
+
+function layout(spec: Spec, geo: Geos, BOX: { w: number; h: number }, panels = 1) {
   const { kode, feats, names } = spec;
   const own = geo.outline.features.filter((f) => f.properties.domain_id === kode);
   const fit = framing(feats);
   const { paths, vw, vh } = project(feats, fit.frame);
-  const s = Math.min((BOX.w * MAP_SHARE) / vw, BOX.h / vh);
+  const s = Math.min((BOX.w * (panels > 1 ? PANO_SHARE : MAP_SHARE)) / vw, BOX.h / vh);
   const mx = (BOX.w - vw * s) / 2;
   const my = (BOX.h - vh * s) / 2;
   const to = projector(fit.frame);
   const { min, max, minRoom } = spec.labelSize;
   const placed = placeLabels(feats, fit.frame, vw, vh, names, vw * s, vh * s, { min, max, minRoom });
+  // A name on a cut between slides or under the icons can't stay inside its unit: give it a leader.
+  const bands = noTextBands(panels, BOX.h);
+  placed.labels = placed.labels.filter((l) => {
+    const w = (l.lines ? Math.max(...l.lines.map((t) => t.length)) : l.name.length) * l.size * 0.56 * s;
+    const h = (l.lines ? 2.3 : 1.2) * l.size * s;
+    const x = mx + l.x * s - w / 2;
+    const y = my + l.y * s - h / 2;
+    const hit = bands.some((b) => x < b.x + b.w && x + w > b.x && y < b.y + b.h && y + h > b.y);
+    if (hit) placed.numbered.push({ ...l, lines: undefined });
+    return !hit;
+  });
   const tones = neighbourColours(feats, CAT);
   const edge = project(own, fit.frame).paths;
   const borderPaths = spec.borders ? project(spec.borders, fit.frame).paths : [];
 
   // Neighbouring kabupaten anywhere on the card (the land layer is full-bleed).
-  const win = { x0: -(PAD + mx) / s, x1: (1080 - PAD - mx) / s, y0: -(BOX_TOP + my) / s, y1: (1920 - BOX_TOP - my) / s };
+  const win = { x0: -(PAD + mx) / s, x1: (SLIDE * panels - PAD - mx) / s, y0: -(BOX_TOP + my) / s, y1: (1920 - BOX_TOP - my) / s };
   const near = geo.outline.features.filter((f) => {
     if (f.properties.domain_id === kode) return false;
     const fr = frameOf([f]);
@@ -97,6 +171,7 @@ function layout(spec: Spec, geo: Geos, BOX: { w: number; h: number }) {
   // Free space: the kabupaten is taken; then callouts, leader names, neighbour names.
   const space = new FreeSpace(BOX.w, BOX.h);
   for (const f of own.length ? own : feats) space.occupyShape(ringsPx(f, to, mx, my, s), 1);
+  for (const b of bands) space.occupyRect(b);
   const px = (l: Label): Pt => [mx + l.x * s, my + l.y * s];
   const anchorOf = (id: string): { pt: Pt; off: boolean } => {
     const l = [...placed.labels, ...placed.numbered].find((x) => x.id === id);
@@ -124,18 +199,31 @@ function layout(spec: Spec, geo: Geos, BOX: { w: number; h: number }) {
     }
   }
 
-  // Names too big for their unit: in free space with a leader line, top to bottom.
+  // Names too big for their unit: in free space with a leader line. On one slide each name takes
+  // the nearest free spot; a panorama lines them up in columns beside the map, each name level with
+  // its desa where it can be, so the leaders fan out (as in the owner's Luwu Utara slides).
   const size = spec.labelSize.leader;
   const leaders: Leader[] = [];
   const numbered: Label[] = [];
-  const crowded = spec.maxLeaders !== undefined && placed.numbered.length > spec.maxLeaders;
-  for (const l of crowded ? [] : [...placed.numbered].sort((a, b) => a.y - b.y || a.x - b.x)) {
-    const anchor = px(l);
-    const off = anchor[0] < 0 || anchor[1] < 0 || anchor[0] > BOX.w || anchor[1] > BOX.h;
-    const rect = off ? null : space.place(textWidth(l.name, size, true) + 10, size * 1.3, anchor, undefined, 0);
-    if (rect) leaders.push({ id: l.id, name: l.name, anchor, rect, size });
-    else numbered.push(l);
-  }
+  const todo = [...placed.numbered].sort((a, b) => a.y - b.y || a.x - b.x);
+  let crowded = 0;
+  if (panels > 1) {
+    const placedCols = columnLeaders(todo.map((l) => ({ l, anchor: px(l) })), mx, mx + vw * s, BOX, bands, size);
+    for (const { l, anchor, rect } of placedCols) {
+      if (rect) {
+        leaders.push({ id: l.id, name: l.name, anchor, rect, size });
+        space.occupyRect(rect);
+      } else crowded++;
+    }
+  } else if (spec.maxLeaders !== undefined && todo.length > spec.maxLeaders) crowded = todo.length;
+  else
+    for (const l of todo) {
+      const anchor = px(l);
+      const off = anchor[0] < 0 || anchor[1] < 0 || anchor[0] > BOX.w || anchor[1] > BOX.h;
+      const rect = off ? null : space.place(textWidth(l.name, size, true) + 10, size * 1.3, anchor, undefined, 0);
+      if (rect) leaders.push({ id: l.id, name: l.name, anchor, rect, size });
+      else numbered.push(l);
+    }
   numbered.forEach((l, i) => (l.n = i + 1));
 
   // Neighbour names: inside that neighbour's land, in free space, as close to the kabupaten as fits.
@@ -146,29 +234,44 @@ function layout(spec: Spec, geo: Geos, BOX: { w: number; h: number }) {
     const rect = space.place(textWidth(name, 26) + 12, 34, centre, inRings(ringsPx(f, to, mx, my, s)), 0);
     if (rect) neighbourNames.push({ name, rect });
   }
-  return { BOX, crowded: crowded ? placed.numbered.length : 0, paths, edge, borderPaths, nearPaths, labels: placed.labels, numbered, leaders, tones, s, mx, my, callouts, neighbourNames, offFrame: fit.offFrame };
+  return { BOX, panels, crowded, paths, edge, borderPaths, nearPaths, labels: placed.labels, numbered, leaders, tones, s, mx, my, callouts, neighbourNames, offFrame: fit.offFrame };
 }
 
-function AdminMap({ spec, geo, kicker, title, info, source }: { spec: Spec; geo: Geos; kicker: string; title: string; info: ReactNode; source: string }) {
+function AdminMap({
+  spec, geo, kicker, title, info, source, panel = 1, onPanels,
+}: {
+  spec: Spec; geo: Geos; kicker: string; title: string; info: ReactNode; source: string;
+  /** Which slide of a panorama this card shows (1-based). */
+  panel?: number;
+  onPanels?: (n: number) => void;
+}) {
   // The info block's height depends on how many names end up numbered: shrink the map until it fits.
+  // Too crowded for one slide: the same map over 2, then 3 slides (desa).
   const m = useMemo(() => {
     const full = ZONE.textBottom - BOX_TOP;
-    const pass = (h: number) => layout(spec, geo, { w: W, h });
-    const unplaced = (x: ReturnType<typeof pass>) => x.callouts.some((c) => !c.rect);
-    let cur = pass(full - spec.infoHeight(0, false, false));
-    for (let i = 0; i < 2; i++) {
-      const h = full - spec.infoHeight(cur.numbered.length, cur.offFrame.length > 0, unplaced(cur)) - (cur.crowded ? 36 : 0);
-      if (h >= cur.BOX.h) break;
-      cur = pass(h);
+    let cur: ReturnType<typeof layout> | null = null;
+    for (const n of spec.panorama ? [1, 2, 3] : [1]) {
+      const w = n === 1 ? W : SLIDE * n - 2 * PAD;
+      const pass = (h: number) => layout(spec, geo, { w, h }, n);
+      const unplaced = (x: ReturnType<typeof pass>) => x.callouts.some((c) => !c.rect);
+      cur = pass(full - spec.infoHeight(0, false, false));
+      for (let i = 0; i < 2; i++) {
+        const h = full - spec.infoHeight(cur.numbered.length, cur.offFrame.length > 0, unplaced(cur)) - (cur.crowded ? 36 : 0);
+        if (h >= cur.BOX.h) break;
+        cur = pass(h);
+      }
+      if (!cur.crowded) break;
     }
-    return cur;
+    return cur!;
   }, [spec, geo]);
   const { BOX } = m;
+  useEffect(() => onPanels?.(m.panels), [m.panels, onPanels]);
 
   return (
-    <>
+    // A panorama is laid out once across all its slides; each card shows its own slice.
+    <div className="absolute top-0" style={{ left: -(Math.min(panel, m.panels) - 1) * SLIDE, width: SLIDE * m.panels, height: 1920 }}>
       {/* The neighbours' land runs to the card edges, behind the header and the numbers. */}
-      <svg className="absolute left-0 top-0" width={1080} height={1920} viewBox="0 0 1080 1920">
+      <svg className="absolute left-0 top-0" width={SLIDE * m.panels} height={1920} viewBox={`0 0 ${SLIDE * m.panels} 1920`}>
         <g transform={`translate(${PAD + m.mx} ${BOX_TOP + m.my}) scale(${m.s})`}>
           {m.nearPaths.map((p) => (
             <path key={`n-${p.id}`} d={p.d} fill="var(--nm-prov)" stroke="var(--nm-border-soft)" strokeWidth={1} vectorEffect="non-scaling-stroke" />
@@ -215,7 +318,7 @@ function AdminMap({ spec, geo, kicker, title, info, source }: { spec: Spec; geo:
             {m.callouts.map((c) => (c.rect ? <CalloutBlock key={c.id} c={c as Required<Callout>} /> : null))}
           </svg>
         </div>
-        <div className="flex min-h-0 flex-1 flex-col" style={{ marginTop: GAP }}>
+        <div className="flex min-h-0 flex-1 flex-col" style={{ marginTop: GAP, maxWidth: SLIDE - 2 * PAD - 96 }}>
           <OffFrameNote items={m.offFrame} />
           <LabelLegend numbered={m.numbered} />
           {m.crowded > 0 && (
@@ -229,10 +332,11 @@ function AdminMap({ spec, geo, kicker, title, info, source }: { spec: Spec; geo:
               {m.callouts.filter((c) => !c.rect).map((c) => `${c.name}: ${c.items.map((i) => `${i.label.toLowerCase()} ${i.value}`).join(", ")}`).join(" · ")}
             </p>
           )}
-          <Footer source={source} />
         </div>
       </div>
-    </>
+      {/* Footer is position: fixed, so it sits on whichever slide this card shows. */}
+      <Footer source={m.panels > 1 ? `${source}. Peta ${Math.min(panel, m.panels)} dari ${m.panels}, geser untuk lanjutannya` : source} />
+    </div>
   );
 }
 
@@ -324,7 +428,7 @@ export function KecamatanMapBody({ kode, data, geo, sorot }: { kode: string; dat
 }
 
 /** Desa vs kelurahan (template `desa`): status from Dukcapil, kecamatan borders on top. */
-export function DesaMapBody({ kode, data, geo }: { kode: string; data: Data; geo: Geos }) {
+export function DesaMapBody({ kode, data, geo, panel = 1, onPanels }: { kode: string; data: Data; geo: Geos; panel?: number; onPanels?: (n: number) => void }) {
   const status = useMemo(() => new Map(data.villageRegions.map((v) => [v.code, v.status])), [data.villageRegions]);
   const spec = useMemo<Spec>(() => {
     const feats = geo.inner.features.filter((f) => f.properties.domain_id.startsWith(kode));
@@ -336,6 +440,7 @@ export function DesaMapBody({ kode, data, geo }: { kode: string; data: Data; geo
       borders: geo.kec?.features.filter((f) => f.properties.domain_id.startsWith(kode)),
       labelSize: { min: 16, max: 24, minRoom: 10, leader: 18 },
       maxLeaders: 40,
+      panorama: true,
       infoHeight: infoBase(3),
     };
   }, [kode, data, geo, status]);
@@ -362,6 +467,8 @@ export function DesaMapBody({ kode, data, geo }: { kode: string; data: Data; geo
           {counts.other > 0 && <li className="text-[24px] font-normal text-coal-muted">Tanpa status di data Dukcapil: {formatNumber(counts.other)}</li>}
         </ul>
       }
+      panel={panel}
+      onPanels={onPanels}
       source={`Status desa/kelurahan: Ditjen Dukcapil Kemendagri, data ${bulanTahun(data.period)}; batas desa: BIG 1:10.000`}
     />
   );

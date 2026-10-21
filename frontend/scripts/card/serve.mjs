@@ -136,9 +136,12 @@ http
     if (u.pathname === "/png") {
       const t = u.searchParams.get("template") ?? "";
       if (!TEMPLATES[t]) return json(res, 400, { error: `template: ${Object.keys(TEMPLATES).join(", ")}` });
-      const r = await serial(() => shoot(page, cardUrl(BASE, t, kode, { indicator, tema })));
+      const panel = Math.max(1, Number(u.searchParams.get("panel")) || 1);
+      const r = await serial(() => shoot(page, cardUrl(BASE, t, kode, { indicator, tema, panel })));
       if (r.error) return json(res, 422, { error: r.error });
-      return send(res, 200, "image/png", r.png, { "content-disposition": `attachment; filename="${kode}_${t}.png"` });
+      return send(res, 200, "image/png", r.png, {
+        "content-disposition": `attachment; filename="${kode}_${t}${panel > 1 || r.panels > 1 ? `-${panel}` : ""}.png"`,
+      });
     }
 
     if (u.pathname === "/zip") {
@@ -151,7 +154,17 @@ http
         if (r.error) skipped.push(`${t}: ${r.error}`);
         else {
           made.push(t);
-          files.push({ name: `${String(files.length + 1).padStart(2, "0")}_${t}.png`, data: r.png });
+          const multi = r.panels > 1;
+          files.push({ name: `${String(files.length + 1).padStart(2, "0")}_${t}${multi ? "-1" : ""}.png`, data: r.png });
+          // The rest of a panorama: one slide each, right after the first.
+          for (let p = 2; p <= r.panels; p++) {
+            const rp = await serial(() => shoot(page, cardUrl(BASE, t, kode, { indicator, tema, panel: p })));
+            if (rp.error) skipped.push(`${t} ${p}/${r.panels}: ${rp.error}`);
+            else {
+              made.push(t);
+              files.push({ name: `${String(files.length + 1).padStart(2, "0")}_${t}-${p}.png`, data: rp.png });
+            }
+          }
         }
       }
       if (made.length) {

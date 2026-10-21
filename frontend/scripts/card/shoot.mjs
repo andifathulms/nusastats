@@ -14,8 +14,9 @@ export const TEMPLATES = {
 // (lowland -> rendah, nightlights -> cahaya).
 export const PROFIL = ["kepadatan", "wilayah", "desa", "terrain", "relief", "lowland", "rendah", "landcover", "nightlights", "cahaya", "kecamatan", "penutup"];
 
-export function cardUrl(base, template, kode, { indicator, debug, tema } = {}) {
+export function cardUrl(base, template, kode, { indicator, debug, tema, panel } = {}) {
   const q = new URLSearchParams();
+  if (panel && panel > 1) q.set("panel", String(panel));
   if (template === "kecamatan" && indicator) q.set("indicator", indicator);
   if (tema && tema !== "malam") q.set("tema", tema);
   if (debug) q.set("debug", "1");
@@ -49,8 +50,10 @@ export async function shoot(page, url) {
     const error = await page.getAttribute("#card", "data-card-error");
     if (error) return { error };
     const note = await page.getAttribute("#card", "data-card-note");
+    // A map spread over several slides (the desa panorama) says how many.
+    const panels = Number(await page.getAttribute("#card", "data-card-panels")) || 1;
     const png = await page.locator("#card").screenshot({ animations: "disabled" });
-    return { png, note };
+    return { png, note, panels };
   } catch (e) {
     return { error: e.message.split("\n")[0] };
   }
