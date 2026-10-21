@@ -133,15 +133,35 @@ function columnLeaders(items: { l: Label; anchor: Pt }[], mapLeft: number, mapRi
 
 type Blocks = { header: { w: number; h: number }; info: { w: number; h: number } };
 
+/** Tinggi penuh: the map may cover the whole card; text may not go under TikTok's UI. In card
+ * coordinates: above the body, below y 1500, the side margins, the icon column, and each cut. */
+function fullBands(panels: number): Rect[] {
+  const W = SLIDE * panels;
+  const out: Rect[] = [
+    { x: 0, y: 0, w: W, h: ZONE.wordmarkTop - 20 },
+    { x: 0, y: ZONE.textBottom, w: W, h: 1920 - ZONE.textBottom },
+    { x: 0, y: 0, w: PAD, h: 1920 },
+  ];
+  for (let i = 0; i < panels; i++) {
+    const right = (i + 1) * SLIDE;
+    // The "Nusantara Mapper" wordmark is on every slide.
+    out.push({ x: i * SLIDE + PAD - 8, y: ZONE.wordmarkTop - 24, w: 360, h: 72 });
+    out.push({ x: i * SLIDE + 920, y: ICONS_TOP, w: SLIDE - 920, h: 1680 - ICONS_TOP });
+    out.push({ x: right - (SLIDE - ZONE.mapRight), y: 0, w: SLIDE - ZONE.mapRight + (i < panels - 1 ? PAD : 0), h: 1920 });
+  }
+  return out;
+}
+
 /** Tinggi penuh: the largest map (and its position) that leaves the header's top-left corner and the
  * info block's bottom-left corner on empty space, tested on sample points against the outline. */
 function fitAround(rings: (s: number, mx: number, my: number) => Pt[][], vw: number, vh: number, BOX: { w: number; h: number }, b: Blocks, share: number) {
-  const base = Math.min((BOX.w * share) / vw, BOX.h / vh);
-  const header: Rect = { x: 0, y: 0, ...b.header };
+  // BOX is the whole card (or panorama); the blocks sit in the text-safe zone of slide 1.
+  const base = Math.min((BOX.w * share) / vw, (BOX.h * 0.98) / vh);
+  const header: Rect = { x: PAD, y: ZONE.wordmarkTop - 20, ...b.header, h: b.header.h + (ZONE.bodyTop - ZONE.wordmarkTop + 20) };
   // The info block takes the bottom-left corner, or the bottom-right one (still left of the icons).
   const infos: Rect[] = [
-    { x: 0, y: BOX.h - b.info.h, ...b.info },
-    { x: Math.max(0, 920 - PAD - b.info.w), y: BOX.h - b.info.h, ...b.info },
+    { x: PAD, y: ZONE.textBottom - b.info.h, ...b.info },
+    { x: Math.max(PAD, 920 - b.info.w), y: ZONE.textBottom - b.info.h, ...b.info },
   ];
   const sample = (rect: Rect) => {
     const pts: Pt[] = [];
@@ -177,7 +197,8 @@ function layout(spec: Spec, geo: Geos, BOX: { w: number; h: number }, panels = 1
   const { paths, vw, vh } = project(feats, fit.frame);
   const to = projector(fit.frame);
   const share = panels > 1 ? PANO_SHARE : MAP_SHARE;
-  const boxTop = blocks ? ZONE.bodyTop : BOX_TOP;
+  const boxTop = blocks ? 0 : BOX_TOP;
+  const boxLeft = blocks ? 0 : PAD;
   let s = Math.min((BOX.w * share) / vw, BOX.h / vh);
   let mx = (BOX.w - vw * s) / 2;
   let my = (BOX.h - vh * s) / 2;
@@ -185,7 +206,7 @@ function layout(spec: Spec, geo: Geos, BOX: { w: number; h: number }, panels = 1
   let infoRect: Rect | null = null;
   if (blocks) {
     const outline = own.length ? own : feats;
-    const f = fitAround((ss, x, y) => outline.flatMap((o) => ringsPx(o, to, x, y, ss)), vw, vh, BOX, blocks, panels > 1 ? PANO_SHARE : 0.98);
+    const f = fitAround((ss, x, y) => outline.flatMap((o) => ringsPx(o, to, x, y, ss)), vw, vh, BOX, blocks, panels > 1 ? PANO_SHARE : 1);
     ({ s, mx, my } = f);
     headerRect = f.header;
     infoRect = f.info;
@@ -193,7 +214,7 @@ function layout(spec: Spec, geo: Geos, BOX: { w: number; h: number }, panels = 1
   const { min, max, minRoom } = spec.labelSize;
   const placed = placeLabels(feats, fit.frame, vw, vh, names, vw * s, vh * s, { min, max, minRoom });
   // A name on a cut between slides or under the icons can't stay inside its unit: give it a leader.
-  const bands = noTextBands(panels, BOX.h, boxTop);
+  const bands = blocks ? fullBands(panels) : noTextBands(panels, BOX.h, boxTop);
   placed.labels = placed.labels.filter((l) => {
     const w = (l.lines ? Math.max(...l.lines.map((t) => t.length)) : l.name.length) * l.size * 0.56 * s;
     const h = (l.lines ? 2.3 : 1.2) * l.size * s;
@@ -208,7 +229,7 @@ function layout(spec: Spec, geo: Geos, BOX: { w: number; h: number }, panels = 1
   const borderPaths = spec.borders ? project(spec.borders, fit.frame).paths : [];
 
   // Neighbouring kabupaten anywhere on the card (the land layer is full-bleed).
-  const win = { x0: -(PAD + mx) / s, x1: (SLIDE * panels - PAD - mx) / s, y0: -(boxTop + my) / s, y1: (1920 - boxTop - my) / s };
+  const win = { x0: -(boxLeft + mx) / s, x1: (SLIDE * panels - boxLeft - mx) / s, y0: -(boxTop + my) / s, y1: (1920 - boxTop - my) / s };
   const near = geo.outline.features.filter((f) => {
     if (f.properties.domain_id === kode) return false;
     const fr = frameOf([f]);
@@ -262,9 +283,10 @@ function layout(spec: Spec, geo: Geos, BOX: { w: number; h: number }, panels = 1
   if (panels > 1) {
     const placedCols = columnLeaders(todo.map((l) => ({ l, anchor: px(l) })), mx, mx + vw * s, BOX, bands, size);
     for (const { l, anchor, rect } of placedCols) {
-      if (rect) {
-        leaders.push({ id: l.id, name: l.name, anchor, rect, size });
-        space.occupyRect(rect);
+      const r2 = rect ?? space.place(textWidth(l.name, size, true) + 10, size * 1.3, anchor, undefined, 0);
+      if (r2) {
+        leaders.push({ id: l.id, name: l.name, anchor, rect: r2, size });
+        space.occupyRect(r2);
       } else crowded++;
     }
   } else if (spec.maxLeaders !== undefined && todo.length > spec.maxLeaders) crowded = todo.length;
@@ -300,7 +322,7 @@ function layout(spec: Spec, geo: Geos, BOX: { w: number; h: number }, panels = 1
     const rect = space.place(w, 34, [sx / n, sy / n], inside, 0, true);
     if (rect) neighbourNames.push({ name, rect });
   }
-  return { BOX, boxTop, headerRect, infoRect, panels, crowded, paths, edge, borderPaths, nearPaths, labels: placed.labels, numbered, leaders, tones, s, mx, my, callouts, neighbourNames, offFrame: fit.offFrame };
+  return { BOX, boxTop, boxLeft, headerRect, infoRect, panels, crowded, paths, edge, borderPaths, nearPaths, labels: placed.labels, numbered, leaders, tones, s, mx, my, callouts, neighbourNames, offFrame: fit.offFrame };
 }
 
 /** Tinggi penuh header: kicker, the name over two lines if needed, the province. */
@@ -308,16 +330,21 @@ const FULL = { headerW: 560, kicker: 28, sub: 30 };
 function titleSize(title: string) {
   return title.length > 22 ? 84 : title.length > 14 ? 96 : 110;
 }
-function fullHeaderH(title: string) {
+function fullHeaderH(title: string, facts: string) {
   const size = titleSize(title);
   const lines = Math.ceil((title.length * size * 0.46) / FULL.headerW);
-  return 40 + lines * size * 0.98 + 50;
+  const factLines = facts ? Math.ceil((facts.length * 26 * 0.52) / FULL.headerW) : 0;
+  return 40 + lines * size * 0.98 + 50 + factLines * 36 + (facts ? 8 : 0);
 }
 
 function AdminMap({
-  spec, geo, kicker, title, sub, info, infoW, source, panel = 1, onPanels, full = false,
+  spec, geo, kicker, title, sub, info, infoW, source, panel = 1, onPanels, full = false, facts = "", fullInfo, fullInfoH = 0,
 }: {
   spec: Spec; geo: Geos; kicker: string; title: string; sub: string; info: ReactNode; infoW: number; source: string;
+  /** Tinggi penuh: the numbers as one line under the title, and a small key (desa legend) instead of `info`. */
+  facts?: string;
+  fullInfo?: ReactNode;
+  fullInfoH?: number;
   /** Which slide of a panorama this card shows (1-based). */
   panel?: number;
   onPanels?: (n: number) => void;
@@ -327,26 +354,51 @@ function AdminMap({
   // The info block's height depends on how many names end up numbered: re-fit until it's stable.
   // Too crowded for one slide: the same map over 2, then 3 slides (desa).
   const m = useMemo(() => {
-    const top = full ? ZONE.bodyTop : BOX_TOP;
-    const avail = ZONE.textBottom - top;
     let cur: ReturnType<typeof layout> | null = null;
+    let fallback = false; // Tinggi penuh too dense: standard panorama
     for (const n of spec.panorama ? [1, 2, 3] : [1]) {
       const w = n === 1 ? W : SLIDE * n - 2 * PAD;
       const infoH = (x: ReturnType<typeof layout> | null) =>
         spec.infoHeight(x?.numbered.length ?? 0, (x?.offFrame.length ?? 0) > 0, !!x?.callouts.some((c) => !c.rect)) + (x?.crowded ? 36 : 0);
-      if (full) {
+      if (full && !fallback) {
+        // Map first: the numbers sit in one line under the title; the bottom block is only the key,
+        // the notes and the source line.
         const blocks = (x: ReturnType<typeof layout> | null): Blocks => ({
-          header: { w: FULL.headerW, h: fullHeaderH(title) },
-          info: { w: infoW, h: infoH(x) - GAP },
+          header: { w: FULL.headerW, h: fullHeaderH(title, facts) },
+          info: {
+            w: Math.max(infoW, 520),
+            h: fullInfoH + 84 + (x?.numbered.length ? Math.ceil(x.numbered.length / 2) * 34 : 0) + ((x?.offFrame.length ?? 0) > 0 ? 72 : 0) + (x?.crowded ? 36 : 0),
+          },
         });
-        cur = layout(spec, geo, { w, h: avail }, n, blocks(null));
-        const again = layout(spec, geo, { w, h: avail }, n, blocks(cur));
-        if (again.infoRect!.h !== cur.infoRect!.h) cur = again;
+        const fit = (k: number) => {
+          const card = { w: SLIDE * k, h: 1920 };
+          const a = layout(spec, geo, card, k, blocks(null));
+          const b = layout(spec, geo, card, k, blocks(a));
+          return b.infoRect!.h !== a.infoRect!.h ? b : a;
+        };
+        cur = fit(1);
+        // Too crowded: as many slides as the map, drawn at full height, is wide (2 or 3). If that
+        // still can't name every desa with short leaders (a big map leaves no room for name columns),
+        // the standard panorama below does it better: use that instead.
+        if (cur.crowded && spec.panorama) {
+          const feats = spec.feats;
+          const { vw, vh } = project(feats, framing(feats).frame);
+          const wide = (vw * ((1920 * 0.98) / vh)) / (SLIDE * PANO_SHARE);
+          cur = fit(Math.min(3, Math.max(2, Math.ceil(wide))));
+          const lengths = cur.leaders.map((l) => Math.hypot(l.rect.x + l.rect.w / 2 - l.anchor[0], l.rect.y + l.rect.h / 2 - l.anchor[1]));
+          const mean = lengths.length ? lengths.reduce((a, b) => a + b, 0) / lengths.length : 0;
+          if (!cur.crowded && mean <= 220) break;
+          cur = null;
+          fallback = true;
+          continue;
+        }
+        break;
       } else {
         const pass = (h: number) => layout(spec, geo, { w, h }, n);
-        cur = pass(avail - infoH(null));
+        const room = ZONE.textBottom - BOX_TOP; // the standard layout starts below the header
+        cur = pass(room - infoH(null));
         for (let i = 0; i < 2; i++) {
-          const h = avail - infoH(cur);
+          const h = room - infoH(cur);
           if (h >= cur.BOX.h) break;
           cur = pass(h);
         }
@@ -354,7 +406,7 @@ function AdminMap({
       if (!cur.crowded) break;
     }
     return cur!;
-  }, [spec, geo, full, title, infoW]);
+  }, [spec, geo, full, title, infoW, facts, fullInfoH]);
   const { BOX } = m;
   useEffect(() => onPanels?.(m.panels), [m.panels, onPanels]);
 
@@ -394,6 +446,16 @@ function AdminMap({
       {m.callouts.map((c) => (c.rect ? <CalloutBlock key={c.id} c={c as Required<Callout>} /> : null))}
     </svg>
   );
+  const fullNotes = (
+    <>
+      <OffFrameNote items={m.offFrame} />
+      <LabelLegend numbered={m.numbered} />
+      {m.crowded > 0 && (
+        <p className="mb-2 text-[22px] text-coal-muted">{m.crowded.toLocaleString("id-ID")} nama terlalu rapat; tidak dinamai di peta ini.</p>
+      )}
+      {fullInfo}
+    </>
+  );
   const notes = (
     <>
       <OffFrameNote items={m.offFrame} />
@@ -417,7 +479,7 @@ function AdminMap({
     <div className="absolute top-0" style={{ left: -(Math.min(panel, m.panels) - 1) * SLIDE, width: SLIDE * m.panels, height: 1920 }}>
       {/* The neighbours' land runs to the card edges, behind the header and the numbers. */}
       <svg className="absolute left-0 top-0" width={SLIDE * m.panels} height={1920} viewBox={`0 0 ${SLIDE * m.panels} 1920`}>
-        <g transform={`translate(${PAD + m.mx} ${m.boxTop + m.my}) scale(${m.s})`}>
+        <g transform={`translate(${m.boxLeft + m.mx} ${m.boxTop + m.my}) scale(${m.s})`}>
           {m.nearPaths.map((p) => (
             <path key={`n-${p.id}`} d={p.d} fill="var(--nm-prov)" stroke="var(--nm-border-soft)" strokeWidth={1} vectorEffect="non-scaling-stroke" />
           ))}
@@ -425,14 +487,18 @@ function AdminMap({
       </svg>
       {full && m.headerRect && m.infoRect ? (
         <>
-          <div className="absolute" style={{ left: PAD, top: m.boxTop }}>{mapSvg}</div>
-          <div className="absolute" style={{ left: PAD + m.headerRect.x, top: m.boxTop + m.headerRect.y, width: m.headerRect.w }}>
+          <div className="absolute" style={{ left: m.boxLeft, top: m.boxTop }}>{mapSvg}</div>
+          <div className="absolute" style={{ left: m.headerRect.x, top: ZONE.bodyTop, width: m.headerRect.w }}>
             <div className="font-mono text-[28px] uppercase tracking-[0.1em] text-ink-gold">{kicker}</div>
             <h1 className="mt-2 font-display leading-[0.98]" style={{ fontSize: titleSize(title) }}>{title}</h1>
             <div className="mt-2 text-[30px] text-coal-muted">{sub}</div>
+            {facts && <div className="mt-2 text-[26px] font-semibold leading-snug">{facts}</div>}
           </div>
-          <div className="absolute flex flex-col justify-end" style={{ left: PAD + m.infoRect.x, top: m.boxTop + m.infoRect.y, width: m.infoRect.w, height: m.infoRect.h }}>
-            {notes}
+          <div className="absolute flex flex-col justify-end" style={{ left: m.infoRect.x, top: m.infoRect.y, width: m.infoRect.w, height: m.infoRect.h }}>
+            {fullNotes}
+            <p className="mt-3 text-[20px] leading-snug text-coal-muted">
+              Sumber: {m.panels > 1 ? `${source}. Peta ${Math.min(panel, m.panels)} dari ${m.panels}, geser untuk lanjutannya` : source}. Batas wilayah indikatif (BIG).
+            </p>
           </div>
         </>
       ) : (
@@ -444,8 +510,8 @@ function AdminMap({
           <div className="flex min-h-0 flex-1 flex-col" style={{ marginTop: GAP, maxWidth: SLIDE - 2 * PAD - 96 }}>{notes}</div>
         </div>
       )}
-      {/* Footer is position: fixed, so it sits on whichever slide this card shows. */}
-      <Footer source={m.panels > 1 ? `${source}. Peta ${Math.min(panel, m.panels)} dari ${m.panels}, geser untuk lanjutannya` : source} />
+      {/* Footer is position: fixed, so it sits on whichever slide this card shows (Tinggi penuh: in the info block). */}
+      {!(full && m.headerRect) && <Footer source={m.panels > 1 ? `${source}. Peta ${Math.min(panel, m.panels)} dari ${m.panels}, geser untuk lanjutannya` : source} />}
     </div>
   );
 }
@@ -536,6 +602,12 @@ export function KecamatanMapBody({ kode, data, geo, sorot, full = false }: { kod
       info={<StatsList rows={stats} />}
       infoW={480}
       full={full}
+      facts={[
+        `${formatNumber(data.districts.length)} kecamatan`,
+        `${formatNumber(data.villageTotal)} desa/kel.`,
+        pop !== null ? `${compact(pop)} jiwa` : null,
+        area !== null ? `${num(area)} km²` : null,
+      ].filter(Boolean).join(" · ")}
       source={`Penduduk: Ditjen Dukcapil Kemendagri, data ${bulanTahun(data.period)} (terdaftar); luas dan batas: BIG 1:10.000, dijumlahkan NusaStats`}
     />
   );
@@ -576,6 +648,13 @@ export function DesaMapBody({
       title={data.kab.name}
       infoW={380}
       full={full}
+      fullInfoH={44}
+      fullInfo={
+        <div className="flex flex-wrap gap-x-8 text-[30px] font-semibold">
+          {counts.Kelurahan > 0 && <span className="inline-flex items-center gap-3"><span className="inline-block h-7 w-7 rounded-full" style={{ background: "var(--nm-kel)" }} />Kelurahan {formatNumber(counts.Kelurahan)}</span>}
+          {counts.Desa > 0 && <span className="inline-flex items-center gap-3"><span className="inline-block h-7 w-7 rounded-full" style={{ background: "var(--nm-desa)" }} />Desa {formatNumber(counts.Desa)}</span>}
+        </div>
+      }
       info={
         <ul className="mt-2 space-y-2 text-[34px] font-semibold">
           {counts.Kelurahan > 0 && (
