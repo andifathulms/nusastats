@@ -694,7 +694,7 @@ function Result({ result, form, tema }: { result: CarouselDeckResult; form: Form
               <div className="relative overflow-hidden rounded-xl ring-1 ring-ink-border" style={{ width: 1080 * SCALE, height: 1920 * SCALE }}>
                 <iframe
                   src={`${c.path}&tema=${tema}`}
-                  title={c.file}
+                  aria-label={c.file}
                   loading="lazy"
                   style={{ width: 1080, height: 1920, transform: `scale(${SCALE})`, transformOrigin: "0 0", border: 0 }}
                 />

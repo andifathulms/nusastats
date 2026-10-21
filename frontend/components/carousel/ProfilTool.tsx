@@ -298,7 +298,7 @@ export function ProfilTool({
                   <div className="relative overflow-hidden rounded-xl ring-1 ring-ink-border" style={{ width: 1080 * SCALE, height: 1920 * SCALE }}>
                     <iframe
                       src={path(c, c.panel)}
-                      title={c.label}
+                      aria-label={c.label}
                       loading="lazy"
                       onLoad={c.id === "desa" && c.panel === 1 ? (e) => watchPanels(e.currentTarget) : undefined}
                       style={{ width: 1080, height: 1920, transform: `scale(${SCALE})`, transformOrigin: "0 0", border: 0 }}

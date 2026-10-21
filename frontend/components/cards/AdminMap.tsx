@@ -278,12 +278,26 @@ function layout(spec: Spec, geo: Geos, BOX: { w: number; h: number }, panels = 1
     }
   numbered.forEach((l, i) => (l.n = i + 1));
 
-  // Neighbour names: inside that neighbour's land, in free space, as close to the kabupaten as fits.
-  const centre: Pt = [mx + (vw * s) / 2, my + (vh * s) / 2];
+  // Neighbour names: at the centre of the part of that neighbour's land the map shows (the mean of
+  // its visible sample points), moved only as far as free space requires.
   const neighbourNames: { name: string; rect: Rect }[] = [];
   for (const f of near) {
     const name = regencyName(String(f.properties.name ?? f.properties.domain_id));
-    const rect = space.place(textWidth(name, 26) + 12, 34, centre, inRings(ringsPx(f, to, mx, my, s)), 0);
+    const inside = inRings(ringsPx(f, to, mx, my, s));
+    let sx = 0;
+    let sy = 0;
+    let n = 0;
+    for (let y = 8; y < BOX.h; y += 24)
+      for (let x = 8; x < BOX.w; x += 24)
+        if (inside(x, y)) {
+          sx += x;
+          sy += y;
+          n++;
+        }
+    if (n < 4) continue; // only a sliver shows: no name
+    // Capitals with 2 px tracking run wider than mixed-case text.
+    const w = name.length * (26 * 0.66 + 2) + 12;
+    const rect = space.place(w, 34, [sx / n, sy / n], inside, 0, true);
     if (rect) neighbourNames.push({ name, rect });
   }
   return { BOX, boxTop, headerRect, infoRect, panels, crowded, paths, edge, borderPaths, nearPaths, labels: placed.labels, numbered, leaders, tones, s, mx, my, callouts, neighbourNames, offFrame: fit.offFrame };

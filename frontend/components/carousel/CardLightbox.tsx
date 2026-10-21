@@ -36,7 +36,7 @@ export function CardLightbox({ slides, index, onClose, onIndex }: { slides: Ligh
           <iframe
             key={slide.src}
             src={slide.src}
-            title={slide.label}
+            aria-label={slide.label}
             className="relative"
             style={{ width: 1080, height: 1920, transform: `scale(${scale})`, transformOrigin: "0 0", border: 0 }}
           />

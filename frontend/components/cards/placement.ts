@@ -75,14 +75,15 @@ export class FreeSpace {
   /** The free w x h rectangle nearest to `anchor` (distance from the rectangle's
    * nearest edge point), or null when none fits. `within` limits the cells
    * (e.g. inside a neighbour's polygon). The rectangle is then marked used. */
-  place(w: number, h: number, anchor: Pt, within?: (x: number, y: number) => boolean, gap = 1): Rect | null {
+  place(w: number, h: number, anchor: Pt, within?: (x: number, y: number) => boolean, gap = 1, centred = false): Rect | null {
     const cw = Math.ceil(w / CELL);
     const rh = Math.ceil(h / CELL);
     let best: { rect: Rect; d: number } | null = null;
     for (let r = 0; r + rh <= this.rows; r++)
       for (let c = 0; c + cw <= this.cols; c++) {
         const rect = { x: c * CELL, y: r * CELL, w: cw * CELL, h: rh * CELL };
-        const d = distToRect(anchor, rect);
+        // Callouts and leaders: nearest edge. Names that belong at a spot: nearest centre.
+        const d = centred ? Math.hypot(rect.x + rect.w / 2 - anchor[0], rect.y + rect.h / 2 - anchor[1]) : distToRect(anchor, rect);
         if (best && d >= best.d) continue;
         if (!this.free(c, r, cw, rh, within)) continue;
         best = { rect, d };
