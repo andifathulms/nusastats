@@ -115,7 +115,7 @@ npm run card -- --template wilayah --kode 3201    # one template
 
 | Template | Shows | Needs |
 |---|---|---|
-| `wilayah` | kecamatan map with their names (small ones numbered, with a legend), counts, population, area | boundaries + Dukcapil |
+| `wilayah` | kecamatan map, one colour each, with their names (small ones numbered, with a legend); the neighbouring kabupaten as full-bleed land with their names; callouts with dotted leaders for the kecamatan with the highest/lowest population, density and area, placed in free space around the map (`placement.ts`); kecamatan, desa/kelurahan, population, area and density | boundaries + Dukcapil + BIG area |
 | `kepadatan` | population density per desa on fixed classes (< 10 … ≥ 5.000 jiwa/km²), "half the residents live in X% of the area" | boundaries + Dukcapil + BIG area |
 | `cahaya` | registered residents per desa next to night lights: "X% penduduk tinggal di desa yang terang malam hari" (a desa is lit when ≥ 50% of its area is) | `desa.json` + Peta night lights |
 | `kecamatan` | one Dukcapil ratio per kecamatan, named on the map (`--indicator`: `median_age` default, `pct_elderly`, `pct_productive`, `sex_ratio`, `pct_sarjana`, `dependency_ratio`) | boundaries + Dukcapil |

@@ -26,7 +26,8 @@ type Palette = {
   noData: string;
   prov: string; // other kabupaten on the closing map
   bar: string; // non-featured bars in the top-10 chart
-  admin: [string, string, string, string, string]; // kecamatan fills, adjacent ones differ
+  /** Kecamatan fills on the admin map (adjacent ones differ): vivid on dark, tints on paper. */
+  cat: [string, string, string, string, string, string, string, string];
 };
 
 export const TEMAS = {
@@ -37,7 +38,7 @@ export const TEMAS = {
     subject: { penduduk: "#F08A5D", lahan: "#7BC47F", air: "#4FB3E8", cahaya: "#B38CF2", wilayah: "#F1EDE3" },
     edge: "#F3ECDD", seam: "rgba(15,20,22,0.55)", border: "rgba(243,236,221,0.55)", borderSoft: "rgba(243,236,221,0.26)",
     borderStrong: "rgba(243,236,221,0.85)", noData: "#2E3442", prov: "#26333A", bar: "#5B6E74",
-    admin: ["#22417A", "#2E5A8F", "#3B4F6B", "#1F5C6E", "#4A4A6A"],
+    cat: ["#4F7FD6", "#C76FD0", "#7FB23A", "#1FA9BF", "#EE6A93", "#F2B53F", "#E5503F", "#2CB89D"],
   },
   laut: {
     label: "Laut",
@@ -46,7 +47,7 @@ export const TEMAS = {
     subject: { penduduk: "#FF9466", lahan: "#7FD39A", air: "#5EC8F2", cahaya: "#C3A0FF", wilayah: "#EEF2F4" },
     edge: "#EEF2F4", seam: "rgba(10,26,47,0.6)", border: "rgba(238,242,244,0.5)", borderSoft: "rgba(238,242,244,0.24)",
     borderStrong: "rgba(238,242,244,0.85)", noData: "#22344D", prov: "#18304D", bar: "#4C6788",
-    admin: ["#1E4E79", "#2C6496", "#345A80", "#1B5E6E", "#3D4F7A"],
+    cat: ["#4F7FD6", "#C76FD0", "#7FB23A", "#1FA9BF", "#EE6A93", "#F2B53F", "#E5503F", "#2CB89D"],
   },
   kertas: {
     label: "Kertas",
@@ -55,7 +56,7 @@ export const TEMAS = {
     subject: { penduduk: "#C24E22", lahan: "#2F7D3A", air: "#1C6FA8", cahaya: "#6E45BF", wilayah: "#1C2124" },
     edge: "#1C2124", seam: "rgba(242,236,224,0.75)", border: "rgba(28,33,36,0.45)", borderSoft: "rgba(28,33,36,0.22)",
     borderStrong: "rgba(28,33,36,0.7)", noData: "#D9D2C4", prov: "#DDD5C6", bar: "#A9A194",
-    admin: ["#C8D6E6", "#D9CFE6", "#CFE4D8", "#EADBC4", "#D3DAE3"],
+    cat: ["#8FB0EA", "#DDA3E2", "#B3D47F", "#7FD0DD", "#F4A3BE", "#F7D08A", "#F1968B", "#86D9C6"],
   },
   putih: {
     label: "Putih",
@@ -64,7 +65,7 @@ export const TEMAS = {
     subject: { penduduk: "#D9480F", lahan: "#2B8A3E", air: "#1971C2", cahaya: "#7048E8", wilayah: "#111417" },
     edge: "#111417", seam: "rgba(255,255,255,0.8)", border: "rgba(17,20,23,0.4)", borderSoft: "rgba(17,20,23,0.18)",
     borderStrong: "rgba(17,20,23,0.7)", noData: "#E4E6E9", prov: "#E9EBEE", bar: "#B9BEC4",
-    admin: ["#DCE6F5", "#E5DDF2", "#DDEFE6", "#F6E7D2", "#E2E6EC"],
+    cat: ["#8FB0EA", "#DDA3E2", "#B3D47F", "#7FD0DD", "#F4A3BE", "#F7D08A", "#F1968B", "#86D9C6"],
   },
 } satisfies Record<string, Palette>;
 
@@ -97,6 +98,10 @@ export function temaStyle(template: string, tema: Tema = "malam"): CSSProperties
     "--nm-edge": p.edge, "--nm-seam": p.seam, "--nm-border": p.border, "--nm-border-soft": p.borderSoft,
     "--nm-border-strong": p.borderStrong, "--nm-nodata": p.noData, "--nm-prov": p.prov, "--nm-bar": p.bar,
   };
-  p.admin.forEach((c, i) => (v[`--nm-admin-${i}`] = c));
+  p.cat.forEach((c, i) => (v[`--nm-cat-${i}`] = c));
+  // Callout colours on the admin map: population, density, area.
+  v["--nm-c-pop"] = p.subject.cahaya;
+  v["--nm-c-dens"] = p.sorot;
+  v["--nm-c-area"] = p.subject.air;
   return v as CSSProperties;
 }

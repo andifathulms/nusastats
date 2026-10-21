@@ -2,8 +2,9 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { dukcapilApi, formatNumber, regionLabel, titleCase, type DukcapilRankRow } from "@/lib/api";
-import { NO_DATA, frameOf, palette, framing, neighbourColours, placeLabels, project, projector, type Geo, type Label, type OffFrame } from "./geo";
+import { NO_DATA, frameOf, palette, framing, project, projector, type Geo, type Label, type OffFrame } from "./geo";
 import { temaStyle, type Tema } from "./brand";
+import { AdminMapBody } from "./AdminMap";
 import { CornerTag, Footer, OffFrameNote } from "./ShareCard";
 import { CONTENT_W, CardHeader, H, MapLayout, PAD, TikTokOverlay, W, ZONE, mapBoxFor } from "./layout";
 import { compact, densityFacts, pct1, shortName } from "./facts";
@@ -26,17 +27,14 @@ export type WilayahTemplate = "wilayah" | "kepadatan" | "penutup";
 export const WILAYAH_TEMPLATES: WilayahTemplate[] = ["wilayah", "kepadatan", "penutup"];
 
 // Muted sea/sand tones for neighbouring kecamatan: distinct, never a ranking.
-const ADMIN_TONES = [0, 1, 2, 3, 4].map((i) => `var(--nm-admin-${i})`); // brand.ts palettes
 // Density classes in jiwa/km². Fixed, log-spaced, so 6409 and 3273 read on one scale.
 export const BREAKS = [10, 50, 250, 1000, 5000];
 // Fixed classes take the six stops of the "amount" palette as they are.
 /** Density class colours in the current palette (geo.palette). */
 export const classColors = () => palette("amount");
 // Typical header and facts heights (card px), for choosing the layout.
-const HEADER_H = 170;
 const HOOK_HEADER_H = 330;
 const CLOSING_HEADER_H = 380;
-const ADMIN_INFO_H = 260;
 
 export type Geos = { inner: Geo; outline: Geo; kec: Geo | null };
 export type KabInfo = { name: string; prov: string; pop: number | null; area: number | null };
@@ -45,6 +43,7 @@ export type Data = {
   districts: DukcapilRankRow[];
   villageTotal: number;
   villages: DukcapilRankRow[]; // kepadatan only
+  districtAreas: DukcapilRankRow[]; // wilayah only: BIG area per kecamatan
   period: string | null;
 };
 
@@ -69,9 +68,16 @@ export function kabInfo(kode: string, pops: DukcapilRankRow[], areas: DukcapilRa
   };
 }
 
+/** Dukcapil ships a few kecamatan as two polygons with the same numbers; the second
+ * arrives under `{code}-{objectid}` (backend dukcapil/twins.py). Count each once. */
+function withoutTwins(rows: DukcapilRankRow[]): DukcapilRankRow[] {
+  const codes = new Set(rows.map((r) => r.domain_id));
+  return rows.filter((r) => !(r.domain_id.includes("-") && codes.has(r.domain_id.split("-")[0])));
+}
+
 export async function loadData(template: WilayahTemplate, kode: string): Promise<Data> {
   const prov = kode.slice(0, 2);
-  const [pops, areas, districts, villageList, summary, villages] = await Promise.all([
+  const [pops, areas, districts, villageList, summary, villages, districtAreas] = await Promise.all([
     dukcapilApi.rank({ indicator: "jumlah_penduduk", level: "regency", prov, limit: "200" }),
     dukcapilApi.rank({ indicator: "luas_big", level: "regency", prov, limit: "200" }),
     dukcapilApi.rank({ indicator: "jumlah_penduduk", level: "district", kab: kode, limit: "500" }),
@@ -80,10 +86,14 @@ export async function loadData(template: WilayahTemplate, kode: string): Promise
     template === "kepadatan"
       ? dukcapilApi.rank({ indicator: "pop_density_big", level: "village", kab: kode, limit: "10000" }).then((r) => r.results)
       : Promise.resolve([] as DukcapilRankRow[]),
+    template === "wilayah"
+      ? dukcapilApi.rank({ indicator: "luas_big", level: "district", kab: kode, limit: "500" }).then((r) => r.results)
+      : Promise.resolve([] as DukcapilRankRow[]),
   ]);
   return {
     kab: kabInfo(kode, pops.results, areas.results),
-    districts: districts.results,
+    districts: withoutTwins(districts.results),
+    districtAreas: withoutTwins(districtAreas),
     villageTotal: villageList.length,
     villages,
     period: summary.period ?? null,
@@ -135,7 +145,7 @@ export function WilayahCard({ template, kode, debug, tema = "malam" }: { templat
         <div className="p-16 text-[28px] text-coal-text">Kartu tidak dibuat: {error}</div>
       ) : data && geo ? (
         template === "wilayah" ? (
-          <AdminBody kode={kode} data={data} geo={geo} />
+          <AdminMapBody kode={kode} data={data} geo={geo} />
         ) : template === "penutup" ? (
           <ClosingBody kode={kode} data={data} geo={geo} />
         ) : (
@@ -170,56 +180,6 @@ export function Fact({ value, label }: { value: string; label: string }) {
       <div className="whitespace-nowrap text-[48px] font-extrabold leading-none tracking-[-0.02em] tabular-nums">{value}</div>
       <div className="mt-2 text-[24px] leading-snug text-coal-muted">{label}</div>
     </div>
-  );
-}
-
-function AdminBody({ kode, data, geo }: { kode: string; data: Data; geo: Geos }) {
-  const { paths, edge, labels, numbered, vw, vh, offFrame, box } = useMemo(() => {
-    const feats = geo.inner.features.filter((f) => f.properties.domain_id.startsWith(kode));
-    const own = geo.outline.features.filter((f) => f.properties.domain_id === kode);
-    const fit = framing(feats);
-    const { paths, vw, vh } = project(feats, fit.frame);
-    const box = mapBoxFor(vh / vw, HEADER_H, ADMIN_INFO_H);
-    const names = new Map(data.districts.map((d) => [d.domain_id, titleCase(d.domain_name)]));
-    const { labels, numbered } = placeLabels(feats, fit.frame, vw, vh, names, box.w, box.h);
-    return { paths, edge: own.length ? project(own, fit.frame).paths : [], labels, numbered, vw, vh, offFrame: fit.offFrame, box };
-  }, [geo, kode, data.districts]);
-  const tones = useMemo(
-    () => neighbourColours(geo.inner.features.filter((f) => f.properties.domain_id.startsWith(kode)), ADMIN_TONES.length),
-    [geo, kode]
-  );
-  const k = 1 / Math.min(box.w / vw, box.h / vh);
-
-  return (
-    <MapLayout
-      aspect={vh / vw}
-      side={box.side}
-      header={<CardHeader kicker={`Peta wilayah administrasi · ${data.kab.prov}`} title={data.kab.name} />}
-      info={
-        <>
-          <OffFrameNote items={offFrame} />
-          <LabelLegend numbered={numbered} />
-          <div className="nm-facts mt-6 grid grid-cols-4 gap-4">
-            <Fact value={formatNumber(data.districts.length)} label="kecamatan" />
-            <Fact value={formatNumber(data.villageTotal)} label="desa/kelurahan" />
-            <Fact value={data.kab.pop !== null ? compact(data.kab.pop) : "–"} label="penduduk" />
-            <Fact value={data.kab.area !== null ? `${formatNumber(Math.round(data.kab.area))}` : "–"} label="km² luas" />
-          </div>
-          <Footer source={`Ditjen Dukcapil Kemendagri, data ${bulanTahun(data.period)} (penduduk terdaftar); luas dan batas: BIG 1:10.000`} />
-        </>
-      }
-      map={
-        <svg viewBox={`0 0 ${vw.toFixed(0)} ${vh.toFixed(0)}`} preserveAspectRatio="xMidYMid meet" className="h-full w-full">
-          {paths.map((p) => (
-            <path key={p.id} d={p.d} fill={ADMIN_TONES[tones.get(p.id) ?? 0]} stroke="var(--nm-border)" strokeWidth={1} vectorEffect="non-scaling-stroke" />
-          ))}
-          {edge.map((p) => (
-            <path key={`e-${p.id}`} d={p.d} fill="none" stroke="var(--nm-edge)" strokeWidth={2.6} strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
-          ))}
-          <MapLabels labels={labels} numbered={numbered} k={k} />
-        </svg>
-      }
-    />
   );
 }
 
