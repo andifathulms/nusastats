@@ -212,9 +212,17 @@ function layout(spec: Spec, geo: Geos, BOX: { w: number; h: number }, panels = 1
     infoRect = f.info;
   }
   const { min, max, minRoom } = spec.labelSize;
-  const placed = placeLabels(feats, fit.frame, vw, vh, names, vw * s, vh * s, { min, max, minRoom });
-  // A name on a cut between slides or under the icons can't stay inside its unit: give it a leader.
+  // Names only where text may go: off the cuts, the icons, TikTok's bars (and in Tinggi penuh, the
+  // title and info corners).
   const bands = blocks ? fullBands(panels) : noTextBands(panels, BOX.h, boxTop);
+  const keepOut = [...bands, ...(headerRect ? [headerRect] : []), ...(infoRect ? [infoRect] : [])];
+  const allowed = (x: number, y: number) => {
+    const px = mx + x * s;
+    const py = my + y * s;
+    return !keepOut.some((b) => px >= b.x && px <= b.x + b.w && py >= b.y && py <= b.y + b.h);
+  };
+  const placed = placeLabels(feats, fit.frame, vw, vh, names, vw * s, vh * s, { min, max, minRoom, allowed });
+  // Safety net: a name that still touches a cut or the icons gets a leader.
   placed.labels = placed.labels.filter((l) => {
     const w = (l.lines ? Math.max(...l.lines.map((t) => t.length)) : l.name.length) * l.size * 0.56 * s;
     const h = (l.lines ? 2.3 : 1.2) * l.size * s;

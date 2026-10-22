@@ -295,35 +295,82 @@ export function twoLines(name: string): [string, string] | null {
  * names them). */
 export function placeLabels(
   feats: Feature[], frame: Frame, vw: number, vh: number, names: Map<string, string>, boxW: number, boxH: number,
-  { min = 26, max = 34, minRoom = 16 }: { min?: number; max?: number; minRoom?: number } = {},
+  { min = 26, max = 34, minRoom = 16, allowed }: {
+    min?: number; max?: number; minRoom?: number;
+    /** Where text may go (projected units), e.g. not under TikTok's UI. Default: anywhere in the frame. */
+    allowed?: (x: number, y: number) => boolean;
+  } = {},
 ): { labels: Label[]; numbered: Label[] } {
   const to = projector(frame);
   const k = 1 / Math.min(boxW / vw, boxH / vh); // viewBox units per card pixel
   const placed: { x0: number; x1: number; y0: number; y1: number }[] = [];
   const labels: Label[] = [];
   const numbered: Label[] = [];
-  const spots = feats.map((f) => ({ f, ...labelPoint(f, to) })).sort((a, b) => b.room - a.room);
-  for (const s of spots) {
-    if (s.x < 0 || s.x > vw || s.y < 0 || s.y > vh) continue;
-    const id = s.f.properties.domain_id;
-    const name = names.get(id) ?? s.f.properties.name ?? id;
-    const size = Math.max(min, Math.min(max, (s.room / k) * 0.55)) * k;
-    const fits = (box: { x0: number; x1: number; y0: number; y1: number }) =>
-      !placed.some((p) => box.x0 < p.x1 && box.x1 > p.x0 && box.y0 < p.y1 && box.y1 > p.y0) &&
-      box.x0 > 0 && box.x1 < vw && box.y0 > 0 && box.y1 < vh;
-    const w = name.length * size * 0.56;
-    const one = { x0: s.x - w / 2, x1: s.x + w / 2, y0: s.y - size * 0.7, y1: s.y + size * 0.5 };
-    // Too wide or crowded on one line: try the name on two lines.
+  const ok = allowed ?? (() => true);
+  // Each name gets the spot where its own text box sits most fully inside its unit, in allowed space,
+  // clear of other names, as far from the unit's edge as possible (so it reads centred). Small units
+  // first: they have the fewest spots; big ones can move around them.
+  const units = feats.map((f) => {
+    const polys = polygons(f).map((poly) => poly.map((ring) => ring.map(to)));
+    const all = polys.flatMap((p) => p);
+    const xs = all.flatMap((r) => r.map((c) => c[0]));
+    const ys = all.flatMap((r) => r.map((c) => c[1]));
+    return { f, polys, bbox: [Math.min(...xs), Math.max(...xs), Math.min(...ys), Math.max(...ys)] as const };
+  });
+  units.sort((a, b) => (a.bbox[1] - a.bbox[0]) * (a.bbox[3] - a.bbox[2]) - (b.bbox[1] - b.bbox[0]) * (b.bbox[3] - b.bbox[2]));
+  for (const u of units) {
+    const id = u.f.properties.domain_id;
+    const name = names.get(id) ?? u.f.properties.name ?? id;
+    const [x0, x1, y0, y1] = u.bbox;
+    if (x1 < 0 || x0 > vw || y1 < 0 || y0 > vh) continue; // wholly off the frame: the off-frame note names it
+    const inside = (x: number, y: number) => u.polys.some((poly) => insideRings([x, y], poly));
+    const room = (x: number, y: number) => Math.max(...u.polys.map((poly) => (insideRings([x, y], poly) ? edgeDistance([x, y], poly) : 0)));
+    const size = Math.max(min, Math.min(max, max)) * k;
     const split = twoLines(name);
-    const w2 = split ? Math.max(...split.map((t) => t.length)) * size * 0.56 : 0;
-    const two = { x0: s.x - w2 / 2, x1: s.x + w2 / 2, y0: s.y - size * 1.25, y1: s.y + size * 1.05 };
-    if (s.room / k >= minRoom && fits(one)) {
-      placed.push(one);
-      labels.push({ id, name, x: s.x, y: s.y, size });
-    } else if (s.room / k >= minRoom && split && fits(two)) {
-      placed.push(two);
-      labels.push({ id, name, x: s.x, y: s.y, size, lines: split });
-    } else numbered.push({ id, name, x: s.x, y: s.y, size: 18 * k });
+    const variants: { lines?: [string, string]; w: number; up: number; down: number }[] = [
+      { w: name.length * size * 0.56, up: size * 0.7, down: size * 0.5 },
+      ...(split ? [{ lines: split, w: Math.max(...split.map((t) => t.length)) * size * 0.56, up: size * 1.25, down: size * 1.05 }] : []),
+    ];
+    const N = 18;
+    let best: { x: number; y: number; v: (typeof variants)[number]; score: number; room: number } | null = null;
+    let anchor: { x: number; y: number; room: number } | null = null;
+    for (let i = 0; i <= N; i++)
+      for (let j = 0; j <= N; j++) {
+        const x = x0 + ((x1 - x0) * i) / N;
+        const y = y0 + ((y1 - y0) * j) / N;
+        if (!inside(x, y)) continue;
+        const r = room(x, y);
+        if (ok(x, y) && (!anchor || r > anchor.room)) anchor = { x, y, room: r };
+        for (const [vi, v] of variants.entries()) {
+          const box = { x0: x - v.w / 2, x1: x + v.w / 2, y0: y - v.up, y1: y + v.down };
+          if (box.x0 < 0 || box.x1 > vw || box.y0 < 0 || box.y1 > vh) continue;
+          if (placed.some((p) => box.x0 < p.x1 && box.x1 > p.x0 && box.y0 < p.y1 && box.y1 > p.y0)) continue;
+          let hit = 0;
+          let n = 0;
+          let blocked = false;
+          for (let a = 0; a <= 4 && !blocked; a++)
+            for (let b = 0; b <= 2; b++) {
+              const px = box.x0 + ((box.x1 - box.x0) * a) / 4;
+              const py = box.y0 + ((box.y1 - box.y0) * b) / 2;
+              if (!ok(px, py)) { blocked = true; break; }
+              n++;
+              if (inside(px, py)) hit++;
+            }
+          if (blocked) continue;
+          // One line beats two at the same fit; within a fit, the spot farthest from the edge wins.
+          const score = Math.round((hit / n) * 10) - vi * 0.5;
+          if (!best || score > best.score || (score === best.score && r > best.room)) best = { x, y, v, score, room: r };
+        }
+      }
+    // At least half the name on its own unit (a name may spill over a small one, as on hand-made maps).
+    if (best && best.score >= 5 && best.room / k >= minRoom * 0.25) {
+      placed.push({ x0: best.x - best.v.w / 2, x1: best.x + best.v.w / 2, y0: best.y - best.v.up, y1: best.y + best.v.down });
+      labels.push({ id, name, x: best.x, y: best.y, size, ...(best.v.lines ? { lines: best.v.lines } : {}) });
+    } else {
+      // No clean spot: a leader from the roomiest readable point (or the unit's centre).
+      const a = anchor ?? labelPoint(u.f, to);
+      numbered.push({ id, name, x: a.x, y: a.y, size: 18 * k });
+    }
   }
   numbered.sort((a, b) => a.name.localeCompare(b.name, "id"));
   numbered.forEach((l, i) => (l.n = i + 1));
