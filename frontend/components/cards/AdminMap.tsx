@@ -154,8 +154,14 @@ function fullBands(panels: number): Rect[] {
 
 /** Tinggi penuh: the largest map (and its position) that leaves the header's top-left corner and the
  * info block's bottom-left corner on empty space, tested on sample points against the outline. */
-function fitAround(rings: (s: number, mx: number, my: number) => Pt[][], vw: number, vh: number, BOX: { w: number; h: number }, b: Blocks, share: number) {
-  // BOX is the whole card (or panorama); the blocks sit in the text-safe zone of slide 1.
+/** Tinggi penuh: choose the map's size and position. Every candidate (size x position) must leave the
+ * header's top-left corner and one bottom info corner off the kabupaten; among those, the one that
+ * shows the most map where names can go wins (area x the share of the map outside the no-text bands:
+ * TikTok's bars and icons). So a tall kabupaten moves out from under the icon column rather than
+ * hugging the right edge. The shape is pre-sampled once (inside points + outline vertices). */
+function fitAround(
+  shape: { inner: Pt[]; edge: Pt[] }, vw: number, vh: number, BOX: { w: number; h: number }, b: Blocks, share: number, bands: Rect[],
+) {
   const base = Math.min((BOX.w * share) / vw, (BOX.h * 0.98) / vh);
   const header: Rect = { x: PAD, y: ZONE.wordmarkTop - 20, ...b.header, h: b.header.h + (ZONE.bodyTop - ZONE.wordmarkTop + 20) };
   // The info block takes the bottom-left corner, or the bottom-right one (still left of the icons).
@@ -163,31 +169,45 @@ function fitAround(rings: (s: number, mx: number, my: number) => Pt[][], vw: num
     { x: PAD, y: ZONE.textBottom - b.info.h, ...b.info },
     { x: Math.max(PAD, 920 - b.info.w), y: ZONE.textBottom - b.info.h, ...b.info },
   ];
-  const sample = (rect: Rect) => {
-    const pts: Pt[] = [];
-    for (let y = rect.y; y <= rect.y + rect.h; y += 14) for (let x = rect.x; x <= rect.x + rect.w; x += 14) pts.push([x, y]);
-    return pts;
-  };
-  const headerProbes = sample({ ...header, w: header.w + 16, h: header.h + 16 });
-  const infoProbes = infos.map((info) => sample({ ...info, x: info.x - 16, y: info.y - 16, w: info.w + 32, h: info.h + 16 }));
-  for (let f = 1; f >= 0.5; f -= 0.04) {
+  const grow = (r: Rect, d: number): Rect => ({ x: r.x - d, y: r.y - d, w: r.w + 2 * d, h: r.h + 2 * d });
+  const hits = (r: Rect, x: number, y: number) => x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h;
+  const head = grow(header, 16);
+  const infoZones = infos.map((r) => grow(r, 16));
+  const all = [...shape.inner, ...shape.edge];
+  let best: { s: number; mx: number; my: number; info: Rect; value: number } | null = null;
+  const steps = [0, 0.125, 0.25, 0.375, 0.5, 0.625, 0.75, 0.875, 1];
+  for (let f = 1; f >= 0.56; f -= 0.04) {
     const s = base * f;
     const free = BOX.w - vw * s;
     const freeY = BOX.h - vh * s;
-    for (const ax of [0.5, 0.75, 1, 0.25, 0]) {
-      for (const ay of [0.5, 0.25, 0.75, 0, 1]) {
+    for (const ax of steps)
+      for (const ay of steps) {
         const mx = free * ax;
         const my = freeY * ay;
-        const inside = inRings(rings(s, mx, my));
-        if (headerProbes.some(([x, y]) => inside(x, y))) continue;
-        const k = infoProbes.findIndex((probes) => !probes.some(([x, y]) => inside(x, y)));
-        if (k >= 0) return { s, mx, my, header, info: infos[k] };
+        let headerHit = false;
+        const infoHit = infoZones.map(() => false);
+        for (const [px, py] of all) {
+          const x = mx + px * s;
+          const y = my + py * s;
+          if (hits(head, x, y)) { headerHit = true; break; }
+          infoZones.forEach((r, k) => { if (!infoHit[k] && hits(r, x, y)) infoHit[k] = true; });
+        }
+        if (headerHit) continue;
+        const k = infoHit.findIndex((h) => !h);
+        if (k < 0) continue;
+        let readable = 0;
+        for (const [px, py] of shape.inner) {
+          const x = mx + px * s;
+          const y = my + py * s;
+          if (!bands.some((r) => hits(r, x, y))) readable++;
+        }
+        const value = s * s * (readable / Math.max(1, shape.inner.length));
+        if (!best || value > best.value) best = { s, mx, my, info: infos[k], value };
       }
-    }
   }
-  const info = infos[0];
+  if (best) return { s: best.s, mx: best.mx, my: best.my, header, info: best.info };
   const s = base * 0.5;
-  return { s, mx: BOX.w - vw * s, my: (BOX.h - vh * s) / 2, header, info };
+  return { s, mx: BOX.w - vw * s, my: (BOX.h - vh * s) / 2, header, info: infos[0] };
 }
 
 function layout(spec: Spec, geo: Geos, BOX: { w: number; h: number }, panels = 1, blocks?: Blocks) {
@@ -206,7 +226,18 @@ function layout(spec: Spec, geo: Geos, BOX: { w: number; h: number }, panels = 1
   let infoRect: Rect | null = null;
   if (blocks) {
     const outline = own.length ? own : feats;
-    const f = fitAround((ss, x, y) => outline.flatMap((o) => ringsPx(o, to, x, y, ss)), vw, vh, BOX, blocks, panels > 1 ? PANO_SHARE : 1);
+    // The outline in projected units, sampled once: its vertices and a grid of inside points.
+    const rings = outline.flatMap((o) => ringsPx(o, to, 0, 0, 1));
+    const insideShape = inRings(rings);
+    const inner: Pt[] = [];
+    for (let i = 0; i < 48; i++)
+      for (let j = 0; j < 48; j++) {
+        const x = (vw * (i + 0.5)) / 48;
+        const y = (vh * (j + 0.5)) / 48;
+        if (insideShape(x, y)) inner.push([x, y]);
+      }
+    const edgePts = rings.flatMap((r) => r.filter((_, i) => i % 2 === 0));
+    const f = fitAround({ inner, edge: edgePts }, vw, vh, BOX, blocks, panels > 1 ? PANO_SHARE : 1, fullBands(panels));
     ({ s, mx, my } = f);
     headerRect = f.header;
     infoRect = f.info;
