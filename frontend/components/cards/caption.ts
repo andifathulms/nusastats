@@ -14,7 +14,7 @@ import { joinDesa, load as loadProfil, problems as profilProblems } from "./Prof
  * guardrails run first, so a slide that won't render gets no line.
  */
 
-export const PROFIL = ["kepadatan", "wilayah", "desa", "terrain", "relief", "lowland", "rendah", "landcover", "nightlights", "cahaya", "kecamatan", "penutup"];
+export const PROFIL = ["kepadatan", "wilayah", "terrain", "relief", "lowland", "rendah", "landcover", "nightlights", "cahaya", "kecamatan", "penutup"];
 export const TITLE_MAX = 90;
 export const DESC_MAX = 2200;
 

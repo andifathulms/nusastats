@@ -36,7 +36,9 @@ export const ZONE = {
 const FULL_W = ZONE.mapRight - PAD; // 952
 
 export function CardHeader({ kicker, title, children }: { kicker: string; title: string; children?: ReactNode }) {
-  const size = title.length > 30 ? 84 : title.length > 22 ? 100 : 120;
+  // One line: the size steps down with length, and never past what fits the text column
+  // (a wrapped title would run into the map below it).
+  const size = Math.min(title.length > 30 ? 84 : title.length > 22 ? 100 : 120, Math.floor(CONTENT_W / (title.length * 0.47)));
   return (
     <div className="shrink-0" style={{ maxWidth: CONTENT_W }}>
       <div className="font-mono text-[28px] uppercase tracking-[0.1em] text-ink-gold">{kicker}</div>

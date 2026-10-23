@@ -231,8 +231,8 @@ function sampleShape(outline: Feature[], to: (p: number[]) => [number, number], 
 
 /** Standar: the box runs from below the header to the bottom of the card; text stays above y 1500. */
 function stdBands(panels: number, boxH: number): Rect[] {
-  const w = SLIDE * panels;
-  return [...noTextBands(panels, boxH, BOX_TOP), { x: -PAD, y: ZONE.textBottom - BOX_TOP, w: w + PAD, h: boxH }];
+  // The full-card bands, shifted to a box that starts below the header (box x = card x).
+  return fullBands(panels).map((b) => ({ ...b, y: b.y - BOX_TOP })).filter((b) => b.y + b.h > 0 && b.y < boxH);
 }
 
 function layout(spec: Spec, geo: Geos, BOX: { w: number; h: number }, panels = 1, blocks?: Blocks, stdInfo?: { w: number; h: number }) {
@@ -243,7 +243,7 @@ function layout(spec: Spec, geo: Geos, BOX: { w: number; h: number }, panels = 1
   const to = projector(fit.frame);
   const share = panels > 1 ? PANO_SHARE : MAP_SHARE;
   const boxTop = blocks ? 0 : BOX_TOP;
-  const boxLeft = blocks ? 0 : PAD;
+  const boxLeft = blocks || stdInfo ? 0 : PAD; // Standar and Tinggi penuh: the map may run to the card edges
   let s = Math.min((BOX.w * share) / vw, BOX.h / vh);
   let mx = (BOX.w - vw * s) / 2;
   let my = (BOX.h - vh * s) / 2;
@@ -265,10 +265,10 @@ function layout(spec: Spec, geo: Geos, BOX: { w: number; h: number }, panels = 1
     // Box coordinates (from PAD, BOX_TOP): the info block sits above y 1500 in a bottom corner of slide 1.
     const y = ZONE.textBottom - BOX_TOP - stdInfo.h;
     const infos: Rect[] = [
-      { x: 0, y, ...stdInfo },
-      { x: Math.max(0, 920 - PAD - stdInfo.w), y, ...stdInfo },
+      { x: PAD, y, ...stdInfo },
+      { x: Math.max(PAD, 920 - stdInfo.w), y, ...stdInfo },
     ];
-    const f = fitAround(sampleShape(outline, to, vw, vh), vw, vh, BOX, share, stdBands(panels, BOX.h), null, infos, panels > 1);
+    const f = fitAround(sampleShape(outline, to, vw, vh), vw, vh, BOX, panels > 1 ? PANO_SHARE : 1, stdBands(panels, BOX.h), null, infos, panels > 1);
     ({ s, mx, my } = f);
     infoRect = f.info;
   }
@@ -294,7 +294,21 @@ function layout(spec: Spec, geo: Geos, BOX: { w: number; h: number }, panels = 1
     return !hit;
   });
   const tones = neighbourColours(feats, CAT);
-  const edge = project(own, fit.frame).paths;
+  // The kabupaten outline only around parts big enough to read (≥ 24 px across): hundreds of small
+  // river islands (the Mahakam delta) would otherwise turn into a white starburst.
+  const visible = own.map((f) => ({
+    ...f,
+    geometry: {
+      type: "MultiPolygon",
+      coordinates: polygons(f).filter((poly) => {
+        const pts = poly[0].map(to);
+        const xs = pts.map((p) => p[0]);
+        const ys = pts.map((p) => p[1]);
+        return Math.hypot(Math.max(...xs) - Math.min(...xs), Math.max(...ys) - Math.min(...ys)) * s >= 24;
+      }),
+    },
+  }));
+  const edge = project(visible, fit.frame).paths;
   const borderPaths = spec.borders ? project(spec.borders, fit.frame).paths : [];
 
   // Neighbouring kabupaten anywhere on the card (the land layer is full-bleed).
@@ -352,7 +366,7 @@ function layout(spec: Spec, geo: Geos, BOX: { w: number; h: number }, panels = 1
   if (panels > 1) {
     const placedCols = columnLeaders(todo.map((l) => ({ l, anchor: px(l) })), mx, mx + vw * s, BOX, keepOut, size);
     for (const { l, anchor, rect } of placedCols) {
-      const r2 = rect ?? space.place(textWidth(l.name, size, true) + 10, size * 1.3, anchor, undefined, 0);
+      const r2 = rect ?? space.place(textWidth(l.name, size, true) + 10, size * 1.3, anchor, undefined, 1);
       if (r2) {
         leaders.push({ id: l.id, name: l.name, anchor, rect: r2, size });
         space.occupyRect(r2);
@@ -363,7 +377,8 @@ function layout(spec: Spec, geo: Geos, BOX: { w: number; h: number }, panels = 1
     for (const l of todo) {
       const anchor = px(l);
       const off = anchor[0] < 0 || anchor[1] < 0 || anchor[0] > BOX.w || anchor[1] > BOX.h;
-      const rect = off ? null : space.place(textWidth(l.name, size, true) + 10, size * 1.3, anchor, undefined, 0);
+      // gap 1: two leader names side by side must not read as one name ("Samboja Anggana")
+      const rect = off ? null : space.place(textWidth(l.name, size, true) + 10, size * 1.3, anchor, undefined, 1);
       if (rect) leaders.push({ id: l.id, name: l.name, anchor, rect, size });
       else numbered.push(l);
     }
@@ -465,7 +480,7 @@ function AdminMap({
       } else {
         // Standar: the map from below the header to the bottom of the card; the stats/legend and
         // the source line in an empty bottom corner above y 1500.
-        const box = { w, h: 1920 - BOX_TOP };
+        const box = { w: SLIDE * n, h: 1920 - BOX_TOP };
         const stdW = Math.max(infoW, 520);
         const pass = (x: ReturnType<typeof layout> | null) => layout(spec, geo, box, n, undefined, { w: stdW, h: infoH(x) - GAP + 84 });
         cur = pass(null);
@@ -489,7 +504,7 @@ function AdminMap({
           <path key={`b-${p.id}`} d={p.d} fill="none" stroke="var(--nm-edge)" strokeOpacity={0.55} strokeWidth={1.3} vectorEffect="non-scaling-stroke" />
         ))}
         {m.edge.map((p) => (
-          <path key={`e-${p.id}`} d={p.d} fill="none" stroke="var(--nm-edge)" strokeWidth={2.6} strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
+          <path key={`e-${p.id}`} d={p.d} fill="none" stroke="var(--nm-edge)" strokeWidth={1.8} strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
         ))}
         {m.labels.map((l) => (
           <text key={l.id} x={l.x} y={l.y} textAnchor="middle" dominantBaseline="middle" fontSize={l.size} fontWeight={600}
@@ -575,10 +590,10 @@ function AdminMap({
           <div className="absolute" style={{ left: PAD, top: ZONE.bodyTop, width: W, height: HEADER_H }}>
             <CardHeader kicker={`${kicker} · ${sub}`} title={title} />
           </div>
-          <div className="absolute" style={{ left: PAD, top: BOX_TOP }}>{mapSvg}</div>
+          <div className="absolute" style={{ left: m.boxLeft, top: BOX_TOP }}>{mapSvg}</div>
           {m.infoRect && (
             <div className="absolute flex flex-col justify-end"
-              style={{ left: PAD + m.infoRect.x, top: BOX_TOP + m.infoRect.y, width: m.infoRect.w, height: m.infoRect.h }}>
+              style={{ left: m.boxLeft + m.infoRect.x, top: BOX_TOP + m.infoRect.y, width: m.infoRect.w, height: m.infoRect.h }}>
               {notes}
               <p className="mt-3 text-[20px] leading-snug text-coal-muted">
                 Sumber: {m.panels > 1 ? `${source}. Peta ${Math.min(panel, m.panels)} dari ${m.panels}, geser untuk lanjutannya` : source}. Batas wilayah indikatif (BIG).
@@ -650,7 +665,7 @@ function CalloutBlock({ c }: { c: Required<Callout> }) {
 
 function infoBase(rows: number) {
   return (numbered: number, offFrame: boolean, unplaced: boolean) =>
-    GAP + rows * 42 + 12 + (numbered ? Math.ceil(numbered / 3) * 34 + 8 : 0) + (offFrame ? 72 : 0) + (unplaced ? 64 : 0);
+    GAP + rows * 42 + 12 + (numbered ? Math.ceil(numbered / 3) * 34 + 8 : 0) + (offFrame ? 96 : 0) + (unplaced ? 64 : 0);
 }
 
 /** The kecamatan of a kabupaten (template `wilayah`). `sorot`: the extremes callouts. */

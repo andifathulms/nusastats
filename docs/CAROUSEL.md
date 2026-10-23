@@ -109,7 +109,7 @@ Besides rankings, one kabupaten can be posted as a set of maps:
 
 ```bash
 cd frontend
-npm run card -- --template profil --kode 6409     # the 12-slide profile, numbered in posting order
+npm run card -- --template profil --kode 6409     # the 11-slide profile, numbered in posting order
 npm run card -- --template wilayah --kode 3201    # one template
 ```
 
@@ -117,7 +117,7 @@ npm run card -- --template wilayah --kode 3201    # one template
 |---|---|---|
 | `wilayah` | kecamatan map, one colour each, named inside (two lines if needed); names too big for their kecamatan go in free space around the map with a leader line; the neighbouring kabupaten as full-bleed land with their names; kecamatan, desa/kelurahan, population, area and density. `?sorot=1` adds callouts for the highest/lowest population, density and area | boundaries + Dukcapil + BIG area |
 | `wilayah`, `desa` with `?peta=penuh` | **Tinggi penuh**, map first: the map may cover the whole card, under TikTok's bars too, at the largest size that leaves the title (top-left) and a small bottom block (the desa key, notes, the source line) on empty space. The numbers are one line under the title. Names still stay in the text-safe zone (y 160–1500, left of the icons, off each cut and the wordmark); a desa whose name would fall outside it gets a leader into readable space. A crowded desa map becomes a panorama as wide as the map drawn at full height (2 or 3 slides); if that still can't name every desa with short leaders (mean > 220 px), it uses the standard panorama with name columns instead (dense kabupaten such as Luwu Utara, Pinrang, Makassar). Such cards take 10–20 s to lay out. Switch "Peta wilayah & desa" on `/carousel` → Profil (remembered); passed to the ZIP and PNG downloads. Every name on these maps uses one size (kecamatan 24 px, desa 18 px) | as below |
-| `desa` | every desa: desa vs kelurahan (Dukcapil status; unknown status grey, counted), kecamatan borders on top, every name inside or on a leader line. More than 40 leader names = too dense for one slide: the map becomes a panorama over 2 (or 3) slides, cut at the slide edge so swiping pans across it, with the crowded names in columns beside the map and leaders fanning to their desa; no text crosses a cut or sits under TikTok's icon column. The card reports `data-card-panels`; `?panel=2` shows the next slide; the ZIP names them `03_desa-1.png`, `04_desa-2.png`; past 3 slides the rest stay unnamed and the card says how many | boundaries + Dukcapil |
+| `desa` (not in the profile since Oct 2026; `/card/desa/{kode}` still works) | every desa: desa vs kelurahan (Dukcapil status; unknown status grey, counted), kecamatan borders on top, every name inside or on a leader line. More than 40 leader names = too dense for one slide: the map becomes a panorama over 2 (or 3) slides, cut at the slide edge so swiping pans across it, with the crowded names in columns beside the map and leaders fanning to their desa; no text crosses a cut or sits under TikTok's icon column. The card reports `data-card-panels`; `?panel=2` shows the next slide; the ZIP names them `03_desa-1.png`, `04_desa-2.png`; past 3 slides the rest stay unnamed and the card says how many | boundaries + Dukcapil |
 | `kepadatan` | population density per desa on fixed classes (< 10 … ≥ 5.000 jiwa/km²), "half the residents live in X% of the area" | boundaries + Dukcapil + BIG area |
 | `cahaya` | registered residents per desa next to night lights: "X% penduduk tinggal di desa yang terang malam hari" (a desa is lit when ≥ 50% of its area is) | `desa.json` + Peta night lights |
 | `kecamatan` | one Dukcapil ratio per kecamatan, named on the map (`--indicator`: `median_age` default, `pct_elderly`, `pct_productive`, `sex_ratio`, `pct_sarjana`, `dependency_ratio`) | boundaries + Dukcapil |
@@ -125,7 +125,7 @@ npm run card -- --template wilayah --kode 3201    # one template
 | `terrain`, `lowland`, `relief`, `landcover`, `nightlights` | the Peta Wilayah layers | Peta outputs for that kode |
 
 Output goes to `exports/cards/profil/{kode}/{NN}_{template}.png`, in this posting order:
-`kepadatan` (the hook: "Separuh warga X tinggal di Y% wilayahnya"), `wilayah`, `desa`, `terrain`, `relief`,
+`kepadatan` (the hook: "Separuh warga X tinggal di Y% wilayahnya"), `wilayah`, `terrain`, `relief`,
 `lowland`, `rendah`, `landcover`, `nightlights`, `cahaya`, `kecamatan`, `penutup` (the province with
 the kabupaten ringed, "Kabupaten mana berikutnya?"). Each raster layer comes right before the card
 that weighs it by population (lowland → rendah, nightlights → cahaya).

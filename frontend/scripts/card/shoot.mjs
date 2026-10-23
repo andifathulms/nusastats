@@ -12,7 +12,7 @@ export const TEMPLATES = {
 // A kabupaten profile, in posting order: the hook first, the question last, and
 // each raster layer right before the card that weighs it by population
 // (lowland -> rendah, nightlights -> cahaya).
-export const PROFIL = ["kepadatan", "wilayah", "desa", "terrain", "relief", "lowland", "rendah", "landcover", "nightlights", "cahaya", "kecamatan", "penutup"];
+export const PROFIL = ["kepadatan", "wilayah", "terrain", "relief", "lowland", "rendah", "landcover", "nightlights", "cahaya", "kecamatan", "penutup"];
 
 export function cardUrl(base, template, kode, { indicator, debug, tema, panel, peta } = {}) {
   const q = new URLSearchParams();

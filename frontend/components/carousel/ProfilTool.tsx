@@ -23,7 +23,6 @@ type Card = { id: string; label: string; needs: string[] };
 const CARDS_IN_ORDER: Card[] = [
   { id: "kepadatan", label: "Hook: kepadatan per desa", needs: [] },
   { id: "wilayah", label: "Wilayah administrasi", needs: [] },
-  { id: "desa", label: "Desa dan kelurahan", needs: [] },
   { id: "terrain", label: "Medan", needs: ["terrain.json"] },
   { id: "relief", label: "Relief", needs: ["terrain.json"] },
   { id: "lowland", label: "Dataran rendah", needs: ["terrain.json"] },
@@ -280,7 +279,7 @@ export function ProfilTool({
           <div className="flex flex-wrap items-center justify-between gap-3">
             <SectionTitle hint="1080×1920, urutan unggah · klik untuk memperbesar">Kartu</SectionTitle>
             <div className="mb-3 inline-flex items-center gap-2 text-sm">
-              <span className="text-xs font-semibold text-ink-muted">Peta wilayah &amp; desa</span>
+              <span className="text-xs font-semibold text-ink-muted">Peta wilayah</span>
               <div className="inline-flex rounded-full border border-ink-border p-0.5" role="radiogroup" aria-label="Tata letak peta">
                 {(["standar", "penuh"] as const).map((p) => (
                   <button key={p} type="button" role="radio" aria-checked={peta === p} onClick={() => choosePeta(p)}
