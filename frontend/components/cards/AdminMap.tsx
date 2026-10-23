@@ -93,16 +93,25 @@ function columnLeaders(items: { l: Label; anchor: Pt }[], mapLeft: number, mapRi
   // Columns as wide as most names (90th percentile); the odd longer name runs into the gap.
   const widths = items.map((i) => textWidth(i.l.name, size, true)).sort((a, b) => a - b);
   const colW = Math.min(240, (widths[Math.floor(widths.length * 0.9)] ?? 120) + 12);
-  const clear = (x: number) => !bands.some((b) => x < b.x + b.w && x + colW > b.x);
+  // Bands across the whole width (TikTok's bars) limit the rows; tall narrow ones (cuts, margins)
+  // rule a column out; anything else (the info block, the icon column) blocks those rows only.
+  const wide = bands.filter((b) => b.w >= BOX.w * 0.5);
+  const top = Math.max(0, ...wide.filter((b) => b.y <= 0).map((b) => b.y + b.h));
+  const bottom = Math.min(BOX.h, ...wide.filter((b) => b.y > 0).map((b) => b.y));
+  const tall = bands.filter((b) => b.w < BOX.w * 0.5 && b.h >= BOX.h * 0.9);
+  const small = bands.filter((b) => b.w < BOX.w * 0.5 && b.h < BOX.h * 0.9);
+  const clear = (x: number) => !tall.some((b) => x < b.x + b.w && x + colW > b.x);
+  const blocked = (x: number): [number, number][] =>
+    small.filter((b) => x < b.x + b.w && x + colW > b.x).map((b) => [b.y, b.y + b.h] as [number, number]);
   const cols: { x: number; side: "l" | "r"; used: [number, number][] }[] = [];
-  for (let x = mapRight + 24; x + colW <= BOX.w; x += 8) if (clear(x)) { cols.push({ x, side: "r", used: [] }); x += colW + 22 - 8; }
-  for (let x = mapLeft - 24 - colW; x >= 0; x -= 8) if (clear(x)) { cols.push({ x, side: "l", used: [] }); x -= colW + 22 - 8; }
+  for (let x = mapRight + 24; x + colW <= BOX.w; x += 8) if (clear(x)) { cols.push({ x, side: "r", used: blocked(x) }); x += colW + 22 - 8; }
+  for (let x = mapLeft - 24 - colW; x >= 0; x -= 8) if (clear(x)) { cols.push({ x, side: "l", used: blocked(x) }); x -= colW + 22 - 8; }
   const mid = (mapLeft + mapRight) / 2;
   const freeY = (used: [number, number][], target: number): number | null => {
     const sorted = [...used].sort((a, b) => a[0] - b[0]);
     let best: number | null = null;
-    let start = 0;
-    for (const gap of [...sorted, [BOX.h, BOX.h] as [number, number]]) {
+    let start = top;
+    for (const gap of [...sorted.filter((g) => g[1] > top && g[0] < bottom), [bottom, bottom] as [number, number]]) {
       const end = gap[0];
       if (end - start >= row) {
         const y = Math.min(Math.max(target, start), end - row);
@@ -160,18 +169,13 @@ function fullBands(panels: number): Rect[] {
  * TikTok's bars and icons). So a tall kabupaten moves out from under the icon column rather than
  * hugging the right edge. The shape is pre-sampled once (inside points + outline vertices). */
 function fitAround(
-  shape: { inner: Pt[]; edge: Pt[] }, vw: number, vh: number, BOX: { w: number; h: number }, b: Blocks, share: number, bands: Rect[],
+  shape: { inner: Pt[]; edge: Pt[] }, vw: number, vh: number, BOX: { w: number; h: number }, share: number, bands: Rect[],
+  header: Rect | null, infos: Rect[], centre = false,
 ) {
   const base = Math.min((BOX.w * share) / vw, (BOX.h * 0.98) / vh);
-  const header: Rect = { x: PAD, y: ZONE.wordmarkTop - 20, ...b.header, h: b.header.h + (ZONE.bodyTop - ZONE.wordmarkTop + 20) };
-  // The info block takes the bottom-left corner, or the bottom-right one (still left of the icons).
-  const infos: Rect[] = [
-    { x: PAD, y: ZONE.textBottom - b.info.h, ...b.info },
-    { x: Math.max(PAD, 920 - b.info.w), y: ZONE.textBottom - b.info.h, ...b.info },
-  ];
   const grow = (r: Rect, d: number): Rect => ({ x: r.x - d, y: r.y - d, w: r.w + 2 * d, h: r.h + 2 * d });
   const hits = (r: Rect, x: number, y: number) => x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h;
-  const head = grow(header, 16);
+  const head = header ? grow(header, 16) : null;
   const infoZones = infos.map((r) => grow(r, 16));
   const all = [...shape.inner, ...shape.edge];
   let best: { s: number; mx: number; my: number; info: Rect; value: number } | null = null;
@@ -189,7 +193,7 @@ function fitAround(
         for (const [px, py] of all) {
           const x = mx + px * s;
           const y = my + py * s;
-          if (hits(head, x, y)) { headerHit = true; break; }
+          if (head && hits(head, x, y)) { headerHit = true; break; }
           infoZones.forEach((r, k) => { if (!infoHit[k] && hits(r, x, y)) infoHit[k] = true; });
         }
         if (headerHit) continue;
@@ -201,7 +205,8 @@ function fitAround(
           const y = my + py * s;
           if (!bands.some((r) => hits(r, x, y))) readable++;
         }
-        const value = s * s * (readable / Math.max(1, shape.inner.length));
+        // A panorama should span its slides (names on both sides, one continuous map): favour the middle.
+        const value = s * s * (readable / Math.max(1, shape.inner.length)) * (centre ? 1 - 0.3 * Math.abs(ax - 0.5) : 1);
         if (!best || value > best.value) best = { s, mx, my, info: infos[k], value };
       }
   }
@@ -210,7 +215,27 @@ function fitAround(
   return { s, mx: BOX.w - vw * s, my: (BOX.h - vh * s) / 2, header, info: infos[0] };
 }
 
-function layout(spec: Spec, geo: Geos, BOX: { w: number; h: number }, panels = 1, blocks?: Blocks) {
+/** The outline in projected units, sampled once for fitAround: a grid of inside points and its vertices. */
+function sampleShape(outline: Feature[], to: (p: number[]) => [number, number], vw: number, vh: number) {
+  const rings = outline.flatMap((o) => ringsPx(o, to, 0, 0, 1));
+  const insideShape = inRings(rings);
+  const inner: Pt[] = [];
+  for (let i = 0; i < 48; i++)
+    for (let j = 0; j < 48; j++) {
+      const x = (vw * (i + 0.5)) / 48;
+      const y = (vh * (j + 0.5)) / 48;
+      if (insideShape(x, y)) inner.push([x, y]);
+    }
+  return { inner, edge: rings.flatMap((r) => r.filter((_, i) => i % 2 === 0)) };
+}
+
+/** Standar: the box runs from below the header to the bottom of the card; text stays above y 1500. */
+function stdBands(panels: number, boxH: number): Rect[] {
+  const w = SLIDE * panels;
+  return [...noTextBands(panels, boxH, BOX_TOP), { x: -PAD, y: ZONE.textBottom - BOX_TOP, w: w + PAD, h: boxH }];
+}
+
+function layout(spec: Spec, geo: Geos, BOX: { w: number; h: number }, panels = 1, blocks?: Blocks, stdInfo?: { w: number; h: number }) {
   const { kode, feats, names } = spec;
   const own = geo.outline.features.filter((f) => f.properties.domain_id === kode);
   const fit = framing(feats);
@@ -224,28 +249,33 @@ function layout(spec: Spec, geo: Geos, BOX: { w: number; h: number }, panels = 1
   let my = (BOX.h - vh * s) / 2;
   let headerRect: Rect | null = null;
   let infoRect: Rect | null = null;
+  const outline = own.length ? own : feats;
   if (blocks) {
-    const outline = own.length ? own : feats;
-    // The outline in projected units, sampled once: its vertices and a grid of inside points.
-    const rings = outline.flatMap((o) => ringsPx(o, to, 0, 0, 1));
-    const insideShape = inRings(rings);
-    const inner: Pt[] = [];
-    for (let i = 0; i < 48; i++)
-      for (let j = 0; j < 48; j++) {
-        const x = (vw * (i + 0.5)) / 48;
-        const y = (vh * (j + 0.5)) / 48;
-        if (insideShape(x, y)) inner.push([x, y]);
-      }
-    const edgePts = rings.flatMap((r) => r.filter((_, i) => i % 2 === 0));
-    const f = fitAround({ inner, edge: edgePts }, vw, vh, BOX, blocks, panels > 1 ? PANO_SHARE : 1, fullBands(panels));
+    // Card coordinates: the title in the top-left, the info block in a bottom corner.
+    const header: Rect = { x: PAD, y: ZONE.wordmarkTop - 20, ...blocks.header, h: blocks.header.h + (ZONE.bodyTop - ZONE.wordmarkTop + 20) };
+    const infos: Rect[] = [
+      { x: PAD, y: ZONE.textBottom - blocks.info.h, ...blocks.info },
+      { x: Math.max(PAD, 920 - blocks.info.w), y: ZONE.textBottom - blocks.info.h, ...blocks.info },
+    ];
+    const f = fitAround(sampleShape(outline, to, vw, vh), vw, vh, BOX, panels > 1 ? PANO_SHARE : 1, fullBands(panels), header, infos, panels > 1);
     ({ s, mx, my } = f);
-    headerRect = f.header;
+    headerRect = header;
+    infoRect = f.info;
+  } else if (stdInfo) {
+    // Box coordinates (from PAD, BOX_TOP): the info block sits above y 1500 in a bottom corner of slide 1.
+    const y = ZONE.textBottom - BOX_TOP - stdInfo.h;
+    const infos: Rect[] = [
+      { x: 0, y, ...stdInfo },
+      { x: Math.max(0, 920 - PAD - stdInfo.w), y, ...stdInfo },
+    ];
+    const f = fitAround(sampleShape(outline, to, vw, vh), vw, vh, BOX, share, stdBands(panels, BOX.h), null, infos, panels > 1);
+    ({ s, mx, my } = f);
     infoRect = f.info;
   }
   const { min, max, minRoom } = spec.labelSize;
   // Names only where text may go: off the cuts, the icons, TikTok's bars (and in Tinggi penuh, the
   // title and info corners).
-  const bands = blocks ? fullBands(panels) : noTextBands(panels, BOX.h, boxTop);
+  const bands = blocks ? fullBands(panels) : stdInfo ? stdBands(panels, BOX.h) : noTextBands(panels, BOX.h, boxTop);
   const keepOut = [...bands, ...(headerRect ? [headerRect] : []), ...(infoRect ? [infoRect] : [])];
   const allowed = (x: number, y: number) => {
     const px = mx + x * s;
@@ -320,7 +350,7 @@ function layout(spec: Spec, geo: Geos, BOX: { w: number; h: number }, panels = 1
   const todo = [...placed.numbered].sort((a, b) => a.y - b.y || a.x - b.x);
   let crowded = 0;
   if (panels > 1) {
-    const placedCols = columnLeaders(todo.map((l) => ({ l, anchor: px(l) })), mx, mx + vw * s, BOX, bands, size);
+    const placedCols = columnLeaders(todo.map((l) => ({ l, anchor: px(l) })), mx, mx + vw * s, BOX, keepOut, size);
     for (const { l, anchor, rect } of placedCols) {
       const r2 = rect ?? space.place(textWidth(l.name, size, true) + 10, size * 1.3, anchor, undefined, 0);
       if (r2) {
@@ -433,14 +463,14 @@ function AdminMap({
         }
         break;
       } else {
-        const pass = (h: number) => layout(spec, geo, { w, h }, n);
-        const room = ZONE.textBottom - BOX_TOP; // the standard layout starts below the header
-        cur = pass(room - infoH(null));
-        for (let i = 0; i < 2; i++) {
-          const h = room - infoH(cur);
-          if (h >= cur.BOX.h) break;
-          cur = pass(h);
-        }
+        // Standar: the map from below the header to the bottom of the card; the stats/legend and
+        // the source line in an empty bottom corner above y 1500.
+        const box = { w, h: 1920 - BOX_TOP };
+        const stdW = Math.max(infoW, 520);
+        const pass = (x: ReturnType<typeof layout> | null) => layout(spec, geo, box, n, undefined, { w: stdW, h: infoH(x) - GAP + 84 });
+        cur = pass(null);
+        const again = pass(cur);
+        if (again.infoRect!.h !== cur.infoRect!.h) cur = again;
       }
       if (!cur.crowded) break;
     }
@@ -541,16 +571,31 @@ function AdminMap({
           </div>
         </>
       ) : (
-        <div className="absolute flex flex-col" style={{ left: PAD, top: ZONE.bodyTop, width: W, height: ZONE.textBottom - ZONE.bodyTop }}>
-          <div className="shrink-0" style={{ height: HEADER_H }}>
+        <>
+          <div className="absolute" style={{ left: PAD, top: ZONE.bodyTop, width: W, height: HEADER_H }}>
             <CardHeader kicker={`${kicker} · ${sub}`} title={title} />
           </div>
-          <div className="shrink-0" style={{ marginTop: GAP, width: BOX.w, height: BOX.h }}>{mapSvg}</div>
-          <div className="flex min-h-0 flex-1 flex-col" style={{ marginTop: GAP, maxWidth: SLIDE - 2 * PAD - 96 }}>{notes}</div>
-        </div>
+          <div className="absolute" style={{ left: PAD, top: BOX_TOP }}>{mapSvg}</div>
+          {m.infoRect && (
+            <div className="absolute flex flex-col justify-end"
+              style={{ left: PAD + m.infoRect.x, top: BOX_TOP + m.infoRect.y, width: m.infoRect.w, height: m.infoRect.h }}>
+              {notes}
+              <p className="mt-3 text-[20px] leading-snug text-coal-muted">
+                Sumber: {m.panels > 1 ? `${source}. Peta ${Math.min(panel, m.panels)} dari ${m.panels}, geser untuk lanjutannya` : source}. Batas wilayah indikatif (BIG).
+              </p>
+            </div>
+          )}
+        </>
       )}
       {/* Footer is position: fixed, so it sits on whichever slide this card shows (Tinggi penuh: in the info block). */}
-      {!(full && m.headerRect) && <Footer source={m.panels > 1 ? `${source}. Peta ${Math.min(panel, m.panels)} dari ${m.panels}, geser untuk lanjutannya` : source} />}
+      {/* Later slides of a panorama: the source line where Footer goes, with a halo over the map. */}
+      {m.infoRect && panel > 1 && (
+        <p className="fixed text-[20px] leading-snug text-coal-muted"
+          style={{ left: PAD, top: ZONE.sourceTop, width: 856, textShadow: "0 0 6px var(--nm-bg), 0 0 3px var(--nm-bg)" }}>
+          Sumber: {source}. Peta {Math.min(panel, m.panels)} dari {m.panels}. Batas wilayah indikatif (BIG).
+        </p>
+      )}
+      {!m.infoRect && <Footer source={m.panels > 1 ? `${source}. Peta ${Math.min(panel, m.panels)} dari ${m.panels}, geser untuk lanjutannya` : source} />}
     </div>
   );
 }
