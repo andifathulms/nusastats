@@ -206,13 +206,16 @@ function fitAround(
           if (!bands.some((r) => hits(r, x, y))) readable++;
         }
         // A panorama should span its slides (names on both sides, one continuous map): favour the middle.
-        const value = s * s * (readable / Math.max(1, shape.inner.length)) * (centre ? 1 - 0.3 * Math.abs(ax - 0.5) : 1);
+        // Readable share squared: a big map mostly under TikTok's caption loses to a slightly smaller
+        // one in readable space.
+        const share = readable / Math.max(1, shape.inner.length);
+        const value = s * s * share * share * (centre ? 1 - 0.3 * Math.abs(ax - 0.5) : 1);
         if (!best || value > best.value) best = { s, mx, my, info: infos[k], value };
       }
   }
-  if (best) return { s: best.s, mx: best.mx, my: best.my, header, info: best.info };
+  if (best) return { s: best.s, mx: best.mx, my: best.my, header, info: best.info, value: best.value };
   const s = base * 0.5;
-  return { s, mx: BOX.w - vw * s, my: (BOX.h - vh * s) / 2, header, info: infos[0] };
+  return { s, mx: BOX.w - vw * s, my: (BOX.h - vh * s) / 2, header, info: infos[0], value: 0 };
 }
 
 /** The outline in projected units, sampled once for fitAround: a grid of inside points and its vertices. */
@@ -249,6 +252,7 @@ function layout(spec: Spec, geo: Geos, BOX: { w: number; h: number }, panels = 1
   let my = (BOX.h - vh * s) / 2;
   let headerRect: Rect | null = null;
   let infoRect: Rect | null = null;
+  let fitValue = 0; // readable map area the fit achieved (to compare layouts)
   const outline = own.length ? own : feats;
   if (blocks) {
     // Card coordinates: the title in the top-left, the info block in a bottom corner.
@@ -259,6 +263,7 @@ function layout(spec: Spec, geo: Geos, BOX: { w: number; h: number }, panels = 1
     ];
     const f = fitAround(sampleShape(outline, to, vw, vh), vw, vh, BOX, panels > 1 ? PANO_SHARE : 1, fullBands(panels), header, infos, panels > 1);
     ({ s, mx, my } = f);
+    fitValue = f.value;
     headerRect = header;
     infoRect = f.info;
   } else if (stdInfo) {
@@ -270,6 +275,7 @@ function layout(spec: Spec, geo: Geos, BOX: { w: number; h: number }, panels = 1
     ];
     const f = fitAround(sampleShape(outline, to, vw, vh), vw, vh, BOX, panels > 1 ? PANO_SHARE : 1, stdBands(panels, BOX.h), null, infos, panels > 1);
     ({ s, mx, my } = f);
+    fitValue = f.value;
     infoRect = f.info;
   }
   const { min, max, minRoom } = spec.labelSize;
@@ -406,7 +412,7 @@ function layout(spec: Spec, geo: Geos, BOX: { w: number; h: number }, panels = 1
     const rect = space.place(w, 34, [sx / n, sy / n], inside, 0, true);
     if (rect) neighbourNames.push({ name, rect });
   }
-  return { BOX, boxTop, boxLeft, headerRect, infoRect, panels, crowded, paths, edge, borderPaths, nearPaths, labels: placed.labels, numbered, leaders, tones, s, mx, my, callouts, neighbourNames, offFrame: fit.offFrame };
+  return { BOX, fitValue, boxTop, boxLeft, headerRect, infoRect, panels, crowded, paths, edge, borderPaths, nearPaths, labels: placed.labels, numbered, leaders, tones, s, mx, my, callouts, neighbourNames, offFrame: fit.offFrame };
 }
 
 /** Tinggi penuh header: kicker, the name over two lines if needed, the province. */
@@ -461,6 +467,12 @@ function AdminMap({
           return b.infoRect!.h !== a.infoRect!.h ? b : a;
         };
         cur = fit(1);
+        // Tinggi penuh only when it shows more readable map than Standar (a wide kabupaten can't sit
+        // between the two-line title and the stats corner without shrinking).
+        if (!spec.panorama) {
+          const std = layout(spec, geo, { w: SLIDE, h: 1920 - BOX_TOP }, 1, undefined, { w: Math.max(infoW, 520), h: infoH(null) - GAP + 84 });
+          if (std.fitValue >= cur.fitValue) { cur = std; break; }
+        }
         // Too crowded: as many slides as the map, drawn at full height, is wide (2 or 3). If that
         // still can't name every desa with short leaders (a big map leaves no room for name columns),
         // the standard panorama below does it better: use that instead.
@@ -701,12 +713,9 @@ export function KecamatanMapBody({ kode, data, geo, sorot, full = false }: { kod
       info={<StatsList rows={stats} />}
       infoW={480}
       full={full}
-      facts={[
-        `${formatNumber(data.districts.length)} kecamatan`,
-        `${formatNumber(data.villageTotal)} desa/kel.`,
-        pop !== null ? `${compact(pop)} jiwa` : null,
-        area !== null ? `${num(area)} km²` : null,
-      ].filter(Boolean).join(" · ")}
+      // Same stats table in both layouts: only the map differs.
+      fullInfo={<StatsList rows={stats} />}
+      fullInfoH={5 * 42 + 12}
       source={`Penduduk: Ditjen Dukcapil Kemendagri, data ${bulanTahun(data.period)} (terdaftar); luas dan batas: BIG 1:10.000, dijumlahkan NusaStats`}
     />
   );
