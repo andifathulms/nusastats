@@ -278,6 +278,89 @@ export function cropBox(inner: Frame, outer: Frame): { x: number; y: number; w: 
   return { x: x0, y: y0, w: x1 - x0, h: y1 - y0 };
 }
 
+export type InsetGroup = { kab: string; whole: boolean; features: Feature[]; frame: Frame; centre: [number, number] };
+export type Insets = { main: Feature[]; frame: Frame; groups: InsetGroup[] };
+
+/** Split a province map (kabupaten or kecamatan features) into its mainland and
+ * inset boxes, the way printed maps show Sulawesi Selatan: the mainland at full
+ * size, Kepulauan Selayar and Pangkep's far islands in boxes of their own.
+ *
+ * The mainland is every polygon connected to the largest one (bounding boxes
+ * within ~2 km, chained). A kabupaten with under half its area there (Selayar)
+ * goes to an inset whole; a mainland kabupaten keeps its islands near the coast
+ * (within a tenth of the mainland's span) and sends the far ones to its inset.
+ * Group key: the 4-digit kabupaten prefix of the Kemendagri code. Returns null
+ * when insets wouldn't help: nothing far out, an archipelago (insets > 15% of
+ * the area or more than 3 boxes), or a frame that shrinks by less than 40%.
+ * Every polygon is drawn exactly once, in the main map or in one box. */
+export function insets(features: Feature[]): Insets | null {
+  type Part = { f: Feature; poly: number[][][]; fr: Frame; area: number; kab: string };
+  const parts: Part[] = [];
+  for (const f of features)
+    for (const poly of polygons(f)) {
+      const ring = poly[0];
+      let a = 0;
+      for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) a += (ring[j][0] + ring[i][0]) * (ring[j][1] - ring[i][1]);
+      const fr = frameOf([{ properties: f.properties, geometry: { type: "Polygon", coordinates: poly } }]);
+      parts.push({ f, poly, fr, area: Math.abs(a / 2), kab: f.properties.domain_id.slice(0, 4) });
+    }
+  if (parts.length < 2) return null;
+  const gap = (a: Frame, b: Frame) => Math.max(0, a.west - b.east, b.west - a.east, a.south - b.north, b.south - a.north);
+  const grow = (fr: Frame, b: Frame) => {
+    fr.west = Math.min(fr.west, b.west);
+    fr.east = Math.max(fr.east, b.east);
+    fr.south = Math.min(fr.south, b.south);
+    fr.north = Math.max(fr.north, b.north);
+  };
+
+  const land = new Set<Part>([parts.reduce((m, p) => (p.area > m.area ? p : m))]);
+  for (const queue = [...land]; queue.length; ) {
+    const m = queue.pop()!;
+    for (const p of parts) if (!land.has(p) && gap(p.fr, m.fr) <= 0.02) land.add(p), queue.push(p);
+  }
+  const box = { ...[...land][0].fr };
+  for (const p of land) grow(box, p.fr);
+  const reach = 0.1 * Math.max(box.east - box.west, box.north - box.south);
+
+  const kabArea = new Map<string, { all: number; land: number }>();
+  for (const p of parts) {
+    const k = kabArea.get(p.kab) ?? { all: 0, land: 0 };
+    k.all += p.area;
+    if (land.has(p)) k.land += p.area;
+    kabArea.set(p.kab, k);
+  }
+  const mainland = (k: string) => kabArea.get(k)!.land >= 0.5 * kabArea.get(k)!.all;
+  const inMain = (p: Part) => land.has(p) || (mainland(p.kab) && gap(p.fr, box) <= reach);
+
+  const frame = { ...box };
+  const out = new Map<string, Part[]>();
+  for (const p of parts)
+    if (inMain(p)) grow(frame, p.fr);
+    else out.set(p.kab, [...(out.get(p.kab) ?? []), p]);
+  const total = parts.reduce((s, p) => s + p.area, 0);
+  const outArea = [...out.values()].flat().reduce((s, p) => s + p.area, 0);
+  const span = (fr: Frame) => (fr.east - fr.west) * (fr.north - fr.south);
+  if (!out.size || out.size > 3 || outArea > 0.15 * total || span(frameOf(features)) < 1.6 * span(frame)) return null;
+
+  // Rebuild features from the parts each side keeps (a kecamatan may be split).
+  const regroup = (ps: Part[]) => {
+    const byF = new Map<Feature, number[][][][]>();
+    for (const p of ps) byF.set(p.f, [...(byF.get(p.f) ?? []), p.poly]);
+    return [...byF].map(([f, polys]) => ({ properties: f.properties, geometry: { type: "MultiPolygon", coordinates: polys } }));
+  };
+  const pad = 0.03 * Math.max(frame.east - frame.west, frame.north - frame.south);
+  const groups = [...out].map(([kab, ps]) => {
+    const fr = { ...ps[0].fr };
+    for (const p of ps) grow(fr, p.fr);
+    return { kab, whole: !mainland(kab), features: regroup(ps), frame: fr, centre: [(fr.west + fr.east) / 2, (fr.south + fr.north) / 2] as [number, number] };
+  });
+  return {
+    main: regroup(parts.filter(inMain)),
+    frame: { west: frame.west - pad, east: frame.east + pad, south: frame.south - pad, north: frame.north + pad },
+    groups,
+  };
+}
+
 export type Label = { id: string; name: string; x: number; y: number; size: number; n?: number; lines?: string[] };
 
 /** A multi-word name split into two lines at the space nearest its middle ("Bonto / Lojong"). */

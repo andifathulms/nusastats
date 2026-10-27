@@ -59,11 +59,11 @@ export function sideBySide(aspect: number, headerH = 250, infoH = 380): boolean 
 
 /** The map box each layout gives (card px), and which one is chosen. Map labels
  * use it to stay 26-34 px on screen whatever the layout. */
-export function mapBoxFor(aspect: number, headerH = 250, infoH = 380): { side: boolean; w: number; h: number } {
+export function mapBoxFor(aspect: number, headerH = 250, infoH = 380, forced?: boolean): { side: boolean; w: number; h: number } {
   const stack = { w: FULL_W, h: ZONE.textBottom - ZONE.bodyTop - headerH - infoH - 48 };
   const beside = { w: FULL_W - ZONE.infoW - 40, h: ZONE.mapBottom - ZONE.bodyTop - headerH - 24 };
   const width = (b: { w: number; h: number }) => Math.min(b.w, b.h / aspect);
-  const side = width(beside) > width(stack) * 1.08;
+  const side = forced ?? width(beside) > width(stack) * 1.08;
   return { side, ...(side ? beside : stack) };
 }
 
