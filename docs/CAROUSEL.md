@@ -65,6 +65,12 @@ Nusantara Mapper" (`BRAND` in `AngkaCard.tsx` and `carousel_deck.py`).
 | `--maps` | `0` = table only: no countdown slides or focus maps; the table cards count down (#41–50 first, #1–10 last) |
 | `--turvar`, `--th`, `--unit`, `--label-metric`, `--allow-partial` | see refusals below |
 
+Table cards: each row is rank · kabupaten emblem · kecamatan (bold) over its kabupaten (grey) ·
+value, with a thin bar under the names. Percentages always carry two decimals (`14,60%`), so
+the column lines up on the comma. Emblems come from `frontend/public/emblems/` (see
+`data/emblems/fetch_emblems.py`; Sulawesi Selatan so far). A province without emblems shows
+the same rows without the emblem column.
+
 Without the frontend, `manage.py export_carousel_pack … --out-dir exports/carousels` writes the
 same files except the PNGs. `GET /api/carousel/pack/` and `/api/carousel/deck/` serve the same
 builder.

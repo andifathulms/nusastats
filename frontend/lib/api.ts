@@ -865,6 +865,8 @@ export type CarouselMapValue = {
   display: string; // formatted by the backend, same string the deck uses
   rank: number; // 1 = highest; tied values share a rank
   rank_asc: number; // 1 = lowest
+  name?: string; // kecamatan rows (Dukcapil): the two halves of `label`
+  parent?: string; // "Kab. Gowa"
 };
 
 export type CarouselPackResult = {

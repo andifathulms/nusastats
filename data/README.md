@@ -56,6 +56,18 @@ Fetched with `fetch_big.py` (one geojson per province, `big-villages-<prov>.geoj
   because Dukcapil's own `luas_wilayah` is the kabupaten total copied onto every
   desa (broken at village level); `luas_big` is the real per-region area.
 
+## `emblems/` — kabupaten/kota emblems (lambang) for the ranking cards
+
+`fetch_emblems.py <prov>` reads the province's regencies from the NusaStats API,
+opens each one's Indonesian Wikipedia article by exact title ("Kabupaten X" /
+"Kota X") and downloads the file its infobox names as `lambang`/`logo` (256 px
+PNG) to `frontend/public/emblems/{kab code}.png`. No infobox emblem = logged
+under `skipped`, never searched for by name. `manifest.json` records per file:
+article + revision, file page, licence, URL, HTTP status, time, SHA-256. The
+only processing: an opaque near-white backdrop is flood-filled transparent from
+the corners (recorded as `processing`). Lambang daerah carry no copyright in
+Indonesia (UU 28/2014 Pasal 42). Done: 73 (Sulawesi Selatan, 24/24).
+
 ## Regenerate
 
 ```bash
@@ -66,4 +78,5 @@ python3 big_boundaries/simplify_big.py 0.0004   # -> frontend/public display des
 python3 big_boundaries/dissolve.py              # -> smooth kec/kab/prov outlines
 python3 big_boundaries/compute_area.py          # -> backend .../big_area.json
 #   then: manage.py load_big_area               # -> DukcapilRegion.luas_big
+python3 emblems/fetch_emblems.py 73 --api http://localhost:8011   # emblems (API port per your override)
 ```

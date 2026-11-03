@@ -12,7 +12,7 @@ from djpk.models import ApbdLine, ApbdRegion, ApbdReport, RegionLevel
 from dukcapil.models import DukcapilIndicator, DukcapilRegion
 from stats.models import DataPoint
 
-from api.carousel import PackError, build_pack, slugify
+from api.carousel import PackError, build_pack, fmt_value, slugify
 
 PERIOD = "2026-10"
 
@@ -224,6 +224,15 @@ def test_dukcapil_polygon_twin_is_counted_once(db):
     assert "730612-48700" in codes
     assert result["map"]["expected"] == 4
     assert "1 baris ganda di sumber" in result["pack"]["notes"]
+    # The ranking card shows kecamatan and kabupaten on two lines.
+    top = next(v for v in result["map"]["values"] if v["code"] == "730610")
+    assert (top["label"], top["name"], top["parent"]) == ("Tombolopao, Kab. Gowa", "Tombolopao", "Kab. Gowa")
+
+
+def test_percentages_keep_two_decimals():
+    """A ranking's percentages line up on the comma."""
+    assert [fmt_value(v, "%") for v in (14.6, 18.7, 12.15, 3)] == ["14,60%", "18,70%", "12,15%", "3,00%"]
+    assert fmt_value(37.5, "tahun") == "37,5 tahun"
 
 
 @pytest.mark.django_db

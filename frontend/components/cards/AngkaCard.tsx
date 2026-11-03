@@ -86,6 +86,9 @@ export function AngkaCard({ scope, query, debug, tema = "malam" }: { scope: stri
   const [peta, setPeta] = useState<Peta | null | undefined>(undefined);
   // Kabupaten names for the overview's inset boxes (province scope only).
   const [kabs, setKabs] = useState<Map<string, string> | null | undefined>(undefined);
+  // Kabupaten emblems for the ranking rows (public/emblems, data/emblems/fetch_emblems.py):
+  // kab code -> image URL, preloaded; empty where none was downloaded.
+  const [emblems, setEmblems] = useState<Map<string, string> | undefined>(undefined);
   const [fatal, setFatal] = useState<string | null>(null);
   const [loaded, setLoaded] = useState(0);
   const [fontsReady, setFontsReady] = useState(false);
@@ -122,6 +125,14 @@ export function AngkaCard({ scope, query, debug, tema = "malam" }: { scope: stri
     else setKabs(null);
   }, [data, scope, focus, wantsPeta, wantsKabs]);
 
+  useEffect(() => {
+    if (!data) return;
+    if (view !== "top10" || data.map.level === "provinsi") return setEmblems(new Map());
+    loadEmblems(data.map.values.map((v) => v.geo.slice(0, 4)))
+      .then(setEmblems)
+      .catch((e) => setFatal(String(e.message ?? e)));
+  }, [data, view]);
+
   const start = Math.max(1, Number(query.get("start")) || 1);
   const issues = data ? problems(data, focus) : [];
   if (data && view === "top10" && start > data.map.values.length) issues.push(`peringkat #${start} tidak ada (${data.map.values.length} wilayah)`);
@@ -138,7 +149,7 @@ export function AngkaCard({ scope, query, debug, tema = "malam" }: { scope: stri
       : [];
   const note = wantsPeta && peta !== undefined && !layers.length ? `lapisan ${bg} belum ada untuk ${focus}; siluet` : undefined;
   const ready =
-    !error && !!data && !!geo && peta !== undefined && outline !== undefined && kabs !== undefined && fontsReady && loaded === layers.length;
+    !error && !!data && !!geo && peta !== undefined && outline !== undefined && kabs !== undefined && emblems !== undefined && fontsReady && loaded === layers.length;
 
   return (
     <div
@@ -153,7 +164,7 @@ export function AngkaCard({ scope, query, debug, tema = "malam" }: { scope: stri
         <div className="p-16 text-[28px] text-coal-text">Kartu tidak dibuat: {error}</div>
       ) : data && geo && peta !== undefined && outline !== undefined && kabs !== undefined ? (
         view === "top10" ? (
-          <TopBody data={data} asc={asc} start={start} />
+          emblems && <TopBody data={data} asc={asc} start={start} emblems={emblems} />
         ) : focus ? (
           <FocusBody
             data={data}
@@ -175,6 +186,27 @@ export function AngkaCard({ scope, query, debug, tema = "malam" }: { scope: stri
       {debug && <TikTokOverlay />}
     </div>
   );
+}
+
+type EmblemManifest = { emblems: Record<string, { file: string }> };
+
+/** The emblems the manifest lists for these kabupaten codes, each decoded before
+ * the card says it's ready. No manifest = no emblems; a listed file that fails
+ * to load is an error (the card would silently lose a column). */
+async function loadEmblems(codes: string[]): Promise<Map<string, string>> {
+  const r = await fetch("/emblems/manifest.json");
+  if (!r.ok) return new Map();
+  const { emblems } = (await r.json()) as EmblemManifest;
+  const wanted = [...new Set(codes)].filter((c) => emblems[c]);
+  const urls = new Map(wanted.map((c) => [c, `/emblems/${emblems[c].file}`]));
+  await Promise.all(
+    [...urls.values()].map(async (src) => {
+      const img = new Image();
+      img.src = src;
+      await img.decode().catch(() => Promise.reject(new Error(`lambang gagal dimuat: ${src}`)));
+    }),
+  );
+  return urls;
 }
 
 /** A text-only body (the top-10 card): the text zone, no map. */
@@ -590,7 +622,7 @@ function LayerLegend({ peta, bg }: { peta: Peta; bg: Bg }) {
 /** The ranking table, 10 rows per card: #start to #start+9 of the top (or bottom,
  * order=asc), as bars from zero on one scale with the rows above them. The regions
  * the deck counted down to are drawn in the ink colour, the rest muted. */
-function TopBody({ data, asc, start = 1 }: { data: CarouselPackResult; asc: boolean; start?: number }) {
+function TopBody({ data, asc, start = 1, emblems }: { data: CarouselPackResult; asc: boolean; start?: number; emblems: Map<string, string> }) {
   const { map, pack } = data;
   // Regions without a map code (map.unmatched) are left out here as on the maps;
   // the guardrails above already refuse packs where that would matter.
@@ -605,34 +637,46 @@ function TopBody({ data, asc, start = 1 }: { data: CarouselPackResult; asc: bool
   const max = Math.max(...upto.map((r) => Math.abs(r.value)), 1e-9);
   const partial = partialNote(data);
   const word = asc ? "terendah" : "tertinggi";
+  // The emblem column shows when any row has one; a row without keeps an empty slot.
+  const withEmblems = rows.some((r) => emblems.has(r.geo.slice(0, 4)));
 
   return (
     <TextBody>
       <CardHeader kicker={map.kicker} title={start === 1 ? `${rows.length} ${word}` : `#${start}–${start + rows.length - 1} ${word}`}>
         <div className="mt-2 text-[30px] leading-snug text-coal-muted">{`${map.title} · ${scopeLabel(data)} · ${map.period_label}`}</div>
       </CardHeader>
-      {/* Ten rows fill the slide: sized for a phone at arm's length. */}
-      <ol className="mt-8 flex min-h-0 flex-1 flex-col justify-start gap-5">
+      {/* Ten rows fill the slide: sized for a phone at arm's length. Each row:
+          rank | kabupaten emblem | kecamatan over its kabupaten, a thin bar under | value. */}
+      <ol className="mt-6 flex min-h-0 flex-1 flex-col justify-start gap-[10px]">
         {rows.map((r) => {
           const place = asc ? r.rank_asc : r.rank;
+          const emblem = emblems.get(r.geo.slice(0, 4));
           return (
-            <li key={r.code}>
-              <div className="flex items-baseline gap-3">
-                <span className="w-[72px] shrink-0 font-mono text-[30px] text-ink-gold">#{place}</span>
-                <span className="min-w-0 flex-1 truncate text-[36px] font-semibold">{r.label}</span>
-                <span className="whitespace-nowrap text-[36px] font-extrabold tabular-nums">{r.display}</span>
-              </div>
-              <div className="ml-[84px] mt-2 h-4 rounded-full bg-white/5">
-                <div
-                  className="h-4 rounded-full"
-                  style={{ width: `${Math.max(1, (Math.abs(r.value) / max) * 100)}%`, background: featured.has(r.code) ? "var(--nm-ink)" : "var(--nm-bar)" }}
-                />
+            <li key={r.code} className="flex items-center gap-4">
+              <span className="w-[64px] shrink-0 font-mono text-[28px] text-ink-gold">#{place}</span>
+              {withEmblems && (
+                <span className="flex h-[64px] w-[56px] shrink-0 items-center justify-center">
+                  {emblem && <img src={emblem} alt="" className="max-h-full max-w-full object-contain" />}
+                </span>
+              )}
+              <div className="min-w-0 flex-1">
+                <div className="flex items-baseline gap-3">
+                  <span className="min-w-0 flex-1 truncate text-[34px] font-semibold leading-tight">{r.name ?? r.label}</span>
+                  <span className="whitespace-nowrap text-[34px] font-extrabold leading-tight tabular-nums">{r.display}</span>
+                </div>
+                {r.parent && <div className="truncate text-[23px] leading-tight text-coal-muted">{r.parent}</div>}
+                <div className="mt-[6px] h-[6px] rounded-full bg-white/5">
+                  <div
+                    className="h-[6px] rounded-full"
+                    style={{ width: `${Math.max(1, (Math.abs(r.value) / max) * 100)}%`, background: featured.has(r.code) ? "var(--nm-ink)" : "var(--nm-bar)" }}
+                  />
+                </div>
               </div>
             </li>
           );
         })}
       </ol>
-      <div className="mt-8 shrink-0">
+      <div className="mt-6 shrink-0">
         {partial && <p className="mb-4 text-[22px] text-coal-muted">{partial}</p>}
         <Footer source={pack.source} />
       </div>

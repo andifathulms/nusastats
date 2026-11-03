@@ -125,12 +125,14 @@ def kicker_for(source, period):
     return f"DATA • {_SOURCE_SHORT[source]} {str(period)[:4]}"
 
 
-def fmt_num(v, decimals=2):
+def fmt_num(v, decimals=2, fixed=False):
     """Indonesian number: thousands dot, decimal comma, at most `decimals`
-    decimals (half up, trailing zeros dropped). 89.55 -> '89,55', 582327 -> '582.327'."""
+    decimals (half up, trailing zeros dropped). 89.55 -> '89,55', 582327 -> '582.327'.
+    `fixed` keeps exactly `decimals` (14.6 -> '14,60'), so a column of values lines up."""
     q = Decimal(str(v)).quantize(Decimal(1).scaleb(-decimals), rounding=ROUND_HALF_UP)
     whole, _, frac = f"{q:,.{decimals}f}".partition(".")
-    frac = frac.rstrip("0")
+    if not fixed:
+        frac = frac.rstrip("0")
     return whole.replace(",", ".") + ("," + frac if frac else "")
 
 
@@ -140,7 +142,8 @@ def fmt_value(v, unit):
     u = (unit or "").strip()
     ul = u.lower()
     if ul in ("%", "persen"):
-        return f"{fmt_num(v)}%"
+        # Always two decimals: a ranking's percentages line up on the comma.
+        return f"{fmt_num(v, fixed=True)}%"
     if ul.split(" ")[0] in ("jiwa", "orang", "kk", "rumah", "unit"):
         return f"{fmt_num(v, 0)} {u}"
     if u == "Rp" or ul == "rupiah":
@@ -297,7 +300,11 @@ def _dukcapil(metric, level, period, opts):
     rows, prov_refs = [], []
     for code, (_name, value) in values.items():
         r = regions[code]
-        rows.append({"code": code, "label": label(r), "value": value, "geo": code})
+        row = {"code": code, "label": label(r), "value": value, "geo": code}
+        if dlevel == "district" and kab_label.get(r["kab_code"]):
+            # The ranking card shows them on two lines, under the kabupaten's emblem.
+            row.update(name=r["name"], parent=kab_label[r["kab_code"]])
+        rows.append(row)
         prov_refs.append({"code": code, "fetch_log_id": r["fetch_log_id"], "url": r["fetch_log__url"],
                           "sha256": r["fetch_log__response_sha256"],
                           "fetched_at": _iso(r["fetch_log__fetched_at"])})
@@ -506,7 +513,8 @@ def build_pack(source, metric, level, period=None, *, prov=None, top=5, bottom=5
             "max": max(values),
             "values": [{"geo": r["geo"], "code": r["code"], "label": r["label"], "value": r["value"],
                         "display": fmt_value(r["value"], built["unit"]), "rank": r["rank"],
-                        "rank_asc": r["rank_asc"]}
+                        "rank_asc": r["rank_asc"],
+                        **({"name": r["name"], "parent": r["parent"]} if r.get("parent") else {})}
                        for r in ordered if r["geo"]],
             "unmatched": [{"code": r["code"], "label": r["label"], "rank": r["rank"], "rank_asc": r["rank_asc"]}
                           for r in ordered if not r["geo"]],
