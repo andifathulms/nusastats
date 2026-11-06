@@ -405,7 +405,6 @@ export function placeLabels(
 ): { labels: Label[]; numbered: Label[] } {
   const to = projector(frame);
   const k = 1 / Math.min(boxW / vw, boxH / vh); // viewBox units per card pixel
-  const placed: { x0: number; x1: number; y0: number; y1: number }[] = [];
   const labels: Label[] = [];
   const numbered: Label[] = [];
   const ok = allowed ?? (() => true);
@@ -420,16 +419,17 @@ export function placeLabels(
     return { f, polys, bbox: [Math.min(...xs), Math.max(...xs), Math.min(...ys), Math.max(...ys)] as const };
   });
   units.sort((a, b) => (a.bbox[1] - a.bbox[0]) * (a.bbox[3] - a.bbox[2]) - (b.bbox[1] - b.bbox[0]) * (b.bbox[3] - b.bbox[2]));
-  for (const u of units) {
-    const id = u.f.properties.domain_id;
-    const name = names.get(id) ?? u.f.properties.name ?? id;
+  type Box = { x0: number; x1: number; y0: number; y1: number };
+  type Spot = { x: number; y: number; lines?: [string, string]; box: Box; room: number };
+  const size = Math.max(min, Math.min(max, max)) * k;
+  /** The best spot for a unit's name clear of `taken`, plus the unit's roomiest readable point (for a
+   * leader). `overlap`: the second pass, see below. */
+  const search = (u: (typeof units)[number], name: string, taken: Box[], overlap: boolean) => {
     const [x0, x1, y0, y1] = u.bbox;
-    if (x1 < 0 || x0 > vw || y1 < 0 || y0 > vh) continue; // wholly off the frame: the off-frame note names it
     const inside = (x: number, y: number) => u.polys.some((poly) => insideRings([x, y], poly));
     const onOther = (x: number, y: number) =>
       units.some((o) => o !== u && x >= o.bbox[0] && x <= o.bbox[1] && y >= o.bbox[2] && y <= o.bbox[3] && o.polys.some((poly) => insideRings([x, y], poly)));
     const room = (x: number, y: number) => Math.max(...u.polys.map((poly) => (insideRings([x, y], poly) ? edgeDistance([x, y], poly) : 0)));
-    const size = Math.max(min, Math.min(max, max)) * k;
     const split = twoLines(name);
     const variants: { lines?: [string, string]; w: number; up: number; down: number }[] = [
       { w: name.length * size * 0.56, up: size * 0.7, down: size * 0.5 },
@@ -444,12 +444,14 @@ export function placeLabels(
         if (inside(x, y)) spots.push({ x, y, r: room(x, y) });
       }
     const maxRoom = Math.max(1e-9, ...spots.map((p) => p.r));
-    // The pull to the middle grows with the room a unit has to spare (its area against the name's
-    // smallest box, from 1.5x to 4x): in a tight unit it would take the space a neighbour's name
-    // needed (dense desa maps), so there the best fit wins as before.
+    // How roomy the unit is: its area against the name's smallest box, 0 at 1.5x, 1 from 4x. The pull
+    // to the middle grows with it: in a tight unit it would take the space a neighbour's name needed
+    // (dense desa maps), so there the best fit wins.
     const area = u.polys.reduce((t, poly) => t + Math.abs(ringArea(poly[0])), 0);
-    const spare = area / Math.min(...variants.map((v) => v.w * (v.up + v.down)));
-    const pull = 0.02 + 0.38 * Math.max(0, Math.min(1, (spare - 1.5) / 2.5));
+    const roomy = Math.max(0, Math.min(1, (area / Math.min(...variants.map((v) => v.w * (v.up + v.down))) - 1.5) / 2.5));
+    const pull = 0.02 + (overlap ? 0.78 : 0.38) * roomy;
+    const fullFit = overlap ? 1 - 0.25 * roomy : 1; // this much of the name on its unit counts as a full fit
+    const overlapCost = overlap ? 1 - 0.7 * roomy : 1;
     // "Central" is half distance from the edge (the widest part) and half closeness to the centre of
     // mass of the unit's main polygon, where the eye puts its middle (Polongbangkeng Selatan's widest
     // strip runs along its top edge).
@@ -458,14 +460,14 @@ export function placeLabels(
     const reach = 0.5 * Math.sqrt(Math.abs(ringArea(main[0])));
     const central = (x: number, y: number, r: number) =>
       0.5 * (r / maxRoom) + 0.5 * (1 - Math.min(1, Math.hypot(x - cx, y - cy) / reach));
-    let best: { x: number; y: number; v: (typeof variants)[number]; score: number; fit: number; room: number } | null = null;
+    let best: (Spot & { score: number }) | null = null;
     let anchor: { x: number; y: number; room: number } | null = null;
     for (const { x, y, r } of spots) {
       if (ok(x, y) && (!anchor || r > anchor.room)) anchor = { x, y, room: r };
       for (const [vi, v] of variants.entries()) {
         const box = { x0: x - v.w / 2, x1: x + v.w / 2, y0: y - v.up, y1: y + v.down };
         if (box.x0 < 0 || box.x1 > vw || box.y0 < 0 || box.y1 > vh) continue;
-        if (placed.some((p) => box.x0 < p.x1 && box.x1 > p.x0 && box.y0 < p.y1 && box.y1 > p.y0)) continue;
+        if (taken.some((p) => box.x0 < p.x1 && box.x1 > p.x0 && box.y0 < p.y1 && box.y1 > p.y0)) continue;
         let hit = 0;
         let other = 0;
         let n = 0;
@@ -481,26 +483,49 @@ export function placeLabels(
           }
         if (blocked) continue;
         // How much of the name is on its unit, how much spills onto another unit (whose own name
-        // needs that room: Libureng over Lompo Riaja), and how central the spot is (its distance
-        // from the edge against the unit's most central point). In a roomy unit a name in the
-        // middle that spills a little into the sea reads better than one squeezed against the
-        // unit's edge where it is widest. One line beats two at the same spot.
+        // needs that room: Libureng over Lompo Riaja), and how central the spot is. One line beats
+        // two at the same spot.
         const fit = hit / n;
-        if (fit < 0.5) continue; // at least half the name on its own unit (see below)
-        const score = fit - other / n + pull * central(x, y, r) - vi * 0.05;
-        if (!best || score > best.score) best = { x, y, v, score, fit, room: r };
+        if (fit < 0.5) continue; // at least half the name on its own unit (a name may spill over a small one, as on hand-made maps)
+        // An overlap must leave it clear which unit the name is for: at most a quarter on a
+        // neighbour, the middle of the name well inside its own unit, no leader dot under it.
+        if (overlap && other > 0) {
+          if (other / n > 0.25 || r < size * 0.6) continue;
+          const pad = 8 * k;
+          if (numbered.some((d) => d.x > box.x0 - pad && d.x < box.x1 + pad && d.y > box.y0 - pad && d.y < box.y1 + pad)) continue;
+        }
+        const score = Math.min(1, fit / fullFit) - overlapCost * (other / n) + pull * central(x, y, r) - vi * 0.05;
+        if (!best || score > best.score) best = { x, y, lines: v.lines, box, room: r, score };
       }
     }
-    // At least half the name on its own unit (a name may spill over a small one, as on hand-made maps).
-    if (best && best.room / k >= minRoom * 0.25) {
-      placed.push({ x0: best.x - best.v.w / 2, x1: best.x + best.v.w / 2, y0: best.y - best.v.up, y1: best.y + best.v.down });
-      labels.push({ id, name, x: best.x, y: best.y, size, ...(best.v.lines ? { lines: best.v.lines } : {}) });
-    } else {
+    return { best: best && best.room / k >= minRoom * 0.25 ? best : null, anchor, roomy };
+  };
+
+  // Pass 1: every name at its best fit, small units first.
+  const spotOf = new Map<string, { u: (typeof units)[number]; name: string; roomy: number; spot: Spot }>();
+  for (const u of units) {
+    const id = u.f.properties.domain_id;
+    const name = names.get(id) ?? u.f.properties.name ?? id;
+    const [x0, x1, y0, y1] = u.bbox;
+    if (x1 < 0 || x0 > vw || y1 < 0 || y0 > vh) continue; // wholly off the frame: the off-frame note names it
+    const { best, anchor, roomy } = search(u, name, [...spotOf.values()].map((p) => p.spot.box), false);
+    if (best) spotOf.set(id, { u, name, roomy, spot: best });
+    else {
       // No clean spot: a leader from the roomiest readable point (or the unit's centre).
       const a = anchor ?? labelPoint(u.f, to);
       numbered.push({ id, name, x: a.x, y: a.y, size: 18 * k });
     }
   }
+  // Pass 2: a roomy unit's name moves to its middle, where it may overlap a neighbour a little (the
+  // owner's call: fine while it is clear which unit the name is for). Every other name stays where
+  // pass 1 put it, so an overlap never costs a neighbour its own name.
+  for (const [id, p] of spotOf) {
+    if (p.roomy <= 0) continue;
+    const others = [...spotOf].filter(([o]) => o !== id).map(([, q]) => q.spot.box);
+    const { best } = search(p.u, p.name, others, true);
+    if (best) p.spot = best;
+  }
+  for (const [id, { name, spot }] of spotOf) labels.push({ id, name, x: spot.x, y: spot.y, size, ...(spot.lines ? { lines: spot.lines } : {}) });
   numbered.sort((a, b) => a.name.localeCompare(b.name, "id"));
   numbered.forEach((l, i) => (l.n = i + 1));
   return { labels, numbered };
