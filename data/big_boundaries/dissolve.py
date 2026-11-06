@@ -26,17 +26,27 @@ dukcapil-{districts,regencies,provinces}.geojson (by code) before overwriting.
 Province 96 (Papua Barat Daya) has no BIG archive; it falls back to the
 already-simplified public desa file (best available for that one province).
 
+Desa that BIG still files under a province they have left (Papua Barat's
+pre-2022 kabupaten, see superseded.py) are dropped before dissolving, after a
+check that the province they moved to covers them.
+
 Offline (shapely) — no server needed.
-Usage: python3 dissolve.py
+Usage: python3 dissolve.py              # every province
+       python3 dissolve.py --prov 92    # one province: its features are replaced
+                                        # in place, the rest of each file is kept
 """
+import argparse
 import glob
 import json
 import os
+import sys
 from collections import defaultdict
 
 import shapely
 from shapely import make_valid
 from shapely.geometry import MultiPolygon, Polygon, mapping, shape
+
+from superseded import COVER_MIN, NOW_IN, SUPERSEDED, superseded
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 PUB = os.path.join(HERE, "..", "..", "frontend", "public")
@@ -120,7 +130,9 @@ def simplify_geom(g, tol, hole_thr):
     return polys[0] if len(polys) == 1 else MultiPolygon(polys)
 
 
-def write(items, name_map, level_label, out_path, tol, hole_thr):
+def write(items, name_map, level_label, out_path, tol, hole_thr, only=None):
+    """Write one level. With `only` (a province code), only that province's
+    features are replaced; every other feature in the file is kept as is."""
     feats = []
     for k, g in items:
         gm = mapping(simplify_geom(g, tol, hole_thr))
@@ -128,33 +140,61 @@ def write(items, name_map, level_label, out_path, tol, hole_thr):
         feats.append({"type": "Feature",
                       "properties": {"domain_id": k, "name": name_map.get(k, k)},
                       "geometry": gm})
+    if only:
+        old = json.load(open(os.path.join(PUB, out_path)))["features"]
+        feats = [f for f in old if not f["properties"]["domain_id"].startswith(only)] + feats
     json.dump({"type": "FeatureCollection", "features": feats},
               open(os.path.join(PUB, out_path), "w"), ensure_ascii=False)
     sz = os.path.getsize(os.path.join(PUB, out_path)) // 1024
     print(f"{level_label}: {len(feats)} -> {out_path} ({sz}KB)")
 
 
-def load_desa():
+def check_superseded(dropped):
+    """Each dropped kabupaten must lie in the province it moved to (by the
+    current provinsi outline): a wrong code in superseded.py would otherwise
+    cut real land out of a province. Exits on failure."""
+    if not dropped:
+        return
+    target = next(shape(f["geometry"]) for f in json.load(open(os.path.join(PUB, "dukcapil-provinces.geojson")))["features"]
+                  if f["properties"]["domain_id"] == NOW_IN)
+    target = make_valid(target)
+    for kab, geoms in sorted(dropped.items()):
+        g = make_valid(shapely.union_all(geoms, grid_size=1e-8))
+        share = g.intersection(target).area / g.area
+        print(f"  dropped {kab} {SUPERSEDED[kab]}: {len(geoms)} desa, {share:.1%} inside province {NOW_IN}")
+        if share < COVER_MIN:
+            sys.exit(f"stopping: {kab} is only {share:.1%} inside province {NOW_IN} (need {COVER_MIN:.0%})")
+
+
+def load_desa(only=None):
     """Full-res BIG desa where available; fall back to the simplified public
-    file for provinces with no BIG archive (currently only 96)."""
+    file for provinces with no BIG archive (currently only 96). `only`: one
+    province code."""
     desa = []
     big_provs = set()
+    dropped = defaultdict(list)
     for f in sorted(glob.glob(os.path.join(HERE, "big-villages-*.geojson"))):
         prov = os.path.basename(f).split("-")[-1].split(".")[0].strip()
-        if not prov:
+        if not prov or (only and prov != only):
             continue
         big_provs.add(prov)
         for feat in json.load(open(f))["features"]:
             try:
                 g = shape(feat["geometry"])
-                desa.append((feat["properties"]["domain_id"], g if g.is_valid else make_valid(g)))
+                g = g if g.is_valid else make_valid(g)
             except Exception:  # noqa
-                pass
+                continue
+            code = feat["properties"]["domain_id"]
+            if superseded(code):
+                dropped[code[:4]].append(g)
+            else:
+                desa.append((code, g))
     print(f"  full-res BIG provinces: {len(big_provs)}")
+    check_superseded(dropped)
     # Fallback: public simplified desa for provinces without BIG.
     for f in sorted(glob.glob(os.path.join(PUB, "dukcapil-villages-*.geojson"))):
         prov = os.path.basename(f).split("-")[-1].split(".")[0].strip()
-        if not prov or prov in big_provs:
+        if not prov or prov in big_provs or (only and prov != only):
             continue
         print(f"  fallback (simplified) province: {prov}")
         for feat in json.load(open(f))["features"]:
@@ -166,14 +206,32 @@ def load_desa():
     return desa
 
 
+def write_chunks(only=None):
+    """Per-province kecamatan files (dukcapil-districts-<prov>.geojson), the
+    ones the maps load, split from the nationwide file."""
+    by_prov = defaultdict(list)
+    for f in json.load(open(os.path.join(PUB, "dukcapil-districts.geojson")))["features"]:
+        by_prov[f["properties"]["domain_id"][:2]].append(f)
+    for prov, feats in sorted(by_prov.items()):
+        if only and prov != only:
+            continue
+        json.dump({"type": "FeatureCollection", "features": feats},
+                  open(os.path.join(PUB, f"dukcapil-districts-{prov}.geojson"), "w"), ensure_ascii=False)
+        print(f"  dukcapil-districts-{prov}.geojson: {len(feats)}")
+
+
 if __name__ == "__main__":
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--prov", help="rebuild one province only, e.g. 92")
+    only = ap.parse_args().prov
+
     # Names first (before overwriting).
     kec_names = names("dukcapil-districts.geojson")
     kab_names = names("dukcapil-regencies.geojson")
     prov_names = names("dukcapil-provinces.geojson")
 
     print("loading full-res desa geometry…")
-    desa = load_desa()
+    desa = load_desa(only)
     print(f"  {len(desa)} desa total")
 
     # Hierarchical, full-res dissolve: desa->kec->kab->prov. Each level's
@@ -184,15 +242,16 @@ if __name__ == "__main__":
     kec = dissolve(desa, 6, area_thr=km2(0.05), hole_thr=km2(0.3))
     del desa
     write(kec, kec_names, "kecamatan", "dukcapil-districts.geojson",
-          tol=0.0004, hole_thr=km2(0.3))
+          tol=0.0004, hole_thr=km2(0.3), only=only)
+    write_chunks(only)
 
     print("dissolving kecamatan -> kabupaten…")
     kab = dissolve(kec, 4, area_thr=km2(0.1), hole_thr=km2(0.8))
     write(kab, kab_names, "kabupaten", "dukcapil-regencies.geojson",
-          tol=0.0009, hole_thr=km2(0.8))
+          tol=0.0009, hole_thr=km2(0.8), only=only)
 
     print("dissolving kabupaten -> provinsi…")
     prov = dissolve(kab, 2, area_thr=km2(0.5), hole_thr=km2(2.0))
     write(prov, prov_names, "provinsi", "dukcapil-provinces.geojson",
-          tol=0.002, hole_thr=km2(2.0))
+          tol=0.002, hole_thr=km2(2.0), only=only)
     print("DONE")

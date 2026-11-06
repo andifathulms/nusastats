@@ -7,6 +7,9 @@ Uses Douglas-Peucker (real line simplification) so curves stay smooth while
 redundant vertices are dropped. At web zoom even a ~30 m epsilon is sub-pixel,
 so the result looks identical to full-res but is ~10x smaller.
 
+Desa BIG still files under a province they have left (superseded.py) are
+left out.
+
 Usage: python3 simplify_big.py <eps_degrees> [prov ...]
        eps ~0.0003 ≈ 33 m.  No prov args = all.
 """
@@ -14,6 +17,8 @@ import glob
 import json
 import os
 import sys
+
+from superseded import superseded
 
 sys.setrecursionlimit(1000000)
 SRC = os.path.dirname(os.path.abspath(__file__))
@@ -65,7 +70,12 @@ def simp(geom, eps):
 def process(path, eps):
     fc = json.load(open(path))
     out = []
+    dropped = sum(superseded(f["properties"]["domain_id"]) for f in fc["features"])
+    if dropped:
+        sys.stderr.write(f"  {dropped} desa left out: filed under a province they have left (superseded.py)\n")
     for f in fc["features"]:
+        if superseded(f["properties"]["domain_id"]):
+            continue
         g = simp(f["geometry"], eps)
         if g["coordinates"]:
             out.append({"type": "Feature", "properties": f["properties"], "geometry": g})

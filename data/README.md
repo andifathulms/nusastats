@@ -49,7 +49,12 @@ Fetched with `fetch_big.py` (one geojson per province, `big-villages-<prov>.geoj
   web maps, `simplify_big.py` writes a Douglas-Peucker display copy per province
   to `frontend/public/dukcapil-villages-<prov>.geojson`, and `dissolve.py`
   derives smooth kec/kab/prov outlines from it (dissolve full-res desa first,
-  then simplify — see the script header).
+  then simplify — see the script header). `dissolve.py --prov 92` rebuilds one
+  province in place.
+- BIG's Papua Barat archive predates the 2022 split and still files Papua Barat
+  Daya's six kabupaten/kota under their old 92xx codes. Both scripts leave
+  those desa out (`superseded.py`); Papua Barat Daya's own files already cover
+  them, and `dissolve.py` stops if one isn't ≥ 90% inside Papua Barat Daya.
 - `compute_area.py` computes the true geodesic per-desa **land area** from this
   archive → `backend/dukcapil/data/big_area.json` (committed, ~1.8 MB), which
   `manage.py load_big_area` ingests into `DukcapilRegion.luas_big`. This exists
