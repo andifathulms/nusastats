@@ -1,10 +1,13 @@
 """Load per-region BIG polygon areas into DukcapilRegion.luas_big.
 
 Villages get their area directly from backend/dukcapil/data/big_area.json
-(keyed by the 10-digit Kemendagri code == DukcapilRegion.code). Kecamatan /
-kabupaten / province areas are summed from their villages (area is additive),
-using the app's own kec_code/kab_code/prov_code grouping so the aggregates match
-the hierarchy the UI navigates.
+(keyed by the 10-digit Kemendagri code == DukcapilRegion.code). Kecamatan and
+kabupaten areas are the sum of EVERY BIG desa under their code, not only the
+desa Dukcapil lists: BIG's map has newer desa Dukcapil has no row for yet
+(Takalar: 110 vs 100), and leaving them out understated the area and
+overstated density. Province areas are the sum of their kabupaten rows, so BIG
+desa under a kabupaten code Dukcapil doesn't have (Papua Barat Daya's old 92xx
+codes in BIG's pre-split Papua Barat archive) never count; they are reported.
 
 Run AFTER ingest (ingest overwrites `attributes` but never touches `luas_big`,
 so re-running this only after a fresh crawl is enough). Idempotent.
@@ -16,10 +19,10 @@ Regenerate the JSON (from the full-res BIG archive) with
 """
 import json
 import os
+from collections import defaultdict
 
 from django.conf import settings
 from django.core.management.base import BaseCommand
-from django.db.models import Sum
 
 from dukcapil.models import DukcapilLevel, DukcapilRegion, current_period
 
@@ -55,26 +58,45 @@ class Command(BaseCommand):
         self._bulk(updates)
         self.stdout.write(f"villages: {matched:,}/{len(updates):,} matched a BIG area")
 
-        # 2) Kecamatan / kabupaten / province: sum villages up the hierarchy.
-        for level, group in (
-            (DukcapilLevel.DISTRICT, "kec_code"),
-            (DukcapilLevel.REGENCY, "kab_code"),
-            (DukcapilLevel.PROVINCE, "prov_code"),
-        ):
-            sums = dict(
-                villages.exclude(luas_big=None)
-                .values(group)
-                .order_by()
-                .annotate(s=Sum("luas_big"))
-                .values_list(group, "s")
-            )
+        listed = set(villages.values_list("code", flat=True))
+        unlisted = [c for c in area if c not in listed]
+        self.stdout.write(f"BIG desa Dukcapil doesn't list: {len(unlisted):,} (counted in their kecamatan/kabupaten area)")
+
+        # 2) Kecamatan / kabupaten: every BIG desa under the code. Province: its kabupaten rows.
+        sums = {6: defaultdict(float), 4: defaultdict(float)}
+        for code, a in area.items():
+            sums[6][code[:6]] += a
+            sums[4][code[:4]] += a
+        kab_area = {}
+        for level, n in ((DukcapilLevel.DISTRICT, 6), (DukcapilLevel.REGENCY, 4)):
             rows = DukcapilRegion.objects.filter(level=level, period=period)
             updates = [
-                DukcapilRegion(id=pk, luas_big=(round(sums[code], 4) if sums.get(code) is not None else None))
+                DukcapilRegion(id=pk, luas_big=(round(sums[n][code], 4) if code in sums[n] else None))
                 for code, pk in rows.values_list("code", "id")
             ]
             self._bulk(updates)
             self.stdout.write(f"{level}: {sum(1 for u in updates if u.luas_big is not None):,}/{len(updates):,} set")
+            if level == DukcapilLevel.REGENCY:
+                kab_area = {code: sums[4][code] for code in rows.values_list("code", flat=True) if code in sums[4]}
+        orphan = defaultdict(int)
+        for code in area:
+            if code[:4] not in kab_area:
+                orphan[code[:4]] += 1
+        if orphan:
+            self.stdout.write(
+                "BIG desa under no Dukcapil kabupaten (not counted): "
+                + ", ".join(f"{k} ({v})" for k, v in sorted(orphan.items()))
+            )
+        prov_area = defaultdict(float)
+        for code, a in kab_area.items():
+            prov_area[code[:2]] += a
+        rows = DukcapilRegion.objects.filter(level=DukcapilLevel.PROVINCE, period=period)
+        updates = [
+            DukcapilRegion(id=pk, luas_big=(round(prov_area[code], 4) if code in prov_area else None))
+            for code, pk in rows.values_list("code", "id")
+        ]
+        self._bulk(updates)
+        self.stdout.write(f"{DukcapilLevel.PROVINCE}: {sum(1 for u in updates if u.luas_big is not None):,}/{len(updates):,} set")
 
         from api.caching import bump_data_version
 

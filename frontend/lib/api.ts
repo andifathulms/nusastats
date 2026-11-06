@@ -372,7 +372,7 @@ export type DukcapilUnlisted = {
   period: string;
   method: string;
   villages: { code: string; kec_code: string; area_km2: number }[];
-  kecamatan: { code: string; name: string | null; population: number | null; area_listed_km2: number | null; area_unlisted_km2: number; density: number | null }[];
+  kecamatan: { code: string; name: string | null; population: number | null; area_km2: number | null; area_unlisted_km2: number; density: number | null }[];
 };
 
 export type DukcapilRankRow = {

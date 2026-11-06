@@ -60,6 +60,9 @@ Fetched with `fetch_big.py` (one geojson per province, `big-villages-<prov>.geoj
   `manage.py load_big_area` ingests into `DukcapilRegion.luas_big`. This exists
   because Dukcapil's own `luas_wilayah` is the kabupaten total copied onto every
   desa (broken at village level); `luas_big` is the real per-region area.
+  Kecamatan and kabupaten areas sum every BIG desa under their code, including
+  newer desa Dukcapil doesn't list yet; province areas sum their kabupaten (so
+  the pre-split 92xx copies never count).
 
 ## `emblems/` — kabupaten/kota emblems (lambang) for the ranking cards
 

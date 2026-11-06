@@ -707,10 +707,10 @@ def unlisted_villages(request):
     kecamatan, which one is not known), with the density of their kecamatan to
     stand in for them on a map, clearly marked as such.
 
-    Kecamatan density = Dukcapil kecamatan population / the kecamatan's whole
-    BIG area: its listed desa (`luas_big`, which is summed only over desa
-    Dukcapil lists) plus these unlisted ones. A kecamatan without a Dukcapil
-    population gets no density. Nothing is guessed per desa.
+    Kecamatan density = Dukcapil kecamatan population / the kecamatan's BIG
+    area (`luas_big`, which load_big_area sums over every BIG desa in it,
+    these included). A kecamatan without a Dukcapil population or area gets no
+    density. Nothing is guessed per desa.
     """
     kab = request.query_params.get("kab", "")
     if not re.fullmatch(r"\d{4}", kab):
@@ -732,21 +732,19 @@ def unlisted_villages(request):
     for code, desa in sorted(by_kec.items()):
         r = kecs.get(code)
         pop = region_value(r.attributes, "jumlah_penduduk") if r else None
-        listed_area = r.luas_big if r else None
-        unlisted_area = round(sum(area[c] for c in desa), 4)
-        total = (listed_area or 0) + unlisted_area if listed_area is not None else None
+        total = r.luas_big if r else None
         kecamatan.append({
             "code": code,
             "name": r.name if r else None,
             "population": pop,
-            "area_listed_km2": listed_area,
-            "area_unlisted_km2": unlisted_area,
+            "area_km2": total,
+            "area_unlisted_km2": round(sum(area[c] for c in desa), 4),
             "density": round(pop / total, 2) if pop is not None and total else None,
         })
     return Response({
         "period": period,
         "kab": kab,
-        "method": "kepadatan kecamatan = penduduk kecamatan (Dukcapil) / luas BIG seluruh desa kecamatan (terdaftar + belum terdaftar)",
+        "method": "kepadatan kecamatan = penduduk kecamatan (Dukcapil) / luas BIG kecamatan (seluruh desa BIG, termasuk yang belum terdaftar)",
         "source": "BIG 1:10.000 (backend/dukcapil/data/big_area.json); Ditjen Dukcapil Kemendagri",
         "villages": [{"code": c, "kec_code": c[:6], "area_km2": area[c]} for c in unlisted],
         "kecamatan": kecamatan,
