@@ -217,7 +217,7 @@ def regions(request):
     # row's and its parent's full `attributes` JSONB just to print a name.
     qs = (
         qs.select_related("parent")
-        .only("code", "level", "name", "status", "parent_code", "parent__name")
+        .only("code", "level", "name", "status", "parent_code", "nama_kec", "parent__name")
         .order_by("code")[:limit]
     )
     return Response(DukcapilRegionSerializer(qs, many=True).data)

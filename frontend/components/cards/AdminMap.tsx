@@ -682,9 +682,9 @@ function infoBase(rows: number) {
 
 /** The kecamatan of a kabupaten (template `wilayah`). `sorot`: the extremes callouts. */
 export function KecamatanMapBody({ kode, data, geo, sorot, full = false }: { kode: string; data: Data; geo: Geos; sorot: boolean; full?: boolean }) {
+  const names = useMemo(() => kecamatanNames(data), [data]);
   const spec = useMemo<Spec>(() => {
     const feats = geo.inner.features.filter((f) => f.properties.domain_id.startsWith(kode));
-    const names = new Map(data.districts.map((d) => [d.domain_id, titleCase(d.domain_name)]));
     return {
       kode, feats, names,
       fill: (id, tones) => `var(--nm-cat-${tones.get(id) ?? 0})`,
@@ -693,11 +693,11 @@ export function KecamatanMapBody({ kode, data, geo, sorot, full = false }: { kod
       infoHeight: infoBase(5),
       callouts: sorot ? (fs, anchorOf) => extremes(fs, data, names, anchorOf) : undefined,
     };
-  }, [kode, data, geo, sorot]);
+  }, [kode, data, geo, sorot, names]);
   const pop = data.kab.pop;
   const area = data.kab.area;
   const stats: [string, string][] = [
-    ["Kecamatan", formatNumber(data.districts.length)],
+    ["Kecamatan", formatNumber(names.size)],
     ["Desa/kelurahan", formatNumber(data.villageTotal)],
     ["Penduduk", pop !== null ? `${compact(pop)} (${bulanTahun(data.period)})` : "–"],
     ["Luas", area !== null ? `${num(area, 2)} km²` : "–"],
@@ -794,11 +794,25 @@ function StatsList({ rows }: { rows: [string, string][] }) {
   );
 }
 
-/** Highest/lowest population, density and area per kecamatan, merged per kecamatan. */
+/** Every kecamatan of the kabupaten with its name: Dukcapil's kecamatan rows, plus the kecamatan
+ * its desa rows name that the (lagging) kecamatan layer has no row for yet, e.g. Takalar's
+ * Polongbangkeng Timur and Laikang. */
+function kecamatanNames(data: Data): Map<string, string> {
+  const names = new Map(data.districts.map((d) => [d.domain_id, titleCase(d.domain_name)]));
+  for (const v of data.villageRegions) {
+    if (!names.has(v.parent_code) && v.parent_name) names.set(v.parent_code, titleCase(v.parent_name));
+  }
+  return names;
+}
+
+/** Highest/lowest population, density and area per kecamatan, merged per kecamatan. None when a
+ * kecamatan on the map has no figures: "tertinggi" over part of the kabupaten would be wrong. */
 function extremes(feats: Feature[], data: Data, names: Map<string, string>, anchorOf: (id: string) => { pt: Pt; off: boolean }): Callout[] {
   const pop = new Map(data.districts.map((d) => [d.domain_id, d.value]));
   const area = new Map(data.districtAreas.map((d) => [d.domain_id, d.value]));
-  const rows = feats.map((f) => f.properties.domain_id).filter((id) => pop.has(id)).map((id) => ({ id, pop: pop.get(id)!, area: area.get(id) ?? null }));
+  const ids = feats.map((f) => f.properties.domain_id);
+  if (ids.some((id) => !pop.has(id))) return [];
+  const rows = ids.map((id) => ({ id, pop: pop.get(id)!, area: area.get(id) ?? null }));
   if (rows.length < 2) return [];
   const dens = (r: (typeof rows)[number]) => (r.area ? r.pop / r.area : null);
   const fmtD = (v: number) => `${num(v, v < 100 ? 1 : 0)} jiwa/km²`;

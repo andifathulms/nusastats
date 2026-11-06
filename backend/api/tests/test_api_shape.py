@@ -76,3 +76,20 @@ def test_djpk_rank_resolves_kemendagri_province(api_client):
 
     unknown = api_client.get("/api/djpk/rank/?akun=pad&level=regency&kemendagri_prov=99").data
     assert unknown["prov"] is None and unknown["results"] == []
+
+
+@pytest.mark.django_db
+def test_desa_in_a_kecamatan_without_a_row_keeps_its_kecamatan_name(api_client):
+    common = dict(period="2026-10", fetched_at="2026-10-01T00:00:00Z", prov_code="73", kab_code="7305")
+    kab = DukcapilRegion.objects.create(code="7305", level="regency", name="Takalar", status="Kabupaten", **common)
+    kec = DukcapilRegion.objects.create(code="730504", level="district", name="Polongbangkeng Utara",
+                                        status="Kecamatan", parent=kab, parent_code="7305", **common)
+    DukcapilRegion.objects.create(code="7305042001", level="village", name="Barugaya", status="Desa",
+                                  parent=kec, parent_code="730504", nama_kec="POLONGBANGKENG UTARA", **common)
+    # Dukcapil's kecamatan layer has no 730511 row; the desa row names it.
+    DukcapilRegion.objects.create(code="7305112001", level="village", name="Ko'mara", status="Desa",
+                                  parent_code="730511", nama_kec="POLONGBANGKENG TIMUR", **common)
+
+    rows = api_client.get("/api/dukcapil/regions/?level=village&kab=7305").data
+    assert {r["parent_code"]: r["parent_name"] for r in rows} == {
+        "730504": "Polongbangkeng Utara", "730511": "Polongbangkeng Timur"}
