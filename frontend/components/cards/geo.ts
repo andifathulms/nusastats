@@ -423,8 +423,9 @@ export function placeLabels(
   type Spot = { x: number; y: number; lines?: [string, string]; box: Box; room: number };
   const size = Math.max(min, Math.min(max, max)) * k;
   /** The best spot for a unit's name clear of `taken`, plus the unit's roomiest readable point (for a
-   * leader). `overlap`: the second pass, see below. */
-  const search = (u: (typeof units)[number], name: string, taken: Box[], overlap: boolean) => {
+   * leader). `mode`: "fit" (pass 1), "centre" (pass 2) or "straddle" (a narrow unit), see below. */
+  const search = (u: (typeof units)[number], name: string, taken: Box[], mode: "fit" | "centre" | "straddle") => {
+    const overlap = mode === "centre";
     const [x0, x1, y0, y1] = u.bbox;
     const inside = (x: number, y: number) => u.polys.some((poly) => insideRings([x, y], poly));
     const onOther = (x: number, y: number) =>
@@ -486,6 +487,15 @@ export function placeLabels(
         // needs that room: Libureng over Lompo Riaja), and how central the spot is. One line beats
         // two at the same spot.
         const fit = hit / n;
+        if (mode === "straddle") {
+          // A unit too narrow for its name (Galesong Utara, a coastal strip): the name centred on it,
+          // running out over nothing but empty space (sea, the neighbouring kabupaten) on either
+          // side. Nothing else under it, so it is still clear which unit it names.
+          if (other > 0 || fit < 0.15 || !inside(x, y)) continue;
+          const score = fit + 0.5 * central(x, y, r) - vi * 0.05;
+          if (!best || score > best.score) best = { x, y, lines: v.lines, box, room: r, score };
+          continue;
+        }
         if (fit < 0.5) continue; // at least half the name on its own unit (a name may spill over a small one, as on hand-made maps)
         // An overlap must leave it clear which unit the name is for: at most a quarter on a
         // neighbour, the middle of the name well inside its own unit, no leader dot under it.
@@ -508,8 +518,11 @@ export function placeLabels(
     const name = names.get(id) ?? u.f.properties.name ?? id;
     const [x0, x1, y0, y1] = u.bbox;
     if (x1 < 0 || x0 > vw || y1 < 0 || y0 > vh) continue; // wholly off the frame: the off-frame note names it
-    const { best, anchor, roomy } = search(u, name, [...spotOf.values()].map((p) => p.spot.box), false);
+    const taken = [...spotOf.values()].map((p) => p.spot.box);
+    const { best, anchor, roomy } = search(u, name, taken, "fit");
+    const straddle = best ? null : search(u, name, taken, "straddle").best;
     if (best) spotOf.set(id, { u, name, roomy, spot: best });
+    else if (straddle) spotOf.set(id, { u, name, roomy: 0, spot: straddle });
     else {
       // No clean spot: a leader from the roomiest readable point (or the unit's centre).
       const a = anchor ?? labelPoint(u.f, to);
@@ -522,7 +535,7 @@ export function placeLabels(
   for (const [id, p] of spotOf) {
     if (p.roomy <= 0) continue;
     const others = [...spotOf].filter(([o]) => o !== id).map(([, q]) => q.spot.box);
-    const { best } = search(p.u, p.name, others, true);
+    const { best } = search(p.u, p.name, others, "centre");
     if (best) p.spot = best;
   }
   for (const [id, { name, spot }] of spotOf) labels.push({ id, name, x: spot.x, y: spot.y, size, ...(spot.lines ? { lines: spot.lines } : {}) });
