@@ -44,6 +44,8 @@ export type Data = {
   villageTotal: number;
   villageRegions: DukcapilRegionRow[]; // name and Dukcapil status (Desa/Kelurahan) per desa
   villages: DukcapilRankRow[]; // kepadatan only
+  /** kepadatan only: desa on the map Dukcapil has no row for yet -> their kecamatan's density (null: none). */
+  unlisted: Map<string, number | null>;
   districtAreas: DukcapilRankRow[]; // wilayah only: BIG area per kecamatan
   period: string | null;
 };
@@ -78,7 +80,7 @@ function withoutTwins(rows: DukcapilRankRow[]): DukcapilRankRow[] {
 
 export async function loadData(template: WilayahTemplate, kode: string): Promise<Data> {
   const prov = kode.slice(0, 2);
-  const [pops, areas, districts, villageList, summary, villages, districtAreas] = await Promise.all([
+  const [pops, areas, districts, villageList, summary, villages, districtAreas, unlisted] = await Promise.all([
     dukcapilApi.rank({ indicator: "jumlah_penduduk", level: "regency", prov, limit: "200" }),
     dukcapilApi.rank({ indicator: "luas_big", level: "regency", prov, limit: "200" }),
     dukcapilApi.rank({ indicator: "jumlah_penduduk", level: "district", kab: kode, limit: "500" }),
@@ -90,7 +92,9 @@ export async function loadData(template: WilayahTemplate, kode: string): Promise
     template === "wilayah"
       ? dukcapilApi.rank({ indicator: "luas_big", level: "district", kab: kode, limit: "500" }).then((r) => r.results)
       : Promise.resolve([] as DukcapilRankRow[]),
+    template === "kepadatan" ? dukcapilApi.unlistedVillages(kode) : Promise.resolve(null),
   ]);
+  const kecDensity = new Map(unlisted?.kecamatan.map((k) => [k.code, k.density]) ?? []);
   return {
     kab: kabInfo(kode, pops.results, areas.results),
     districts: withoutTwins(districts.results),
@@ -98,6 +102,7 @@ export async function loadData(template: WilayahTemplate, kode: string): Promise
     villageTotal: villageList.length,
     villageRegions: villageList,
     villages,
+    unlisted: new Map(unlisted?.villages.map((v) => [v.code, kecDensity.get(v.kec_code) ?? null]) ?? []),
     period: summary.period ?? null,
   };
 }
@@ -229,8 +234,11 @@ function DensityBody({ kode, data, geo }: { kode: string; data: Data; geo: Geos 
   }, [geo, kode]);
 
   const cls = (v: number) => BREAKS.findIndex((b) => v < b) === -1 ? BREAKS.length : BREAKS.findIndex((b) => v < b);
+  // The facts use real desa values only; the kecamatan fill below is drawing, not data.
   const facts = useMemo(() => densityFacts(data.villages, data.districts), [data.villages, data.districts]);
-  const missing = data.villageTotal - data.villages.length;
+  const filled = paths.filter((p) => !byId.has(p.id) && data.unlisted.get(p.id) != null).length;
+  const missing = paths.filter((p) => !byId.has(p.id) && data.unlisted.get(p.id) == null).length;
+  const hatch = Math.max(vw, vh) / 140; // stripe spacing in viewBox units (~6 card px)
 
   return (
     <MapLayout
@@ -248,18 +256,49 @@ function DensityBody({ kode, data, geo }: { kode: string; data: Data; geo: Geos 
         <>
           <OffFrameNote items={offFrame} />
           <DensityLegend note={missing > 0 ? `abu-abu: ${missing} desa tanpa data` : undefined} />
+          {filled > 0 && (
+            <div className="mt-2 flex items-center gap-3 text-[22px] leading-snug text-coal-muted">
+              <svg width={44} height={22} className="shrink-0 rounded-sm">
+                <defs>
+                  <pattern id="nm-hatch-key" width={8} height={8} patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+                    <rect width={8} height={8} fill={classColors()[3]} />
+                    <rect width={3} height={8} fill="var(--nm-bg)" opacity={0.55} />
+                  </pattern>
+                </defs>
+                <rect width={44} height={22} fill="url(#nm-hatch-key)" />
+              </svg>
+              <span>
+                arsir: {filled} desa baru, belum di data Dukcapil · kepadatan kecamatan
+              </span>
+            </div>
+          )}
           <div className="nm-facts mt-6 grid grid-cols-2 gap-6">
             <Fact value={compact(facts.pop)} label="penduduk di peta ini" />
             <Fact value={`${formatNumber(Math.round(facts.top.density))}/km²`} label={`kecamatan terpadat: ${facts.top.name}`} />
           </div>
-          <Footer source={`Penduduk: Ditjen Dukcapil Kemendagri, data ${bulanTahun(data.period)} (penduduk terdaftar, bukan sensus); luas desa: BIG 1:10.000, dihitung NusaStats`} />
+          <Footer
+            source={`Penduduk: Ditjen Dukcapil Kemendagri, data ${bulanTahun(data.period)} (penduduk terdaftar, bukan sensus); luas desa: BIG 1:10.000, dihitung NusaStats${
+              filled > 0 ? "; arsir: penduduk ÷ luas BIG kecamatan" : ""
+            }`}
+          />
         </>
       }
       map={
         <svg viewBox={`0 0 ${vw.toFixed(0)} ${vh.toFixed(0)}`} preserveAspectRatio="xMidYMid meet" className="h-full w-full">
+          <defs>
+            {/* Desa Dukcapil doesn't list yet: their kecamatan's class colour, striped so they never pass for desa data. */}
+            {classColors().map((c, i) => (
+              <pattern key={c} id={`nm-hatch-${i}`} width={hatch} height={hatch} patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+                <rect width={hatch} height={hatch} fill={c} />
+                <rect width={hatch * 0.4} height={hatch} fill="var(--nm-bg)" opacity={0.55} />
+              </pattern>
+            ))}
+          </defs>
           {paths.map((p) => {
             const v = byId.get(p.id);
-            return <path key={p.id} d={p.d} fill={v ? classColors()[cls(v.value)] : NO_DATA} stroke="var(--nm-seam)" strokeWidth={0.4} vectorEffect="non-scaling-stroke" />;
+            const k = v ? null : data.unlisted.get(p.id);
+            const fill = v ? classColors()[cls(v.value)] : k != null ? `url(#nm-hatch-${cls(k)})` : NO_DATA;
+            return <path key={p.id} d={p.d} fill={fill} stroke="var(--nm-seam)" strokeWidth={0.4} vectorEffect="non-scaling-stroke" />;
           })}
           {kec.map((p) => (
             <path key={`k-${p.id}`} d={p.d} fill="none" stroke="var(--nm-border-soft)" strokeWidth={0.8} vectorEffect="non-scaling-stroke" />

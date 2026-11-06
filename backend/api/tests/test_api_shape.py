@@ -93,3 +93,23 @@ def test_desa_in_a_kecamatan_without_a_row_keeps_its_kecamatan_name(api_client):
     rows = api_client.get("/api/dukcapil/regions/?level=village&kab=7305").data
     assert {r["parent_code"]: r["parent_name"] for r in rows} == {
         "730504": "Polongbangkeng Utara", "730511": "Polongbangkeng Timur"}
+
+
+@pytest.mark.django_db
+def test_unlisted_villages_get_their_kecamatan_density(api_client, monkeypatch):
+    from api import dukcapil_views
+
+    common = dict(period="2026-10", fetched_at="2026-10-01T00:00:00Z", prov_code="73", kab_code="7305")
+    DukcapilRegion.objects.create(code="730509", level="district", name="Galesong", status="Kecamatan",
+                                  attributes={"jumlah_penduduk": 3000}, luas_big=2.0, **common)
+    DukcapilRegion.objects.create(code="7305092001", level="village", name="Boddia", status="Desa",
+                                  parent_code="730509", **common)
+    # BIG has a third desa Dukcapil doesn't list yet, and one in another kabupaten.
+    monkeypatch.setattr(dukcapil_views, "_big_area",
+                        lambda: {"7305092001": 2.0, "7305092015": 1.0, "7306012001": 9.0})
+
+    data = api_client.get("/api/dukcapil/unlisted-villages/?kab=7305").data
+    assert [v["code"] for v in data["villages"]] == ["7305092015"]
+    assert data["kecamatan"] == [{"code": "730509", "name": "Galesong", "population": 3000.0,
+                                  "area_listed_km2": 2.0, "area_unlisted_km2": 1.0, "density": 1000.0}]
+    assert api_client.get("/api/dukcapil/unlisted-villages/?kab=73").status_code == 400

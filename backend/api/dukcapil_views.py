@@ -8,13 +8,18 @@ extracting `{code: value}` maps from JSONB — the same shape the BPS ranking
 endpoints use, so nothing about the BPS/`stats` stack is touched.
 """
 
+import json
+import os
 import re
 from collections import defaultdict
+from functools import lru_cache
 
 from django.db.models import Count, F
 from django.db.models.fields.json import KeyTextTransform
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
+
+from django.conf import settings
 
 from catalog.models import Domain
 from dukcapil.derived import DERIVED, DERIVED_BY_FIELD
@@ -681,3 +686,68 @@ def regency_bridge(request, domain_id):
             "districts": dist,
         }
     )
+
+
+BIG_AREA = os.path.join(settings.BASE_DIR, "dukcapil", "data", "big_area.json")
+
+
+@lru_cache(maxsize=1)
+def _big_area():
+    """{10-digit desa code: km²} for every BIG desa (data/big_boundaries/compute_area.py)."""
+    with open(BIG_AREA) as f:
+        return json.load(f)
+
+
+@api_view(["GET"])
+@cached_api("dukcapil")
+def unlisted_villages(request):
+    """`/api/dukcapil/unlisted-villages/?kab=7305` — desa on the BIG boundary
+    map that Dukcapil has no row for (newer desa, split off after Dukcapil's
+    desa list; their residents are still counted in some other desa of the
+    kecamatan, which one is not known), with the density of their kecamatan to
+    stand in for them on a map, clearly marked as such.
+
+    Kecamatan density = Dukcapil kecamatan population / the kecamatan's whole
+    BIG area: its listed desa (`luas_big`, which is summed only over desa
+    Dukcapil lists) plus these unlisted ones. A kecamatan without a Dukcapil
+    population gets no density. Nothing is guessed per desa.
+    """
+    kab = request.query_params.get("kab", "")
+    if not re.fullmatch(r"\d{4}", kab):
+        return Response({"detail": "kab: a 4-digit Kemendagri regency code"}, status=400)
+    period, _ = _resolve_period(request)
+    listed = set(
+        DukcapilRegion.objects.filter(period=period, level=DukcapilLevel.VILLAGE, code__startswith=kab).values_list("code", flat=True)
+    )
+    area = _big_area()
+    unlisted = sorted(c for c in area if c.startswith(kab) and c not in listed)
+    by_kec = defaultdict(list)
+    for c in unlisted:
+        by_kec[c[:6]].append(c)
+    kecs = {
+        r.code: r
+        for r in DukcapilRegion.objects.filter(period=period, level=DukcapilLevel.DISTRICT, code__in=list(by_kec)).only("code", "name", "attributes", "luas_big")
+    }
+    kecamatan = []
+    for code, desa in sorted(by_kec.items()):
+        r = kecs.get(code)
+        pop = region_value(r.attributes, "jumlah_penduduk") if r else None
+        listed_area = r.luas_big if r else None
+        unlisted_area = round(sum(area[c] for c in desa), 4)
+        total = (listed_area or 0) + unlisted_area if listed_area is not None else None
+        kecamatan.append({
+            "code": code,
+            "name": r.name if r else None,
+            "population": pop,
+            "area_listed_km2": listed_area,
+            "area_unlisted_km2": unlisted_area,
+            "density": round(pop / total, 2) if pop is not None and total else None,
+        })
+    return Response({
+        "period": period,
+        "kab": kab,
+        "method": "kepadatan kecamatan = penduduk kecamatan (Dukcapil) / luas BIG seluruh desa kecamatan (terdaftar + belum terdaftar)",
+        "source": "BIG 1:10.000 (backend/dukcapil/data/big_area.json); Ditjen Dukcapil Kemendagri",
+        "villages": [{"code": c, "kec_code": c[:6], "area_km2": area[c]} for c in unlisted],
+        "kecamatan": kecamatan,
+    })

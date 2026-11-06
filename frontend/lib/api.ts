@@ -367,6 +367,14 @@ export type DukcapilRank = {
   results: DukcapilRankRow[];
 };
 
+/** Desa on the BIG map that Dukcapil has no row for yet, with their kecamatan's density (method in the response). */
+export type DukcapilUnlisted = {
+  period: string;
+  method: string;
+  villages: { code: string; kec_code: string; area_km2: number }[];
+  kecamatan: { code: string; name: string | null; population: number | null; area_listed_km2: number | null; area_unlisted_km2: number; density: number | null }[];
+};
+
 export type DukcapilRankRow = {
   domain_id: string;
   domain_name: string;
@@ -533,6 +541,7 @@ export const dukcapilApi = {
     return get<DukcapilRegionRow[]>(`/dukcapil/regions/${q ? `?${q}` : ""}`);
   },
   regionDetail: (code: string) => get<DukcapilRegionDetail>(`/dukcapil/regions/${code}/`),
+  unlistedVillages: (kab: string) => get<DukcapilUnlisted>(`/dukcapil/unlisted-villages/?kab=${kab}`),
   // Same profile for a BPS regency, resolved server-side (no bridge hop first).
   regionDetailByBps: (bpsDomainId: string) =>
     get<DukcapilRegionDetail & { bps_domain_id: string }>(`/dukcapil/regions/bps/${bpsDomainId}/`),
