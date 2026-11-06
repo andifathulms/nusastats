@@ -32,7 +32,8 @@ function Card({ template, kode }: { template: string; kode: string }) {
     return <CaptionText kode={kode} query={params} />;
   }
   if (template === "angka") {
-    if (!/^\d{2}$/.test(kode)) return <div id="card" data-card-error={`cakupan tidak dikenal: ${kode}`} />;
+    // One province (73), several (71-72-73), or 00 for Indonesia.
+    if (!/^\d{2}(-\d{2})*$/.test(kode)) return <div id="card" data-card-error={`cakupan tidak dikenal: ${kode}`} />;
     return <AngkaCard scope={kode} query={params} debug={debug} tema={tema} />;
   }
   if (!TEMPLATES.includes(template as Template) || !/^\d{2}(\d{2}(\d{2})?)?$/.test(kode))

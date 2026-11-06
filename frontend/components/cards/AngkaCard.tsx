@@ -19,7 +19,7 @@ import { CONTENT_W, CardHeader, H, MapLayout, PAD, TikTokOverlay, W, ZONE, mapBo
  *   /card/angka/{scope}?{pack query}&focus=6409    one region: rank + value on its own map,
  *                                                  over its Peta Wilayah layer (bg=terrain|landcover)
  *
- * scope = Kemendagri province code, or 00 for all of Indonesia. Every number is
+ * scope = Kemendagri province code, several joined by "-" (71-72-73), or 00 for all of Indonesia. Every number is
  * the pack's, already formatted by the backend (`display`), so the card shows
  * exactly what the deck text says. When a Peta layer hasn't been computed for a
  * region, the card draws its silhouette instead and says so in data-card-note.
@@ -38,18 +38,23 @@ const PACK_KEYS = ["source", "metric", "level", "period", "prov", "turvar", "th"
   "top", "bottom", "allow_partial"];
 const LEVEL_NOUN = { provinsi: "provinsi", kabupaten: "kabupaten/kota", kecamatan: "kecamatan" } as const;
 
-function geometryUrl(level: string, scope: string, focus: string | null): string {
+/** The provinces a scope covers: "73" -> ["73"], "71-72-73" -> three, "00" (Indonesia) -> none. */
+const provsOf = (scope: string) => (scope === "00" ? [] : scope.split("-"));
+
+/** Boundary files a card needs; kecamatan come one file per province, so several provinces load several. */
+function geometryUrls(level: string, scope: string, focus: string | null): string[] {
   const g = focus ?? "";
-  if (g.length === 2 || (!focus && level === "provinsi")) return "/dukcapil-provinces.geojson";
-  if (focus) return `/dukcapil-districts-${g.slice(0, 2)}.geojson`;
-  if (level === "kecamatan") return `/dukcapil-districts-${scope}.geojson`;
-  return "/dukcapil-regencies.geojson";
+  if (g.length === 2 || (!focus && level === "provinsi")) return ["/dukcapil-provinces.geojson"];
+  if (focus) return [`/dukcapil-districts-${g.slice(0, 2)}.geojson`];
+  if (level === "kecamatan") return provsOf(scope).map((p) => `/dukcapil-districts-${p}.geojson`);
+  return ["/dukcapil-regencies.geojson"];
 }
 
 function selectFeatures(geo: Geo, level: string, scope: string, focus: string | null): Feature[] {
   if (focus) return geo.features.filter((f) => (focus.length === 2 ? f.properties.domain_id === focus : f.properties.domain_id.startsWith(focus)));
   if (level === "provinsi" || scope === "00") return geo.features;
-  return geo.features.filter((f) => f.properties.domain_id.startsWith(scope));
+  const provs = provsOf(scope);
+  return geo.features.filter((f) => provs.includes(f.properties.domain_id.slice(0, 2)));
 }
 
 /** §8-style guardrails on the pack itself. Any problem = no card. */
@@ -103,10 +108,12 @@ export function AngkaCard({ scope, query, debug, tema = "malam" }: { scope: stri
 
   useEffect(() => {
     if (!data) return;
-    const url = geometryUrl(data.map.level, scope, focus);
-    fetch(url)
-      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`batas wilayah ${url} -> ${r.status}`))))
-      .then(setGeo)
+    Promise.all(
+      geometryUrls(data.map.level, scope, focus).map((url) =>
+        fetch(url).then((r) => (r.ok ? (r.json() as Promise<Geo>) : Promise.reject(new Error(`batas wilayah ${url} -> ${r.status}`)))),
+      ),
+    )
+      .then((geos) => setGeo({ features: geos.flatMap((g) => g.features) }))
       .catch((e) => setFatal(String(e.message ?? e)));
     if (wantsPeta) loadPeta(focus!).then(setPeta).catch(() => setPeta(null));
     else setPeta(null);

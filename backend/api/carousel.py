@@ -91,6 +91,42 @@ _SOURCE_ID = {"bps": "bps", "dukcapil": "duk", "djpk": "djpk"}
 _LEVEL_ID = {"provinsi": "prov", "kabupaten": "kab", "kecamatan": "kec"}
 
 
+# Island groups for a multi-province ranking: a pack over exactly one of them is
+# called by the group's name ("kecamatan di Sulawesi"). Kemendagri codes.
+PROV_GROUPS = {
+    "Sumatera": ("11", "12", "13", "14", "15", "16", "17", "18", "19", "21"),
+    "Jawa": ("31", "32", "33", "34", "35", "36"),
+    "Bali dan Nusa Tenggara": ("51", "52", "53"),
+    "Kalimantan": ("61", "62", "63", "64", "65"),
+    "Sulawesi": ("71", "72", "73", "74", "75", "76"),
+    "Maluku": ("81", "82"),
+    "Papua": ("91", "92", "93", "94", "95", "96"),
+}
+
+
+def parse_provs(prov):
+    """`prov` as one or more Kemendagri province codes ("73", "71,72,73" or
+    "71-72-73") -> a sorted tuple, or () for all of Indonesia."""
+    if not prov:
+        return ()
+    codes = sorted(set(re.split(r"[,\-\s]+", str(prov).strip())) - {""})
+    bad = [c for c in codes if not re.fullmatch(r"\d{2}", c)]
+    if bad:
+        raise PackError(f"prov: kode provinsi 2 digit, dipisah koma ({', '.join(bad)}).")
+    return tuple(codes)
+
+
+def provs_name(provs):
+    """What a set of provinces is called in the text: its island group's name,
+    the one province's name, or the names listed."""
+    for group, codes in PROV_GROUPS.items():
+        if tuple(sorted(codes)) == provs and len(provs) > 1:
+            return group
+    names = dict(DukcapilRegion.objects.filter(level="province", code__in=provs).values_list("code", "name"))
+    listed = [names.get(c, c) for c in provs]
+    return listed[0] if len(listed) == 1 else f"{', '.join(listed[:-1])} dan {listed[-1]}"
+
+
 def pack_slug(source, metric, level, period, prov=None):
     """A pack id that stays unique within the 40-char slug cap: the metric part
     is what gets shortened, never the level, period or province."""
@@ -398,22 +434,24 @@ _BUILDERS = {"bps": _bps, "dukcapil": _dukcapil, "djpk": _djpk}
 
 def build_pack(source, metric, level, period=None, *, prov=None, top=5, bottom=5, allow_partial=False,
                turvar=None, th=None, unit=None, label_metric=None, notes=None, pack_id=None):
-    """See the module docstring. `prov` (Kemendagri 2-digit) limits the ranking
-    to one province's regions; it is ignored at provinsi level."""
+    """See the module docstring. `prov` (Kemendagri 2-digit codes, one or several:
+    "73" or "71,72,73") limits the ranking to those provinces' regions; it is
+    ignored at provinsi level."""
     if source not in SOURCES:
         raise PackError(f"source harus salah satu dari {', '.join(SOURCES)}.")
     if level not in LEVELS:
         raise PackError(f"level harus salah satu dari {', '.join(LEVELS)}.")
     if source != "dukcapil" and not period:
         raise PackError("period (tahun) wajib untuk BPS dan DJPK.")
-    if level == "provinsi":
-        prov = None
+    provs = () if level == "provinsi" else parse_provs(prov)
+    # One scope string for ids and card paths: "73", or "71-72-73" for several provinces.
+    prov = "-".join(provs) or None
     built = _BUILDERS[source](str(metric), level, period, {"turvar": turvar, "th": th, "unit": unit})
     rows = built["rows"]
     expected = built["expected"]
-    if prov:
-        rows = [r for r in rows if (r["geo"] or "")[:2] == prov]
-        expected = [e for e in expected if (e[1] or "")[:2] == prov]
+    if provs:
+        rows = [r for r in rows if (r["geo"] or "")[:2] in provs]
+        expected = [e for e in expected if (e[1] or "")[:2] in provs]
 
     geos = [r["geo"] for r in rows if r["geo"]]
     dupes = sorted({g for g in geos if geos.count(g) > 1})
@@ -437,11 +475,11 @@ def build_pack(source, metric, level, period=None, *, prov=None, top=5, bottom=5
 
     scope = LEVEL_NOUN[level]
     where, pname = "", None
-    if prov:
-        pname = DukcapilRegion.objects.filter(level="province", code=prov).values_list("name", flat=True).first()
-        where = f" di {pname or prov}"
+    if provs:
+        pname = provs_name(provs)
+        where = f" di {pname}"
     pack_notes = []
-    twins = [t for t, base in built.get("twins", {}).items() if not prov or base[:2] == prov]
+    twins = [t for t, base in built.get("twins", {}).items() if not provs or base[:2] in provs]
     if twins:
         pack_notes.append(f"{fmt_int(len(twins))} baris ganda di sumber (wilayah yang sama, digambar sebagai dua "
                           "poligon dengan angka yang identik) dihitung sekali.")

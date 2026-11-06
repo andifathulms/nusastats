@@ -249,3 +249,30 @@ def test_partial_refusal_names_the_missing_regions(db):
     assert exc.value.details["partial"] == {"n": 1, "total": 2, "missing": ["Tinggimoncong, Kab. Gowa"], "more": 0}
     bad = APIClient().get("/api/carousel/pack/?source=dukcapil&metric=jumlah_penduduk&level=kecamatan&prov=73")
     assert bad.status_code == 422 and bad.data["partial"]["missing"] == ["Tinggimoncong, Kab. Gowa"]
+
+
+@pytest.mark.django_db
+def test_kecamatan_ranking_over_several_provinces(db):
+    DukcapilIndicator.objects.create(field="jumlah_penduduk", label_id="Jumlah Penduduk", group="Umum", unit="jiwa")
+    for code, name in (("71", "Sulawesi Utara"), ("72", "Sulawesi Tengah"), ("73", "Sulawesi Selatan"),
+                       ("74", "Sulawesi Tenggara"), ("75", "Gorontalo"), ("76", "Sulawesi Barat"), ("35", "Jawa Timur")):
+        _duk(code, name, "", level="province")
+    _duk("7306", "Gowa", "Kabupaten")
+    _duk("7601", "Pasangkayu", "Kabupaten")
+    _duk("3501", "Pacitan", "Kabupaten")
+    _duk("730610", "Tombolopao", "", level="district", jumlah_penduduk=31809)
+    _duk("760101", "Pasangkayu", "", level="district", jumlah_penduduk=40000)
+    _duk("350101", "Donorojo", "", level="district", jumlah_penduduk=50000)
+
+    two = build_pack("dukcapil", "jumlah_penduduk", "kecamatan", prov="76,73")
+    assert [r["code"] for r in two["pack"]["rows"]] == ["760101", "730610"]  # no Jawa Timur
+    assert two["map"]["prov"] == "73-76"
+    assert two["map"]["prov_name"] == "Sulawesi Selatan dan Sulawesi Barat"
+    assert "kecamatan di Sulawesi Selatan dan Sulawesi Barat" in two["pack"]["notes"]
+
+    island = build_pack("dukcapil", "jumlah_penduduk", "kecamatan", prov="71-72-73-74-75-76")
+    assert island["map"]["prov_name"] == "Sulawesi"
+    assert island["pack"]["id"].endswith("-71-72-73-74-75-76")
+
+    with pytest.raises(PackError, match="prov"):
+        build_pack("dukcapil", "jumlah_penduduk", "kecamatan", prov="7,73")

@@ -14,6 +14,7 @@ import {
 } from "@/lib/api";
 import { Badge, ErrorState, PageHeader, Panel, SectionTitle } from "@/components/ui";
 import { routes } from "@/lib/routes";
+import { ProvincePicker } from "@/components/ProvincePicker";
 import { TikTokText } from "@/components/carousel/TikTokText";
 import { TemaPicker, useTema } from "@/components/carousel/TemaPicker";
 import { CardLightbox } from "@/components/carousel/CardLightbox";
@@ -347,25 +348,20 @@ function CarouselTool({ tema }: { tema: Tema }) {
                 </button>
               ))}
             </div>
-            <select
-              className="rounded-full border border-ink-border bg-ink-panel2 px-3 py-1 text-sm text-ink-text focus:border-ink-accent focus:outline-none disabled:opacity-50"
+            <ProvincePicker
+              className="rounded-full border border-ink-border bg-ink-panel2 px-3 py-1 text-sm text-ink-text hover:border-ink-accent disabled:opacity-50"
               value={presetLevel === "provinsi" ? "" : presetProv}
-              onChange={(e) => setPresetProv(e.target.value)}
+              onChange={setPresetProv}
+              provinces={provinces}
+              allowAll={presetLevel !== "kecamatan"}
               disabled={presetLevel === "provinsi"}
-              aria-label="Cakupan"
-            >
-              <option value="">{presetLevel === "kecamatan" ? "Pilih provinsi…" : "Seluruh Indonesia"}</option>
-              {provinces.map((p) => (
-                <option key={p.code} value={p.code}>
-                  {p.name}
-                </option>
-              ))}
-            </select>
+            />
           </div>
         </div>
         {presetLevel === "kecamatan" && !presetProv && (
           <p className="mb-3 text-sm text-ink-muted">
-            Peringkat kecamatan dibuat per provinsi: se-Indonesia, 39 dari 7.285 kecamatan tidak punya nilai.
+            Pilih satu atau beberapa provinsi, atau satu pulau sekaligus (mis. Sulawesi): se-Indonesia, 39 dari 7.285
+            kecamatan tidak punya nilai.
           </p>
         )}
         <div className="space-y-3">
@@ -454,14 +450,14 @@ function CarouselTool({ tema }: { tema: Tema }) {
             <input className={input} value={form.period} onChange={(e) => set({ period: e.target.value.trim() })} placeholder={form.source === "dukcapil" ? "YYYY-MM" : "mis. 2025"} />
           </Field>
           <Field label="Cakupan">
-            <select className={input} value={form.prov} onChange={(e) => set({ prov: e.target.value })} disabled={form.level === "provinsi"}>
-              <option value="">Seluruh Indonesia</option>
-              {provinces.map((p) => (
-                <option key={p.code} value={p.code}>
-                  {p.name}
-                </option>
-              ))}
-            </select>
+            <ProvincePicker
+              className={`${input} text-left`}
+              value={form.prov}
+              onChange={(v) => set({ prov: v })}
+              provinces={provinces}
+              allowAll
+              disabled={form.level === "provinsi"}
+            />
           </Field>
           <Field label="Resep">
             <select className={input} value={form.recipe} onChange={(e) => set({ recipe: e.target.value })}>

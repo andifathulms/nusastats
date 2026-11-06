@@ -24,9 +24,12 @@ The downloads come from the `cards` service (`GET :3012/deck-zip?<deck query>`,
 form lives in the URL. **Pilih cepat** above the form holds one-click rankings (penduduk, usia &
 keluarga, pendidikan & kesejahteraan, pekerjaan & budaya, keuangan daerah), each checked against
 the live packs; a click fills the form and builds. Switch the level there (kabupaten/kota,
-provinsi, kecamatan) and pick a province for a one-province "Daerahmu" version. Kecamatan presets
-are Dukcapil only and need a province: across Indonesia 39 of 7.285 kecamatan have no values, so a
-national kecamatan list may not be called the highest. A preset that a province can't fill
+provinsi, kecamatan) and pick the scope: one province for a "Daerahmu" version, a whole island in
+one click (Sumatera, Jawa, Bali & Nusa Tenggara, Kalimantan, Sulawesi, Maluku, Papua), or any
+provinces cherry-picked. The text names an island group by its name ("kecamatan di Sulawesi"),
+otherwise lists the provinces. Kecamatan presets are Dukcapil only and need at least one province:
+across Indonesia 39 of 7.285 kecamatan have no values, so a national kecamatan list may not be
+called the highest. A preset that a province can't fill
 completely (e.g. kecamatan density in 5 provinces) is refused with the reason
 (`PRESETS` in `app/carousel/page.tsx`). "Buat carousel" links on BPS variable pages, `/dukcapil` and `/keuangan`
 prefill it.
@@ -58,7 +61,7 @@ Nusantara Mapper" (`BRAND` in `AngkaCard.tsx` and `carousel_deck.py`).
 | `--source` | `bps` (BPS var id), `dukcapil` (field or derived key), `djpk` (akun or ratio key) |
 | `--level` | `provinsi`, `kabupaten`, `kecamatan` (Dukcapil only) |
 | `--period` | year (BPS, DJPK); Dukcapil defaults to the latest snapshot |
-| `--prov` | Kemendagri province code: rank one province's regions ("Daerahmu" posts) |
+| `--prov` | Kemendagri province code(s): one province's regions ("Daerahmu" posts), or several comma-separated (`71,72,73,74,75,76` = Sulawesi); card paths join them with `-` (`/card/angka/71-72-…`) |
 | `--recipe` | `top` (countdown to #1), `terendah` (countdown to the lowest), `gap` (highest vs lowest) |
 | `--bg` | Peta Wilayah layer behind each region's map: `terrain`, `landcover`, `none` |
 | `--table` | rows in the ranking table: `10` (default), `20`, `50`; one table card per 10 rows (`/card/angka/…&view=top10&start=11`) |

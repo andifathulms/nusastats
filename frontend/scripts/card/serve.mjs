@@ -75,7 +75,7 @@ function getDeck(query) {
 }
 const TEMAS = ["malam", "laut", "kertas", "putih"];
 // Only card pages are rendered from a path.
-const cardPath = (p) => typeof p === "string" && /^\/card\/[a-z]+\/\d+(\?[^#\s]*)?$/.test(p);
+const cardPath = (p) => typeof p === "string" && /^\/card\/[a-z]+\/\d+(-\d+)*(\?[^#\s]*)?$/.test(p);
 
 http
   .createServer(async (req, res) => {
