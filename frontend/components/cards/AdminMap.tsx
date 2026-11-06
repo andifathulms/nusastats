@@ -42,6 +42,61 @@ function ringsPx(f: Feature, to: (p: number[]) => [number, number], mx: number, 
   return polygons(f).flatMap((poly) => poly.map((ring) => ring.map((p) => { const [x, y] = to(p); return [mx + x * s, my + y * s] as Pt; })));
 }
 
+/** A placed name's box in card px (the same estimate the band check uses). */
+function labelRect(l: Label, mx: number, my: number, s: number): Rect {
+  const w = (l.lines ? Math.max(...l.lines.map((t) => t.length)) : l.name.length) * l.size * 0.56 * s;
+  const h = (l.lines ? 2.3 : 1.2) * l.size * s;
+  return { x: mx + l.x * s - w / 2, y: my + l.y * s - h / 2, w, h };
+}
+
+/** What a leader line from a unit to a name rectangle would cross, as a cost in px for
+ * FreeSpace.place: each stretch over another unit counts its length again, over another name
+ * eight times; and a name rectangle right beside another name (they would read as one stacked
+ * label) up to 80. Without it the nearest free spot can sit across a neighbour (Pattallassang's
+ * name out at sea on the far side of Sanrobone). Units are rasterised once on an 8 px grid. */
+function leaderCost(feats: Feature[], labels: Label[], to: (p: number[]) => [number, number], mx: number, my: number, s: number, box: { w: number; h: number }) {
+  const G = 8;
+  const cols = Math.ceil(box.w / G);
+  const rows = Math.ceil(box.h / G);
+  const owner = new Int16Array(cols * rows).fill(-1);
+  const ids = feats.map((f) => f.properties.domain_id);
+  feats.forEach((f, i) => {
+    const rings = ringsPx(f, to, mx, my, s);
+    const inside = inRings(rings);
+    const xs = rings.flatMap((r) => r.map((p) => p[0]));
+    const ys = rings.flatMap((r) => r.map((p) => p[1]));
+    const [c0, c1] = [Math.max(0, Math.floor(Math.min(...xs) / G)), Math.min(cols - 1, Math.floor(Math.max(...xs) / G))];
+    const [r0, r1] = [Math.max(0, Math.floor(Math.min(...ys) / G)), Math.min(rows - 1, Math.floor(Math.max(...ys) / G))];
+    for (let r = r0; r <= r1; r++) for (let c = c0; c <= c1; c++) if (inside((c + 0.5) * G, (r + 0.5) * G)) owner[r * cols + c] = i;
+  });
+  const named = new Uint8Array(cols * rows);
+  const boxes = labels.map((l) => labelRect(l, mx, my, s));
+  for (const b of boxes) {
+    for (let r = Math.max(0, Math.floor(b.y / G)); r <= Math.min(rows - 1, Math.floor((b.y + b.h) / G)); r++)
+      for (let c = Math.max(0, Math.floor(b.x / G)); c <= Math.min(cols - 1, Math.floor((b.x + b.w) / G)); c++) named[r * cols + c] = 1;
+  }
+  return (id: string, anchor: Pt, rect: Rect) => {
+    const own = ids.indexOf(id);
+    const [ex, ey] = nearestOnRect(anchor, rect);
+    const len = Math.hypot(ex - anchor[0], ey - anchor[1]);
+    const steps = Math.ceil(len / (G / 2));
+    let cost = 0;
+    for (let i = 1; i <= steps; i++) {
+      const c = Math.floor((anchor[0] + ((ex - anchor[0]) * i) / steps) / G);
+      const r = Math.floor((anchor[1] + ((ey - anchor[1]) * i) / steps) / G);
+      if (c < 0 || r < 0 || c >= cols || r >= rows) continue;
+      const o = owner[r * cols + c];
+      if (o >= 0 && o !== own) cost += G / 2;
+      if (named[r * cols + c]) cost += 8 * (G / 2);
+    }
+    for (const b of boxes) {
+      const gap = Math.max(b.x - (rect.x + rect.w), rect.x - (b.x + b.w), b.y - (rect.y + rect.h), rect.y - (b.y + b.h));
+      if (gap < 20) cost += (20 - Math.max(0, gap)) * 4;
+    }
+    return cost;
+  };
+}
+
 function inRings(rings: Pt[][]) {
   return (x: number, y: number) => {
     let ins = false;
@@ -365,6 +420,8 @@ function layout(spec: Spec, geo: Geos, BOX: { w: number; h: number }, panels = 1
   // the nearest free spot; a panorama lines them up in columns beside the map, each name level with
   // its desa where it can be, so the leaders fan out (as in the owner's Luwu Utara slides).
   const size = spec.labelSize.leader;
+  const crossing = leaderCost(feats, placed.labels, to, mx, my, s, BOX);
+  for (const l of placed.labels) space.occupyRect(labelRect(l, mx, my, s));
   const leaders: Leader[] = [];
   const numbered: Label[] = [];
   const todo = [...placed.numbered].sort((a, b) => a.y - b.y || a.x - b.x);
@@ -384,7 +441,7 @@ function layout(spec: Spec, geo: Geos, BOX: { w: number; h: number }, panels = 1
       const anchor = px(l);
       const off = anchor[0] < 0 || anchor[1] < 0 || anchor[0] > BOX.w || anchor[1] > BOX.h;
       // gap 1: two leader names side by side must not read as one name ("Samboja Anggana")
-      const rect = off ? null : space.place(textWidth(l.name, size, true) + 10, size * 1.3, anchor, undefined, 1);
+      const rect = off ? null : space.place(textWidth(l.name, size, true) + 10, size * 1.3, anchor, undefined, 1, false, (r) => crossing(l.id, anchor, r));
       if (rect) leaders.push({ id: l.id, name: l.name, anchor, rect, size });
       else numbered.push(l);
     }

@@ -116,6 +116,25 @@ export function projector(frame: Frame) {
   return ([x, y]: number[]): [number, number] => [(x - frame.west) * s * cosMid, (frame.north - y) * s];
 }
 
+function ringArea(ring: [number, number][]): number {
+  let a = 0;
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) a += (ring[j][0] + ring[i][0]) * (ring[j][1] - ring[i][1]);
+  return a / 2;
+}
+
+function ringCentroid(ring: [number, number][]): [number, number] {
+  let a = 0;
+  let x = 0;
+  let y = 0;
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+    const f = ring[j][0] * ring[i][1] - ring[i][0] * ring[j][1];
+    a += f;
+    x += (ring[j][0] + ring[i][0]) * f;
+    y += (ring[j][1] + ring[i][1]) * f;
+  }
+  return a ? [x / (3 * a), y / (3 * a)] : ring[0];
+}
+
 function insideRings(p: [number, number], rings: [number, number][][]): boolean {
   let inside = false;
   for (const ring of rings)
@@ -407,6 +426,8 @@ export function placeLabels(
     const [x0, x1, y0, y1] = u.bbox;
     if (x1 < 0 || x0 > vw || y1 < 0 || y0 > vh) continue; // wholly off the frame: the off-frame note names it
     const inside = (x: number, y: number) => u.polys.some((poly) => insideRings([x, y], poly));
+    const onOther = (x: number, y: number) =>
+      units.some((o) => o !== u && x >= o.bbox[0] && x <= o.bbox[1] && y >= o.bbox[2] && y <= o.bbox[3] && o.polys.some((poly) => insideRings([x, y], poly)));
     const room = (x: number, y: number) => Math.max(...u.polys.map((poly) => (insideRings([x, y], poly) ? edgeDistance([x, y], poly) : 0)));
     const size = Math.max(min, Math.min(max, max)) * k;
     const split = twoLines(name);
@@ -415,38 +436,63 @@ export function placeLabels(
       ...(split ? [{ lines: split, w: Math.max(...split.map((t) => t.length)) * size * 0.56, up: size * 1.25, down: size * 1.05 }] : []),
     ];
     const N = 18;
-    let best: { x: number; y: number; v: (typeof variants)[number]; score: number; room: number } | null = null;
-    let anchor: { x: number; y: number; room: number } | null = null;
+    const spots: { x: number; y: number; r: number }[] = [];
     for (let i = 0; i <= N; i++)
       for (let j = 0; j <= N; j++) {
         const x = x0 + ((x1 - x0) * i) / N;
         const y = y0 + ((y1 - y0) * j) / N;
-        if (!inside(x, y)) continue;
-        const r = room(x, y);
-        if (ok(x, y) && (!anchor || r > anchor.room)) anchor = { x, y, room: r };
-        for (const [vi, v] of variants.entries()) {
-          const box = { x0: x - v.w / 2, x1: x + v.w / 2, y0: y - v.up, y1: y + v.down };
-          if (box.x0 < 0 || box.x1 > vw || box.y0 < 0 || box.y1 > vh) continue;
-          if (placed.some((p) => box.x0 < p.x1 && box.x1 > p.x0 && box.y0 < p.y1 && box.y1 > p.y0)) continue;
-          let hit = 0;
-          let n = 0;
-          let blocked = false;
-          for (let a = 0; a <= 4 && !blocked; a++)
-            for (let b = 0; b <= 2; b++) {
-              const px = box.x0 + ((box.x1 - box.x0) * a) / 4;
-              const py = box.y0 + ((box.y1 - box.y0) * b) / 2;
-              if (!ok(px, py)) { blocked = true; break; }
-              n++;
-              if (inside(px, py)) hit++;
-            }
-          if (blocked) continue;
-          // One line beats two at the same fit; within a fit, the spot farthest from the edge wins.
-          const score = Math.round((hit / n) * 10) - vi * 0.5;
-          if (!best || score > best.score || (score === best.score && r > best.room)) best = { x, y, v, score, room: r };
-        }
+        if (inside(x, y)) spots.push({ x, y, r: room(x, y) });
       }
+    const maxRoom = Math.max(1e-9, ...spots.map((p) => p.r));
+    // The pull to the middle grows with the room a unit has to spare (its area against the name's
+    // smallest box, from 1.5x to 4x): in a tight unit it would take the space a neighbour's name
+    // needed (dense desa maps), so there the best fit wins as before.
+    const area = u.polys.reduce((t, poly) => t + Math.abs(ringArea(poly[0])), 0);
+    const spare = area / Math.min(...variants.map((v) => v.w * (v.up + v.down)));
+    const pull = 0.02 + 0.38 * Math.max(0, Math.min(1, (spare - 1.5) / 2.5));
+    // "Central" is half distance from the edge (the widest part) and half closeness to the centre of
+    // mass of the unit's main polygon, where the eye puts its middle (Polongbangkeng Selatan's widest
+    // strip runs along its top edge).
+    const main = u.polys.reduce((a, b) => (Math.abs(ringArea(b[0])) > Math.abs(ringArea(a[0])) ? b : a));
+    const [cx, cy] = ringCentroid(main[0]);
+    const reach = 0.5 * Math.sqrt(Math.abs(ringArea(main[0])));
+    const central = (x: number, y: number, r: number) =>
+      0.5 * (r / maxRoom) + 0.5 * (1 - Math.min(1, Math.hypot(x - cx, y - cy) / reach));
+    let best: { x: number; y: number; v: (typeof variants)[number]; score: number; fit: number; room: number } | null = null;
+    let anchor: { x: number; y: number; room: number } | null = null;
+    for (const { x, y, r } of spots) {
+      if (ok(x, y) && (!anchor || r > anchor.room)) anchor = { x, y, room: r };
+      for (const [vi, v] of variants.entries()) {
+        const box = { x0: x - v.w / 2, x1: x + v.w / 2, y0: y - v.up, y1: y + v.down };
+        if (box.x0 < 0 || box.x1 > vw || box.y0 < 0 || box.y1 > vh) continue;
+        if (placed.some((p) => box.x0 < p.x1 && box.x1 > p.x0 && box.y0 < p.y1 && box.y1 > p.y0)) continue;
+        let hit = 0;
+        let other = 0;
+        let n = 0;
+        let blocked = false;
+        for (let a = 0; a <= 6 && !blocked; a++)
+          for (let b = 0; b <= 2; b++) {
+            const px = box.x0 + ((box.x1 - box.x0) * a) / 6;
+            const py = box.y0 + ((box.y1 - box.y0) * b) / 2;
+            if (!ok(px, py)) { blocked = true; break; }
+            n++;
+            if (inside(px, py)) hit++;
+            else if (onOther(px, py)) other++;
+          }
+        if (blocked) continue;
+        // How much of the name is on its unit, how much spills onto another unit (whose own name
+        // needs that room: Libureng over Lompo Riaja), and how central the spot is (its distance
+        // from the edge against the unit's most central point). In a roomy unit a name in the
+        // middle that spills a little into the sea reads better than one squeezed against the
+        // unit's edge where it is widest. One line beats two at the same spot.
+        const fit = hit / n;
+        if (fit < 0.5) continue; // at least half the name on its own unit (see below)
+        const score = fit - other / n + pull * central(x, y, r) - vi * 0.05;
+        if (!best || score > best.score) best = { x, y, v, score, fit, room: r };
+      }
+    }
     // At least half the name on its own unit (a name may spill over a small one, as on hand-made maps).
-    if (best && best.score >= 5 && best.room / k >= minRoom * 0.25) {
+    if (best && best.room / k >= minRoom * 0.25) {
       placed.push({ x0: best.x - best.v.w / 2, x1: best.x + best.v.w / 2, y0: best.y - best.v.up, y1: best.y + best.v.down });
       labels.push({ id, name, x: best.x, y: best.y, size, ...(best.v.lines ? { lines: best.v.lines } : {}) });
     } else {
