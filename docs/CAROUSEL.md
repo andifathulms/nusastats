@@ -72,7 +72,7 @@ Table cards: each row is rank · kabupaten emblem · kecamatan (bold) over its k
 value, with a thin bar under the names. Fractional values always carry two decimals (`14,60%`,
 `4.540,60 jiwa/km²`; an exact whole number stays whole), so the column lines up on the comma.
 Emblems come from `frontend/public/emblems/` (see `data/emblems/fetch_emblems.py`; all six
-Selatan, Sulawesi Barat and Sulawesi Tenggara so far). A province without emblems shows
+Sulawesi provinces so far). A province without emblems shows
 the same rows without the emblem column.
 
 Without the frontend, `manage.py export_carousel_pack … --out-dir exports/carousels` writes the
