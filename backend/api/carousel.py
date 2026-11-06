@@ -141,8 +141,11 @@ def fmt_value(v, unit):
     most 2 decimals, whole numbers for people, large Rupiah in words)."""
     u = (unit or "").strip()
     ul = u.lower()
+    # Fractional values always carry exactly two decimals (14,60%, 4.540,60 jiwa/km²,
+    # 37,50 tahun): a ranking's values are then all the same length and line up. An exact
+    # whole number (an index of 52) stays whole. Percentages always have two.
+    frac = v != int(v)
     if ul in ("%", "persen"):
-        # Always two decimals: a ranking's percentages line up on the comma.
         return f"{fmt_num(v, fixed=True)}%"
     if ul.split(" ")[0] in ("jiwa", "orang", "kk", "rumah", "unit"):
         return f"{fmt_num(v, 0)} {u}"
@@ -157,8 +160,8 @@ def fmt_value(v, unit):
     if ul.startswith("rupiah"):
         return f"Rp{fmt_num(v, 0)}{u[len('rupiah'):]}"
     if ul.startswith("indeks") or not u or re.fullmatch(r"0\s*[-–]\s*100", u):
-        return fmt_num(v)
-    return f"{fmt_num(v)} {ul if u.istitle() and ' ' not in u else u}"
+        return fmt_num(v, fixed=frac)
+    return f"{fmt_num(v, fixed=frac)} {ul if u.istitle() and ' ' not in u else u}"
 
 
 def _bulan_tahun(period):

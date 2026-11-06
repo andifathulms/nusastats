@@ -229,10 +229,13 @@ def test_dukcapil_polygon_twin_is_counted_once(db):
     assert (top["label"], top["name"], top["parent"]) == ("Tombolopao, Kab. Gowa", "Tombolopao", "Kab. Gowa")
 
 
-def test_percentages_keep_two_decimals():
-    """A ranking's percentages line up on the comma."""
+def test_fractional_values_keep_two_decimals():
+    """A ranking's values are all the same length and line up on the comma; counts stay whole."""
     assert [fmt_value(v, "%") for v in (14.6, 18.7, 12.15, 3)] == ["14,60%", "18,70%", "12,15%", "3,00%"]
-    assert fmt_value(37.5, "tahun") == "37,5 tahun"
+    assert [fmt_value(v, "jiwa/km²") for v in (4540.6, 4134.28, 2447.1)] == ["4.540,60 jiwa/km²", "4.134,28 jiwa/km²", "2.447,10 jiwa/km²"]
+    assert fmt_value(37.5, "tahun") == "37,50 tahun"
+    assert fmt_value(72.5, "") == "72,50"
+    assert fmt_value(582327, "jiwa") == "582.327 jiwa"
 
 
 @pytest.mark.django_db

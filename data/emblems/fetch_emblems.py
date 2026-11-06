@@ -27,6 +27,7 @@ Usage: python3 fetch_emblems.py 73 [--api http://localhost:8011]
 import argparse
 import datetime
 import hashlib
+import io
 import json
 import os
 import re
@@ -150,9 +151,14 @@ def main():
         status, body = get(src, raw=True)
         ext = os.path.splitext(urllib.parse.urlparse(src).path)[1].lower()
         ext = ".png" if ext == ".svg" else ext  # SVG thumbnails are PNG renders
-        out = f"{code}{ext}"
-        with open(os.path.join(OUT, out), "wb") as f:
-            f.write(body)
+        # A JPEG has no transparency for clear_corners to write: re-encode it as PNG (recorded).
+        converted = ext in (".jpg", ".jpeg")
+        out = f"{code}.png" if converted else f"{code}{ext}"
+        if converted:
+            Image.open(io.BytesIO(body)).convert("RGBA").save(os.path.join(OUT, out))
+        else:
+            with open(os.path.join(OUT, out), "wb") as f:
+                f.write(body)
         cleared = clear_corners(os.path.join(OUT, out))
         saved = open(os.path.join(OUT, out), "rb").read()
         meta = ii.get("extmetadata", {})
@@ -170,7 +176,9 @@ def main():
             "http_status": status,
             "fetched_at": datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds"),
             "sha256_download": hashlib.sha256(body).hexdigest(),
-            "processing": "latar putih di sudut dibuat transparan" if cleared else None,
+            "processing": "; ".join(
+                p for p, on in (("JPEG diubah ke PNG", converted), ("latar putih di sudut dibuat transparan", cleared)) if on
+            ) or None,
             "sha256": hashlib.sha256(saved).hexdigest(),
             "bytes": len(saved),
         }

@@ -89,6 +89,9 @@ const PRESETS: { group: string; items: Preset[] }[] = [
       { label: "Paling padat", source: "dukcapil", metric: "pop_density_big", recipe: "top" },
       { label: "Paling lengang", source: "dukcapil", metric: "pop_density_big", recipe: "terendah" },
       { label: "Pria vs wanita", source: "dukcapil", metric: "sex_ratio", recipe: "gap" },
+      { label: "Keluarga terbesar", source: "dukcapil", metric: "avg_household", recipe: "top" },
+      { label: "Wilayah terluas", source: "dukcapil", metric: "luas_big", recipe: "top" },
+      { label: "Paling banyak pindah", source: "dukcapil", metric: "net_migration_rate", recipe: "top" },
     ],
   },
   {
@@ -100,6 +103,12 @@ const PRESETS: { group: string; items: Preset[] }[] = [
       { label: "Beban tanggungan tertinggi", source: "dukcapil", metric: "dependency_ratio", recipe: "top" },
       { label: "Cerai tertinggi", source: "dukcapil", metric: "pct_divorced", recipe: "top" },
       { label: "Lajang terbanyak", source: "dukcapil", metric: "pct_unmarried", recipe: "top" },
+      { label: "Paling banyak menikah", source: "dukcapil", metric: "pct_married", recipe: "top" },
+      { label: "Anak terbanyak", source: "dukcapil", metric: "pct_children", recipe: "top" },
+      { label: "Usia produktif terbanyak", source: "dukcapil", metric: "pct_productive", recipe: "top" },
+      { label: "Rasio anak tertinggi", source: "dukcapil", metric: "child_woman_ratio", recipe: "top" },
+      // No "angka kematian" preset: crude_death_rate has outliers (Panca Lautang 32.9 per 1.000
+      // against a median of 2.6) that look like late death registration, not mortality.
     ],
   },
   {
@@ -107,6 +116,8 @@ const PRESETS: { group: string; items: Preset[] }[] = [
     items: [
       { label: "Sarjana terbanyak", source: "dukcapil", metric: "pct_sarjana", recipe: "top" },
       { label: "Sarjana paling sedikit", source: "dukcapil", metric: "pct_sarjana", recipe: "terendah" },
+      { label: "Tamat SMA terbanyak", source: "dukcapil", metric: "pct_slta_plus", recipe: "top" },
+      { label: "Tamat SMA paling sedikit", source: "dukcapil", metric: "pct_slta_plus", recipe: "terendah" },
       { label: "IPM tertinggi", ...IPM, recipe: "top" },
       { label: "IPM terendah", ...IPM, recipe: "terendah" },
       { label: "Sekolah paling lama", source: "bps", metric: "415", recipe: "top", period: "2025" },
@@ -121,7 +132,10 @@ const PRESETS: { group: string; items: Preset[] }[] = [
       { label: "Nelayan terbanyak", source: "dukcapil", metric: "pct_fisher", recipe: "top", levels: ["kabupaten", "provinsi"] },
       { label: "Wiraswasta terbanyak", source: "dukcapil", metric: "pct_entrepreneur", recipe: "top" },
       { label: "Agama paling beragam", source: "dukcapil", metric: "religion_diversity", recipe: "top" },
+      { label: "Agama paling seragam", source: "dukcapil", metric: "religion_diversity", recipe: "terendah" },
       { label: "Golongan darah O", source: "dukcapil", metric: "pct_blood_o", recipe: "top" },
+      // Only the low end: many kecamatan tie at 100%.
+      { label: "KTP-el paling rendah", source: "dukcapil", metric: "ktp_coverage", recipe: "terendah" },
     ],
   },
   {
