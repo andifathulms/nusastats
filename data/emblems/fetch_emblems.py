@@ -88,7 +88,7 @@ def emblem_file(wikitext):
             continue
         v = re.sub(r"^\[\[\s*(Berkas|File|Gambar|Image)\s*:", "", m.group(1).strip(), flags=re.I)
         v = v.split("|")[0].split("]]")[0].strip()
-        if re.search(r"\.(png|svg|jpe?g|gif|webp)$", v, re.I):
+        if re.search(r"\.(png|svg|jpe?g|gif|webp|tiff?)$", v, re.I):
             return v
     return None
 
@@ -151,8 +151,9 @@ def main():
         status, body = get(src, raw=True)
         ext = os.path.splitext(urllib.parse.urlparse(src).path)[1].lower()
         ext = ".png" if ext == ".svg" else ext  # SVG thumbnails are PNG renders
-        # A JPEG has no transparency for clear_corners to write: re-encode it as PNG (recorded).
-        converted = ext in (".jpg", ".jpeg")
+        # JPEG has no transparency for clear_corners to write, and a TIFF won't show in a browser:
+        # both are re-encoded as PNG (recorded).
+        converted = ext in (".jpg", ".jpeg", ".tif", ".tiff")
         out = f"{code}.png" if converted else f"{code}{ext}"
         if converted:
             Image.open(io.BytesIO(body)).convert("RGBA").save(os.path.join(OUT, out))
@@ -177,7 +178,7 @@ def main():
             "fetched_at": datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds"),
             "sha256_download": hashlib.sha256(body).hexdigest(),
             "processing": "; ".join(
-                p for p, on in (("JPEG diubah ke PNG", converted), ("latar putih di sudut dibuat transparan", cleared)) if on
+                p for p, on in ((f"{ext[1:].upper()} diubah ke PNG", converted), ("latar putih di sudut dibuat transparan", cleared)) if on
             ) or None,
             "sha256": hashlib.sha256(saved).hexdigest(),
             "bytes": len(saved),
