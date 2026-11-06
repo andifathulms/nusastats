@@ -236,6 +236,9 @@ def test_fractional_values_keep_two_decimals():
     assert fmt_value(37.5, "tahun") == "37,50 tahun"
     assert fmt_value(72.5, "") == "72,50"
     assert fmt_value(582327, "jiwa") == "582.327 jiwa"
+    # A whole value inside a fractional ranking gets ",00" too (4.008,00 next to 4.134,28).
+    assert fmt_value(4008, "jiwa/km²", fixed=True) == "4.008,00 jiwa/km²"
+    assert fmt_value(52, "indeks") == "52"
 
 
 @pytest.mark.django_db

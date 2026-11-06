@@ -87,6 +87,12 @@ def carousel_press_link(deck, base=None):
     return f"{base or CAROUSEL_PRESS_URL}#deck={data}"
 
 
+def _fixed(pack, m):
+    """Two decimals on every value when any value in the ranking is fractional,
+    as build_pack decides for the slides' `display`."""
+    return any(r.get("value", 0) != int(r.get("value", 0)) for r in pack["rows"] + m["values"])
+
+
 def _tied_with(row, rows):
     """'sama dengan X dan Y' when other shown rows have exactly this value."""
     peers = [_text(r["label"]) for r in rows if r is not row and r["value"] == row["value"]]
@@ -120,6 +126,7 @@ def tiktok_text(result, recipe="top", table=TABLE_SIZES[0], maps=True):
     their shared ranks, the pack's caveats, the source and hashtags."""
     pack, m = result["pack"], result["map"]
     unit, level, n = pack["unit"], pack["level"], m["n"]
+    fixed = _fixed(pack, m)
     noun = LEVEL_NOUN[level]
     where = f" di {m['prov_name']}" if m["prov_name"] else ""
     short = short_metric(pack["metric"])
@@ -143,18 +150,18 @@ def tiktok_text(result, recipe="top", table=TABLE_SIZES[0], maps=True):
         firsts = [r for r in picked if place(r) == 1]
         if len(firsts) > 1:
             names = ", ".join(r["label"] for r in firsts[:-1]) + " dan " + firsts[-1]["label"]
-            lines.append(f"{names} sama-sama di peringkat 1: {fmt_value(firsts[0]['value'], unit)}.")
+            lines.append(f"{names} sama-sama di peringkat 1: {fmt_value(firsts[0]['value'], unit, fixed)}.")
         else:
             lead = "Nomor 1" if recipe == "top" else "Paling rendah"
-            lines.append(f"{lead}: {firsts[0]['label']}, {fmt_value(firsts[0]['value'], unit)}.")
+            lines.append(f"{lead}: {firsts[0]['label']}, {fmt_value(firsts[0]['value'], unit, fixed)}.")
         lines.append("")
         lines.append(f"{k} {word} dari {fmt_num(n, 0)} {noun}{where} ({period}):")
-        lines += [f"{place(r)}. {r['label']}: {fmt_value(r['value'], unit)}" for r in picked]
+        lines += [f"{place(r)}. {r['label']}: {fmt_value(r['value'], unit, fixed)}" for r in picked]
         if shown > k:
             lines.append(f"Peringkat #1–{shown} lengkap ada di slide.")
     else:
         hi, lo = rows[0], rows[-1]
-        hi_d, lo_d = fmt_value(hi["value"], unit), fmt_value(lo["value"], unit)
+        hi_d, lo_d = fmt_value(hi["value"], unit, fixed), fmt_value(lo["value"], unit, fixed)
         title = _fit_title(f"{short}{where}: {hi_d} vs {lo_d}", f"{short}: {hi_d} vs {lo_d}", f"Tertinggi vs terendah{where}")
         lines.append(f"Tertinggi: {hi['label']}, {hi_d}.")
         lines.append(f"Terendah: {lo['label']}, {lo_d}.")
@@ -192,6 +199,7 @@ def deck_bundle(result, spec, recipe="top", map_bg="terrain", template="editoria
         raise ValueError(f"map_bg must be one of {MAP_BACKGROUNDS}")
     pack, m, prov = result["pack"], result["map"], result["provenance"]
     slug, unit, level, n = pack["id"], pack["unit"], pack["level"], m["n"]
+    fixed = _fixed(pack, m)
     noun = LEVEL_NOUN[level]
     where = f" di {m['prov_name']}" if m["prov_name"] else ""
     geo_of = {v["code"]: v["geo"] for v in m["values"]}
@@ -260,7 +268,7 @@ def deck_bundle(result, spec, recipe="top", map_bg="terrain", template="editoria
             icon = "star" if place == 1 else "map-pin"
             extra = [f"{word.lower()} dari {fmt_num(n, 0)} {noun}{where}"] if place == 1 else []
             extra += _tied_with(row, picked)
-            body = f"*{fmt_value(row['value'], unit)}*" + (f", {', '.join(extra)}." if extra else "")
+            body = f"*{fmt_value(row['value'], unit, fixed)}*" + (f", {', '.join(extra)}." if extra else "")
             slides.append(f"[number={place} icon={icon}]\n{_text(row['label'])}\n{body}")
             focus(row["code"], "desc" if recipe == "top" else "asc")
         # After the reveal: the top (or bottom) table as bar charts, #1–10 first.
@@ -272,7 +280,7 @@ def deck_bundle(result, spec, recipe="top", map_bg="terrain", template="editoria
                             "not a verdict.")
     else:
         hi, lo = rows[0], rows[-1]
-        hi_d, lo_d = fmt_value(hi["value"], unit), fmt_value(lo["value"], unit)
+        hi_d, lo_d = fmt_value(hi["value"], unit, fixed), fmt_value(lo["value"], unit, fixed)
         lead = _text(short) if len(short) <= MAX_HEAD_METRIC else "Tertinggi vs Terendah"
         slides.append(f'[cover kicker="{_attr(kicker)}"]\n{lead} | {_text(hi_d)} vs {_text(lo_d)}\n'
                       f"{_text(subtitle)}")

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { carouselApi, dukcapilApi, regionLabel, type CarouselMapValue, type CarouselPackResult } from "@/lib/api";
 import { loadPeta, petaAsset, type Peta } from "@/lib/peta";
 import { NO_DATA, cropBox, frameOf, framing, insets, kindFor, polygons, project, projector, scaleFor, type Feature, type Geo } from "./geo";
@@ -99,7 +99,8 @@ export function AngkaCard({ scope, query, debug, tema = "malam" }: { scope: stri
   const [fontsReady, setFontsReady] = useState(false);
 
   const wantsPeta = !!focus && focus.length >= 4 && bg !== "none";
-  const wantsKabs = !focus && view !== "top10" && scope.length === 2 && scope !== "00" && query.get("level") !== "provinsi";
+  // Province scope, one or several ("71-72-73-74-75-76" = Sulawesi).
+  const wantsKabs = !focus && view !== "top10" && scope !== "00" && query.get("level") !== "provinsi";
 
   useEffect(() => {
     carouselApi.pack(packQuery).then(setData).catch((e) => setFatal(String(e.message ?? e)));
@@ -124,10 +125,9 @@ export function AngkaCard({ scope, query, debug, tema = "malam" }: { scope: stri
         .catch((e) => setFatal(String(e.message ?? e)));
     else setOutline(null);
     if (wantsKabs)
-      dukcapilApi
-        .regions({ level: "regency", prov: scope })
+      Promise.all(provsOf(scope).map((prov) => dukcapilApi.regions({ level: "regency", prov })))
         // Box labels: the bare name for a kabupaten (the box says which one), "Kota X" for a city.
-        .then((rows) => setKabs(new Map(rows.map((r) => [r.code, /^Kota/.test(r.status) ? regionLabel(r.name, r.status) : r.name]))))
+        .then((lists) => setKabs(new Map(lists.flat().map((r) => [r.code, /^Kota/.test(r.status) ? regionLabel(r.name, r.status) : r.name]))))
         .catch((e) => setFatal(`nama kabupaten: ${String(e.message ?? e)}`));
     else setKabs(null);
   }, [data, scope, focus, wantsPeta, wantsKabs]);
@@ -238,18 +238,21 @@ function partialNote(data: CarouselPackResult): string | null {
 type Projected = { paths: { id: string; d: string }[]; vw: number; vh: number };
 type InsetBox = { kab: string; lines: string[]; x: number; y: number; w: number; h: number; map: { x: number; y: number; w: number; h: number }; own: Projected };
 // The composed map: the mainland at (ox, oy) in a vw x vh viewBox, boxes around or over it.
-type Composed = { main: Projected; ox: number; oy: number; vw: number; vh: number; boxes: InsetBox[]; unit: number };
+type Composed = { main: Projected; ox: number; oy: number; vw: number; vh: number; boxes: InsetBox[]; unit: number; dropped?: string[] };
 
 const INSET_FONT = 22; // card px, like the other small print
 const INSET_MIN_W = 150; // card px: a box is at least this wide, so its name wraps to a few words a line
 const INSET_GAP = 20; // card px between the mainland and a box, and between boxes
+// The overview's facts below the map (legend, question, swipe hint, source), measured:
+// the stacked map gets the rest, so the box text is sized for that map.
+const OVERVIEW_INFO_H = 260;
 
 /** Greedy word wrap to `width` (same units as `size`). */
 function wrap(text: string, size: number, width: number): string[] {
   const lines: string[] = [];
   for (const word of text.split(" ")) {
     const last = lines[lines.length - 1];
-    if (last && textWidth(`${last} ${word}`, size) <= width) lines[lines.length - 1] = `${last} ${word}`;
+    if (last && textWidth(`${last} ${word}`, size, true) <= width) lines[lines.length - 1] = `${last} ${word}`;
     else lines.push(word);
   }
   return lines;
@@ -257,9 +260,10 @@ function wrap(text: string, size: number, width: number): string[] {
 
 /** viewBox units per card px for a composed map of this size. A map with
  * inset boxes is always stacked (map across the card, text below), so the
- * mainland sits centred with its boxes around it. */
-function unitFor(vw: number, vh: number): number {
-  const box = mapBoxFor(vh / vw, undefined, undefined, false);
+ * mainland sits centred with its boxes around it. `area` is the map's box as
+ * measured on the card; before that, the layout's estimate. */
+function unitFor(vw: number, vh: number, area?: { w: number; h: number }): number {
+  const box = area ?? mapBoxFor(vh / vw, undefined, OVERVIEW_INFO_H, false);
   return 1 / Math.min(box.w / vw, box.h / vh);
 }
 
@@ -270,9 +274,12 @@ function boxFor(g: Group, k: number, unit: number, x = 0, y = 0): InsetBox {
   const [font, pad] = [INSET_FONT * unit, 10 * unit];
   const mw = g.own.vw * k;
   const mh = g.own.vh * k;
-  const inner = Math.max(mw, INSET_MIN_W * unit);
-  const lines = wrap(g.title, font, inner);
-  const w = Math.max(inner, ...lines.map((l) => textWidth(l, font))) + 2 * pad;
+  let inner = Math.max(mw, INSET_MIN_W * unit);
+  let lines = wrap(g.title, font, inner);
+  // A long name ("Kep. Sangihe, Talaud dan Siau Tagulandang Biaro"): widen the box, up to
+  // 260 px, until it takes 3 lines at most rather than one word a line.
+  while (lines.length > 3 && inner < 260 * unit) lines = wrap(g.title, font, (inner += 10 * unit));
+  const w = Math.max(inner, ...lines.map((l) => textWidth(l, font, true))) + 2 * pad;
   const h = mh + 2 * pad + lines.length * font * 1.2 + pad / 2;
   return { kab: g.kab, lines, x, y, w, h, own: g.own, map: { x: x + (w - mw) / 2, y: y + h - pad - mh, w: mw, h: mh } };
 }
@@ -295,16 +302,21 @@ function spread(items: { at: number; size: number }[], len: number, gap: number)
   return pos.some((p) => p < -1e-6) ? null : pos;
 }
 
-/** Boxes in the empty sea of the mainland's own frame, each on the side its islands really lie. */
-function composeInside(main: Projected, rings: Pt[][], groups: Group[], unit: number): Composed | null {
-  const free = new FreeSpace(main.vw, main.vh);
-  free.occupyShape(rings, 1);
-  const [cx, cy] = [main.vw / 2, main.vh / 2];
+/** Boxes in the empty sea of the mainland's own frame, each on the side its islands really lie.
+ * `margin` (a fraction of the mainland's longer side) widens that sea on every side first:
+ * a whole island like Sulawesi leaves little room in its own corners. */
+function composeInside(main: Projected, rings: Pt[][], groups: Group[], unit: number, margin = 0): Composed | null {
+  const m = margin * Math.max(main.vw, main.vh);
+  const [vw, vh] = [main.vw + 2 * m, main.vh + 2 * m];
+  const free = new FreeSpace(vw, vh);
+  free.occupyShape(rings.map((r) => r.map(([x, y]) => [x + m, y + m] as Pt)), 1);
+  const [cx, cy] = [vw / 2, vh / 2];
   const boxes: InsetBox[] = [];
   for (const g of groups) {
-    const dir = [g.anchor[0] - cx, g.anchor[1] - cy];
+    const [ax, ay] = [g.anchor[0] + m, g.anchor[1] + m];
+    const dir = [ax - cx, ay - cy];
     const facing = (x: number, y: number) => (x - cx) * dir[0] + (y - cy) * dir[1] > 0;
-    const anchor: Pt = [Math.min(Math.max(g.anchor[0], 0), main.vw), Math.min(Math.max(g.anchor[1], 0), main.vh)];
+    const anchor: Pt = [Math.min(Math.max(ax, 0), vw), Math.min(Math.max(ay, 0), vh)];
     let placed: InsetBox | null = null;
     for (const f of [1, 0.4, 0.33, 0.27, 0.22]) {
       const b = boxFor(g, Math.min(g.native, f * main.vw) / Math.max(g.own.vw, g.own.vh), unit);
@@ -317,7 +329,13 @@ function composeInside(main: Projected, rings: Pt[][], groups: Group[], unit: nu
     if (!placed) return null;
     boxes.push(placed);
   }
-  return { main, ox: 0, oy: 0, vw: main.vw, vh: main.vh, boxes, unit };
+  // Trim to what's drawn (the margin is only room to search; unused sea would shrink the
+  // map). This also covers the grid rounding up: a box may reach a little past vw/vh.
+  const x0 = Math.min(m, ...boxes.map((b) => b.x));
+  const y0 = Math.min(m, ...boxes.map((b) => b.y));
+  const x1 = Math.max(m + main.vw, ...boxes.map((b) => b.x + b.w));
+  const y1 = Math.max(m + main.vh, ...boxes.map((b) => b.y + b.h));
+  return { main, ox: m - x0, oy: m - y0, vw: x1 - x0, vh: y1 - y0, boxes: boxes.map((b) => moveBox(b, b.x - x0, b.y - y0)), unit };
 }
 
 /** A column of boxes on each side of a centred mainland (west groups left, east right). */
@@ -363,16 +381,28 @@ function composeRows(main: Projected, groups: Group[], unit: number, rowPx: numb
   return { main, ox: 0, oy: top, vw: main.vw, vh: top + main.vh + (rows[1].length ? gap + row : 0), boxes, unit };
 }
 
+/** A box's label: "Selayar", "Pangkajene Kepulauan, pulau terluar", or several
+ * kabupaten sharing one box: "Kep. Sangihe, Talaud dan Siau Tagulandang Biaro". */
+function boxTitle(members: { name: string; whole: boolean }[]): string {
+  const one = (m: { name: string; whole: boolean }) => (m.whole ? m.name : `${m.name}, pulau terluar`);
+  if (members.length === 1) return one(members[0]);
+  const isles = /^(Kepulauan|Kep\.) /;
+  // All island kabupaten: "Kep." once ("Kep. Sangihe, Talaud dan Siau Tagulandang Biaro").
+  const all = members.every((m) => isles.test(m.name));
+  const names = members.map((m) => (all ? one(m).replace(isles, "") : one(m).replace(/^Kepulauan /, "Kep. ")));
+  return `${all ? "Kep. " : ""}${names.slice(0, -1).join(", ")} dan ${names[names.length - 1]}`;
+}
+
 /** The overview map: the mainland as large as the card allows and, when a
  * province has far islands (geo.insets), each kabupaten's far parts in a
  * labelled box: in the mainland's own empty sea on the side they really lie,
  * in columns either side of a centred mainland, or in a row above/below,
  * whichever leaves the mainland biggest. Boxes have their own scale. */
-function overviewMap(feats: Feature[], kabs: Map<string, string> | null): Composed {
-  const found = kabs ? insets(feats) : null;
+function overviewMap(feats: Feature[], kabs: Map<string, string> | null, several: boolean, area?: { w: number; h: number }): Composed {
+  const found = kabs ? insets(feats, { cluster: several }) : null;
   // A box needs its kabupaten's name from this province's own list (Raja Ampat's
   // shapes still sit in Papua Barat's file); without one, no boxes at all.
-  const split = found && found.groups.every((g) => kabs!.has(g.kab)) ? found : null;
+  const split = found && found.groups.every((g) => g.members.every((m) => kabs!.has(m.kab))) ? found : null;
   if (!split) {
     const main = project(feats, frameOf(feats));
     return { main, ox: 0, oy: 0, vw: main.vw, vh: main.vh, boxes: [], unit: 1 };
@@ -381,12 +411,12 @@ function overviewMap(feats: Feature[], kabs: Map<string, string> | null): Compos
   const to = projector(split.frame);
   const rings = split.main.flatMap((f) => polygons(f).flatMap((poly) => poly.map((ring) => ring.map(to) as Pt[])));
   const groups: Group[] = split.groups.map((g) => {
-    const name = kabs!.get(g.kab)!;
+    const name = boxTitle(g.members.map((m) => ({ name: kabs!.get(m.kab)!, whole: m.whole })));
     const [x0, y0] = to([g.frame.west, g.frame.north]);
     const [x1, y1] = to([g.frame.east, g.frame.south]);
     return {
       kab: g.kab,
-      title: g.whole ? name : `${name}, pulau terluar`,
+      title: name,
       own: project(g.features, g.frame),
       anchor: [(x0 + x1) / 2, (y0 + y1) / 2],
       native: Math.max(x1 - x0, y1 - y0),
@@ -394,19 +424,42 @@ function overviewMap(feats: Feature[], kabs: Map<string, string> | null): Compos
   });
 
   // Each candidate is built at the unit its own size implies (two passes: the unit depends on the result).
-  const build = (make: (unit: number) => Composed | null): Composed | null => {
-    let c = make(unitFor(main.vw, main.vh));
-    if (c) c = make(unitFor(c.vw, c.vh)) ?? c;
-    return c && { ...c, unit: unitFor(c.vw, c.vh) };
+  // Boxes and their text are sized with `unit`; the composed map's real scale follows
+  // from its size, so rebuild until the two agree (within 2%), keeping the last that fit.
+  const build = (make: (unit: number) => Composed | null): (Composed & { real: number }) | null => {
+    let [c, u] = [null as Composed | null, unitFor(main.vw, main.vh, area)];
+    for (let i = 0; i < 5; i++) {
+      const next = make(u);
+      if (!next) {
+        // Fits at the last unit, not at this one: bisect between the two.
+        if (!c) break;
+        let [lo, hi]: [number, number] = [c.unit, u];
+        for (let j = 0; j < 5; j++) {
+          const mid: number = (lo + hi) / 2;
+          const m = make(mid);
+          if (m) [c, lo] = [m, mid];
+          else hi = mid;
+        }
+        break;
+      }
+      c = next;
+      const real = unitFor(c.vw, c.vh, area);
+      if (Math.abs(real - u) <= 0.02 * u) break;
+      u = real;
+    }
+    // A build that never settled has boxes sized for a bigger map: its text would print
+    // small. Keep it only when the text still comes out at 90% of INSET_FONT or more.
+    const real = c && unitFor(c.vw, c.vh, area);
+    return c && real && c.unit >= 0.9 * real ? { ...c, real } : null;
   };
   const candidates = [
-    build((u) => composeInside(main, rings, groups, u)),
+    ...[0, 0.06, 0.12, 0.2, 0.28, 0.36, 0.45].map((margin) => build((u) => composeInside(main, rings, groups, u, margin))),
     ...[180, 220, 260, 300].map((px) => build((u) => composeSides(main, groups, u, px))),
     ...[160, 200, 240].map((px) => build((u) => composeRows(main, groups, u, px))),
-  ].filter((c): c is Composed => !!c);
+  ].filter((c): c is Composed & { real: number } => !!c);
   // Biggest mainland wins (smallest unit); boxes inside the frame win ties.
-  const best = candidates.reduce<Composed | null>((m, c) => (!m || c.unit < m.unit * 0.97 ? c : m), null);
-  if (best) return best;
+  const best = candidates.reduce<(Composed & { real: number }) | null>((m, c) => (!m || c.real < m.real * 0.97 ? c : m), null);
+  if (best) return { ...best, dropped: split.dropped };
   const whole = project(feats, frameOf(feats));
   return { main: whole, ox: 0, oy: 0, vw: whole.vw, vh: whole.vh, boxes: [], unit: 1 };
 }
@@ -414,7 +467,19 @@ function overviewMap(feats: Feature[], kabs: Map<string, string> | null): Compos
 function OverviewBody({ data, geo, scope, asc, kabs }: { data: CarouselPackResult; geo: Geo; scope: string; asc: boolean; kabs: Map<string, string> | null }) {
   const { map, pack } = data;
   const byGeo = useMemo(() => new Map(map.values.map((v) => [v.geo, v])), [map.values]);
-  const { main, ox, oy, vw, vh, boxes, unit } = useMemo(() => overviewMap(selectFeatures(geo, map.level, scope, null), kabs), [geo, map.level, scope, kabs]);
+  // The stacked map's real box on the card (the facts below vary in height), so box
+  // text comes out at INSET_FONT px; measured before paint, the estimate until then.
+  const holder = useRef<HTMLDivElement>(null);
+  const [area, setArea] = useState<{ w: number; h: number } | undefined>(undefined);
+  useLayoutEffect(() => {
+    const el = holder.current;
+    if (el && el.offsetWidth && el.offsetHeight && (area?.w !== el.offsetWidth || area?.h !== el.offsetHeight))
+      setArea({ w: el.offsetWidth, h: el.offsetHeight });
+  });
+  const { main, ox, oy, vw, vh, boxes, unit, dropped } = useMemo(
+    () => overviewMap(selectFeatures(geo, map.level, scope, null), kabs, provsOf(scope).length > 1, area),
+    [geo, map.level, scope, kabs, area],
+  );
   const { kind, mid } = kindFor(pack.unit);
   const scale = scaleFor(kind, map.min, map.max, mid);
   const lowest = map.values.reduce((a, b) => (b.value < a.value ? b : a));
@@ -447,11 +512,18 @@ function OverviewBody({ data, geo, scope, asc, kabs }: { data: CarouselPackResul
           </p>
           <p className="mt-3 text-[32px] text-ink-gold">Geser untuk lihat peringkatnya →</p>
           {partial && <p className="mt-4 text-[22px] text-coal-muted">{partial}</p>}
+          {!!dropped?.length && (
+            <p className="mt-4 text-[22px] text-coal-muted">
+              {`Tidak tergambar (pulau kecil terpencil): ${dropped.map((id) => byGeo.get(id)?.label ?? id).join(", ")}.`}
+            </p>
+          )}
           <Footer source={pack.source} />
         </>
       }
       map={
-        <svg viewBox={`0 0 ${vw.toFixed(0)} ${vh.toFixed(0)}`} preserveAspectRatio="xMidYMid meet" className="h-full w-full">
+        // Stretched to the map slot, the svg laid over it: the slot's size, not the svg's, is what's measured.
+        <div ref={holder} className="relative min-h-0 min-w-0 flex-1 self-stretch">
+        <svg viewBox={`0 0 ${vw.toFixed(0)} ${vh.toFixed(0)}`} preserveAspectRatio="xMidYMid meet" className="absolute inset-0 h-full w-full">
           <g transform={`translate(${ox} ${oy})`}>
             {main.paths.map((p) => (
               <path key={p.id} d={p.d} fill={fill(p.id)} stroke="var(--nm-bg)" strokeWidth={0.6} vectorEffect="non-scaling-stroke" />
@@ -474,6 +546,7 @@ function OverviewBody({ data, geo, scope, asc, kabs }: { data: CarouselPackResul
             </g>
           ))}
         </svg>
+        </div>
       }
     />
   );

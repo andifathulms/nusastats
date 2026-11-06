@@ -69,8 +69,17 @@ Nusantara Mapper" (`BRAND` in `AngkaCard.tsx` and `carousel_deck.py`).
 | `--turvar`, `--th`, `--unit`, `--label-metric`, `--allow-partial` | see refusals below |
 
 Table cards: each row is rank · kabupaten emblem · kecamatan (bold) over its kabupaten (grey) ·
-value, with a thin bar under the names. Fractional values always carry two decimals (`14,60%`,
-`4.540,60 jiwa/km²`; an exact whole number stays whole), so the column lines up on the comma.
+value, with a thin bar under the names. When any value in the ranking is fractional, every value
+carries two decimals (`14,60%`, `4.540,60 jiwa/km²`, and a whole `4.008,00 jiwa/km²` next to
+them), so the column lines up on the comma; a ranking of whole numbers stays whole (an index of 52).
+The deck and TikTok text use the same rule.
+
+Overview map with inset boxes: far islands go in labelled boxes (Selayar, Pangkep's outer
+islands). On a map of several provinces (e.g. all of Sulawesi), islands near the coast that barely
+widen the frame stay on the map (Banggai, Wakatobi, Wawonii), nearby far groups share one box
+(Sangihe, Talaud and Siau Tagulandang Biaro), and a far group under 0.01% of the area (Mamuju's
+Balabalakang islands) is not drawn; the cover names it ("Tidak tergambar …"). Box text is sized
+from the map area measured on the card.
 Emblems come from `frontend/public/emblems/` (see `data/emblems/fetch_emblems.py`; all six
 Sulawesi provinces so far). A province without emblems shows
 the same rows without the emblem column.

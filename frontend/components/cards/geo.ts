@@ -297,8 +297,13 @@ export function cropBox(inner: Frame, outer: Frame): { x: number; y: number; w: 
   return { x: x0, y: y0, w: x1 - x0, h: y1 - y0 };
 }
 
-export type InsetGroup = { kab: string; whole: boolean; features: Feature[]; frame: Frame; centre: [number, number] };
-export type Insets = { main: Feature[]; frame: Frame; groups: InsetGroup[] };
+/** One inset box: `kab` is its key (the first member); `members` the kabupaten it shows, each
+ * whole (an island kabupaten) or only its far islands. One member except in `cluster` mode. */
+export type InsetGroup = {
+  kab: string; whole: boolean; members: { kab: string; whole: boolean }[]; features: Feature[]; frame: Frame; centre: [number, number];
+};
+/** `dropped`: ids of features not drawn at all (cluster mode only), for the card to name. */
+export type Insets = { main: Feature[]; frame: Frame; groups: InsetGroup[]; dropped: string[] };
 
 /** Split a province map (kabupaten or kecamatan features) into its mainland and
  * inset boxes, the way printed maps show Sulawesi Selatan: the mainland at full
@@ -311,8 +316,14 @@ export type Insets = { main: Feature[]; frame: Frame; groups: InsetGroup[] };
  * Group key: the 4-digit kabupaten prefix of the Kemendagri code. Returns null
  * when insets wouldn't help: nothing far out, an archipelago (insets > 15% of
  * the area or more than 3 boxes), or a frame that shrinks by less than 40%.
- * Every polygon is drawn exactly once, in the main map or in one box. */
-export function insets(features: Feature[]): Insets | null {
+ * Every polygon is drawn exactly once, in the main map or in one box.
+ *
+ * `cluster` (a map of several provinces, e.g. all of Sulawesi): islands off the
+ * coast that barely widen the frame (Banggai, Wakatobi, Wawonii) stay on the
+ * main map, and far groups lying close together share one box (Sangihe, Sitaro
+ * and Talaud). A far group under 0.01% of the area (Mamuju's Balabalakang
+ * islands, a few dots) gets no box and isn't drawn; `dropped` names it. Up to 4 boxes. */
+export function insets(features: Feature[], { cluster = false }: { cluster?: boolean } = {}): Insets | null {
   type Part = { f: Feature; poly: number[][][]; fr: Frame; area: number; kab: string };
   const parts: Part[] = [];
   for (const f of features)
@@ -353,13 +364,54 @@ export function insets(features: Feature[]): Insets | null {
 
   const frame = { ...box };
   const out = new Map<string, Part[]>();
+  const kept = new Set<Part>();
   for (const p of parts)
-    if (inMain(p)) grow(frame, p.fr);
+    if (inMain(p)) grow(frame, p.fr), kept.add(p);
     else out.set(p.kab, [...(out.get(p.kab) ?? []), p]);
+  const frameOfParts = (ps: Part[]) => {
+    const fr = { ...ps[0].fr };
+    for (const p of ps) grow(fr, p.fr);
+    return fr;
+  };
+  // Members of each box: one kabupaten each, or (cluster) neighbours merged.
+  let boxes: string[][] = [...out.keys()].map((k) => [k]);
+  if (cluster) {
+    // Near the coast: keep on the main map when it widens the frame by at most 6% either way.
+    const widen = (fr: Frame) => {
+      const [w, h] = [frame.east - frame.west, frame.north - frame.south];
+      return Math.max(
+        (Math.max(frame.east, fr.east) - Math.min(frame.west, fr.west)) / w,
+        (Math.max(frame.north, fr.north) - Math.min(frame.south, fr.south)) / h,
+      );
+    };
+    for (let moved = true; moved; ) {
+      moved = false;
+      for (const [k, ps] of out)
+        if (widen(frameOfParts(ps)) <= 1.06) {
+          for (const p of ps) grow(frame, p.fr), kept.add(p);
+          out.delete(k);
+          moved = true;
+        }
+    }
+    // Far groups whose frames lie within 1.25 x `reach` of each other share a box (chained):
+    // Sangihe-Talaud is 0.84 degrees apart on Sulawesi's 0.81 reach; Pangkep-Selayar 1.2.
+    boxes = [];
+    for (const k of out.keys()) {
+      const fr = frameOfParts(out.get(k)!);
+      const near = boxes.filter((b) => b.some((o) => gap(fr, frameOfParts(out.get(o)!)) <= 1.25 * reach));
+      boxes = [...boxes.filter((b) => !near.includes(b)), [...near.flat(), k]];
+    }
+  }
   const total = parts.reduce((s, p) => s + p.area, 0);
+  if (cluster) {
+    const area = (b: string[]) => b.flatMap((k) => out.get(k)!).reduce((s, p) => s + p.area, 0);
+    const tiny = boxes.filter((b) => area(b) < 1e-4 * total);
+    for (const b of tiny) for (const k of b) out.delete(k);
+    boxes = boxes.filter((b) => !tiny.includes(b));
+  }
   const outArea = [...out.values()].flat().reduce((s, p) => s + p.area, 0);
   const span = (fr: Frame) => (fr.east - fr.west) * (fr.north - fr.south);
-  if (!out.size || out.size > 3 || outArea > 0.15 * total || span(frameOf(features)) < 1.6 * span(frame)) return null;
+  if (!boxes.length || boxes.length > (cluster ? 4 : 3) || outArea > 0.15 * total || span(frameOf(features)) < 1.6 * span(frame)) return null;
 
   // Rebuild features from the parts each side keeps (a kecamatan may be split).
   const regroup = (ps: Part[]) => {
@@ -368,13 +420,20 @@ export function insets(features: Feature[]): Insets | null {
     return [...byF].map(([f, polys]) => ({ properties: f.properties, geometry: { type: "MultiPolygon", coordinates: polys } }));
   };
   const pad = 0.03 * Math.max(frame.east - frame.west, frame.north - frame.south);
-  const groups = [...out].map(([kab, ps]) => {
-    const fr = { ...ps[0].fr };
-    for (const p of ps) grow(fr, p.fr);
-    return { kab, whole: !mainland(kab), features: regroup(ps), frame: fr, centre: [(fr.west + fr.east) / 2, (fr.south + fr.north) / 2] as [number, number] };
+  const groups = boxes.map((ks) => {
+    ks.sort();
+    const ps = ks.flatMap((k) => out.get(k)!);
+    const fr = frameOfParts(ps);
+    const members = ks.map((k) => ({ kab: k, whole: !mainland(k) }));
+    return {
+      kab: ks[0], whole: members.every((m) => m.whole), members, features: regroup(ps), frame: fr,
+      centre: [(fr.west + fr.east) / 2, (fr.south + fr.north) / 2] as [number, number],
+    };
   });
+  const shown = new Set([...kept, ...[...out.values()].flat()].map((p) => p.f));
   return {
-    main: regroup(parts.filter(inMain)),
+    dropped: features.filter((f) => !shown.has(f)).map((f) => f.properties.domain_id),
+    main: regroup(parts.filter((p) => kept.has(p))),
     frame: { west: frame.west - pad, east: frame.east + pad, south: frame.south - pad, north: frame.north + pad },
     groups,
   };

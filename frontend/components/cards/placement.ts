@@ -32,9 +32,18 @@ export class FreeSpace {
 
   /** Mark every cell whose centre is inside the rings (even-odd), grown by `pad` cells. */
   occupyShape(rings: Pt[][], pad = 1): void {
+    // Even-odd over all rings = XOR of each ring's own test, so each ring only
+    // visits the cells under its bounding box (a thousand kecamatan stay fast).
     const hit = new Uint8Array(this.cols * this.rows);
-    for (let r = 0; r < this.rows; r++)
-      for (let c = 0; c < this.cols; c++) if (inRings((c + 0.5) * CELL, (r + 0.5) * CELL, rings)) hit[r * this.cols + c] = 1;
+    for (const ring of rings) {
+      if (ring.length < 3) continue;
+      let [x0, x1, y0, y1] = [Infinity, -Infinity, Infinity, -Infinity];
+      for (const [x, y] of ring) [x0, x1, y0, y1] = [Math.min(x0, x), Math.max(x1, x), Math.min(y0, y), Math.max(y1, y)];
+      const [c0, c1] = [Math.max(0, Math.floor(x0 / CELL - 0.5)), Math.min(this.cols - 1, Math.ceil(x1 / CELL - 0.5))];
+      const [r0, r1] = [Math.max(0, Math.floor(y0 / CELL - 0.5)), Math.min(this.rows - 1, Math.ceil(y1 / CELL - 0.5))];
+      for (let r = r0; r <= r1; r++)
+        for (let c = c0; c <= c1; c++) if (inRings((c + 0.5) * CELL, (r + 0.5) * CELL, [ring])) hit[r * this.cols + c] ^= 1;
+    }
     for (let r = 0; r < this.rows; r++)
       for (let c = 0; c < this.cols; c++) {
         if (!hit[r * this.cols + c]) continue;

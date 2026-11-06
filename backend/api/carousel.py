@@ -172,15 +172,18 @@ def fmt_num(v, decimals=2, fixed=False):
     return whole.replace(",", ".") + ("," + frac if frac else "")
 
 
-def fmt_value(v, unit):
+def fmt_value(v, unit, fixed=None):
     """A value with its unit, the way a slide shows it (Peta Angka rules: at
-    most 2 decimals, whole numbers for people, large Rupiah in words)."""
+    most 2 decimals, whole numbers for people, large Rupiah in words).
+    `fixed` (a pack passes it for all its values): two decimals even on a whole
+    value (4.008,00 jiwa/km² next to 4.134,28), so one ranking is uniform."""
     u = (unit or "").strip()
     ul = u.lower()
     # Fractional values always carry exactly two decimals (14,60%, 4.540,60 jiwa/km²,
     # 37,50 tahun): a ranking's values are then all the same length and line up. An exact
-    # whole number (an index of 52) stays whole. Percentages always have two.
-    frac = v != int(v)
+    # whole number (an index of 52) stays whole, unless the ranking it sits in has
+    # fractional values (`fixed`). Percentages always have two.
+    frac = v != int(v) if fixed is None else fixed
     if ul in ("%", "persen"):
         return f"{fmt_num(v, fixed=True)}%"
     if ul.split(" ")[0] in ("jiwa", "orang", "kk", "rumah", "unit"):
@@ -511,8 +514,10 @@ def build_pack(source, metric, level, period=None, *, prov=None, top=5, bottom=5
     if n > top + bottom:
         edges |= {"top"} if ordered[top - 1]["value"] == ordered[top]["value"] else set()
         edges |= {"bottom"} if ordered[n - bottom]["value"] == ordered[n - bottom - 1]["value"] else set()
+    # One fractional value anywhere in the ranking -> every value shows two decimals.
+    fixed = any(r["value"] != int(r["value"]) for r in ordered)
     if edges:
-        tied = sorted({fmt_value(r["value"], built["unit"]) for i, r in enumerate(picked)
+        tied = sorted({fmt_value(r["value"], built["unit"], fixed) for i, r in enumerate(picked)
                        if (i in edges or i - 1 in edges)} | ({"di batas peringkat"} if edges & {"top", "bottom"} else set()))
         pack_notes.append(f"Ada nilai kembar ({', '.join(tied)}); urutan di antara nilai yang sama mengikuti kode "
                           "wilayah, bukan peringkat.")
@@ -553,7 +558,7 @@ def build_pack(source, metric, level, period=None, *, prov=None, top=5, bottom=5
             "min": min(values),
             "max": max(values),
             "values": [{"geo": r["geo"], "code": r["code"], "label": r["label"], "value": r["value"],
-                        "display": fmt_value(r["value"], built["unit"]), "rank": r["rank"],
+                        "display": fmt_value(r["value"], built["unit"], fixed), "rank": r["rank"],
                         "rank_asc": r["rank_asc"],
                         **({"name": r["name"], "parent": r["parent"]} if r.get("parent") else {})}
                        for r in ordered if r["geo"]],
