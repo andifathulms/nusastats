@@ -744,6 +744,8 @@ def unlisted_villages(request):
     return Response({
         "period": period,
         "kab": kab,
+        # The kabupaten's desa count by BIG's map (the official count on the cards).
+        "big_total": sum(1 for c in area if c.startswith(kab)),
         "method": "kepadatan kecamatan = penduduk kecamatan (Dukcapil) / luas BIG kecamatan (seluruh desa BIG, termasuk yang belum terdaftar)",
         "source": "BIG 1:10.000 (backend/dukcapil/data/big_area.json); Ditjen Dukcapil Kemendagri",
         "villages": [{"code": c, "kec_code": c[:6], "area_km2": area[c]} for c in unlisted],

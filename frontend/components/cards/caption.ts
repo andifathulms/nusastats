@@ -3,6 +3,7 @@ import { loadPeta } from "@/lib/peta";
 import {
   compact, densityFacts, kecFacts, landcoverTop3, lightsYears, litFacts, lowFacts, metres, pct1, pctInt, peak, reliefTop2, shortName,
 } from "./facts";
+import { kecamatanNames } from "./AdminMap";
 import { problems as shareProblems } from "./ShareCard";
 import { bulanTahun, loadData, loadGeo, problems as wilayahProblems } from "./WilayahCard";
 import { joinDesa, load as loadProfil, problems as profilProblems } from "./ProfilCards";
@@ -55,7 +56,7 @@ export async function profilCaption(kode: string, indicator: string, only?: stri
     lines.kepadatan = `Kepadatan per desa. Kecamatan terpadat: ${f.top.name}, ${formatNumber(Math.round(f.top.density))} jiwa/km².`;
   }
   if (check("wilayah", wilayahProblems("wilayah", kode, wil, geoKec))) {
-    const parts = [`${formatNumber(wil.districts.length)} kecamatan`, `${formatNumber(wil.villageTotal)} desa/kelurahan`];
+    const parts = [`${formatNumber(kecamatanNames(wil).size)} kecamatan`, `${formatNumber(wil.villageTotal)} desa/kelurahan`];
     if (wil.kab.pop !== null) parts.push(`${compact(wil.kab.pop)} penduduk terdaftar`);
     if (wil.kab.area !== null) parts.push(`${formatNumber(Math.round(wil.kab.area))} km²`);
     lines.wilayah = `${name}: ${parts.join(", ")}.`;

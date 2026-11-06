@@ -370,6 +370,7 @@ export type DukcapilRank = {
 /** Desa on the BIG map that Dukcapil has no row for yet, with their kecamatan's density (method in the response). */
 export type DukcapilUnlisted = {
   period: string;
+  big_total: number;
   method: string;
   villages: { code: string; kec_code: string; area_km2: number }[];
   kecamatan: { code: string; name: string | null; population: number | null; area_km2: number | null; area_unlisted_km2: number; density: number | null }[];

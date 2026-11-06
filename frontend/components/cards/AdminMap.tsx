@@ -773,7 +773,7 @@ export function KecamatanMapBody({ kode, data, geo, sorot, full = false }: { kod
       // Same stats table in both layouts: only the map differs.
       fullInfo={<StatsList rows={stats} />}
       fullInfoH={5 * 42 + 12}
-      source={`Penduduk: Ditjen Dukcapil Kemendagri, data ${bulanTahun(data.period)} (terdaftar); luas dan batas: BIG 1:10.000, dijumlahkan NusaStats`}
+      source={`Penduduk: Ditjen Dukcapil Kemendagri, data ${bulanTahun(data.period)} (terdaftar); jumlah desa, luas dan batas: BIG 1:10.000, dijumlahkan NusaStats`}
     />
   );
 }
@@ -795,7 +795,8 @@ export function DesaMapBody({
       labelSize: { min: 18, max: 18, minRoom: 6, leader: 18 },
       maxLeaders: 40,
       panorama: true,
-      infoHeight: infoBase(3),
+      // Two more rows when the list notes desa that are on BIG's map but not yet in Dukcapil.
+      infoHeight: infoBase(3 + (data.unlisted.size > 0 ? 2 : 0)),
     };
   }, [kode, data, geo, status]);
   const counts = { Kelurahan: 0, Desa: 0, other: 0 };
@@ -828,7 +829,13 @@ export function DesaMapBody({
           {counts.Desa > 0 && (
             <li className="flex items-center gap-4"><span className="inline-block h-8 w-8 rounded-full" style={{ background: "var(--nm-desa)" }} />Desa <span className="tabular-nums">{formatNumber(counts.Desa)}</span></li>
           )}
-          {counts.other > 0 && <li className="text-[24px] font-normal text-coal-muted">Tanpa status di data Dukcapil: {formatNumber(counts.other)}</li>}
+          {counts.other + data.unlisted.size > 0 && (
+            <li className="text-[24px] font-normal leading-snug text-coal-muted">
+              {data.unlisted.size > 0 ? `Desa baru di peta BIG, belum ada di data Dukcapil: ${formatNumber(data.unlisted.size)}` : null}
+              {data.unlisted.size > 0 && counts.other > 0 ? <br /> : null}
+              {counts.other > 0 ? `Tanpa status di data Dukcapil: ${formatNumber(counts.other)}` : null}
+            </li>
+          )}
         </ul>
       }
       panel={panel}
@@ -854,7 +861,7 @@ function StatsList({ rows }: { rows: [string, string][] }) {
 /** Every kecamatan of the kabupaten with its name: Dukcapil's kecamatan rows, plus the kecamatan
  * its desa rows name that the (lagging) kecamatan layer has no row for yet, e.g. Takalar's
  * Polongbangkeng Timur and Laikang. */
-function kecamatanNames(data: Data): Map<string, string> {
+export function kecamatanNames(data: Data): Map<string, string> {
   const names = new Map(data.districts.map((d) => [d.domain_id, titleCase(d.domain_name)]));
   for (const v of data.villageRegions) {
     if (!names.has(v.parent_code) && v.parent_name) names.set(v.parent_code, titleCase(v.parent_name));

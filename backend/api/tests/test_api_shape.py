@@ -110,6 +110,7 @@ def test_unlisted_villages_get_their_kecamatan_density(api_client, monkeypatch):
 
     data = api_client.get("/api/dukcapil/unlisted-villages/?kab=7305").data
     assert [v["code"] for v in data["villages"]] == ["7305092015"]
+    assert data["big_total"] == 2
     assert data["kecamatan"] == [{"code": "730509", "name": "Galesong", "population": 3000.0,
                                   "area_km2": 3.0, "area_unlisted_km2": 1.0, "density": 1000.0}]
     assert api_client.get("/api/dukcapil/unlisted-villages/?kab=73").status_code == 400

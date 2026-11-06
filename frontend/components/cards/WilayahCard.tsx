@@ -41,10 +41,10 @@ export type KabInfo = { name: string; prov: string; pop: number | null; area: nu
 export type Data = {
   kab: KabInfo;
   districts: DukcapilRankRow[];
-  villageTotal: number;
+  villageTotal: number; // desa on BIG's map: the official count (Dukcapil's desa list lags it)
   villageRegions: DukcapilRegionRow[]; // name and Dukcapil status (Desa/Kelurahan) per desa
   villages: DukcapilRankRow[]; // kepadatan only
-  /** kepadatan only: desa on the map Dukcapil has no row for yet -> their kecamatan's density (null: none). */
+  /** Desa on BIG's map Dukcapil has no row for yet -> their kecamatan's density (null: none). */
   unlisted: Map<string, number | null>;
   districtAreas: DukcapilRankRow[]; // wilayah only: BIG area per kecamatan
   period: string | null;
@@ -92,17 +92,17 @@ export async function loadData(template: WilayahTemplate, kode: string): Promise
     template === "wilayah"
       ? dukcapilApi.rank({ indicator: "luas_big", level: "district", kab: kode, limit: "500" }).then((r) => r.results)
       : Promise.resolve([] as DukcapilRankRow[]),
-    template === "kepadatan" ? dukcapilApi.unlistedVillages(kode) : Promise.resolve(null),
+    dukcapilApi.unlistedVillages(kode),
   ]);
-  const kecDensity = new Map(unlisted?.kecamatan.map((k) => [k.code, k.density]) ?? []);
+  const kecDensity = new Map(unlisted.kecamatan.map((k) => [k.code, k.density]));
   return {
     kab: kabInfo(kode, pops.results, areas.results),
     districts: withoutTwins(districts.results),
     districtAreas: withoutTwins(districtAreas),
-    villageTotal: villageList.length,
+    villageTotal: unlisted.big_total,
     villageRegions: villageList,
     villages,
-    unlisted: new Map(unlisted?.villages.map((v) => [v.code, kecDensity.get(v.kec_code) ?? null]) ?? []),
+    unlisted: new Map(unlisted.villages.map((v) => [v.code, kecDensity.get(v.kec_code) ?? null])),
     period: summary.period ?? null,
   };
 }
