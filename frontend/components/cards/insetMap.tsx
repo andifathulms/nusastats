@@ -64,9 +64,10 @@ const moveBox = (b: InsetBox, x: number, y: number): InsetBox => ({ ...b, x, y, 
 function spread(items: { at: number; size: number }[], len: number, gap: number): number[] | null {
   const order = items.map((_, i) => i).sort((i, j) => items[i].at - items[j].at);
   const pos = new Array<number>(items.length);
+  // Too tall in all: no order fits. (Boxes pushed past the end are pulled back below.)
+  if (items.reduce((t, it) => t + it.size + gap, -gap) > len + 1e-6) return null;
   let next = 0;
   for (const i of order) next = (pos[i] = Math.max(next, Math.min(items[i].at - items[i].size / 2, len - items[i].size))) + items[i].size + gap;
-  if (next - gap > len + 1e-6) return null;
   // Pull back from the far end: anything pushed past it moves up as a block.
   let limit = len;
   for (const i of [...order].reverse()) {
@@ -112,19 +113,8 @@ function composeInside(main: Projected, rings: Pt[][], groups: Group[], unit: nu
   return { main, ox: m - x0, oy: m - y0, vw: x1 - x0, vh: y1 - y0, boxes: boxes.map((b) => moveBox(b, b.x - x0, b.y - y0)), unit };
 }
 
-/** A column of boxes on each side of a centred mainland (west groups left, east right). */
-/** Both sides get a box: when every group lies on one side of the mainland, all but the one
- * nearest it move to the other side, their anchors mirrored across the mainland's middle
- * (Pangkep: the Spermonde islands stay left, Kalmas and Tangaya go right). */
-function balance(main: Projected, groups: Group[]): Group[] {
-  const west = (g: Group) => g.anchor[0] < main.vw / 2;
-  const oneSide = groups.every(west) || !groups.some(west);
-  if (groups.length < 2 || !oneSide) return groups;
-  const dist = (g: Group) => Math.hypot(g.anchor[0] - main.vw / 2, g.anchor[1] - main.vh / 2);
-  const nearest = groups.reduce((a, b) => (dist(b) < dist(a) ? b : a));
-  return groups.map((g) => (g === nearest ? g : { ...g, anchor: [main.vw - g.anchor[0], g.anchor[1]] as Pt }));
-}
-
+/** A column of boxes beside the mainland: west groups on the left, east groups on the right.
+ * A side with no group takes no room (Pangkep: both boxes stacked on the left). */
 function composeSides(main: Projected, groups: Group[], unit: number, colPx: number): Composed | null {
   const gap = INSET_GAP * unit;
   const col = colPx * unit;
@@ -134,7 +124,8 @@ function composeSides(main: Projected, groups: Group[], unit: number, colPx: num
     if (!list.length) continue;
     const sized = list.map((g) => {
       const room = col - 20 * unit;
-      const k = Math.min(room / g.own.vw, (main.vh / list.length - 80 * unit) / g.own.vh);
+      const head = boxFor(g, 0, unit).h; // title and padding (narrowest wrap: the most lines)
+      const k = Math.min(room / g.own.vw, ((main.vh - list.length * gap) / list.length - head) / g.own.vh);
       return boxFor(g, Math.max(k, 0), unit);
     });
     if (sized.some((b) => b.w > col + 1e-6 || b.map.h <= 0)) return null;
@@ -142,7 +133,11 @@ function composeSides(main: Projected, groups: Group[], unit: number, colPx: num
     if (!ys) return null;
     sized.forEach((b, i) => boxes.push(moveBox(b, s === 0 ? col - b.w : col + gap + main.vw + gap, ys[i])));
   }
-  return { main, ox: col + gap, oy: 0, vw: col * 2 + gap * 2 + main.vw, vh: main.vh, boxes, unit };
+  const [left, right] = sides.map((l) => (l.length ? col + gap : 0));
+  return {
+    main, ox: left, oy: 0, vw: left + main.vw + right, vh: main.vh,
+    boxes: boxes.map((b) => moveBox(b, b.x - (sides[0].length ? 0 : col + gap), b.y)), unit,
+  };
 }
 
 /** A row of boxes above the mainland (north groups) and one below (south groups). */
@@ -172,7 +167,7 @@ function composeRows(main: Projected, groups: Group[], unit: number, rowPx: numb
  * that, the layout's estimate with `infoH` px of text below the map). */
 export function composeMap(
   split: Insets, title: (g: Insets["groups"][number]) => string, area: { w: number; h: number } | undefined, infoH: number,
-  /** "sides": two or more boxes only in columns left and right of the mainland, one side each. */
+  /** "sides": two or more boxes beside the mainland, each on the side its islands lie, never above or below it. */
   arrange: "best" | "sides" = "best",
 ): (Composed & { real: number }) | null {
   const main = project(split.main, split.frame);
@@ -218,13 +213,13 @@ export function composeMap(
     const real = c && unitFor(c.vw, c.vh, area, infoH);
     return c && real && c.unit >= 0.9 * real ? { ...c, real } : null;
   };
-  // "sides" with a single box would leave the other column empty: the usual arrangements then.
-  const balanced = balance(main, groups);
+  // "sides" with a single box: the usual arrangements.
   const candidates = (arrange === "sides" && groups.length > 1
     ? [
-        // In the mainland's own empty sea first (Pangkep's corners), else in columns.
-        ...[0, 0.06, 0.12, 0.2, 0.28].map((margin) => build((u) => composeInside(main, rings, balanced, u, margin))),
-        ...[180, 220, 260, 300].map((px) => build((u) => composeSides(main, balanced, u, px))),
+        // In the mainland's own sea when they fit there, else in a column beside it; never
+        // below, so the mainland keeps the slot's full height.
+        build((u) => composeInside(main, rings, groups, u, 0)),
+        ...[180, 220, 260, 300].map((px) => build((u) => composeSides(main, groups, u, px))),
       ]
     : [
     ...[0, 0.06, 0.12, 0.2, 0.28, 0.36, 0.45].map((margin) => build((u) => composeInside(main, rings, groups, u, margin))),
