@@ -340,8 +340,8 @@ function DensityBody({ kode, data, geo }: { kode: string; data: Data; geo: Geos 
       }
       map={
         // Stretched to the map slot, the svg laid over it: the slot's size, not the svg's, is what's measured.
-        // With boxes beside the map, the right column stays left of TikTok's icons (x 920 on).
-        <div ref={holder} className="relative min-h-0 min-w-0 flex-1 self-stretch" style={split ? { marginBottom: 24, marginRight: ZONE.mapRight - 920 } : undefined}>
+        // With box columns either side of the map, the right one stays left of TikTok's icons (x 920 on).
+        <div ref={holder} className="relative min-h-0 min-w-0 flex-1 self-stretch" style={split ? { marginBottom: 24, ...(split.groups.length > 1 ? { marginRight: ZONE.mapRight - 920 } : {}) } : undefined}>
         <svg viewBox={`0 0 ${vw.toFixed(0)} ${vh.toFixed(0)}`} preserveAspectRatio="xMidYMid meet" className="absolute inset-0 h-full w-full overflow-visible">
           <defs>
             {/* Desa Dukcapil doesn't list yet: their kecamatan's class colour, striped so they never pass for desa data. */}

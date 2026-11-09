@@ -168,7 +168,7 @@ function composeRows(main: Projected, groups: Group[], unit: number, rowPx: numb
  * that, the layout's estimate with `infoH` px of text below the map). */
 export function composeMap(
   split: Insets, title: (g: Insets["groups"][number]) => string, area: { w: number; h: number } | undefined, infoH: number,
-  /** "sides": boxes only in columns left and right of the mainland, one side each where there are two. */
+  /** "sides": two or more boxes only in columns left and right of the mainland, one side each. */
   arrange: "best" | "sides" = "best",
 ): (Composed & { real: number }) | null {
   const main = project(split.main, split.frame);
@@ -214,7 +214,8 @@ export function composeMap(
     const real = c && unitFor(c.vw, c.vh, area, infoH);
     return c && real && c.unit >= 0.9 * real ? { ...c, real } : null;
   };
-  const candidates = (arrange === "sides"
+  // "sides" with a single box would leave the other column empty: the usual arrangements then.
+  const candidates = (arrange === "sides" && groups.length > 1
     ? [180, 220, 260, 300].map((px) => build((u) => composeSides(main, groups, u, px, true)))
     : [
     ...[0, 0.06, 0.12, 0.2, 0.28, 0.36, 0.45].map((margin) => build((u) => composeInside(main, rings, groups, u, margin))),
