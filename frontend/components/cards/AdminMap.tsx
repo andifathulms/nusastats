@@ -2,11 +2,11 @@
 
 import { useEffect, useMemo, type ReactNode } from "react";
 import { formatNumber, titleCase } from "@/lib/api";
-import { frameOf, framing, neighbourColours, placeLabels, polygons, project, projector, type Feature, type Label } from "./geo";
+import { frameOf, framing, kabInsets, neighbourColours, placeLabels, polygons, project, projector, withoutMoved, type Feature, type Label, type OffFrame } from "./geo";
 import { CardHeader, PAD, ZONE } from "./layout";
 import { Footer, OffFrameNote } from "./ShareCard";
 import { FreeSpace, nearestOnRect, textWidth, type Pt, type Rect } from "./placement";
-import { LabelLegend, bulanTahun, compact, type Data, type Geos } from "./WilayahCard";
+import { LabelLegend, bulanTahun, compact, kecBoxTitle, type Data, type Geos } from "./WilayahCard";
 
 /**
  * Administrative maps of one kabupaten, modelled on the owner's hand-made
@@ -34,6 +34,10 @@ const KIND_COLOR: Record<Kind, string> = { pop: "var(--nm-c-pop)", dens: "var(--
 type Item = { kind: Kind; label: string; value: string };
 type Callout = { id: string; name: string; items: Item[]; anchor: Pt; off: boolean; rect?: Rect; right?: boolean };
 type Leader = { id: string; name: string; anchor: Pt; rect: Rect; size: number };
+/** An inset box (card px): far island kecamatan at their own scale, as on Pangkep's printed map. */
+type IslandBox = { key: string; ids: Set<string>; lines: string[]; rect: Rect; map: Rect; own: { paths: { id: string; d: string }[]; vw: number; vh: number } };
+const BOX_FONT = 22;
+const BOX_PAD = 10;
 
 const C = { name: 26, label: 21, value: 23, lh: 1.25 };
 const num = (v: number, d = 0) => v.toLocaleString("id-ID", { maximumFractionDigits: d });
@@ -126,7 +130,20 @@ type Spec = {
   callouts?: (feats: Feature[], anchorOf: (id: string) => { pt: Pt; off: boolean }) => Callout[];
   /** Height of the info block for a number of numbered names. */
   infoHeight: (numbered: number, offFrame: boolean, unplacedCallouts: boolean) => number;
+  /** Kecamatan names by code: given, far island kecamatan go to inset boxes (geo.kabInsets) when they fit. */
+  boxNames?: Map<string, string>;
 };
+
+/** Greedy word wrap at `size` px to `width` px (bold estimate). */
+function wrapPx(text: string, size: number, width: number): string[] {
+  const lines: string[] = [];
+  for (const word of text.split(" ")) {
+    const last = lines[lines.length - 1];
+    if (last && textWidth(`${last} ${word}`, size, true) <= width) lines[lines.length - 1] = `${last} ${word}`;
+    else lines.push(word);
+  }
+  return lines;
+}
 
 /** Card-x bands where no text may go: each cut between slides (and the next slide's left margin)
  * and TikTok's icon column on every slide. Box coordinates (x from PAD). */
@@ -293,10 +310,27 @@ function stdBands(panels: number, boxH: number): Rect[] {
   return fullBands(panels).map((b) => ({ ...b, y: b.y - BOX_TOP })).filter((b) => b.y + b.h > 0 && b.y < boxH);
 }
 
-function layout(spec: Spec, geo: Geos, BOX: { w: number; h: number }, panels = 1, blocks?: Blocks, stdInfo?: { w: number; h: number }) {
-  const { kode, feats, names } = spec;
-  const own = geo.outline.features.filter((f) => f.properties.domain_id === kode);
-  const fit = framing(feats);
+function layout(
+  spec: Spec, geo: Geos, BOX: { w: number; h: number }, panels = 1, blocks?: Blocks, stdInfo?: { w: number; h: number }, withBoxes = true,
+): NonNullable<ReturnType<typeof layoutOnce>> {
+  const split = withBoxes && spec.boxNames ? kabInsets(spec.feats) : null;
+  // Boxes that don't all fit: the map as before, framed on its mainland with the far islands named in a note.
+  return (split && layoutOnce(spec, geo, BOX, panels, blocks, stdInfo, split)) || layoutOnce(spec, geo, BOX, panels, blocks, stdInfo, null)!;
+}
+
+function layoutOnce(
+  spec: Spec, geo: Geos, BOX: { w: number; h: number }, panels: number, blocks: Blocks | undefined, stdInfo: { w: number; h: number } | undefined,
+  split: ReturnType<typeof kabInsets>,
+) {
+  const { kode, names } = spec;
+  const all = spec.feats;
+  // With boxes: the main map is the mainland (and its near islands); the boxed islands leave
+  // every layer drawn at map scale, the outline and kecamatan lines included.
+  const moved = split ? split.groups.flatMap((g) => g.features) : [];
+  const feats = split ? split.main : all;
+  const ownAll = geo.outline.features.filter((f) => f.properties.domain_id === kode);
+  const own = split ? withoutMoved(ownAll, moved) : ownAll;
+  const fit = split ? { frame: split.frame, offFrame: [] as OffFrame[] } : framing(all);
   const { paths, vw, vh } = project(feats, fit.frame);
   const to = projector(fit.frame);
   const share = panels > 1 ? PANO_SHARE : MAP_SHARE;
@@ -354,7 +388,7 @@ function layout(spec: Spec, geo: Geos, BOX: { w: number; h: number }, panels = 1
     if (hit) placed.numbered.push({ ...l, lines: undefined });
     return !hit;
   });
-  const tones = neighbourColours(feats, CAT);
+  const tones = neighbourColours(all, CAT);
   // The kabupaten outline only around parts big enough to read (≥ 24 px across): hundreds of small
   // river islands (the Mahakam delta) would otherwise turn into a white starburst.
   const visible = own.map((f) => ({
@@ -370,7 +404,7 @@ function layout(spec: Spec, geo: Geos, BOX: { w: number; h: number }, panels = 1
     },
   }));
   const edge = project(visible, fit.frame).paths;
-  const borderPaths = spec.borders ? project(spec.borders, fit.frame).paths : [];
+  const borderPaths = spec.borders ? project(split ? withoutMoved(spec.borders, moved) : spec.borders, fit.frame).paths : [];
 
   // Neighbouring kabupaten anywhere on the card (the land layer is full-bleed).
   const win = { x0: -(boxLeft + mx) / s, x1: (SLIDE * panels - boxLeft - mx) / s, y0: -(boxTop + my) / s, y1: (1920 - boxTop - my) / s };
@@ -389,8 +423,48 @@ function layout(spec: Spec, geo: Geos, BOX: { w: number; h: number }, panels = 1
   for (const b of bands) space.occupyRect(b);
   if (headerRect) space.occupyRect(headerRect, 1);
   if (infoRect) space.occupyRect(infoRect, 1);
+
+  // Inset boxes first (they need the most room), each as near the side its islands lie as fits,
+  // the islands at map scale when that fits, else smaller. One that can't be placed: no boxes at all.
+  const islandBoxes: IslandBox[] = [];
+  for (const g of split?.groups ?? []) {
+    const title = kecBoxTitle(g.members, spec.boxNames!);
+    const isles = project(g.features, g.frame);
+    const [x0, y0] = to([g.frame.west, g.frame.north]);
+    const [x1, y1] = to([g.frame.east, g.frame.south]);
+    const native = Math.max(x1 - x0, y1 - y0) * s;
+    const anchor: Pt = [Math.min(Math.max(mx + ((x0 + x1) / 2) * s, 0), BOX.w), Math.min(Math.max(my + ((y0 + y1) / 2) * s, 0), BOX.h)];
+    // Every size (map side) x title width (3 lines, or 4 for a narrow strip of sea): the nearest
+    // spot to the islands wins, a smaller box paying 1 px of distance per px of map side it gives up.
+    let best: { score: number; rect: Rect; lines: string[]; mw: number; mh: number } | null = null;
+    for (const side of [...new Set([300, 250, 200, 160, 130].map((L) => Math.min(L, native)))]) {
+      const k = side / Math.max(isles.vw, isles.vh);
+      const [mw, mh] = [isles.vw * k, isles.vh * k];
+      for (const maxLines of [3, 4]) {
+        let inner = Math.max(mw, maxLines === 4 ? 150 : 180);
+        let lines = wrapPx(title, BOX_FONT, inner);
+        while (lines.length > maxLines && inner < 300) lines = wrapPx(title, BOX_FONT, (inner += 10));
+        const w = Math.max(inner, ...lines.map((l) => textWidth(l, BOX_FONT, true))) + 2 * BOX_PAD;
+        const h = BOX_PAD + lines.length * BOX_FONT * 1.2 + BOX_PAD / 2 + mh + BOX_PAD;
+        const found = space.find(w, h, anchor);
+        const score = found ? found.d + (300 - side) : Infinity;
+        if (found && (!best || score < best.score)) best = { score, rect: found.rect, lines, mw, mh };
+      }
+    }
+    let placed: IslandBox | null = null;
+    if (best) {
+      space.occupyRect(best.rect, 2);
+      const { rect, lines, mw, mh } = best;
+      placed = { key: g.kab, ids: new Set(g.features.map((f) => f.properties.domain_id)), lines, rect, own: isles, map: { x: rect.x + (rect.w - mw) / 2, y: rect.y + rect.h - BOX_PAD - mh, w: mw, h: mh } };
+    }
+    if (!placed) return null;
+    islandBoxes.push(placed);
+  }
   const px = (l: Label): Pt => [mx + l.x * s, my + l.y * s];
   const anchorOf = (id: string): { pt: Pt; off: boolean } => {
+    // A kecamatan drawn in a box: its callout points at the box.
+    const inBox = islandBoxes.find((b) => b.ids.has(id) && ![...placed.labels, ...placed.numbered].some((x) => x.id === id));
+    if (inBox) return { pt: [inBox.rect.x + inBox.rect.w / 2, inBox.rect.y + inBox.rect.h / 2], off: false };
     const l = [...placed.labels, ...placed.numbered].find((x) => x.id === id);
     let pt: Pt;
     if (l) pt = px(l);
@@ -403,7 +477,7 @@ function layout(spec: Spec, geo: Geos, BOX: { w: number; h: number }, panels = 1
     return { pt: off ? [Math.min(Math.max(pt[0], 0), BOX.w), Math.min(Math.max(pt[1], 0), BOX.h)] : pt, off };
   };
 
-  const callouts = spec.callouts ? spec.callouts(feats, anchorOf) : [];
+  const callouts = spec.callouts ? spec.callouts(all, anchorOf) : [];
   for (const c of callouts) {
     if (c.off) c.name = `${c.name} (di luar bingkai)`;
     const lines = 1 + c.items.length * 2;
@@ -469,7 +543,14 @@ function layout(spec: Spec, geo: Geos, BOX: { w: number; h: number }, panels = 1
     const rect = space.place(w, 34, [sx / n, sy / n], inside, 0, true);
     if (rect) neighbourNames.push({ name, rect });
   }
-  return { BOX, fitValue, boxTop, boxLeft, headerRect, infoRect, panels, crowded, paths, edge, borderPaths, nearPaths, labels: placed.labels, numbered, leaders, tones, s, mx, my, callouts, neighbourNames, offFrame: fit.offFrame };
+  return { BOX, fitValue, boxTop, boxLeft, headerRect, infoRect, panels, crowded, paths, edge, borderPaths, nearPaths, labels: placed.labels, numbered, leaders, tones, s, mx, my, callouts, neighbourNames, offFrame: fit.offFrame, islandBoxes };
+}
+
+/** The source line under the info block (20 px, leading-snug, mt-3), wrapped to `w` px: a long
+ * source runs to four lines, more than a fixed allowance covers. */
+function sourceH(source: string, w: number, panorama: boolean): number {
+  const text = `Sumber: ${source}${panorama ? ". Peta 1 dari 2, geser untuk lanjutannya" : ""}. Batas wilayah indikatif (BIG).`;
+  return 12 + Math.max(3, Math.ceil(textWidth(text, 20) / w)) * 27.5;
 }
 
 /** Tinggi penuh header: kicker, the name over two lines if needed, the province. */
@@ -514,7 +595,7 @@ function AdminMap({
           header: { w: FULL.headerW, h: fullHeaderH(title, facts) },
           info: {
             w: Math.max(infoW, 520),
-            h: fullInfoH + 84 + (x?.numbered.length ? Math.ceil(x.numbered.length / 2) * 34 : 0) + ((x?.offFrame.length ?? 0) > 0 ? 72 : 0) + (x?.crowded ? 36 : 0),
+            h: fullInfoH + sourceH(source, Math.max(infoW, 520), !!spec.panorama) + (x?.numbered.length ? Math.ceil(x.numbered.length / 2) * 34 : 0) + ((x?.offFrame.length ?? 0) > 0 ? 72 : 0) + (x?.crowded ? 36 : 0),
           },
         });
         const fit = (k: number) => {
@@ -527,7 +608,7 @@ function AdminMap({
         // Tinggi penuh only when it shows more readable map than Standar (a wide kabupaten can't sit
         // between the two-line title and the stats corner without shrinking).
         if (!spec.panorama) {
-          const std = layout(spec, geo, { w: SLIDE, h: 1920 - BOX_TOP }, 1, undefined, { w: Math.max(infoW, 520), h: infoH(null) - GAP + 84 });
+          const std = layout(spec, geo, { w: SLIDE, h: 1920 - BOX_TOP }, 1, undefined, { w: Math.max(infoW, 520), h: infoH(null) - GAP + sourceH(source, Math.max(infoW, 520), false) });
           if (std.fitValue >= cur.fitValue) { cur = std; break; }
         }
         // Too crowded: as many slides as the map, drawn at full height, is wide (2 or 3). If that
@@ -551,7 +632,7 @@ function AdminMap({
         // the source line in an empty bottom corner above y 1500.
         const box = { w: SLIDE * n, h: 1920 - BOX_TOP };
         const stdW = Math.max(infoW, 520);
-        const pass = (x: ReturnType<typeof layout> | null) => layout(spec, geo, box, n, undefined, { w: stdW, h: infoH(x) - GAP + 84 });
+        const pass = (x: ReturnType<typeof layout> | null) => layout(spec, geo, box, n, undefined, { w: stdW, h: infoH(x) - GAP + sourceH(source, stdW, n > 1) });
         cur = pass(null);
         const again = pass(cur);
         if (again.infoRect!.h !== cur.infoRect!.h) cur = again;
@@ -559,7 +640,7 @@ function AdminMap({
       if (!cur.crowded) break;
     }
     return cur!;
-  }, [spec, geo, full, title, infoW, facts, fullInfoH]);
+  }, [spec, geo, full, title, infoW, facts, fullInfoH, source]);
   const { BOX } = m;
   useEffect(() => onPanels?.(m.panels), [m.panels, onPanels]);
 
@@ -595,6 +676,22 @@ function AdminMap({
         <text key={n.name} x={n.rect.x + 6} y={n.rect.y + 26} fontSize={26} fontStyle="italic" letterSpacing={2} fill="var(--nm-muted)">
           {n.name}
         </text>
+      ))}
+      {m.islandBoxes.map((b) => (
+        <g key={b.key} data-inset={b.key}>
+          <rect x={b.rect.x} y={b.rect.y} width={b.rect.w} height={b.rect.h} fill="var(--nm-bg)" stroke="var(--nm-border-strong)" strokeWidth={1.5} />
+          {b.lines.map((l, i) => (
+            <text key={i} x={b.rect.x + BOX_PAD} y={b.rect.y + BOX_PAD + BOX_FONT * (0.95 + 1.2 * i)} fontSize={BOX_FONT} fontWeight={600} fill="var(--nm-edge)">
+              {l}
+            </text>
+          ))}
+          <svg x={b.map.x} y={b.map.y} width={b.map.w} height={b.map.h} viewBox={`0 0 ${b.own.vw} ${b.own.vh}`} preserveAspectRatio="xMidYMid meet" overflow="visible">
+            {/* Outlined in their own colour: at box scale most islands are only a few pixels. */}
+            {b.own.paths.map((p) => (
+              <path key={p.id} d={p.d} fill={spec.fill(p.id, m.tones)} stroke={spec.fill(p.id, m.tones)} strokeWidth={2} strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
+            ))}
+          </svg>
+        </g>
       ))}
       {m.callouts.map((c) => (c.rect ? <CalloutBlock key={c.id} c={c as Required<Callout>} /> : null))}
     </svg>
@@ -732,9 +829,9 @@ function CalloutBlock({ c }: { c: Required<Callout> }) {
   );
 }
 
-function infoBase(rows: number) {
+function infoBase(rows: number, rowH = 42) {
   return (numbered: number, offFrame: boolean, unplaced: boolean) =>
-    GAP + rows * 42 + 12 + (numbered ? Math.ceil(numbered / 3) * 34 + 8 : 0) + (offFrame ? 96 : 0) + (unplaced ? 64 : 0);
+    GAP + rows * rowH + 12 + (numbered ? Math.ceil(numbered / 3) * 34 + 8 : 0) + (offFrame ? 96 : 0) + (unplaced ? 64 : 0);
 }
 
 /** The kecamatan of a kabupaten (template `wilayah`). `sorot`: the extremes callouts. */
@@ -747,8 +844,10 @@ export function KecamatanMapBody({ kode, data, geo, sorot, full = false }: { kod
       fill: (id, tones) => `var(--nm-cat-${tones.get(id) ?? 0})`,
       // One size for every name on the map, inside or on a leader.
       labelSize: { min: 24, max: 24, minRoom: 8, leader: 24 },
-      infoHeight: infoBase(5),
+      // StatsList rows: 30 px at leading-snug plus the 4 px gap.
+      infoHeight: infoBase(5, 46),
       callouts: sorot ? (fs, anchorOf) => extremes(fs, data, names, anchorOf) : undefined,
+      boxNames: names,
     };
   }, [kode, data, geo, sorot, names]);
   const pop = data.kab.pop;
@@ -772,7 +871,7 @@ export function KecamatanMapBody({ kode, data, geo, sorot, full = false }: { kod
       full={full}
       // Same stats table in both layouts: only the map differs.
       fullInfo={<StatsList rows={stats} />}
-      fullInfoH={5 * 42 + 12}
+      fullInfoH={5 * 46 + 12}
       source={`Penduduk: Ditjen Dukcapil Kemendagri, data ${bulanTahun(data.period)} (terdaftar); jumlah desa, luas dan batas: BIG 1:10.000, dijumlahkan NusaStats`}
     />
   );
@@ -797,6 +896,7 @@ export function DesaMapBody({
       panorama: true,
       // Two more rows when the list notes desa that are on BIG's map but not yet in Dukcapil.
       infoHeight: infoBase(3 + (data.unlisted.size > 0 ? 2 : 0)),
+      boxNames: kecamatanNames(data),
     };
   }, [kode, data, geo, status]);
   const counts = { Kelurahan: 0, Desa: 0, other: 0 };

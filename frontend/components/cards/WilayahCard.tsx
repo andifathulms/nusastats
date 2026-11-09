@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { dukcapilApi, formatNumber, regionLabel, titleCase, type DukcapilRankRow, type DukcapilRegionRow } from "@/lib/api";
-import { NO_DATA, frameOf, palette, framing, project, projector, type Geo, type Label, type OffFrame } from "./geo";
+import { NO_DATA, frameOf, palette, framing, kabInsets, project, projector, withoutMoved, type Geo, type Label, type OffFrame } from "./geo";
+import { InsetBoxes, composeMap } from "./insetMap";
 import { temaStyle, type Tema } from "./brand";
 import { DesaMapBody, KecamatanMapBody } from "./AdminMap";
 import { CornerTag, Footer, OffFrameNote } from "./ShareCard";
@@ -217,21 +218,68 @@ export function DensityLegend({ note }: { note?: string }) {
   );
 }
 
+/** An inset box's name: its kecamatan, "Liukang Kalmas dan Liukang Tangaya"; a mainland
+ * kecamatan's far islands as "X, pulau terluar". */
+export function kecBoxTitle(members: { kab: string; whole: boolean }[], names: Map<string, string>): string {
+  const one = (m: { kab: string; whole: boolean }) => {
+    const n = names.get(m.kab) ?? m.kab;
+    return m.whole ? n : `${n}, pulau terluar`;
+  };
+  const all = members.map(one);
+  return all.length === 1 ? all[0] : `${all.slice(0, -1).join(", ")} dan ${all[all.length - 1]}`;
+}
+
+/** Kecamatan names by code, from the kecamatan rows (title case). */
+export const kecNames = (rows: DukcapilRankRow[]) => new Map(rows.map((r) => [r.domain_id, titleCase(r.domain_name)]));
+
+// The hook's facts below a stacked map (notes, legend, numbers, source), for the first layout pass.
+const HOOK_INFO_H = 420;
+
 function DensityBody({ kode, data, geo }: { kode: string; data: Data; geo: Geos }) {
   const byId = useMemo(() => new Map(data.villages.map((v) => [v.domain_id, v])), [data.villages]);
+  // With inset boxes the map is stacked; its slot is measured so box text prints at INSET_FONT px.
+  const holder = useRef<HTMLDivElement>(null);
+  const [area, setArea] = useState<{ w: number; h: number } | undefined>(undefined);
+  useLayoutEffect(() => {
+    const el = holder.current;
+    if (el && el.offsetWidth && el.offsetHeight && (area?.w !== el.offsetWidth || area?.h !== el.offsetHeight))
+      setArea({ w: el.offsetWidth, h: el.offsetHeight });
+  });
+  const feats = useMemo(() => geo.inner.features.filter((f) => f.properties.domain_id.startsWith(kode)), [geo, kode]);
+  // Far island kecamatan (Pangkep's Spermonde, Kalmas and Tangaya) in boxes of their own, the mainland large.
+  const split = useMemo(() => kabInsets(feats), [feats]);
+  const names = useMemo(() => kecNames(data.districts), [data.districts]);
+  const composed = useMemo(
+    () => (split ? composeMap(split, (g) => kecBoxTitle(g.members, names), area, HOOK_INFO_H) : null),
+    [split, names, area],
+  );
   const { paths, kec, edge, vw, vh, offFrame } = useMemo(() => {
-    const feats = geo.inner.features.filter((f) => f.properties.domain_id.startsWith(kode));
     const own = geo.outline.features.filter((f) => f.properties.domain_id === kode);
+    const kecFeats = geo.kec?.features.filter((f) => f.properties.domain_id.startsWith(kode)) ?? [];
+    if (composed && split) {
+      // The kecamatan lines and the kabupaten outline without the islands now in boxes.
+      const moved = split.groups.flatMap((g) => g.features);
+      return {
+        paths: composed.main.paths,
+        kec: project(withoutMoved(kecFeats, moved), split.frame).paths,
+        edge: own.length ? project(withoutMoved(own, moved), split.frame).paths : [],
+        vw: composed.vw,
+        vh: composed.vh,
+        offFrame: [] as OffFrame[],
+      };
+    }
     const fit = framing(feats);
     const frame = fit.frame;
-    const kecFeats = geo.kec?.features.filter((f) => f.properties.domain_id.startsWith(kode)) ?? [];
     return {
       ...project(feats, frame),
       kec: project(kecFeats, frame).paths,
       edge: own.length ? project(own, frame).paths : [],
       offFrame: fit.offFrame as OffFrame[],
     };
-  }, [geo, kode]);
+  }, [geo, kode, feats, composed, split]);
+  const boxes = composed?.boxes ?? [];
+  const [ox, oy] = composed ? [composed.ox, composed.oy] : [0, 0];
+  const [mw, mh] = composed ? [composed.main.vw, composed.main.vh] : [vw, vh];
 
   const cls = (v: number) => BREAKS.findIndex((b) => v < b) === -1 ? BREAKS.length : BREAKS.findIndex((b) => v < b);
   // The facts use real desa values only; the kecamatan fill below is drawing, not data.
@@ -239,10 +287,16 @@ function DensityBody({ kode, data, geo }: { kode: string; data: Data; geo: Geos 
   const filled = paths.filter((p) => !byId.has(p.id) && data.unlisted.get(p.id) != null).length;
   const missing = paths.filter((p) => !byId.has(p.id) && data.unlisted.get(p.id) == null).length;
   const hatch = Math.max(vw, vh) / 140; // stripe spacing in viewBox units (~6 card px)
+  const fill = (id: string) => {
+    const v = byId.get(id);
+    const k = v ? null : data.unlisted.get(id);
+    return v ? classColors()[cls(v.value)] : k != null ? `url(#nm-hatch-${cls(k)})` : NO_DATA;
+  };
 
   return (
     <MapLayout
       aspect={vh / vw}
+      side={boxes.length ? false : undefined}
       headerH={HOOK_HEADER_H}
       header={
         <CardHeader kicker={`Penduduk · kepadatan per desa · ${data.kab.prov}`} title={data.kab.name}>
@@ -284,7 +338,9 @@ function DensityBody({ kode, data, geo }: { kode: string; data: Data; geo: Geos 
         </>
       }
       map={
-        <svg viewBox={`0 0 ${vw.toFixed(0)} ${vh.toFixed(0)}`} preserveAspectRatio="xMidYMid meet" className="h-full w-full">
+        // Stretched to the map slot, the svg laid over it: the slot's size, not the svg's, is what's measured.
+        <div ref={holder} className={`relative min-h-0 min-w-0 flex-1 self-stretch ${boxes.length ? "mb-6" : ""}`}>
+        <svg viewBox={`0 0 ${vw.toFixed(0)} ${vh.toFixed(0)}`} preserveAspectRatio="xMidYMid meet" className="absolute inset-0 h-full w-full overflow-visible">
           <defs>
             {/* Desa Dukcapil doesn't list yet: their kecamatan's class colour, striped so they never pass for desa data. */}
             {classColors().map((c, i) => (
@@ -293,20 +349,24 @@ function DensityBody({ kode, data, geo }: { kode: string; data: Data; geo: Geos 
                 <rect width={hatch * 0.4} height={hatch} fill="var(--nm-bg)" opacity={0.55} />
               </pattern>
             ))}
+            <clipPath id="nm-main-frame">
+              <rect x={0} y={0} width={mw} height={mh} />
+            </clipPath>
           </defs>
-          {paths.map((p) => {
-            const v = byId.get(p.id);
-            const k = v ? null : data.unlisted.get(p.id);
-            const fill = v ? classColors()[cls(v.value)] : k != null ? `url(#nm-hatch-${cls(k)})` : NO_DATA;
-            return <path key={p.id} d={p.d} fill={fill} stroke="var(--nm-seam)" strokeWidth={0.4} vectorEffect="non-scaling-stroke" />;
-          })}
-          {kec.map((p) => (
-            <path key={`k-${p.id}`} d={p.d} fill="none" stroke="var(--nm-border-soft)" strokeWidth={0.8} vectorEffect="non-scaling-stroke" />
-          ))}
-          {edge.map((p) => (
-            <path key={`e-${p.id}`} d={p.d} fill="none" stroke="var(--nm-edge)" strokeWidth={2.6} strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
-          ))}
+          <g transform={`translate(${ox} ${oy})`} clipPath={boxes.length ? "url(#nm-main-frame)" : undefined}>
+            {paths.map((p) => (
+              <path key={p.id} d={p.d} fill={fill(p.id)} stroke="var(--nm-seam)" strokeWidth={0.4} vectorEffect="non-scaling-stroke" />
+            ))}
+            {kec.map((p) => (
+              <path key={`k-${p.id}`} d={p.d} fill="none" stroke="var(--nm-border-soft)" strokeWidth={0.8} vectorEffect="non-scaling-stroke" />
+            ))}
+            {edge.map((p) => (
+              <path key={`e-${p.id}`} d={p.d} fill="none" stroke="var(--nm-edge)" strokeWidth={2.6} strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
+            ))}
+          </g>
+          {composed && <InsetBoxes boxes={boxes} unit={composed.unit} fill={fill} />}
         </svg>
+        </div>
       }
     />
   );

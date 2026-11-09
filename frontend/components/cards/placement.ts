@@ -90,6 +90,16 @@ export class FreeSpace {
     w: number, h: number, anchor: Pt, within?: (x: number, y: number) => boolean, gap = 1, centred = false,
     cost?: (rect: Rect) => number,
   ): Rect | null {
+    const best = this.find(w, h, anchor, within, centred, cost);
+    if (best) this.occupyRect(best.rect, gap);
+    return best?.rect ?? null;
+  }
+
+  /** What place() would pick, with its distance (plus cost), without marking it used. */
+  find(
+    w: number, h: number, anchor: Pt, within?: (x: number, y: number) => boolean, centred = false,
+    cost?: (rect: Rect) => number,
+  ): { rect: Rect; d: number } | null {
     const cw = Math.ceil(w / CELL);
     const rh = Math.ceil(h / CELL);
     let best: { rect: Rect; d: number } | null = null;
@@ -104,8 +114,7 @@ export class FreeSpace {
         if (best && total >= best.d) continue;
         best = { rect, d: total };
       }
-    if (best) this.occupyRect(best.rect, gap);
-    return best?.rect ?? null;
+    return best;
   }
 }
 

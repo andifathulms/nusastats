@@ -80,6 +80,13 @@ widen the frame stay on the map (Banggai, Wakatobi, Wawonii), nearby far groups 
 (Sangihe, Talaud and Siau Tagulandang Biaro), and a far group under 0.01% of the area (Mamuju's
 Balabalakang islands) is not drawn; the cover names it ("Tidak tergambar …"). Box text is sized
 from the map area measured on the card.
+
+Kabupaten profile maps (the kepadatan hook, wilayah and desa cards) do the same per kecamatan
+(`geo.kabInsets`): the mainland large, far island kecamatan in at most two boxes, those off the
+coast in one (Pangkep: Liukang Tupabbiring and Liukang Tupabbiring Utara) and the far ones in the
+other (Liukang Kalmas and Liukang Tangaya). An archipelago (islands over 15% of the area, or more
+than three kecamatan in a box: Selayar, Maluku Tengah), or boxes that don't fit beside the
+names, keeps the old framing with its "Di luar bingkai" note.
 Emblems come from `frontend/public/emblems/` (see `data/emblems/fetch_emblems.py`; all six
 Sulawesi provinces so far). A province without emblems shows
 the same rows without the emblem column.

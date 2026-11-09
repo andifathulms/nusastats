@@ -439,6 +439,123 @@ export function insets(features: Feature[], { cluster = false }: { cluster?: boo
   };
 }
 
+/** Split one kabupaten's map (kecamatan or desa features) into its mainland and
+ * at most two inset boxes, the way Pangkep is printed: the mainland large, the
+ * Spermonde islands off its coast in one box, the far Kalmas and Tangaya
+ * islands in another.
+ *
+ * An island kecamatan is one with under half its area on the mainland, where
+ * the mainland is every polygon touching the largest (bounding boxes within
+ * ~100 m, chained: tight, so islands a few km out don't join it). Its parts all
+ * go to a box. A mainland kecamatan keeps its islands near the coast (within a
+ * fifth of the mainland's span, as framing() does) and sends far ones to a box. Out parts within one
+ * mainland span of the coast share the "near" box; the rest share the "far" box.
+ * Groups and members are keyed by the 6-digit kecamatan code. Returns null when
+ * boxes wouldn't help: nothing far out, islands over 15% of the area (an
+ * archipelago such as Selayar), more than three kecamatan in one box, or a
+ * frame that shrinks by less than 40%.
+ * Every polygon is drawn exactly once, in the main map or in one box. */
+export function kabInsets(features: Feature[]): Insets | null {
+  type Part = { f: Feature; poly: number[][][]; fr: Frame; area: number; kec: string };
+  const parts: Part[] = [];
+  for (const f of features)
+    for (const poly of polygons(f)) {
+      const ring = poly[0];
+      let a = 0;
+      for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) a += (ring[j][0] + ring[i][0]) * (ring[j][1] - ring[i][1]);
+      const fr = frameOf([{ properties: f.properties, geometry: { type: "Polygon", coordinates: poly } }]);
+      parts.push({ f, poly, fr, area: Math.abs(a / 2), kec: f.properties.domain_id.slice(0, 6) });
+    }
+  if (parts.length < 2) return null;
+  const gap = (a: Frame, b: Frame) => Math.max(0, a.west - b.east, b.west - a.east, a.south - b.north, b.south - a.north);
+  const grow = (fr: Frame, b: Frame) => {
+    fr.west = Math.min(fr.west, b.west);
+    fr.east = Math.max(fr.east, b.east);
+    fr.south = Math.min(fr.south, b.south);
+    fr.north = Math.max(fr.north, b.north);
+  };
+  const frameOfParts = (ps: Part[]) => {
+    const fr = { ...ps[0].fr };
+    for (const p of ps) grow(fr, p.fr);
+    return fr;
+  };
+  const span = (fr: Frame) => Math.max(fr.east - fr.west, fr.north - fr.south);
+
+  const land = new Set<Part>([parts.reduce((m, p) => (p.area > m.area ? p : m))]);
+  for (const queue = [...land]; queue.length; ) {
+    const m = queue.pop()!;
+    for (const p of parts) if (!land.has(p) && gap(p.fr, m.fr) <= 0.001) land.add(p), queue.push(p);
+  }
+  const share = new Map<string, { all: number; land: number }>();
+  for (const p of parts) {
+    const k = share.get(p.kec) ?? { all: 0, land: 0 };
+    k.all += p.area;
+    if (land.has(p)) k.land += p.area;
+    share.set(p.kec, k);
+  }
+  const mainland = (k: string) => share.get(k)!.land >= 0.5 * share.get(k)!.all;
+  const box = frameOfParts([...land]);
+  // Like framing(): islands within a fifth of the mainland's span stay (Makassar's Lae-Lae).
+  const reach = 0.2 * span(box);
+  const kept = parts.filter((p) => land.has(p) || (mainland(p.kec) && gap(p.fr, box) <= reach));
+  const out = parts.filter((p) => !kept.includes(p));
+  if (!out.length) return null;
+  const total = parts.reduce((s, p) => s + p.area, 0);
+  const frame = frameOfParts(kept);
+  const area = (fr: Frame) => (fr.east - fr.west) * (fr.north - fr.south);
+  if (out.reduce((s, p) => s + p.area, 0) > 0.15 * total || area(frameOf(features)) < 1.6 * area(frame)) return null;
+
+  // Near or far, decided per kecamatan (all its out parts together), so a kecamatan is never split across boxes.
+  const byKec = new Map<string, Part[]>();
+  for (const p of out) byKec.set(p.kec, [...(byKec.get(p.kec) ?? []), p]);
+  const near = (ps: Part[]) => gap(frameOfParts(ps), frame) <= span(frame);
+  const sides = [[...byKec].filter(([, ps]) => near(ps)), [...byKec].filter(([, ps]) => !near(ps))].filter((s) => s.length);
+  // A box names its kecamatan; more than three (Ambon and the Lease islands in Maluku Tengah)
+  // is an archipelago, not a mainland with outliers.
+  if (sides.some((s) => s.length > 3)) return null;
+  const regroup = (ps: Part[]) => {
+    const byF = new Map<Feature, number[][][][]>();
+    for (const p of ps) byF.set(p.f, [...(byF.get(p.f) ?? []), p.poly]);
+    return [...byF].map(([f, polys]) => ({ properties: f.properties, geometry: { type: "MultiPolygon", coordinates: polys } }));
+  };
+  const groups = sides.map((side) => {
+    side.sort(([a], [b]) => a.localeCompare(b));
+    const ps = side.flatMap(([, ps]) => ps);
+    const fr = frameOfParts(ps);
+    const members = side.map(([k]) => ({ kab: k, whole: !mainland(k) }));
+    return {
+      kab: members[0].kab, whole: members.every((m) => m.whole), members, features: regroup(ps), frame: fr,
+      centre: [(fr.west + fr.east) / 2, (fr.south + fr.north) / 2] as [number, number],
+    };
+  });
+  const pad = 0.04 * span(frame);
+  return {
+    dropped: [],
+    main: regroup(kept),
+    frame: { west: frame.west - pad, east: frame.east + pad, south: frame.south - pad, north: frame.north + pad },
+    groups,
+  };
+}
+
+/** `features` without the polygons drawn elsewhere (an inset box's islands): a polygon
+ * goes when its bounding-box centre lies in the bounding box of one of `moved`'s
+ * polygons. For the kabupaten outline and kecamatan lines over a map split by kabInsets. */
+export function withoutMoved(features: Feature[], moved: Feature[]): Feature[] {
+  const eps = 1e-4;
+  const boxes = moved.flatMap((f) => polygons(f).map((poly) => frameOf([{ properties: f.properties, geometry: { type: "Polygon", coordinates: poly } }])));
+  return features.map((f) => ({
+    properties: f.properties,
+    geometry: {
+      type: "MultiPolygon",
+      coordinates: polygons(f).filter((poly) => {
+        const fr = frameOf([{ properties: f.properties, geometry: { type: "Polygon", coordinates: poly } }]);
+        const [x, y] = [(fr.west + fr.east) / 2, (fr.south + fr.north) / 2];
+        return !boxes.some((b) => x >= b.west - eps && x <= b.east + eps && y >= b.south - eps && y <= b.north + eps);
+      }),
+    },
+  }));
+}
+
 export type Label = { id: string; name: string; x: number; y: number; size: number; n?: number; lines?: string[] };
 
 /** A multi-word name split into two lines at the space nearest its middle ("Bonto / Lojong"). */
