@@ -335,7 +335,11 @@ export function ProfilTool({
 
       {zoom !== null && (
         <CardLightbox
-          slides={slides.filter((x) => x.available).map((x) => ({ src: path(x, x.panel), label: x.label }))}
+          slides={slides.filter((x) => x.available).map((x) => ({
+            src: path(x, x.panel),
+            label: x.label,
+            download: service === "up" ? `${CARDS}/png?${new URLSearchParams({ template: x.id, kode, ...query(x, x.panel) })}` : undefined,
+          }))}
           index={zoom}
           onIndex={setZoom}
           onClose={() => setZoom(null)}

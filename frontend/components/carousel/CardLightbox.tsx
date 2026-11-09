@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 
-export type LightboxSlide = { src: string; label: string };
+/** `download`: the PNG of this one card (from the `cards` service), shown as a button in the zoom. */
+export type LightboxSlide = { src: string; label: string; download?: string };
 
 /** A card preview at full size: click a thumbnail to open, ←/→ (or the arrows) to page, Esc to close. */
 export function CardLightbox({ slides, index, onClose, onIndex }: { slides: LightboxSlide[]; index: number; onClose: () => void; onIndex: (i: number) => void }) {
@@ -49,6 +50,15 @@ export function CardLightbox({ slides, index, onClose, onIndex }: { slides: Ligh
         onClick={(e) => { e.stopPropagation(); onIndex(index - 1); }}>←</button>
       <button type="button" aria-label="Berikutnya" className={`${arrow} right-4`} disabled={index === slides.length - 1}
         onClick={(e) => { e.stopPropagation(); onIndex(index + 1); }}>→</button>
+      {slide.download && (
+        <a
+          href={slide.download}
+          onClick={(e) => e.stopPropagation()}
+          className="absolute right-36 top-4 rounded-full bg-white px-4 py-2 font-semibold text-black hover:bg-white/90"
+        >
+          Unduh PNG ↓
+        </a>
+      )}
       <button type="button" aria-label="Tutup" className="absolute right-4 top-4 rounded-full bg-white/10 px-4 py-2 text-white hover:bg-white/20" onClick={onClose}>
         Tutup ✕
       </button>

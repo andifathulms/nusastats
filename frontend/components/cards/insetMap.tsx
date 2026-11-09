@@ -113,18 +113,22 @@ function composeInside(main: Projected, rings: Pt[][], groups: Group[], unit: nu
 }
 
 /** A column of boxes on each side of a centred mainland (west groups left, east right). */
-function composeSides(main: Projected, groups: Group[], unit: number, colPx: number, balanced = false): Composed | null {
+/** Both sides get a box: when every group lies on one side of the mainland, all but the one
+ * nearest it move to the other side, their anchors mirrored across the mainland's middle
+ * (Pangkep: the Spermonde islands stay left, Kalmas and Tangaya go right). */
+function balance(main: Projected, groups: Group[]): Group[] {
+  const west = (g: Group) => g.anchor[0] < main.vw / 2;
+  const oneSide = groups.every(west) || !groups.some(west);
+  if (groups.length < 2 || !oneSide) return groups;
+  const dist = (g: Group) => Math.hypot(g.anchor[0] - main.vw / 2, g.anchor[1] - main.vh / 2);
+  const nearest = groups.reduce((a, b) => (dist(b) < dist(a) ? b : a));
+  return groups.map((g) => (g === nearest ? g : { ...g, anchor: [main.vw - g.anchor[0], g.anchor[1]] as Pt }));
+}
+
+function composeSides(main: Projected, groups: Group[], unit: number, colPx: number): Composed | null {
   const gap = INSET_GAP * unit;
   const col = colPx * unit;
-  let sides = [groups.filter((g) => g.anchor[0] < main.vw / 2), groups.filter((g) => g.anchor[0] >= main.vw / 2)];
-  // Balanced: every box on one side moves over except the one nearest the mainland, so both
-  // sides get a box (Pangkep: the Spermonde islands left, Kalmas and Tangaya right).
-  if (balanced && groups.length > 1 && sides.some((l) => !l.length)) {
-    const dist = (g: Group) => Math.hypot(g.anchor[0] - main.vw / 2, g.anchor[1] - main.vh / 2);
-    const nearest = groups.reduce((a, b) => (dist(b) < dist(a) ? b : a));
-    const own = nearest.anchor[0] < main.vw / 2 ? 0 : 1;
-    sides = own === 0 ? [[nearest], groups.filter((g) => g !== nearest)] : [groups.filter((g) => g !== nearest), [nearest]];
-  }
+  const sides = [groups.filter((g) => g.anchor[0] < main.vw / 2), groups.filter((g) => g.anchor[0] >= main.vw / 2)];
   const boxes: InsetBox[] = [];
   for (const [s, list] of sides.entries()) {
     if (!list.length) continue;
@@ -215,8 +219,13 @@ export function composeMap(
     return c && real && c.unit >= 0.9 * real ? { ...c, real } : null;
   };
   // "sides" with a single box would leave the other column empty: the usual arrangements then.
+  const balanced = balance(main, groups);
   const candidates = (arrange === "sides" && groups.length > 1
-    ? [180, 220, 260, 300].map((px) => build((u) => composeSides(main, groups, u, px, true)))
+    ? [
+        // In the mainland's own empty sea first (Pangkep's corners), else in columns.
+        ...[0, 0.06, 0.12, 0.2, 0.28].map((margin) => build((u) => composeInside(main, rings, balanced, u, margin))),
+        ...[180, 220, 260, 300].map((px) => build((u) => composeSides(main, balanced, u, px))),
+      ]
     : [
     ...[0, 0.06, 0.12, 0.2, 0.28, 0.36, 0.45].map((margin) => build((u) => composeInside(main, rings, groups, u, margin))),
     ...[180, 220, 260, 300].map((px) => build((u) => composeSides(main, groups, u, px))),

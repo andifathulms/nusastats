@@ -665,7 +665,11 @@ function Result({ result, form, tema }: { result: CarouselDeckResult; form: Form
 
       {zoom !== null && (
         <CardLightbox
-          slides={result.cards.map((c) => ({ src: `${c.path}&tema=${tema}`, label: c.file }))}
+          slides={result.cards.map((c) => ({
+            src: `${c.path}&tema=${tema}`,
+            label: c.file,
+            download: `${CARDS}/shot?${new URLSearchParams({ path: `${c.path}&tema=${tema}`, name: c.file })}`,
+          }))}
           index={zoom}
           onIndex={setZoom}
           onClose={() => setZoom(null)}

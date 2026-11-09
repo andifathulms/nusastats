@@ -17,8 +17,16 @@ export const metres = (v: number) => `${formatNumber(Math.round(v))} m`;
 // Peak heights are model pixels (30 m, surface model): round to 10 m, never quote to the metre.
 export const peak = (v: number) => `${formatNumber(Math.round(v / 10) * 10)} m`;
 
+// The names people actually use for a few long kabupaten names, in sentences (the card title keeps the official name).
+const COMMON: Record<string, string> = {
+  "Pangkajene Kepulauan": "Pangkep",
+  "Pangkajene Dan Kepulauan": "Pangkep",
+  "Sidenreng Rappang": "Sidrap",
+};
+
 export function shortName(name: string): string {
-  return name.replace(/^(Kab\. Adm\.|Kota Adm\.|Kab\.|Kota)\s+/, "");
+  const bare = name.replace(/^(Kab\. Adm\.|Kota Adm\.|Kab\.|Kota)\s+/, "");
+  return COMMON[bare] ?? bare;
 }
 
 /** "Half the residents live in X% of the area": desa sorted densest first,

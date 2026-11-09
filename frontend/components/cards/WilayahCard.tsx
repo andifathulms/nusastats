@@ -218,7 +218,7 @@ export function DensityLegend({ note }: { note?: string }) {
   );
 }
 
-/** An inset box's name: its kecamatan, "Liukang Kalmas dan Liukang Tangaya"; a mainland
+/** An inset box's name: its kecamatan, "Liukang Tangaya dan Kalmas"; a mainland
  * kecamatan's far islands as "X, pulau terluar". */
 export function kecBoxTitle(members: { kab: string; whole: boolean }[], names: Map<string, string>): string {
   const one = (m: { kab: string; whole: boolean }) => {
@@ -226,7 +226,12 @@ export function kecBoxTitle(members: { kab: string; whole: boolean }[], names: M
     return m.whole ? n : `${n}, pulau terluar`;
   };
   const all = members.map(one);
-  return all.length === 1 ? all[0] : `${all.slice(0, -1).join(", ")} dan ${all[all.length - 1]}`;
+  if (all.length === 1) return all[0];
+  // A first word they all share is written once, as the province boxes write "Kep." once:
+  // "Liukang Tangaya dan Kalmas", "Liukang Tupabbiring dan Tupabbiring Utara".
+  const first = all[0].split(" ")[0];
+  const parts = all.every((n) => n.startsWith(`${first} `)) ? all.map((n, i) => (i === 0 ? n : n.slice(first.length + 1))) : all;
+  return `${parts.slice(0, -1).join(", ")} dan ${parts[parts.length - 1]}`;
 }
 
 /** Kecamatan names by code, from the kecamatan rows (title case). */
