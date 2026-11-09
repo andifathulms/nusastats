@@ -246,11 +246,12 @@ function DensityBody({ kode, data, geo }: { kode: string; data: Data; geo: Geos 
       setArea({ w: el.offsetWidth, h: el.offsetHeight });
   });
   const feats = useMemo(() => geo.inner.features.filter((f) => f.properties.domain_id.startsWith(kode)), [geo, kode]);
-  // Far island kecamatan (Pangkep's Spermonde, Kalmas and Tangaya) in boxes of their own, the mainland large.
+  // Far island kecamatan (Pangkep's Spermonde, Kalmas and Tangaya) in boxes of their own, the mainland
+  // large between them: a box column each side.
   const split = useMemo(() => kabInsets(feats), [feats]);
   const names = useMemo(() => kecNames(data.districts), [data.districts]);
   const composed = useMemo(
-    () => (split ? composeMap(split, (g) => kecBoxTitle(g.members, names), area, HOOK_INFO_H) : null),
+    () => (split ? composeMap(split, (g) => kecBoxTitle(g.members, names), area, HOOK_INFO_H, "sides") : null),
     [split, names, area],
   );
   const { paths, kec, edge, vw, vh, offFrame } = useMemo(() => {
@@ -339,7 +340,8 @@ function DensityBody({ kode, data, geo }: { kode: string; data: Data; geo: Geos 
       }
       map={
         // Stretched to the map slot, the svg laid over it: the slot's size, not the svg's, is what's measured.
-        <div ref={holder} className={`relative min-h-0 min-w-0 flex-1 self-stretch ${boxes.length ? "mb-6" : ""}`}>
+        // With boxes beside the map, the right column stays left of TikTok's icons (x 920 on).
+        <div ref={holder} className="relative min-h-0 min-w-0 flex-1 self-stretch" style={split ? { marginBottom: 24, marginRight: ZONE.mapRight - 920 } : undefined}>
         <svg viewBox={`0 0 ${vw.toFixed(0)} ${vh.toFixed(0)}`} preserveAspectRatio="xMidYMid meet" className="absolute inset-0 h-full w-full overflow-visible">
           <defs>
             {/* Desa Dukcapil doesn't list yet: their kecamatan's class colour, striped so they never pass for desa data. */}

@@ -113,10 +113,18 @@ function composeInside(main: Projected, rings: Pt[][], groups: Group[], unit: nu
 }
 
 /** A column of boxes on each side of a centred mainland (west groups left, east right). */
-function composeSides(main: Projected, groups: Group[], unit: number, colPx: number): Composed | null {
+function composeSides(main: Projected, groups: Group[], unit: number, colPx: number, balanced = false): Composed | null {
   const gap = INSET_GAP * unit;
   const col = colPx * unit;
-  const sides = [groups.filter((g) => g.anchor[0] < main.vw / 2), groups.filter((g) => g.anchor[0] >= main.vw / 2)];
+  let sides = [groups.filter((g) => g.anchor[0] < main.vw / 2), groups.filter((g) => g.anchor[0] >= main.vw / 2)];
+  // Balanced: every box on one side moves over except the one nearest the mainland, so both
+  // sides get a box (Pangkep: the Spermonde islands left, Kalmas and Tangaya right).
+  if (balanced && groups.length > 1 && sides.some((l) => !l.length)) {
+    const dist = (g: Group) => Math.hypot(g.anchor[0] - main.vw / 2, g.anchor[1] - main.vh / 2);
+    const nearest = groups.reduce((a, b) => (dist(b) < dist(a) ? b : a));
+    const own = nearest.anchor[0] < main.vw / 2 ? 0 : 1;
+    sides = own === 0 ? [[nearest], groups.filter((g) => g !== nearest)] : [groups.filter((g) => g !== nearest), [nearest]];
+  }
   const boxes: InsetBox[] = [];
   for (const [s, list] of sides.entries()) {
     if (!list.length) continue;
@@ -160,6 +168,8 @@ function composeRows(main: Projected, groups: Group[], unit: number, rowPx: numb
  * that, the layout's estimate with `infoH` px of text below the map). */
 export function composeMap(
   split: Insets, title: (g: Insets["groups"][number]) => string, area: { w: number; h: number } | undefined, infoH: number,
+  /** "sides": boxes only in columns left and right of the mainland, one side each where there are two. */
+  arrange: "best" | "sides" = "best",
 ): (Composed & { real: number }) | null {
   const main = project(split.main, split.frame);
   const to = projector(split.frame);
@@ -204,11 +214,13 @@ export function composeMap(
     const real = c && unitFor(c.vw, c.vh, area, infoH);
     return c && real && c.unit >= 0.9 * real ? { ...c, real } : null;
   };
-  const candidates = [
+  const candidates = (arrange === "sides"
+    ? [180, 220, 260, 300].map((px) => build((u) => composeSides(main, groups, u, px, true)))
+    : [
     ...[0, 0.06, 0.12, 0.2, 0.28, 0.36, 0.45].map((margin) => build((u) => composeInside(main, rings, groups, u, margin))),
     ...[180, 220, 260, 300].map((px) => build((u) => composeSides(main, groups, u, px))),
     ...[160, 200, 240].map((px) => build((u) => composeRows(main, groups, u, px))),
-  ].filter((c): c is Composed & { real: number } => !!c);
+  ]).filter((c): c is Composed & { real: number } => !!c);
   // Biggest mainland wins (smallest unit); boxes inside the frame win ties.
   const best = candidates.reduce<(Composed & { real: number }) | null>((m, c) => (!m || c.real < m.real * 0.97 ? c : m), null);
   return best ? { ...best, dropped: split.dropped } : null;
