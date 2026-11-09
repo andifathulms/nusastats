@@ -9,7 +9,7 @@ from rest_framework.response import Response
 
 from .caching import cached_api
 from .carousel import PackError, build_pack
-from .carousel_deck import MAP_BACKGROUNDS, RECIPES, TABLE_SIZES, deck_bundle
+from .carousel_deck import COUNTDOWNS, MAP_BACKGROUNDS, RECIPES, TABLE_SIZES, deck_bundle
 
 PACK_PARAMS = ("source", "metric", "level", "period", "prov", "turvar", "th", "unit", "label_metric", "notes",
                "top", "bottom", "allow_partial")
@@ -43,7 +43,7 @@ def _build(request, top=None, bottom=None):
 
 
 @api_view(["GET"])
-@cached_api("bps", "dukcapil", "djpk")
+@cached_api("bps", "dukcapil", "djpk", "peta")
 def pack(request):
     try:
         return Response(_build(request))
@@ -52,7 +52,7 @@ def pack(request):
 
 
 @api_view(["GET"])
-@cached_api("bps", "dukcapil", "djpk")
+@cached_api("bps", "dukcapil", "djpk", "peta")
 def deck(request):
     """Pack + deck text + the map cards to render, in one response.
     `recipe` = top | terendah | gap, `bg` = terrain | landcover | none."""
@@ -64,12 +64,15 @@ def deck(request):
         table = int(request.query_params.get("table", TABLE_SIZES[0]))
     except ValueError:
         table = -1
-    maps = request.query_params.get("maps", "1") not in ("0", "false")
+    # maps: "0" = table only; "10" = count down 10 maps; anything else the default 5.
+    raw_maps = request.query_params.get("maps", "")
+    maps = 0 if raw_maps in ("0", "false") else (int(raw_maps) if raw_maps in tuple(map(str, COUNTDOWNS)) else COUNTDOWNS[0])
     if table not in TABLE_SIZES:
         return Response({"error": f"table: {', '.join(map(str, TABLE_SIZES))}"}, status=422)
     try:
         # The pack holds every row the table shows, so its notes describe the post.
-        result = _build(request, top=table if recipe == "top" else None, bottom=table if recipe == "terendah" else None)
+        need = max(table, maps)
+        result = _build(request, top=need if recipe == "top" else None, bottom=need if recipe == "terendah" else None)
     except PackError as exc:
         return Response({"error": str(exc), **exc.details}, status=422)
     spec = {k: request.query_params.get(k) for k in PACK_PARAMS}

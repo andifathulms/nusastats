@@ -263,3 +263,18 @@ def test_table_only_counts_the_table_down_without_countdown_maps():
     assert b["cards"][1]["path"].endswith("&view=top10&start=31")
     assert "[number=" not in b["deck"]
     assert "| 38 Tertinggi" in b["deck"]
+
+
+def test_countdown_of_ten_maps_then_the_table():
+    rows = [(f"Kab. {i}", f"64{i:02d}", 100.0 - i) for i in range(12)]
+    r = _result(rows, unit="%", n=12, notes="Semua 12.")
+    b = deck_bundle(r, SPEC, recipe="top", maps=10)
+    focus = [c for c in b["cards"] if "focus=" in c["path"]]
+    assert len(focus) == 10
+    assert "| 10 Tertinggi" in b["deck"]
+    assert b["deck"].count("[number=") == 10
+    table = [c for c in b["cards"] if "view=top10" in c["path"]]
+    assert table[0]["path"].endswith("&countdown=10")  # the table highlights all ten
+    assert b["tiktok"]["title"].startswith("10 kabupaten/kota")
+    with pytest.raises(ValueError):
+        deck_bundle(r, SPEC, recipe="top", maps=7)

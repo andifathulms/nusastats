@@ -861,8 +861,11 @@ export type PetaRegionRanks = {
   indicators: PetaIndicatorRank[];
 };
 
+export type PetaIndicatorMeta = { key: string; label: string; group: string; unit: string; dataset: string; method: string; yearly: boolean };
+
 export const petaApi = {
   region: (code: string) => get<PetaRegionRanks>(`/peta/regions/${code}/`),
+  indicators: () => get<{ indicators: PetaIndicatorMeta[] }>(`/peta/indicators/`),
 };
 
 // --- carousel packs (api.carousel) -------------------------------------------

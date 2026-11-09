@@ -279,3 +279,51 @@ def test_kecamatan_ranking_over_several_provinces(db):
 
     with pytest.raises(PackError, match="prov"):
         build_pack("dukcapil", "jumlah_penduduk", "kecamatan", prov="7,73")
+
+
+def _peta(code, name, level, lc_tree, year=2021):
+    from peta.models import PetaIndicator, PetaRegion, PetaSourceFile, PetaValue
+
+    ind, _ = PetaIndicator.objects.get_or_create(
+        key="lc_tree", defaults={"label_id": "Tutupan pohon", "group": "tutupan", "unit": "%",
+                                 "dataset": "ESA WorldCover 2021 v200", "method": "WorldCover class 10."})
+    tile, _ = PetaSourceFile.objects.get_or_create(
+        dataset="esa_worldcover_2021_v200", key="N00E114",
+        defaults={"url": "https://example.test/N00E114.tif", "sha256": "a" * 64, "bytes": 1, "downloaded_at": "2026-10-01"})
+    r = PetaRegion.objects.create(code=code, level=level, name=name, prov_code=code[:2], parent_code=code[:-2],
+                                  landcover_year=year, landcover_provenance={"tiles": ["N00E114"]})
+    r.source_files.add(tile)
+    if lc_tree is not None:
+        PetaValue.objects.create(region=r, indicator=ind, value=lc_tree)
+    return r
+
+
+@pytest.mark.django_db
+def test_peta_land_cover_pack_labels_notes_and_provenance(db):
+    _duk("6471", "Balikpapan", "Kota")
+    _duk("6502", "Malinau", "Kabupaten")
+    _peta("6471", "BALIKPAPAN", "regency", 41.5)
+    _peta("6502", "MALINAU", "regency", 99.53)
+
+    result = build_pack("peta", "lc_tree", "kabupaten")
+    pack = result["pack"]
+
+    assert pack["id"] == "peta-lc-tree-kab-2021"
+    assert pack["rows"][0] == {"label": "Kab. Malinau", "code": "6502", "value": 99.53}
+    assert pack["period"] == "2021"
+    assert "bukan luas hutan" in pack["notes"]  # tree cover includes plantations
+    assert "ESA WorldCover" in pack["source"]
+    row = next(r for r in result["provenance"]["rows"] if r["code"] == "6502")
+    assert row["tiles"][0]["sha256"] == "a" * 64
+
+
+@pytest.mark.django_db
+def test_peta_missing_region_is_reported_and_provinsi_refused(db):
+    _duk("6471", "Balikpapan", "Kota")
+    _duk("6502", "Malinau", "Kabupaten")
+    _peta("6502", "MALINAU", "regency", 99.53)  # Balikpapan not computed: absent, not zero
+
+    with pytest.raises(PackError, match="n = 1 dari 2"):
+        build_pack("peta", "lc_tree", "kabupaten")
+    with pytest.raises(PackError, match="belum per provinsi"):
+        build_pack("peta", "lc_tree", "provinsi")

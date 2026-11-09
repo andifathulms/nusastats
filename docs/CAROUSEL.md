@@ -44,6 +44,7 @@ cd frontend
 npm run carousel -- --source bps --metric 415 --level kabupaten --period 2025
 npm run carousel -- --source dukcapil --metric sex_ratio --level kabupaten --prov 64 --recipe gap --bg landcover
 npm run carousel -- --source djpk --metric rasio_kemandirian --level kabupaten --period 2024
+npm run carousel -- --source peta --metric lc_tree --level kecamatan --prov 64 --maps 10 --bg landcover
 ```
 
 This writes `pack.json`, `provenance.json`, `map.json`, `deck.txt`, `README.md`, `tiktok.txt` (title
@@ -58,14 +59,14 @@ Nusantara Mapper" (`BRAND` in `AngkaCard.tsx` and `carousel_deck.py`).
 
 | Option | Meaning |
 |---|---|
-| `--source` | `bps` (BPS var id), `dukcapil` (field or derived key), `djpk` (akun or ratio key) |
+| `--source` | `bps` (BPS var id), `dukcapil` (field or derived key), `djpk` (akun or ratio key), `peta` (land cover share `lc_tree`, `lc_builtup`, `lc_cropland`, `lc_mangrove`, …; kabupaten and kecamatan only, ESA WorldCover 2021; the maps default to `--bg landcover`) |
 | `--level` | `provinsi`, `kabupaten`, `kecamatan` (Dukcapil only) |
 | `--period` | year (BPS, DJPK); Dukcapil defaults to the latest snapshot |
 | `--prov` | Kemendagri province code(s): one province's regions ("Daerahmu" posts), or several comma-separated (`71,72,73,74,75,76` = Sulawesi); card paths join them with `-` (`/card/angka/71-72-…`) |
 | `--recipe` | `top` (countdown to #1), `terendah` (countdown to the lowest), `gap` (highest vs lowest) |
 | `--bg` | Peta Wilayah layer behind each region's map: `terrain`, `landcover`, `none` |
 | `--table` | rows in the ranking table: `10` (default), `20`, `50`; one table card per 10 rows (`/card/angka/…&view=top10&start=11`) |
-| `--maps` | `0` = table only: no countdown slides or focus maps; the table cards count down (#41–50 first, #1–10 last) |
+| `--maps` | `10` = count down 10 regions, one focus map each (the table highlights all ten); default 5. `0` = table only: no countdown slides or focus maps; the table cards count down (#41–50 first, #1–10 last) |
 | `--turvar`, `--th`, `--unit`, `--label-metric`, `--allow-partial` | see refusals below |
 
 Table cards: each row is rank · kabupaten emblem · kecamatan (bold) over its kabupaten (grey) ·

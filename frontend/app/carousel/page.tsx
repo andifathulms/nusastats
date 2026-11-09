@@ -7,10 +7,12 @@ import {
   carouselApi,
   djpkApi,
   dukcapilApi,
+  petaApi,
   type CarouselDeckResult,
   type DjpkAccountGroups,
   type DukcapilIndicatorGroups,
   type DukcapilRegionRow,
+  type PetaIndicatorMeta,
 } from "@/lib/api";
 import { Badge, ErrorState, PageHeader, Panel, SectionTitle } from "@/components/ui";
 import { routes } from "@/lib/routes";
@@ -28,7 +30,7 @@ import { CARDS, ProfilTool } from "@/components/carousel/ProfilTool";
 //     previewed and downloadable as PNG/ZIP from the `cards` service.
 // The state lives in the URL, so links elsewhere can prefill it.
 
-type Source = "bps" | "dukcapil" | "djpk";
+type Source = "bps" | "dukcapil" | "djpk" | "peta";
 type Form = {
   source: Source;
   metric: string;
@@ -41,12 +43,17 @@ type Form = {
   unit: string;
   label_metric: string;
   table: string; // rows in the ranking table: 10 | 20 | 50 (one card per 10)
-  maps: string; // "0" = table only, no countdown maps
+  maps: string; // countdown maps: "" = 5, "10", or "0" = table only
   allow_partial: string;
 };
 
 const FIELDS: (keyof Form)[] = ["source", "metric", "level", "period", "prov", "recipe", "bg", "turvar", "unit", "label_metric", "table", "maps", "allow_partial"];
-const LEVELS: Record<Source, string[]> = { bps: ["provinsi", "kabupaten"], dukcapil: ["provinsi", "kabupaten", "kecamatan"], djpk: ["provinsi", "kabupaten"] };
+const LEVELS: Record<Source, string[]> = {
+  bps: ["provinsi", "kabupaten"],
+  dukcapil: ["provinsi", "kabupaten", "kecamatan"],
+  djpk: ["provinsi", "kabupaten"],
+  peta: ["kabupaten", "kecamatan"], // land cover is computed per kabupaten and kecamatan, not provinsi
+};
 const RECIPES = [
   { id: "top", label: "Hitung mundur ke #1" },
   { id: "gap", label: "Tertinggi vs terendah" },
@@ -80,7 +87,8 @@ const PRESET_LEVELS: { id: Level; label: string }[] = [
   { id: "provinsi", label: "Provinsi" },
   { id: "kecamatan", label: "Kecamatan" },
 ];
-const presetLevels = (p: Preset): Level[] => p.levels ?? (p.source === "dukcapil" ? ["kabupaten", "provinsi", "kecamatan"] : ["kabupaten", "provinsi"]);
+const presetLevels = (p: Preset): Level[] =>
+  p.levels ?? (p.source === "dukcapil" ? ["kabupaten", "provinsi", "kecamatan"] : p.source === "peta" ? ["kabupaten", "kecamatan"] : ["kabupaten", "provinsi"]);
 const IPM = { source: "bps", metric: "2205", period: "2025", unit: "indeks", label_metric: "Indeks Pembangunan Manusia" } as const;
 const PRESETS: { group: string; items: Preset[] }[] = [
   {
@@ -149,7 +157,24 @@ const PRESETS: { group: string; items: Preset[] }[] = [
       { label: "Belanja modal tertinggi", source: "djpk", metric: "rasio_belanja_modal", recipe: "top", period: "2024" },
     ],
   },
+  {
+    // ESA WorldCover 2021, share of each region's area. The maps show the land cover layer.
+    // "Tutupan pohon" includes plantations (sawit, akasia): never call it "hutan".
+    group: "Tutupan lahan",
+    items: [
+      { label: "Tutupan pohon terluas", source: "peta", metric: "lc_tree", recipe: "top" },
+      { label: "Tutupan pohon tersempit", source: "peta", metric: "lc_tree", recipe: "terendah" },
+      { label: "Paling banyak bangunan", source: "peta", metric: "lc_builtup", recipe: "top" },
+      { label: "Lahan pertanian terluas", source: "peta", metric: "lc_cropland", recipe: "top" },
+      { label: "Mangrove terluas", source: "peta", metric: "lc_mangrove", recipe: "top" },
+      { label: "Padang rumput terluas", source: "peta", metric: "lc_grassland", recipe: "top" },
+      { label: "Semak belukar terluas", source: "peta", metric: "lc_shrubland", recipe: "top" },
+    ],
+  },
 ];
+
+/** Land cover rankings show the land cover layer behind each region; others keep the chosen map. */
+const bgFor = (source: Source, current: string) => (source === "peta" ? "landcover" : current);
 
 /** A preset as a full form at one level, keeping the chosen province and map background. */
 function presetForm(p: Preset, level: Level, prov: string, current: Form): Form {
@@ -160,7 +185,7 @@ function presetForm(p: Preset, level: Level, prov: string, current: Form): Form 
     period: p.period ?? "",
     prov: level === "provinsi" ? "" : prov,
     recipe: p.recipe,
-    bg: current.bg,
+    bg: bgFor(p.source, current.bg),
     turvar: "",
     unit: p.unit ?? "",
     label_metric: p.label_metric ?? "",
@@ -177,7 +202,7 @@ const input =
   "w-full rounded-lg border border-ink-border bg-ink-panel2 px-3 py-2 text-sm text-ink-text focus:border-ink-accent focus:outline-none";
 
 function formFrom(params: URLSearchParams): Form {
-  const source = (["bps", "dukcapil", "djpk"].includes(params.get("source") ?? "") ? params.get("source") : "bps") as Source;
+  const source = (["bps", "dukcapil", "djpk", "peta"].includes(params.get("source") ?? "") ? params.get("source") : "bps") as Source;
   return {
     source,
     metric: params.get("metric") ?? "",
@@ -185,7 +210,7 @@ function formFrom(params: URLSearchParams): Form {
     period: params.get("period") ?? "",
     prov: params.get("prov") ?? "",
     recipe: params.get("recipe") ?? "top",
-    bg: params.get("bg") ?? "terrain",
+    bg: params.get("bg") ?? bgFor(source, "terrain"),
     turvar: params.get("turvar") ?? "",
     unit: params.get("unit") ?? "",
     label_metric: params.get("label_metric") ?? "",
@@ -287,6 +312,7 @@ function CarouselTool({ tema }: { tema: Tema }) {
   const [provinces, setProvinces] = useState<DukcapilRegionRow[]>([]);
   const [dukIndicators, setDukIndicators] = useState<DukcapilIndicatorGroups | null>(null);
   const [djpkAccounts, setDjpkAccounts] = useState<DjpkAccountGroups | null>(null);
+  const [petaIndicators, setPetaIndicators] = useState<PetaIndicatorMeta[] | null>(null);
   const [presetLevel, setPresetLevel] = useState<Level>(
     (["kabupaten", "provinsi", "kecamatan"].includes(form.level) ? form.level : "kabupaten") as Level
   );
@@ -301,7 +327,9 @@ function CarouselTool({ tema }: { tema: Tema }) {
   useEffect(() => {
     if (form.source === "dukcapil" && !dukIndicators) dukcapilApi.indicators().then(setDukIndicators).catch(() => null);
     if (form.source === "djpk" && !djpkAccounts) djpkApi.accounts().then(setDjpkAccounts).catch(() => null);
-  }, [form.source, dukIndicators, djpkAccounts]);
+    if (form.source === "peta" && !petaIndicators)
+      petaApi.indicators().then((r) => setPetaIndicators(r.indicators.filter((i) => i.group === "tutupan"))).catch(() => null);
+  }, [form.source, dukIndicators, djpkAccounts, petaIndicators]);
 
   const set = (patch: Partial<Form>) => setForm((f) => ({ ...f, ...patch }));
   const build = (f: Form) => {
@@ -403,10 +431,26 @@ function CarouselTool({ tema }: { tema: Tema }) {
           }}
         >
           <Field label="Sumber">
-            <select className={input} value={form.source} onChange={(e) => set({ source: e.target.value as Source, metric: "", turvar: "", unit: "" })}>
+            <select
+              className={input}
+              value={form.source}
+              onChange={(e) => {
+                const source = e.target.value as Source;
+                set({
+                  source,
+                  metric: "",
+                  turvar: "",
+                  unit: "",
+                  period: source === "peta" ? "" : form.period,
+                  level: LEVELS[source].includes(form.level) ? form.level : LEVELS[source][0],
+                  bg: bgFor(source, form.bg),
+                });
+              }}
+            >
               <option value="bps">BPS</option>
               <option value="dukcapil">Dukcapil (Kemendagri)</option>
               <option value="djpk">DJPK (Kemenkeu)</option>
+              <option value="peta">Tutupan lahan (ESA WorldCover)</option>
             </select>
           </Field>
           <Field label="Indikator" hint={form.source === "bps" ? "variable_id BPS" : undefined}>
@@ -415,7 +459,13 @@ function CarouselTool({ tema }: { tema: Tema }) {
             ) : (
               <select className={input} value={form.metric} onChange={(e) => set({ metric: e.target.value })}>
                 <option value="">Pilih indikator…</option>
-                {form.source === "dukcapil"
+                {form.source === "peta"
+                  ? petaIndicators?.map((i) => (
+                      <option key={i.key} value={i.key}>
+                        {i.label} (% luas)
+                      </option>
+                    ))
+                  : form.source === "dukcapil"
                   ? dukIndicators?.groups.map((g) => (
                       <optgroup key={g.group} label={g.group}>
                         {g.indicators.map((i) => (
@@ -446,8 +496,8 @@ function CarouselTool({ tema }: { tema: Tema }) {
               ))}
             </select>
           </Field>
-          <Field label="Periode" hint={form.source === "dukcapil" ? "kosong = snapshot terbaru" : "tahun"}>
-            <input className={input} value={form.period} onChange={(e) => set({ period: e.target.value.trim() })} placeholder={form.source === "dukcapil" ? "YYYY-MM" : "mis. 2025"} />
+          <Field label="Periode" hint={form.source === "dukcapil" ? "kosong = snapshot terbaru" : form.source === "peta" ? "citra 2021" : "tahun"}>
+            <input className={input} disabled={form.source === "peta"} value={form.period} onChange={(e) => set({ period: e.target.value.trim() })} placeholder={form.source === "dukcapil" ? "YYYY-MM" : "mis. 2025"} />
           </Field>
           <Field label="Cakupan">
             <ProvincePicker
@@ -477,7 +527,8 @@ function CarouselTool({ tema }: { tema: Tema }) {
           </Field>
           <Field label="Hitung mundur peta" hint={form.recipe === "gap" ? "tidak untuk resep ini" : undefined}>
             <select className={input} value={form.maps} onChange={(e) => set({ maps: e.target.value })} disabled={form.recipe === "gap"}>
-              <option value="">Ya, peta top 5 lalu tabel</option>
+              <option value="">Ya, 5 peta lalu tabel</option>
+              <option value="10">Ya, 10 peta lalu tabel</option>
               <option value="0">Tidak, tabel saja</option>
             </select>
           </Field>

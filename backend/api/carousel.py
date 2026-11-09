@@ -27,6 +27,7 @@ from decimal import ROUND_HALF_UP, Decimal
 from catalog.models import AdminLevel, Domain, Variable
 from djpk.derived import DERIVED_BY_KEY as DJPK_DERIVED
 from djpk.models import ApbdRegion, ApbdReport
+from peta.models import PetaIndicator, PetaLoadLog, PetaRegion, PetaValue
 from dukcapil.derived import DERIVED_BY_FIELD
 from dukcapil.models import DukcapilIndicator, DukcapilRegion
 from dukcapil.twins import polygon_twins
@@ -43,7 +44,7 @@ from .dukcapil_views import (
 )
 
 FORMAT = "carousel-data/1"
-SOURCES = ("bps", "dukcapil", "djpk")
+SOURCES = ("bps", "dukcapil", "djpk", "peta")
 LEVELS = ("provinsi", "kabupaten", "kecamatan")
 LEVEL_NOUN = {"provinsi": "provinsi", "kabupaten": "kabupaten/kota", "kecamatan": "kecamatan"}
 LEVEL_TITLE = {"provinsi": "Provinsi", "kabupaten": "Kabupaten/Kota", "kecamatan": "Kecamatan"}
@@ -87,7 +88,7 @@ def slugify(text, limit=40):
     return s[:limit].rstrip("-")
 
 
-_SOURCE_ID = {"bps": "bps", "dukcapil": "duk", "djpk": "djpk"}
+_SOURCE_ID = {"bps": "bps", "dukcapil": "duk", "djpk": "djpk", "peta": "peta"}
 _LEVEL_ID = {"provinsi": "prov", "kabupaten": "kab", "kecamatan": "kec"}
 
 
@@ -140,7 +141,7 @@ def fmt_int(n):
     return f"{n:,}".replace(",", ".")
 
 
-_SOURCE_SHORT = {"bps": "BPS", "dukcapil": "DUKCAPIL", "djpk": "DJPK"}
+_SOURCE_SHORT = {"bps": "BPS", "dukcapil": "DUKCAPIL", "djpk": "DJPK", "peta": "ESA WORLDCOVER"}
 
 
 def short_metric(name):
@@ -432,7 +433,93 @@ def _djpk(metric, level, period, opts):
     }
 
 
-_BUILDERS = {"bps": _bps, "dukcapil": _dukcapil, "djpk": _djpk}
+# --- Peta Wilayah: land cover (ESA WorldCover) ------------------------------------
+
+PETA_GROUPS = ("tutupan",)  # rankable Peta indicator groups: land cover shares
+_WORLDCOVER = "esa_worldcover_2021_v200"
+
+
+def _peta(metric, level, period, opts):
+    """A land cover share per kabupaten or kecamatan (peta app, data/peta_wilayah).
+    Kemendagri codes on both sides, so no crosswalk; labels from the latest
+    Dukcapil snapshot (same code system), else the BIG polygon's own name."""
+    if level == "provinsi":
+        raise PackError("Tutupan lahan dihitung per kabupaten/kota dan kecamatan, belum per provinsi.")
+    ind = PetaIndicator.objects.filter(key=metric, group__in=PETA_GROUPS).first()
+    if ind is None:
+        keys = ", ".join(PetaIndicator.objects.filter(group__in=PETA_GROUPS).order_by("sort").values_list("key", flat=True))
+        raise PackError(f"Indikator tutupan lahan '{metric}' tidak dikenal. Pilihan: {keys}.")
+    plevel = "regency" if level == "kabupaten" else "district"
+    log = PetaLoadLog.objects.order_by("-loaded_at").first()
+    dataset = (log.datasets or {}).get(_WORLDCOVER, {}) if log else {}
+    regions = {r.code: r for r in PetaRegion.objects.filter(level=plevel).prefetch_related("source_files")}
+    values = dict(PetaValue.objects.filter(indicator=ind, year=0, region__level=plevel)
+                  .values_list("region__code", "value"))
+    years = sorted({r.landcover_year for c, r in regions.items() if c in values and r.landcover_year})
+    if len(years) > 1:
+        raise PackError(f"Nilai tutupan lahan dari beberapa tahun ({', '.join(map(str, years))}); tidak bisa diurutkan.")
+    year = years[0] if years else None
+
+    # Names (and the kecamatan's kabupaten) from Dukcapil: the same Kemendagri codes.
+    periods = dukcapil_periods()
+    duk = DukcapilRegion.objects.filter(period=periods[0]) if periods else DukcapilRegion.objects.none()
+    kab_label = {r["code"]: f"{_DUKCAPIL_PREFIX.get(r['status'], '')} {r['name']}".strip()
+                 for r in duk.filter(level="regency").values("code", "name", "status")}
+    kec_name = dict(duk.filter(level="district").values_list("code", "name")) if plevel == "district" else {}
+
+    def bare(name):
+        return name.title() if name.isupper() else name
+
+    rows, prov_refs = [], []
+    for code, value in values.items():
+        r = regions[code]
+        if plevel == "regency":
+            row = {"code": code, "label": kab_label.get(code) or bare(r.name), "value": value, "geo": code}
+        else:
+            name, parent = kec_name.get(code) or bare(r.name), kab_label.get(code[:4])
+            row = {"code": code, "label": f"{name}, {parent}" if parent else name, "value": value, "geo": code}
+            if parent:
+                row.update(name=name, parent=parent)
+        rows.append(row)
+        prov_refs.append({"code": code, "landcover_year": r.landcover_year, "computed": r.landcover_provenance,
+                          "tiles": [{"key": f.key, "url": f.url, "sha256": f.sha256, "downloaded_at": f.downloaded_at}
+                                    for f in r.source_files.all() if f.dataset == _WORLDCOVER]})
+
+    # Universe: every polygon the pipeline has (it computes all BIG polygons; one it
+    # skipped has no row and shows up here as missing) plus every Dukcapil region
+    # with a Kemendagri code at this level.
+    expected = set(regions) | {c for c in (kab_label if plevel == "regency" else kec_name) if re.fullmatch(r"\d+", c)}
+    notes = [
+        f"Persentase luas wilayah per kelas tutupan lahan ESA WorldCover {year or ''} (10 m), dihitung NusaStats "
+        "di dalam batas BIG 1:10.000. Citra satelit 2021, bukan data administrasi.".replace("  ", " "),
+    ]
+    if metric == "lc_tree":
+        notes.append("Tutupan pohon termasuk perkebunan (sawit, akasia): bukan luas hutan.")
+    if plevel == "district" and not opts.get("provs"):
+        # Nationally only: these rows carry no province code, so no province scope holds them.
+        twins = polygon_twins(duk.filter(level="district"))
+        no_code = sorted(c for c in kec_name if not re.fullmatch(r"\d+", c) and c not in twins)
+        if no_code:
+            notes.append(f"{fmt_int(len(no_code))} kecamatan di data Dukcapil tanpa kode Kemendagri (tanpa poligon) "
+                         "tidak ikut diurutkan.")
+    attribution = dataset.get("attribution", "© ESA WorldCover project 2021")
+    return {
+        "rows": rows,
+        "expected": [(c, c) for c in sorted(expected)],
+        "metric": f"{ind.label_id} (% luas wilayah)",
+        "unit": opts.get("unit") or ind.unit,
+        "period": str(year or ""),
+        "source": f"ESA WorldCover {year or ''} v200 — {ind.label_id} per {LEVEL_TITLE[level]}, "
+                  f"dihitung NusaStats dalam batas BIG 1:10.000. {attribution}".replace("  ", " "),
+        "notes": notes,
+        "provenance": {"source": "peta", "indicator": ind.key, "method": ind.method, "dataset": dataset,
+                       "load_log": ({"id": log.id, "path": log.path, "export_sha256": log.export_sha256,
+                                     "loaded_at": _iso(log.loaded_at)} if log else None),
+                       "rows": prov_refs},
+    }
+
+
+_BUILDERS = {"bps": _bps, "dukcapil": _dukcapil, "djpk": _djpk, "peta": _peta}
 
 
 def build_pack(source, metric, level, period=None, *, prov=None, top=5, bottom=5, allow_partial=False,
@@ -444,12 +531,12 @@ def build_pack(source, metric, level, period=None, *, prov=None, top=5, bottom=5
         raise PackError(f"source harus salah satu dari {', '.join(SOURCES)}.")
     if level not in LEVELS:
         raise PackError(f"level harus salah satu dari {', '.join(LEVELS)}.")
-    if source != "dukcapil" and not period:
+    if source in ("bps", "djpk") and not period:
         raise PackError("period (tahun) wajib untuk BPS dan DJPK.")
     provs = () if level == "provinsi" else parse_provs(prov)
     # One scope string for ids and card paths: "73", or "71-72-73" for several provinces.
     prov = "-".join(provs) or None
-    built = _BUILDERS[source](str(metric), level, period, {"turvar": turvar, "th": th, "unit": unit})
+    built = _BUILDERS[source](str(metric), level, period, {"turvar": turvar, "th": th, "unit": unit, "provs": provs})
     rows = built["rows"]
     expected = built["expected"]
     if provs:

@@ -26,7 +26,8 @@ _PAPUA_KEMENDAGRI = {"91", "92", "93", "94", "95", "96"}
 # "Kabupaten/Kota" can't wrap at the slash, so cover headlines spell it out.
 _HEAD_NOUN = {"provinsi": "Provinsi", "kabupaten": "Kabupaten dan Kota", "kecamatan": "Kecamatan"}
 BRAND = "Nusantara Mapper"  # the TikTok account these carousels are posted on
-MAX_COUNTDOWN = 5
+MAX_COUNTDOWN = 5  # the default countdown; `maps` may ask for 10
+COUNTDOWNS = (5, 10)
 TABLE_SIZES = (10, 20, 50)  # rows in the ranking table; one card holds 10 (view=top10&start=)
 TABLE_PAGE = 10
 MAX_NOTE_CHARS = 240
@@ -120,10 +121,11 @@ def _fit_title(*candidates):
     return candidates[-1][: TIKTOK_TITLE_MAX - 1].rstrip() + "…"
 
 
-def tiktok_text(result, recipe="top", table=TABLE_SIZES[0], maps=True):
+def tiktok_text(result, recipe="top", table=TABLE_SIZES[0], maps=MAX_COUNTDOWN):
     """A ready-to-paste TikTok title and description for a ranking carousel,
     from the same pack rows and formatter as the slides: the ranked rows with
     their shared ranks, the pack's caveats, the source and hashtags."""
+    maps = MAX_COUNTDOWN if maps is True else int(maps or 0)
     pack, m = result["pack"], result["map"]
     unit, level, n = pack["unit"], pack["level"], m["n"]
     fixed = _fixed(pack, m)
@@ -133,7 +135,7 @@ def tiktok_text(result, recipe="top", table=TABLE_SIZES[0], maps=True):
     period = m["period_label"]
     ranks = {v["code"]: (v["rank"], v["rank_asc"]) for v in m["values"] + m["unmatched"]}
     rows = pack["rows"]
-    k = min(MAX_COUNTDOWN, len(rows), n)
+    k = min(maps or MAX_COUNTDOWN, len(rows), n)
     shown = min(table, len(m["values"]))
     cover_n = k if maps and table == TABLE_SIZES[0] else shown  # same count as the cover (deck_bundle)
     lines = []
@@ -185,10 +187,10 @@ def tiktok_text(result, recipe="top", table=TABLE_SIZES[0], maps=True):
     return {"title": title, "description": description[:TIKTOK_DESC_MAX]}
 
 
-def deck_bundle(result, spec, recipe="top", map_bg="terrain", template="editorial/midnight", table=10, maps=True):
+def deck_bundle(result, spec, recipe="top", map_bg="terrain", template="editorial/midnight", table=10, maps=MAX_COUNTDOWN):
     """`result` is build_pack()'s output, `spec` the query that built it (for
     the map card URLs). `table` = rows in the ranking table (10/20/50, one card
-    per 10); `maps=False` drops the countdown (text slides and focus maps) and
+    per 10); `maps` = regions counted down with a map each (5 or 10); `maps=0` drops the countdown (text slides and focus maps) and
     counts the table down instead, #1 on the last card. Returns
     {deck, readme, cards, warnings, carousel_press_url, tiktok}."""
     if table not in TABLE_SIZES:
@@ -197,6 +199,9 @@ def deck_bundle(result, spec, recipe="top", map_bg="terrain", template="editoria
         raise ValueError(f"recipe must be one of {RECIPES}")
     if map_bg not in MAP_BACKGROUNDS:
         raise ValueError(f"map_bg must be one of {MAP_BACKGROUNDS}")
+    maps = MAX_COUNTDOWN if maps is True else int(maps or 0)
+    if maps and maps not in COUNTDOWNS:
+        raise ValueError(f"maps must be 0 or one of {COUNTDOWNS}")
     pack, m, prov = result["pack"], result["map"], result["provenance"]
     slug, unit, level, n = pack["id"], pack["unit"], pack["level"], m["n"]
     fixed = _fixed(pack, m)
@@ -232,12 +237,12 @@ def deck_bundle(result, spec, recipe="top", map_bg="terrain", template="editoria
                       "path": f"/card/angka/{m['prov'] or '00'}?{query}&{urlencode(extra)}"})
 
     if recipe in ("top", "terendah"):
-        k = min(MAX_COUNTDOWN, len(rows), n)
+        k = min(maps or MAX_COUNTDOWN, len(rows), n)
         picked = rows[:k] if recipe == "top" else rows[len(rows) - k:][::-1]
         word = "Tertinggi" if recipe == "top" else "Terendah"
         shown = min(table, len(m["values"]))  # regions on a map; the table leaves out unmatched ones
         pages = [(start, min(start + TABLE_PAGE - 1, shown)) for start in range(1, shown + 1, TABLE_PAGE)]
-        # The cover counts what the post shows: the countdown's 5 by default, else the table.
+        # The cover counts what the post shows: the countdown's 5 (or 10) by default, else the table.
         cover_n = k if maps and table == TABLE_SIZES[0] else shown
         # "{metric} | 5 Tertinggi" fits Carousel Press' cover best (tested on every
         # kabupaten indicator); a metric name too long for it is left to the subtitle.
@@ -254,7 +259,8 @@ def deck_bundle(result, spec, recipe="top", map_bg="terrain", template="editoria
         def table_card(letter, start, end):
             cards.append({"file": f"{slug}_{len(slides):02d}{letter}_top{end}.png",
                           "path": f"/card/angka/{m['prov'] or '00'}?{query}&view=top10"
-                                  f"{f'&start={start}' if start > 1 else ''}{order}"})
+                                  f"{f'&start={start}' if start > 1 else ''}{order}"
+                                  f"{f'&countdown={k}' if maps and k != MAX_COUNTDOWN else ''}"})
 
         if not maps:
             # Table only: the pages count down to #1 (#41–50 first), like the countdown would.

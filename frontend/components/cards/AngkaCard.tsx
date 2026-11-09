@@ -171,7 +171,7 @@ export function AngkaCard({ scope, query, debug, tema = "malam" }: { scope: stri
         <div className="p-16 text-[28px] text-coal-text">Kartu tidak dibuat: {error}</div>
       ) : data && geo && peta !== undefined && outline !== undefined && kabs !== undefined ? (
         view === "top10" ? (
-          emblems && <TopBody data={data} asc={asc} start={start} emblems={emblems} />
+          emblems && <TopBody data={data} asc={asc} start={start} emblems={emblems} countdown={Number(query.get("countdown")) || 5} />
         ) : focus ? (
           <FocusBody
             data={data}
@@ -384,7 +384,9 @@ function FocusBody({
     ? ""
     : bg === "terrain"
       ? "; peta: Copernicus DEM GLO-30 (© DLR e.V., © Airbus DS; Copernicus/EU/ESA)"
-      : `; peta: ESA WorldCover ${peta.landcover?.year ?? ""} v200 (CC BY 4.0)`;
+      : /ESA WorldCover/.test(pack.source)
+        ? "" // a land cover ranking: its source line already credits WorldCover
+        : `; peta: ESA WorldCover ${peta.landcover?.year ?? ""} v200 (CC BY 4.0)`;
   const partial = partialNote(data);
 
   return (
@@ -487,18 +489,18 @@ function LayerLegend({ peta, bg }: { peta: Peta; bg: Bg }) {
 /** The ranking table, 10 rows per card: #start to #start+9 of the top (or bottom,
  * order=asc), as bars from zero on one scale with the rows above them. The regions
  * the deck counted down to are drawn in the ink colour, the rest muted. */
-function TopBody({ data, asc, start = 1, emblems }: { data: CarouselPackResult; asc: boolean; start?: number; emblems: Map<string, string> }) {
+function TopBody({
+  data, asc, start = 1, emblems, countdown = 5,
+}: { data: CarouselPackResult; asc: boolean; start?: number; emblems: Map<string, string>; countdown?: number }) {
   const { map, pack } = data;
   // Regions without a map code (map.unmatched) are left out here as on the maps;
   // the guardrails above already refuse packs where that would matter.
   const ranked = [...map.values].sort((a, b) => (asc ? a.rank_asc - b.rank_asc : a.rank - b.rank) || a.code.localeCompare(b.code));
   const rows = ranked.slice(start - 1, start - 1 + TOP_N);
   const upto = ranked.slice(0, start - 1 + TOP_N);
-  const featured = new Set(pack.rows.slice(0, 5).map((r) => r.code));
-  if (asc) {
-    featured.clear();
-    pack.rows.slice(-5).forEach((r) => featured.add(r.code));
-  }
+  // The regions the deck counted down to (5, or 10 with countdown=10).
+  // `ranked` is in the deck's order (value, then code), so its first rows are the ones counted down.
+  const featured = new Set(ranked.slice(0, countdown).map((r) => r.code));
   const max = Math.max(...upto.map((r) => Math.abs(r.value)), 1e-9);
   const partial = partialNote(data);
   const word = asc ? "terendah" : "tertinggi";
