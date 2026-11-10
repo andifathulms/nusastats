@@ -140,7 +140,7 @@ export function project(features: Feature[], frame: Frame) {
       )
       .join(""),
   }));
-  return { paths, vw, vh };
+  return { paths, vw, vh, frame };
 }
 
 /** The projection `project` uses, as a function on [lon, lat]. */

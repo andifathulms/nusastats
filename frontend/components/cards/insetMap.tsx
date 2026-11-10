@@ -1,4 +1,5 @@
-import { frameOf, polygons, project, projector, type Feature, type Insets } from "./geo";
+import type { ReactNode } from "react";
+import { frameOf, polygons, project, projector, type Feature, type Frame, type Insets } from "./geo";
 import { FreeSpace, textWidth, type Pt } from "./placement";
 import { mapBoxFor } from "./layout";
 
@@ -12,7 +13,8 @@ import { mapBoxFor } from "./layout";
  * (kabupaten boxes) and the kepadatan hook (kecamatan boxes).
  */
 
-export type Projected = { paths: { id: string; d: string }[]; vw: number; vh: number };
+// `frame`: the lon/lat box the paths were projected from (an image can be laid over it).
+export type Projected = { paths: { id: string; d: string }[]; vw: number; vh: number; frame?: Frame };
 export type InsetBox = { kab: string; lines: string[]; x: number; y: number; w: number; h: number; map: { x: number; y: number; w: number; h: number }; own: Projected };
 // The composed map: the mainland at (ox, oy) in a vw x vh viewBox, boxes around or over it.
 export type Composed = { main: Projected; ox: number; oy: number; vw: number; vh: number; boxes: InsetBox[]; unit: number; dropped?: string[] };
@@ -238,7 +240,9 @@ export function plainMap(feats: Feature[]): Composed {
 }
 
 /** The boxes of a composed map, inside its svg: frame, name, and the islands in their own colour. */
-export function InsetBoxes({ boxes, unit, fill }: { boxes: InsetBox[]; unit: number; fill: (id: string) => string }) {
+export function InsetBoxes({
+  boxes, unit, fill, over,
+}: { boxes: InsetBox[]; unit: number; fill: (id: string) => string; over?: (b: InsetBox) => ReactNode }) {
   return (
     <>
       {boxes.map((b) => (
@@ -254,6 +258,7 @@ export function InsetBoxes({ boxes, unit, fill }: { boxes: InsetBox[]; unit: num
             {b.own.paths.map((p) => (
               <path key={p.id} d={p.d} fill={fill(p.id)} stroke={fill(p.id)} strokeWidth={2.5} strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
             ))}
+            {over?.(b)}
           </svg>
         </g>
       ))}

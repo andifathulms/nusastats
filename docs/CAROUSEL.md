@@ -177,3 +177,5 @@ amounts, viridis for ratios, diverging around 100 for sex ratio). The first two 
 Papua included, and the Peta layers wherever the pipeline has run.
 
 Overview colours: a lopsided ranking (its median in the bottom or top fifth of the range, e.g. built-up land or population density) is drawn in up to 6 classes with about equal counts, breaks rounded to 2 significant digits and printed in the legend; an even spread keeps the continuous min–max ramp (`classedScale` in `components/cards/geo.ts`).
+
+Land cover rankings (`source=peta`): the overview card shows the land cover itself, not value colours. Every kabupaten image in the scope is painted, one tile at a time, into one canvas per frame (the mainland and each inset box; `paintLandcover` in `lib/peta.ts`), and the legend gives each class's share of the whole scope (class km² summed over the kabupaten's `landcover.json`). If any kabupaten in the scope has no image, the card keeps the value colours and says so. `bg=none` on the overview URL turns the patches off. A kabupaten ranking that spans several provinces shows each kabupaten's province under its name in the table, as kecamatan rows show their kabupaten.

@@ -609,6 +609,15 @@ def build_pack(source, metric, level, period=None, *, prov=None, top=5, bottom=5
         rows = [r for r in rows if (r["geo"] or "")[:2] in provs]
         expected = [e for e in expected if (e[1] or "")[:2] in provs]
 
+    if level == "kabupaten" and len(provs) != 1:
+        # Across several provinces the table names each kabupaten's province on a second
+        # line, as kecamatan rows name their kabupaten (by Kemendagri code, from Dukcapil).
+        periods = dukcapil_periods()
+        pnames = dict(DukcapilRegion.objects.filter(level="province", period=periods[0]).values_list("code", "name")) if periods else {}
+        for r in rows:
+            if r["geo"] and not r.get("parent") and pnames.get(r["geo"][:2]):
+                r.update(name=r["label"], parent=pnames[r["geo"][:2]])
+
     geos = [r["geo"] for r in rows if r["geo"]]
     dupes = sorted({g for g in geos if geos.count(g) > 1})
     if dupes:

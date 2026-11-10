@@ -2,7 +2,7 @@
 
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { carouselApi, dukcapilApi, regionLabel, type CarouselMapValue, type CarouselPackResult } from "@/lib/api";
-import { loadPeta, loadPetaMosaic, petaAsset, type Peta, type PetaBounds } from "@/lib/peta";
+import { loadPeta, loadPetaMosaic, paintLandcover, petaAsset, type Painted, type Peta, type PetaBounds } from "@/lib/peta";
 import { NO_DATA, classedScale, cropBox, framing, insets, kindFor, project, projector, scaleFor, type Feature, type Geo } from "./geo";
 import { InsetBoxes, composeMap, plainMap, type Composed } from "./insetMap";
 import { temaStyle, type Tema } from "./brand";
@@ -98,6 +98,7 @@ export function AngkaCard({ scope, query, debug, tema = "malam" }: { scope: stri
   const [emblems, setEmblems] = useState<Map<string, string> | undefined>(undefined);
   const [fatal, setFatal] = useState<string | null>(null);
   const [loaded, setLoaded] = useState(0);
+  const [overviewDone, setOverviewDone] = useState(false);
   const [fontsReady, setFontsReady] = useState(false);
 
   // A province focus is drawn from its kabupaten's images (loadPetaMosaic).
@@ -170,7 +171,8 @@ export function AngkaCard({ scope, query, debug, tema = "malam" }: { scope: stri
       : [];
   const note = wantsPeta && peta !== undefined && !layers.length ? `lapisan ${bg} belum ada untuk ${focus}; siluet` : undefined;
   const ready =
-    !error && !!data && !!geo && peta !== undefined && outline !== undefined && kabs !== undefined && emblems !== undefined && fontsReady && loaded === layers.length;
+    !error && !!data && !!geo && peta !== undefined && outline !== undefined && kabs !== undefined && emblems !== undefined && fontsReady && loaded === layers.length &&
+    (!!focus || view === "top10" || overviewDone);
 
   return (
     <div
@@ -200,7 +202,17 @@ export function AngkaCard({ scope, query, debug, tema = "malam" }: { scope: stri
             onImageError={(src) => setFatal(`gambar gagal dimuat: ${src}`)}
           />
         ) : (
-          <OverviewBody data={data} geo={geo} scope={scope} asc={asc} kabs={kabs} />
+          <OverviewBody
+            data={data}
+            geo={geo}
+            scope={scope}
+            asc={asc}
+            kabs={kabs}
+            // A land cover ranking's overview is the land cover itself (unless bg=none).
+            // The overview's URL carries no bg: only an explicit bg=none turns the patches off.
+            patches={query.get("source") === "peta" && query.get("bg") !== "none"}
+            onReady={() => setOverviewDone(true)}
+          />
         )
       ) : null}
       <CornerTag label={BRAND} />
@@ -278,7 +290,12 @@ function overviewMap(feats: Feature[], kabs: Map<string, string> | null, several
   return composed ?? plainMap(feats);
 }
 
-function OverviewBody({ data, geo, scope, asc, kabs }: { data: CarouselPackResult; geo: Geo; scope: string; asc: boolean; kabs: Map<string, string> | null }) {
+function OverviewBody({
+  data, geo, scope, asc, kabs, patches, onReady,
+}: {
+  data: CarouselPackResult; geo: Geo; scope: string; asc: boolean; kabs: Map<string, string> | null;
+  patches: boolean; onReady: () => void;
+}) {
   const { map, pack } = data;
   const byGeo = useMemo(() => new Map(map.values.map((v) => [v.geo, v])), [map.values]);
   // The stacked map's real box on the card (the facts below vary in height), so box
@@ -301,7 +318,45 @@ function OverviewBody({ data, geo, scope, asc, kabs }: { data: CarouselPackResul
   const lowest = map.values.reduce((a, b) => (b.value < a.value ? b : a));
   const highest = map.values.reduce((a, b) => (b.value > a.value ? b : a));
   const partial = partialNote(data);
+  // Land cover patches: every kabupaten's image painted into the mainland's frame and each
+  // box's (only once the slot is measured, so the frames are final). undefined = painting;
+  // null = not wanted, or some kabupaten has no image (the value colours then, with a note).
+  const [paint, setPaint] = useState<Painted | null | undefined>(patches ? undefined : null);
+  const [paintMissing, setPaintMissing] = useState<string[]>([]);
+  useEffect(() => {
+    if (!patches || !area || !main.frame) return;
+    let live = true;
+    const provs = provsOf(scope);
+    const inScope = (c: string) => /^\d{4}$/.test(c) && (!provs.length || provs.includes(c.slice(0, 2)));
+    const kabCodes =
+      map.level === "provinsi"
+        ? fetch("/dukcapil-regencies.geojson")
+            .then((r) => r.json() as Promise<Geo>)
+            .then((g) => g.features.map((f) => f.properties.domain_id))
+        : Promise.resolve(geo.features.map((f) => f.properties.domain_id.slice(0, 4)));
+    kabCodes
+      .then((codes) => {
+        const targets = [
+          { key: "main", frame: main.frame!, vw: main.vw, vh: main.vh, px: 1600 },
+          ...boxes.filter((b) => b.own.frame).map((b) => ({ key: b.kab, frame: b.own.frame!, vw: b.own.vw, vh: b.own.vh, px: 600 })),
+        ];
+        return paintLandcover([...new Set(codes.filter(inScope))].sort(), targets);
+      })
+      .then((p) => {
+        if (!live) return;
+        setPaintMissing(p.missing);
+        setPaint(p.missing.length ? null : p);
+      })
+      .catch(() => live && setPaint(null));
+    return () => {
+      live = false;
+    };
+  }, [patches, area, main, boxes, geo, map.level, scope]);
+  useEffect(() => {
+    if (paint !== undefined) onReady();
+  }, [paint, onReady]);
   const fill = (id: string) => {
+    if (paint) return "none";
     const v = byGeo.get(id);
     return v ? (classed ?? scale).color(v.value) : NO_DATA;
   };
@@ -317,7 +372,9 @@ function OverviewBody({ data, geo, scope, asc, kabs }: { data: CarouselPackResul
       }
       info={
         <>
-          {classed ? (
+          {paint ? (
+            <PatchLegend paint={paint} />
+          ) : classed ? (
             <ClassLegend classed={classed} unit={pack.unit} />
           ) : (
             <div className="flex flex-wrap items-center gap-x-4 gap-y-2 font-mono text-[22px] text-coal-muted">
@@ -332,6 +389,9 @@ function OverviewBody({ data, geo, scope, asc, kabs }: { data: CarouselPackResul
           </p>
           <p className="mt-3 text-[32px] text-ink-gold">Geser untuk lihat peringkatnya →</p>
           {partial && <p className="mt-4 text-[22px] text-coal-muted">{partial}</p>}
+          {patches && paint === null && paintMissing.length > 0 && (
+            <p className="mt-4 text-[22px] text-coal-muted">{`Peta tutupan lahan belum ada untuk ${paintMissing.length} kabupaten/kota; warna menurut nilai.`}</p>
+          )}
           {!!dropped?.length && (
             <p className="mt-4 text-[22px] text-coal-muted">
               {`Tidak tergambar (pulau kecil terpencil): ${dropped.map((id) => byGeo.get(id)?.label ?? id).join(", ")}.`}
@@ -345,11 +405,18 @@ function OverviewBody({ data, geo, scope, asc, kabs }: { data: CarouselPackResul
         <div ref={holder} className="relative min-h-0 min-w-0 flex-1 self-stretch">
         <svg viewBox={`0 0 ${vw.toFixed(0)} ${vh.toFixed(0)}`} preserveAspectRatio="xMidYMid meet" className="absolute inset-0 h-full w-full">
           <g transform={`translate(${ox} ${oy})`}>
+            {paint && <image href={paint.images.get("main")} x={0} y={0} width={main.vw} height={main.vh} preserveAspectRatio="none" style={{ imageRendering: "pixelated" }} />}
             {main.paths.map((p) => (
-              <path key={p.id} d={p.d} fill={fill(p.id)} stroke="var(--nm-bg)" strokeWidth={0.6} vectorEffect="non-scaling-stroke" />
+              <path key={p.id} d={p.d} fill={fill(p.id)} stroke="var(--nm-bg)" strokeWidth={paint ? 0.8 : 0.6} strokeOpacity={paint ? 0.7 : 1} vectorEffect="non-scaling-stroke" />
             ))}
           </g>
-          <InsetBoxes boxes={boxes} unit={unit} fill={fill} />
+          <InsetBoxes
+            boxes={boxes}
+            unit={unit}
+            // Under the patches, islands keep a neutral outline: at box scale many are under a pixel.
+            fill={paint ? () => "var(--nm-border-strong)" : fill}
+            over={paint ? (b) => paint.images.get(b.kab) && <image href={paint.images.get(b.kab)} x={0} y={0} width={b.own.vw} height={b.own.vh} preserveAspectRatio="none" style={{ imageRendering: "pixelated" }} /> : undefined}
+          />
         </svg>
         </div>
       }
@@ -475,6 +542,21 @@ function FocusBody({
         </svg>
       }
     />
+  );
+}
+
+/** The land cover classes over the whole scope, with their share of its area. */
+function PatchLegend({ paint }: { paint: Painted }) {
+  const shown = paint.classes.filter((c) => c.share_pct >= 1).slice(0, 6);
+  return (
+    <ul className="nm-legend flex flex-wrap gap-x-6 gap-y-2 text-[24px] text-coal-muted">
+      {shown.map((c) => (
+        <li key={c.code} className="inline-flex items-center gap-2">
+          <span className="inline-block h-5 w-5 rounded" style={{ background: c.color }} />
+          {c.label} <span className="font-mono text-coal-text">{c.share_pct.toLocaleString("id-ID", { maximumFractionDigits: 1 })}%</span>
+        </li>
+      ))}
+    </ul>
   );
 }
 
