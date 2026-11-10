@@ -62,6 +62,40 @@ export function scaleFor(kind: keyof typeof PALETTES, lo: number, hi: number, mi
   return { color: (v) => rampColor((v - lo) / (hi - lo || 1), colors), gradient: colors.join(", "), lo, hi };
 }
 
+/** Rounded to 2 significant digits (0,16 / 2,4 / 51 / 1.200): a break a legend can print. */
+function niceBreak(v: number): number {
+  if (v === 0) return 0;
+  const p = 10 ** (Math.floor(Math.log10(Math.abs(v))) - 1);
+  return Math.round(v / p) * p;
+}
+
+export type ClassedScale = { color: (v: number) => string; breaks: number[]; colors: string[] };
+
+/** For a lopsided ranking (the median sits in the bottom or top fifth of the range, e.g.
+ * built-up land: Makassar 51%, most kabupaten under 3%): up to 6 classes with about as
+ * many regions in each, breaks rounded to 2 significant digits. A linear ramp would paint
+ * nearly every region one colour. null when the values are spread evenly enough for the
+ * ramp, too few to class (< 12), or the scale is diverging. */
+export function classedScale(kind: keyof typeof PALETTES, values: number[], n = 6): ClassedScale | null {
+  if (kind === "diverging" || values.length < 12) return null;
+  const s = [...values].sort((a, b) => a - b);
+  const [lo, hi] = [s[0], s[s.length - 1]];
+  if (!(hi > lo)) return null;
+  const t = (s[Math.floor(s.length / 2)] - lo) / (hi - lo);
+  if (t >= 0.2 && t <= 0.8) return null;
+  const breaks: number[] = [];
+  for (let i = 1; i < n; i++) {
+    const b = niceBreak(s[Math.round((i * (s.length - 1)) / n)]);
+    if (b > lo && b <= hi && (!breaks.length || b > breaks[breaks.length - 1])) breaks.push(b);
+  }
+  if (breaks.length < 2) return null;
+  const ramp = palette(kind);
+  const colors = Array.from({ length: breaks.length + 1 }, (_, i) => rampColor(i / breaks.length, ramp));
+  // Class i holds values in [breaks[i-1], breaks[i]).
+  const color = (v: number) => colors[breaks.filter((b) => v >= b).length];
+  return { color, breaks, colors };
+}
+
 /** Which palette a metric gets, from its unit or key. */
 export function kindFor(unit: string, key = ""): { kind: keyof typeof PALETTES; mid?: number } {
   const u = (unit || "").toLowerCase();

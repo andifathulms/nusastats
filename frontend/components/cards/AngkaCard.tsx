@@ -3,7 +3,7 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { carouselApi, dukcapilApi, regionLabel, type CarouselMapValue, type CarouselPackResult } from "@/lib/api";
 import { loadPeta, loadPetaMosaic, petaAsset, type Peta, type PetaBounds } from "@/lib/peta";
-import { NO_DATA, cropBox, framing, insets, kindFor, project, projector, scaleFor, type Feature, type Geo } from "./geo";
+import { NO_DATA, classedScale, cropBox, framing, insets, kindFor, project, projector, scaleFor, type Feature, type Geo } from "./geo";
 import { InsetBoxes, composeMap, plainMap, type Composed } from "./insetMap";
 import { temaStyle, type Tema } from "./brand";
 import { CornerTag, Footer, OffFrameNote } from "./ShareCard";
@@ -296,12 +296,14 @@ function OverviewBody({ data, geo, scope, asc, kabs }: { data: CarouselPackResul
   );
   const { kind, mid } = kindFor(pack.unit);
   const scale = scaleFor(kind, map.min, map.max, mid);
+  // A lopsided ranking gets classes with about equal counts, so the map isn't one colour.
+  const classed = useMemo(() => classedScale(kind, map.values.map((v) => v.value)), [kind, map.values]);
   const lowest = map.values.reduce((a, b) => (b.value < a.value ? b : a));
   const highest = map.values.reduce((a, b) => (b.value > a.value ? b : a));
   const partial = partialNote(data);
   const fill = (id: string) => {
     const v = byGeo.get(id);
-    return v ? scale.color(v.value) : NO_DATA;
+    return v ? (classed ?? scale).color(v.value) : NO_DATA;
   };
 
   return (
@@ -315,11 +317,15 @@ function OverviewBody({ data, geo, scope, asc, kabs }: { data: CarouselPackResul
       }
       info={
         <>
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-2 font-mono text-[22px] text-coal-muted">
-            <span className="whitespace-nowrap">{lowest.display}</span>
-            <div className="h-3 min-w-[120px] flex-1 rounded-full" style={{ background: `linear-gradient(90deg, ${scale.gradient})` }} />
-            <span className="whitespace-nowrap">{highest.display}</span>
-          </div>
+          {classed ? (
+            <ClassLegend classed={classed} unit={pack.unit} />
+          ) : (
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-2 font-mono text-[22px] text-coal-muted">
+              <span className="whitespace-nowrap">{lowest.display}</span>
+              <div className="h-3 min-w-[120px] flex-1 rounded-full" style={{ background: `linear-gradient(90deg, ${scale.gradient})` }} />
+              <span className="whitespace-nowrap">{highest.display}</span>
+            </div>
+          )}
           {/* No names here: the ranking is the payoff of the next slides. */}
           <p className="mt-8 font-display text-[64px] leading-[1.02]">
             {asc ? "Siapa paling rendah?" : "Siapa nomor\u00a01?"}
@@ -469,6 +475,28 @@ function FocusBody({
         </svg>
       }
     />
+  );
+}
+
+/** Class swatches with their ranges ("< 1", "1–2,4", "≥ 20"), the unit once at the right,
+ * as on the kepadatan card. */
+function ClassLegend({ classed, unit }: { classed: NonNullable<ReturnType<typeof classedScale>>; unit: string }) {
+  const f = (v: number) => v.toLocaleString("id-ID", { maximumFractionDigits: 2 });
+  const { breaks, colors } = classed;
+  const label = (i: number) =>
+    i === 0 ? `< ${f(breaks[0])}` : i === breaks.length ? `≥ ${f(breaks[i - 1])}` : `${f(breaks[i - 1])}–${f(breaks[i])}`;
+  return (
+    <>
+      <div className="nm-legend flex gap-1">
+        {colors.map((c, i) => (
+          <div key={i} className="flex-1">
+            <div className="h-4 rounded-sm" style={{ background: c }} />
+            <div className="mt-1 text-center font-mono text-[22px] text-coal-muted">{label(i)}</div>
+          </div>
+        ))}
+      </div>
+      {unit && <div className="mt-1 text-right font-mono text-[22px] text-coal-muted">{unit}</div>}
+    </>
   );
 }
 

@@ -175,3 +175,5 @@ Archivo, an ink background, one theme colour per subject (`components/cards/bran
 `.nm-card` layer in `globals.css`) and a palette per kind of number (`geo.PALETTES`: magma for
 amounts, viridis for ratios, diverging around 100 for sex ratio). The first two work everywhere,
 Papua included, and the Peta layers wherever the pipeline has run.
+
+Overview colours: a lopsided ranking (its median in the bottom or top fifth of the range, e.g. built-up land or population density) is drawn in up to 6 classes with about equal counts, breaks rounded to 2 significant digits and printed in the legend; an even spread keeps the continuous min–max ramp (`classedScale` in `components/cards/geo.ts`).
