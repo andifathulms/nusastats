@@ -52,7 +52,7 @@ const LEVELS: Record<Source, string[]> = {
   bps: ["provinsi", "kabupaten"],
   dukcapil: ["provinsi", "kabupaten", "kecamatan"],
   djpk: ["provinsi", "kabupaten"],
-  peta: ["kabupaten", "kecamatan"], // land cover is computed per kabupaten and kecamatan, not provinsi
+  peta: ["provinsi", "kabupaten", "kecamatan"], // provinsi: combined from its kabupaten/kota (area-weighted)
 };
 const RECIPES = [
   { id: "top", label: "Hitung mundur ke #1" },
@@ -88,7 +88,7 @@ const PRESET_LEVELS: { id: Level; label: string }[] = [
   { id: "kecamatan", label: "Kecamatan" },
 ];
 const presetLevels = (p: Preset): Level[] =>
-  p.levels ?? (p.source === "dukcapil" ? ["kabupaten", "provinsi", "kecamatan"] : p.source === "peta" ? ["kabupaten", "kecamatan"] : ["kabupaten", "provinsi"]);
+  p.levels ?? (p.source === "dukcapil" ? ["kabupaten", "provinsi", "kecamatan"] : p.source === "peta" ? ["kabupaten", "provinsi", "kecamatan"] : ["kabupaten", "provinsi"]);
 const IPM = { source: "bps", metric: "2205", period: "2025", unit: "indeks", label_metric: "Indeks Pembangunan Manusia" } as const;
 const PRESETS: { group: string; items: Preset[] }[] = [
   {

@@ -325,5 +325,32 @@ def test_peta_missing_region_is_reported_and_provinsi_refused(db):
 
     with pytest.raises(PackError, match="n = 1 dari 2"):
         build_pack("peta", "lc_tree", "kabupaten")
-    with pytest.raises(PackError, match="belum per provinsi"):
+    # Kalimantan Timur is missing Balikpapan: no province value rather than a partial sum;
+    # Kalimantan Utara (Malinau, all its kabupaten here) has one.
+    from peta.models import PetaRegion
+
+    PetaRegion.objects.filter(code="6502").update(area_km2=6000.0)
+    _duk("64", "Kalimantan Timur", "Provinsi", level="province")
+    _duk("65", "Kalimantan Utara", "Provinsi", level="province")
+    with pytest.raises(PackError, match="n = 1 dari 2.*Kalimantan Timur"):
         build_pack("peta", "lc_tree", "provinsi")
+
+
+@pytest.mark.django_db
+def test_peta_province_is_area_weighted_from_its_kabupaten(db):
+    from peta.models import PetaRegion
+
+    _duk("64", "Kalimantan Timur", "Provinsi", level="province")
+    _duk("6471", "Balikpapan", "Kota")
+    _duk("6472", "Samarinda", "Kota")
+    _peta("6471", "BALIKPAPAN", "regency", 40.0)
+    _peta("6472", "SAMARINDA", "regency", 10.0)
+    PetaRegion.objects.filter(code="6471").update(area_km2=100.0)
+    PetaRegion.objects.filter(code="6472").update(area_km2=300.0)
+
+    result = build_pack("peta", "lc_tree", "provinsi")
+
+    # (40 x 100 + 10 x 300) / 400 = 17,5, not the plain mean 25.
+    assert result["pack"]["rows"] == [{"label": "Kalimantan Timur", "code": "64", "value": 17.5}]
+    assert "digabung NusaStats" in result["pack"]["notes"]
+    assert [i["code"] for i in result["provenance"]["rows"][0]["inputs"]] == ["6471", "6472"]

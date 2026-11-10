@@ -59,12 +59,12 @@ Nusantara Mapper" (`BRAND` in `AngkaCard.tsx` and `carousel_deck.py`).
 
 | Option | Meaning |
 |---|---|
-| `--source` | `bps` (BPS var id), `dukcapil` (field or derived key), `djpk` (akun or ratio key), `peta` (land cover share `lc_tree`, `lc_builtup`, `lc_cropland`, `lc_mangrove`, …; kabupaten and kecamatan only, ESA WorldCover 2021; the maps default to `--bg landcover`) |
+| `--source` | `bps` (BPS var id), `dukcapil` (field or derived key), `djpk` (akun or ratio key), `peta` (land cover share `lc_tree`, `lc_builtup`, `lc_cropland`, `lc_mangrove`, …; kabupaten, kecamatan, and provinsi combined from its kabupaten/kota (class km² over province km²; a province missing any kabupaten gets no value), ESA WorldCover 2021; the maps default to `--bg landcover`) |
 | `--level` | `provinsi`, `kabupaten`, `kecamatan` (Dukcapil only) |
 | `--period` | year (BPS, DJPK); Dukcapil defaults to the latest snapshot |
 | `--prov` | Kemendagri province code(s): one province's regions ("Daerahmu" posts), or several comma-separated (`71,72,73,74,75,76` = Sulawesi); card paths join them with `-` (`/card/angka/71-72-…`) |
 | `--recipe` | `top` (countdown to #1), `terendah` (countdown to the lowest), `gap` (highest vs lowest) |
-| `--bg` | Peta Wilayah layer behind each region's map: `terrain`, `landcover`, `none` |
+| `--bg` | Peta Wilayah layer behind each region's map: `terrain`, `landcover`, `none`. A province is drawn as a mosaic of its kabupaten images, and only when every kabupaten has that layer (else the silhouette, with a note) |
 | `--table` | rows in the ranking table: `10` (default), `20`, `50`; one table card per 10 rows (`/card/angka/…&view=top10&start=11`) |
 | `--maps` | `10` = count down 10 regions, one focus map each (the table highlights all ten); default 5. `0` = table only: no countdown slides or focus maps; the table cards count down (#41–50 first, #1–10 last) |
 | `--turvar`, `--th`, `--unit`, `--label-metric`, `--allow-partial` | see refusals below |

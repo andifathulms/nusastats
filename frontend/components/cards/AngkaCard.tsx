@@ -2,8 +2,8 @@
 
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { carouselApi, dukcapilApi, regionLabel, type CarouselMapValue, type CarouselPackResult } from "@/lib/api";
-import { loadPeta, petaAsset, type Peta } from "@/lib/peta";
-import { NO_DATA, cropBox, framing, insets, kindFor, project, scaleFor, type Feature, type Geo } from "./geo";
+import { loadPeta, loadPetaMosaic, petaAsset, type Peta, type PetaBounds } from "@/lib/peta";
+import { NO_DATA, cropBox, framing, insets, kindFor, project, projector, scaleFor, type Feature, type Geo } from "./geo";
 import { InsetBoxes, composeMap, plainMap, type Composed } from "./insetMap";
 import { temaStyle, type Tema } from "./brand";
 import { CornerTag, Footer, OffFrameNote } from "./ShareCard";
@@ -36,6 +36,8 @@ const BRAND = "Nusantara Mapper";
 const TOP_N = 10;
 const PACK_KEYS = ["source", "metric", "level", "period", "prov", "turvar", "th", "unit", "label_metric", "notes",
   "top", "bottom", "allow_partial"];
+/** One Peta image and the lon/lat box it is stretched over. */
+type Layer = { src: string; bounds: PetaBounds; multiply: boolean };
 const LEVEL_NOUN = { provinsi: "provinsi", kabupaten: "kabupaten/kota", kecamatan: "kecamatan" } as const;
 
 /** The provinces a scope covers: "73" -> ["73"], "71-72-73" -> three, "00" (Indonesia) -> none. */
@@ -98,7 +100,8 @@ export function AngkaCard({ scope, query, debug, tema = "malam" }: { scope: stri
   const [loaded, setLoaded] = useState(0);
   const [fontsReady, setFontsReady] = useState(false);
 
-  const wantsPeta = !!focus && focus.length >= 4 && bg !== "none";
+  // A province focus is drawn from its kabupaten's images (loadPetaMosaic).
+  const wantsPeta = !!focus && (focus.length >= 4 || focus.length === 2) && bg !== "none";
   // Province scope, one or several ("71-72-73-74-75-76" = Sulawesi).
   const wantsKabs = !focus && view !== "top10" && scope !== "00" && query.get("level") !== "provinsi";
 
@@ -116,7 +119,13 @@ export function AngkaCard({ scope, query, debug, tema = "malam" }: { scope: stri
     )
       .then((geos) => setGeo({ features: geos.flatMap((g) => g.features) }))
       .catch((e) => setFatal(String(e.message ?? e)));
-    if (wantsPeta) loadPeta(focus!).then(setPeta).catch(() => setPeta(null));
+    if (wantsPeta && focus!.length === 2)
+      dukcapilApi
+        .regions({ level: "regency", prov: focus! })
+        .then((rs) => loadPetaMosaic(rs.map((r) => r.code).filter((c) => /^\d{4}$/.test(c)).sort()))
+        .then(setPeta)
+        .catch(() => setPeta(null));
+    else if (wantsPeta) loadPeta(focus!).then(setPeta).catch(() => setPeta(null));
     else setPeta(null);
     if (focus?.length === 4)
       fetch("/dukcapil-regencies.geojson")
@@ -146,12 +155,17 @@ export function AngkaCard({ scope, query, debug, tema = "malam" }: { scope: stri
   const error = fatal ?? (issues.length ? issues.join("; ") : null);
 
   // The Peta layer behind a focused region, when it exists on this machine.
-  const layers =
+  // One image per layer, or one per kabupaten tile of a province (all elevations, then
+  // all hillshades multiplied over them).
+  const tiles = peta?.tiles ?? (peta ? [{ kode: focus!, bounds: peta.bounds }] : []);
+  const pick = (key: "elevation" | "hillshade" | "landcover", multiply = false): Layer[] =>
+    tiles.map((t) => ({ src: petaAsset(t.kode, t.bounds.layers[key]!), bounds: t.bounds, multiply }));
+  const layers: Layer[] =
     peta && wantsPeta
       ? bg === "terrain" && peta.present.elevation && peta.present.hillshade
-        ? [petaAsset(focus!, peta.bounds.layers.elevation!), petaAsset(focus!, peta.bounds.layers.hillshade!)]
+        ? [...pick("elevation"), ...pick("hillshade", true)]
         : bg === "landcover" && peta.present.landcover
-          ? [petaAsset(focus!, peta.bounds.layers.landcover!)]
+          ? pick("landcover")
           : []
       : [];
   const note = wantsPeta && peta !== undefined && !layers.length ? `lapisan ${bg} belum ada untuk ${focus}; siluet` : undefined;
@@ -356,20 +370,20 @@ function FocusBody({
   peta: Peta | null;
   outline: Geo | null;
   bg: Bg;
-  layers: string[];
+  layers: Layer[];
   onImage: () => void;
   onImageError: (src: string) => void;
 }) {
   const { map, pack } = data;
   const v = map.values.find((x) => x.geo === focus) as CarouselMapValue;
-  const { paths, edge, view, fit, full } = useMemo(() => {
+  const { paths, edge, view, fit, to } = useMemo(() => {
     const feats = selectFeatures(geo, map.level, "", focus);
     const fit = framing(feats);
     const frame = peta ? peta.bounds : fit.frame;
     const own = outline?.features.filter((f) => f.properties.domain_id === focus) ?? [];
     const { paths, vw, vh } = project(feats, frame);
     const view = peta && fit.cropped ? cropBox(fit.frame, peta.bounds) : { x: 0, y: 0, w: vw, h: vh };
-    return { paths, edge: own.length ? project(own, frame).paths : [], view, fit, full: { vw, vh } };
+    return { paths, edge: own.length ? project(own, frame).paths : [], view, fit, to: projector(frame) };
   }, [geo, map.level, focus, peta, outline]);
   const { w: vw, h: vh } = view;
   const counted = useRef(new Set<string>());
@@ -417,20 +431,25 @@ function FocusBody({
       }
       map={
         <svg viewBox={`${view.x.toFixed(1)} ${view.y.toFixed(1)} ${vw.toFixed(1)} ${vh.toFixed(1)}`} preserveAspectRatio="xMidYMid meet" className="h-full w-full">
-          {layers.map((src, i) => (
-            <image
-              key={src}
-              href={src}
-              x={0}
-              y={0}
-              width={full.vw}
-              height={full.vh}
-              preserveAspectRatio="none"
-              style={{ mixBlendMode: i === 1 ? "multiply" : "normal", imageRendering: bg === "terrain" ? "auto" : "pixelated" }}
-              onLoad={() => done(src)}
-              onError={() => onImageError(src)}
-            />
-          ))}
+          {layers.map(({ src, bounds, multiply }) => {
+            // Each image stretched over its own lon/lat box (a province: one per kabupaten).
+            const [x0, y0] = to([bounds.west, bounds.north]);
+            const [x1, y1] = to([bounds.east, bounds.south]);
+            return (
+              <image
+                key={src}
+                href={src}
+                x={x0}
+                y={y0}
+                width={x1 - x0}
+                height={y1 - y0}
+                preserveAspectRatio="none"
+                style={{ mixBlendMode: multiply ? "multiply" : "normal", imageRendering: bg === "terrain" ? "auto" : "pixelated" }}
+                onLoad={() => done(src)}
+                onError={() => onImageError(src)}
+              />
+            );
+          })}
           {/* Kecamatan as faint hairlines (or none on a silhouette), so the
               kabupaten's own outline and its terrain carry the map. */}
           {paths.map((p) => (

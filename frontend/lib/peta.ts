@@ -105,6 +105,9 @@ export type Peta = {
   landcover: PetaLandcover | null;
   nightlights: PetaNightlights | null;
   present: Partial<Record<LayerKey, boolean>>;
+  /** A province drawn from its kabupaten's own images (loadPetaMosaic): each tile's
+   * image goes over its own bounds; `bounds` is then their union. */
+  tiles?: { kode: string; bounds: PetaBounds }[];
 };
 
 export const petaAsset = (kode: string, file: string) => `/peta/${kode}/${file}`;
@@ -146,4 +149,50 @@ export async function loadPeta(kode: string): Promise<Peta | null> {
   );
   const present = Object.fromEntries(keys.map((k, i) => [k, found[i]])) as Peta["present"];
   return { bounds, terrain, landcover, nightlights, present };
+}
+
+/** A province's layers as a mosaic of its kabupaten/kota images (each is transparent
+ * outside its own polygon). A layer counts as present only when every kabupaten has it,
+ * so a province is never drawn with a hole. The land cover legend sums each class's km²
+ * over the kabupaten, so its shares are the province's. null when any kabupaten has no
+ * outputs at all. */
+export async function loadPetaMosaic(kabs: string[]): Promise<Peta | null> {
+  if (!kabs.length) return null;
+  const parts = await Promise.all(kabs.map((k) => loadPeta(k)));
+  if (parts.some((p) => !p)) return null;
+  const all = parts as Peta[];
+  const keys = Object.keys(all[0].bounds.layers) as LayerKey[];
+  const present = Object.fromEntries(keys.map((k) => [k, all.every((p) => p.present[k])])) as Peta["present"];
+  const bounds: PetaBounds = {
+    ...all[0].bounds,
+    kode: kabs[0].slice(0, 2),
+    west: Math.min(...all.map((p) => p.bounds.west)),
+    east: Math.max(...all.map((p) => p.bounds.east)),
+    south: Math.min(...all.map((p) => p.bounds.south)),
+    north: Math.max(...all.map((p) => p.bounds.north)),
+  };
+  let landcover: PetaLandcover | null = null;
+  if (all.every((p) => p.landcover)) {
+    const byCode = new Map<number, PetaLandcoverClass>();
+    for (const p of all)
+      for (const c of p.landcover!.classes) {
+        const had = byCode.get(c.code);
+        byCode.set(c.code, { ...c, area_km2: (had?.area_km2 ?? 0) + c.area_km2 });
+      }
+    const area = all.reduce((t, p) => t + p.landcover!.area_km2, 0);
+    const classes = [...byCode.values()]
+      .map((c) => ({ ...c, share_pct: (c.area_km2 / area) * 100 }))
+      .sort((a, b) => b.area_km2 - a.area_km2);
+    landcover = {
+      ...all[0].landcover!,
+      kode: bounds.kode,
+      area_km2: area,
+      classes,
+      dominant: { code: classes[0].code, label: classes[0].label, share_pct: classes[0].share_pct },
+    };
+  }
+  const terrain = all.every((p) => p.terrain)
+    ? { ...all[0].terrain!, elevation_m: { ...all[0].terrain!.elevation_m, max: Math.max(...all.map((p) => p.terrain!.elevation_m.max)) } }
+    : null;
+  return { bounds, terrain, landcover, nightlights: null, present, tiles: all.map((p, i) => ({ kode: kabs[i], bounds: p.bounds })) };
 }
