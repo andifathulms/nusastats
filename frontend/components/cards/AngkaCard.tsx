@@ -2,7 +2,7 @@
 
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { carouselApi, dukcapilApi, regionLabel, type CarouselMapValue, type CarouselPackResult } from "@/lib/api";
-import { loadPeta, loadPetaMosaic, paintLayer, petaAsset, type Painted, type Peta, type PetaBounds } from "@/lib/peta";
+import { loadPeta, loadPetaMosaic, paintLayer, petaAsset, petaLayerFor, reliefLabels, type PaintLayer, type Painted, type Peta, type PetaBounds } from "@/lib/peta";
 import { NO_DATA, classedScale, cropBox, framing, insets, kindFor, project, projector, scaleFor, type Feature, type Geo } from "./geo";
 import { InsetBoxes, composeMap, plainMap, type Composed } from "./insetMap";
 import { temaStyle, type Tema } from "./brand";
@@ -17,7 +17,7 @@ import { CONTENT_W, CardHeader, H, MapLayout, PAD, TikTokOverlay, W, ZONE } from
  *
  *   /card/angka/{scope}?{pack query}              overview: every region's value
  *   /card/angka/{scope}?{pack query}&focus=6409    one region: rank + value on its own map,
- *                                                  over its Peta Wilayah layer (bg=terrain|landcover)
+ *                                                  over its Peta Wilayah layer (bg=terrain|landcover|relief)
  *
  * scope = Kemendagri province code, several joined by "-" (71-72-73), or 00 for all of Indonesia. Every number is
  * the pack's, already formatted by the backend (`display`), so the card shows
@@ -25,7 +25,7 @@ import { CONTENT_W, CardHeader, H, MapLayout, PAD, TikTokOverlay, W, ZONE } from
  * region, the card draws its silhouette instead and says so in data-card-note.
  */
 
-type Bg = "terrain" | "landcover" | "none";
+type Bg = "terrain" | "landcover" | "relief" | "none";
 
 // A focused region without its Peta layer: one fixed sea fill. Its value is in
 // the big number, and a ramp colour without a legend would only hide the lowest
@@ -159,7 +159,7 @@ export function AngkaCard({ scope, query, debug, tema = "malam" }: { scope: stri
   // One image per layer, or one per kabupaten tile of a province (all elevations, then
   // all hillshades multiplied over them).
   const tiles = peta?.tiles ?? (peta ? [{ kode: focus!, bounds: peta.bounds }] : []);
-  const pick = (key: "elevation" | "hillshade" | "landcover", multiply = false): Layer[] =>
+  const pick = (key: "elevation" | "hillshade" | "landcover" | "relief", multiply = false): Layer[] =>
     tiles.map((t) => ({ src: petaAsset(t.kode, t.bounds.layers[key]!), bounds: t.bounds, multiply }));
   const layers: Layer[] =
     peta && wantsPeta
@@ -167,7 +167,9 @@ export function AngkaCard({ scope, query, debug, tema = "malam" }: { scope: stri
         ? [...pick("elevation"), ...pick("hillshade", true)]
         : bg === "landcover" && peta.present.landcover
           ? pick("landcover")
-          : []
+          : bg === "relief" && peta.present.relief && peta.present.hillshade && peta.terrain?.local_relief
+            ? [...pick("relief"), ...pick("hillshade", true)]
+            : []
       : [];
   const note = wantsPeta && peta !== undefined && !layers.length ? `lapisan ${bg} belum ada untuk ${focus}; siluet` : undefined;
   const ready =
@@ -210,7 +212,7 @@ export function AngkaCard({ scope, query, debug, tema = "malam" }: { scope: stri
             kabs={kabs}
             // A land cover ranking's overview is the land cover itself (unless bg=none).
             // The overview's URL carries no bg: only an explicit bg=none turns the patches off.
-            patches={query.get("source") === "peta" && query.get("bg") !== "none" ? ((query.get("metric") ?? "").startsWith("lc_") ? "landcover" : "terrain") : null}
+            patches={query.get("source") === "peta" && query.get("bg") !== "none" ? petaLayerFor(query.get("metric") ?? "") : null}
             onReady={() => setOverviewDone(true)}
           />
         )
@@ -294,7 +296,7 @@ function OverviewBody({
   data, geo, scope, asc, kabs, patches, onReady,
 }: {
   data: CarouselPackResult; geo: Geo; scope: string; asc: boolean; kabs: Map<string, string> | null;
-  patches: "landcover" | "terrain" | null; onReady: () => void;
+  patches: PaintLayer | null; onReady: () => void;
 }) {
   const { map, pack } = data;
   const byGeo = useMemo(() => new Map(map.values.map((v) => [v.geo, v])), [map.values]);
@@ -390,7 +392,7 @@ function OverviewBody({
           <p className="mt-3 text-[32px] text-ink-gold">Geser untuk lihat peringkatnya →</p>
           {partial && <p className="mt-4 text-[22px] text-coal-muted">{partial}</p>}
           {patches && paint === null && paintMissing.length > 0 && (
-            <p className="mt-4 text-[22px] text-coal-muted">{`Peta ${patches === "landcover" ? "tutupan lahan" : "medan"} belum ada untuk ${paintMissing.length} kabupaten/kota; warna menurut nilai.`}</p>
+            <p className="mt-4 text-[22px] text-coal-muted">{`Peta ${patches === "landcover" ? "tutupan lahan" : patches === "relief" ? "relief" : "medan"} belum ada untuk ${paintMissing.length} kabupaten/kota; warna menurut nilai.`}</p>
           )}
           {!!dropped?.length && (
             <p className="mt-4 text-[22px] text-coal-muted">
@@ -405,7 +407,7 @@ function OverviewBody({
         <div ref={holder} className="relative min-h-0 min-w-0 flex-1 self-stretch">
         <svg viewBox={`0 0 ${vw.toFixed(0)} ${vh.toFixed(0)}`} preserveAspectRatio="xMidYMid meet" className="absolute inset-0 h-full w-full">
           <g transform={`translate(${ox} ${oy})`}>
-            {paint && <image href={paint.images.get("main")} x={0} y={0} width={main.vw} height={main.vh} preserveAspectRatio="none" style={{ imageRendering: paint.layer === "landcover" ? "pixelated" : "auto" }} />}
+            {paint && <image href={paint.images.get("main")} x={0} y={0} width={main.vw} height={main.vh} preserveAspectRatio="none" style={{ imageRendering: paint.layer === "terrain" ? "auto" : "pixelated" }} />}
             {main.paths.map((p) => (
               <path key={p.id} d={p.d} fill={fill(p.id)} stroke="var(--nm-bg)" strokeWidth={paint ? 0.8 : 0.6} strokeOpacity={paint ? 0.7 : 1} vectorEffect="non-scaling-stroke" />
             ))}
@@ -415,7 +417,7 @@ function OverviewBody({
             unit={unit}
             // Under the patches, islands keep a neutral outline: at box scale many are under a pixel.
             fill={paint ? () => "var(--nm-border-strong)" : fill}
-            over={paint ? (b) => paint.images.get(b.kab) && <image href={paint.images.get(b.kab)} x={0} y={0} width={b.own.vw} height={b.own.vh} preserveAspectRatio="none" style={{ imageRendering: paint.layer === "landcover" ? "pixelated" : "auto" }} /> : undefined}
+            over={paint ? (b) => paint.images.get(b.kab) && <image href={paint.images.get(b.kab)} x={0} y={0} width={b.own.vw} height={b.own.vh} preserveAspectRatio="none" style={{ imageRendering: paint.layer === "terrain" ? "auto" : "pixelated" }} /> : undefined}
           />
         </svg>
         </div>
@@ -469,7 +471,7 @@ function FocusBody({
   const word = asc ? "terendah" : "tertinggi";
   const layerSource = !peta
     ? ""
-    : bg === "terrain"
+    : bg === "terrain" || bg === "relief"
       ? /Copernicus DEM/.test(pack.source)
         ? "" // a terrain ranking: its source line already credits the DEM
         : "; peta: Copernicus DEM GLO-30 (© DLR e.V., © Airbus DS; Copernicus/EU/ESA)"
@@ -519,7 +521,7 @@ function FocusBody({
                 width={x1 - x0}
                 height={y1 - y0}
                 preserveAspectRatio="none"
-                style={{ mixBlendMode: multiply ? "multiply" : "normal", imageRendering: bg === "terrain" ? "auto" : "pixelated" }}
+                style={{ mixBlendMode: multiply ? "multiply" : "normal", imageRendering: bg === "terrain" || multiply ? "auto" : "pixelated" }}
                 onLoad={() => done(src)}
                 onError={() => onImageError(src)}
               />
@@ -564,7 +566,8 @@ function PatchLegend({ paint }: { paint: Painted }) {
       </div>
     );
   }
-  const shown = paint.classes.filter((c) => c.share_pct >= 1).slice(0, 6);
+  // Relief: all four classes in order; land cover: the largest, at least 1%.
+  const shown = paint.layer === "relief" ? paint.classes : paint.classes.filter((c) => c.share_pct >= 1).slice(0, 6);
   return (
     <ul className="nm-legend flex flex-wrap gap-x-6 gap-y-2 text-[24px] text-coal-muted">
       {shown.map((c) => (
@@ -609,6 +612,19 @@ function LayerLegend({ peta, bg }: { peta: Peta; bg: Bg }) {
           <li key={c.code} className="inline-flex items-center gap-2">
             <span className="inline-block h-5 w-5 rounded" style={{ background: c.color }} />
             {c.label}
+          </li>
+        ))}
+      </ul>
+    );
+  }
+  if (bg === "relief" && peta.terrain?.local_relief && peta.terrain.metadata.relief_colors) {
+    const colors = peta.terrain.metadata.relief_colors;
+    return (
+      <ul className="nm-legend flex shrink-0 flex-wrap gap-x-6 gap-y-2 text-[24px] text-coal-muted">
+        {reliefLabels(peta.terrain.local_relief.breaks_m).map((label, i) => (
+          <li key={label} className="inline-flex items-center gap-2">
+            <span className="inline-block h-5 w-5 rounded" style={{ background: colors[i] }} />
+            {label}
           </li>
         ))}
       </ul>

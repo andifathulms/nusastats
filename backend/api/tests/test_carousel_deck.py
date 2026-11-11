@@ -93,6 +93,10 @@ def test_map_cards_sort_next_to_their_slides():
     assert b["cards"][1]["path"] == ("/card/angka/00?source=bps&metric=415&level=kabupaten&period=2025"
                                      "&focus=3577&bg=landcover")
 
+    # The relief layer is a map background like the others.
+    relief = deck_bundle(_result(ROWS), SPEC, recipe="top", map_bg="relief")
+    assert relief["cards"][1]["path"].endswith("&focus=3577&bg=relief")
+
 
 def test_terendah_ranks_ascending_and_warns_on_fairness():
     b = deck_bundle(_result(ROWS), SPEC, recipe="terendah")

@@ -6,7 +6,7 @@
 //
 // Pack options pass through to /api/carousel/deck/ (--prov --turvar --th --unit
 // --label-metric --notes --top --bottom --allow-partial), plus --recipe
-// top|terendah|gap and --bg terrain|landcover|none for the regions' map cards.
+// top|terendah|gap and --bg terrain|landcover|relief|none for the regions' map cards.
 // Writes pack.json, provenance.json, map.json, deck.txt and README.md to
 // exports/carousels/{id}/ (gitignored), then renders every map card from the
 // running frontend into the same folder, named to sort next to the deck's

@@ -459,6 +459,8 @@ _PETA_NOTES = {
     "lowland_lt_10": "Batas bawah: DEM mengukur permukaan (tajuk dan bangunan), jadi dataran rendah sebenarnya bisa lebih luas.",
     "relief_bergunung": "Kelas relief NusaStats (selisih tinggi dalam jendela 1 km), bukan klasifikasi resmi.",
     "relief_datar": "Kelas relief NusaStats (selisih tinggi dalam jendela 1 km), bukan klasifikasi resmi.",
+    "local_relief_mean": "Relief lokal = selisih titik tertinggi dan terendah dalam jendela 1×1 km di sekitar tiap piksel 30 m, "
+                         "dirata-ratakan.",
 }
 
 

@@ -21,7 +21,7 @@ from urllib.parse import urlencode
 from .carousel import LEVEL_NOUN, fmt_num, fmt_value, short_metric
 
 RECIPES = ("top", "terendah", "gap")
-MAP_BACKGROUNDS = ("terrain", "landcover", "none")
+MAP_BACKGROUNDS = ("terrain", "landcover", "relief", "none")
 _PAPUA_KEMENDAGRI = {"91", "92", "93", "94", "95", "96"}
 # "Kabupaten/Kota" can't wrap at the slash, so cover headlines spell it out.
 _HEAD_NOUN = {"provinsi": "Provinsi", "kabupaten": "Kabupaten dan Kota", "kecamatan": "Kecamatan"}

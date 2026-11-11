@@ -380,3 +380,23 @@ def test_peta_terrain_province_rules(db):
     assert build_pack("peta", "elevation_max", "provinsi")["pack"]["rows"][0]["value"] == 300.0  # the highest
     with pytest.raises(PackError, match="tidak bisa digabung"):
         build_pack("peta", "elevation_median", "provinsi")
+
+
+@pytest.mark.django_db
+def test_peta_local_relief_ranks_area_weighted_with_its_caveat(db):
+    from peta.models import PetaIndicator, PetaRegion, PetaValue
+
+    _duk("64", "Kalimantan Timur", "Provinsi", level="province")
+    _duk("6471", "Balikpapan", "Kota")
+    _duk("6472", "Samarinda", "Kota")
+    ind = PetaIndicator.objects.create(key="local_relief_mean", label_id="Relief lokal rata-rata (1 km)", group="medan",
+                                       unit="m", dataset="Copernicus DEM GLO-30", method="-")
+    for code, area, v in (("6471", 100.0, 40.0), ("6472", 300.0, 10.0)):
+        r = PetaRegion.objects.create(code=code, level="regency", name=code, prov_code="64", parent_code="64", area_km2=area)
+        PetaValue.objects.create(region=r, indicator=ind, value=v)
+
+    kab = build_pack("peta", "local_relief_mean", "kabupaten")
+    assert kab["pack"]["rows"][0]["code"] == "6471"
+    assert "jendela 1×1 km" in kab["pack"]["notes"]  # what "relief lokal" means, on the slide
+    # A mean over equal-area pixels combines area-weighted: (40 x 100 + 10 x 300) / 400.
+    assert build_pack("peta", "local_relief_mean", "provinsi")["pack"]["rows"][0]["value"] == 17.5

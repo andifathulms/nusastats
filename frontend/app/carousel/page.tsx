@@ -16,6 +16,7 @@ import {
 } from "@/lib/api";
 import { Badge, ErrorState, PageHeader, Panel, SectionTitle } from "@/components/ui";
 import { routes } from "@/lib/routes";
+import { petaLayerFor, RELIEF_METRICS } from "@/lib/peta";
 import { ProvincePicker } from "@/components/ProvincePicker";
 import { TikTokText } from "@/components/carousel/TikTokText";
 import { TemaPicker, useTema } from "@/components/carousel/TemaPicker";
@@ -62,6 +63,7 @@ const RECIPES = [
 const BGS = [
   { id: "terrain", label: "Medan" },
   { id: "landcover", label: "Tutupan lahan" },
+  { id: "relief", label: "Relief lokal" },
   { id: "none", label: "Siluet" },
 ];
 const SCALE = 0.25;
@@ -158,7 +160,7 @@ const PRESETS: { group: string; items: Preset[] }[] = [
     ],
   },
   {
-    // Copernicus DEM GLO-30. Shares (bergunung, di bawah 100 m) tie at 0 or 100% across many
+    // Copernicus DEM GLO-30. Shares (di bawah 100 m) tie at 0 or 100% across many
     // kecamatan, so those are kabupaten and provinsi only. Median elevation and relief have no
     // provinsi value (they can't be combined from kabupaten).
     group: "Medan",
@@ -167,9 +169,20 @@ const PRESETS: { group: string; items: Preset[] }[] = [
       { label: "Paling rendah (rata-rata)", source: "peta", metric: "elevation_mean", recipe: "terendah" },
       { label: "Titik tertinggi", source: "peta", metric: "elevation_max", recipe: "top" },
       { label: "Paling curam", source: "peta", metric: "slope_mean", recipe: "top" },
-      { label: "Paling bergunung", source: "peta", metric: "relief_bergunung", recipe: "top", levels: ["kabupaten", "provinsi"] },
-      { label: "Paling datar", source: "peta", metric: "relief_datar", recipe: "top", levels: ["kabupaten", "provinsi"] },
       { label: "Dataran rendah terluas", source: "peta", metric: "share_elev_lt_100", recipe: "top", levels: ["kabupaten", "provinsi"] },
+    ],
+  },
+  {
+    // Local relief: the height difference within ~1 km around each 30 m pixel (Copernicus DEM),
+    // and NusaStats's classes of it. The maps show the relief layer (datar → bergunung) under
+    // the hillshade. "Paling datar" ties at 100% across hundreds of kecamatan, so it is
+    // kabupaten and provinsi only; "bergunung" ties only at 0%, at the bottom.
+    group: "Relief",
+    items: [
+      { label: "Relief paling kasar", source: "peta", metric: "local_relief_mean", recipe: "top" },
+      { label: "Relief paling landai", source: "peta", metric: "local_relief_mean", recipe: "terendah" },
+      { label: "Paling bergunung", source: "peta", metric: "relief_bergunung", recipe: "top" },
+      { label: "Paling datar", source: "peta", metric: "relief_datar", recipe: "top", levels: ["kabupaten", "provinsi"] },
     ],
   },
   {
@@ -188,9 +201,9 @@ const PRESETS: { group: string; items: Preset[] }[] = [
   },
 ];
 
-/** Peta rankings show their own layer behind each region (land cover or terrain); others keep the chosen map. */
+/** Peta rankings show their own layer behind each region (land cover, terrain or relief); others keep the chosen map. */
 const bgFor = (source: Source, current: string, metric = "") =>
-  source === "peta" ? (metric.startsWith("lc_") ? "landcover" : metric ? "terrain" : current) : current;
+  source === "peta" ? (metric ? petaLayerFor(metric) : current) : current;
 
 /** A preset as a full form at one level, keeping the chosen province and map background. */
 function presetForm(p: Preset, level: Level, prov: string, current: Form): Form {
@@ -480,10 +493,10 @@ function CarouselTool({ tema }: { tema: Tema }) {
               >
                 <option value="">Pilih indikator…</option>
                 {form.source === "peta"
-                  ? (["tutupan", "medan"] as const).map((g) => (
-                      <optgroup key={g} label={g === "tutupan" ? "Tutupan lahan (ESA WorldCover 2021)" : "Medan (Copernicus DEM)"}>
+                  ? (["tutupan", "medan", "relief"] as const).map((g) => (
+                      <optgroup key={g} label={{ tutupan: "Tutupan lahan (ESA WorldCover 2021)", medan: "Medan (Copernicus DEM)", relief: "Relief lokal (Copernicus DEM)" }[g]}>
                         {petaIndicators
-                          ?.filter((i) => i.group === g)
+                          ?.filter((i) => (g === "relief" ? RELIEF_METRICS.includes(i.key) : i.group === g && !RELIEF_METRICS.includes(i.key)))
                           .map((i) => (
                             <option key={i.key} value={i.key}>
                               {g === "tutupan" ? `${i.label} (% luas)` : `${i.label} (${i.unit})`}

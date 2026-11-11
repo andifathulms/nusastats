@@ -55,7 +55,7 @@ def pack(request):
 @cached_api("bps", "dukcapil", "djpk", "peta")
 def deck(request):
     """Pack + deck text + the map cards to render, in one response.
-    `recipe` = top | terendah | gap, `bg` = terrain | landcover | none."""
+    `recipe` = top | terendah | gap, `bg` = terrain | landcover | relief | none."""
     recipe = request.query_params.get("recipe", "top")
     bg = request.query_params.get("bg", "terrain")
     if recipe not in RECIPES or bg not in MAP_BACKGROUNDS:
