@@ -158,6 +158,21 @@ const PRESETS: { group: string; items: Preset[] }[] = [
     ],
   },
   {
+    // Copernicus DEM GLO-30. Shares (bergunung, di bawah 100 m) tie at 0 or 100% across many
+    // kecamatan, so those are kabupaten and provinsi only. Median elevation and relief have no
+    // provinsi value (they can't be combined from kabupaten).
+    group: "Medan",
+    items: [
+      { label: "Paling tinggi (rata-rata)", source: "peta", metric: "elevation_mean", recipe: "top" },
+      { label: "Paling rendah (rata-rata)", source: "peta", metric: "elevation_mean", recipe: "terendah" },
+      { label: "Titik tertinggi", source: "peta", metric: "elevation_max", recipe: "top" },
+      { label: "Paling curam", source: "peta", metric: "slope_mean", recipe: "top" },
+      { label: "Paling bergunung", source: "peta", metric: "relief_bergunung", recipe: "top", levels: ["kabupaten", "provinsi"] },
+      { label: "Paling datar", source: "peta", metric: "relief_datar", recipe: "top", levels: ["kabupaten", "provinsi"] },
+      { label: "Dataran rendah terluas", source: "peta", metric: "share_elev_lt_100", recipe: "top", levels: ["kabupaten", "provinsi"] },
+    ],
+  },
+  {
     // ESA WorldCover 2021, share of each region's area. The maps show the land cover layer.
     // "Tutupan pohon" includes plantations (sawit, akasia): never call it "hutan".
     group: "Tutupan lahan",
@@ -173,8 +188,9 @@ const PRESETS: { group: string; items: Preset[] }[] = [
   },
 ];
 
-/** Land cover rankings show the land cover layer behind each region; others keep the chosen map. */
-const bgFor = (source: Source, current: string) => (source === "peta" ? "landcover" : current);
+/** Peta rankings show their own layer behind each region (land cover or terrain); others keep the chosen map. */
+const bgFor = (source: Source, current: string, metric = "") =>
+  source === "peta" ? (metric.startsWith("lc_") ? "landcover" : metric ? "terrain" : current) : current;
 
 /** A preset as a full form at one level, keeping the chosen province and map background. */
 function presetForm(p: Preset, level: Level, prov: string, current: Form): Form {
@@ -185,7 +201,7 @@ function presetForm(p: Preset, level: Level, prov: string, current: Form): Form 
     period: p.period ?? "",
     prov: level === "provinsi" ? "" : prov,
     recipe: p.recipe,
-    bg: bgFor(p.source, current.bg),
+    bg: bgFor(p.source, current.bg, p.metric),
     turvar: "",
     unit: p.unit ?? "",
     label_metric: p.label_metric ?? "",
@@ -210,7 +226,7 @@ function formFrom(params: URLSearchParams): Form {
     period: params.get("period") ?? "",
     prov: params.get("prov") ?? "",
     recipe: params.get("recipe") ?? "top",
-    bg: params.get("bg") ?? bgFor(source, "terrain"),
+    bg: params.get("bg") ?? bgFor(source, "terrain", params.get("metric") ?? ""),
     turvar: params.get("turvar") ?? "",
     unit: params.get("unit") ?? "",
     label_metric: params.get("label_metric") ?? "",
@@ -328,7 +344,7 @@ function CarouselTool({ tema }: { tema: Tema }) {
     if (form.source === "dukcapil" && !dukIndicators) dukcapilApi.indicators().then(setDukIndicators).catch(() => null);
     if (form.source === "djpk" && !djpkAccounts) djpkApi.accounts().then(setDjpkAccounts).catch(() => null);
     if (form.source === "peta" && !petaIndicators)
-      petaApi.indicators().then((r) => setPetaIndicators(r.indicators.filter((i) => i.group === "tutupan"))).catch(() => null);
+      petaApi.indicators().then((r) => setPetaIndicators(r.indicators.filter((i) => i.group === "tutupan" || i.group === "medan"))).catch(() => null);
   }, [form.source, dukIndicators, djpkAccounts, petaIndicators]);
 
   const set = (patch: Partial<Form>) => setForm((f) => ({ ...f, ...patch }));
@@ -450,20 +466,30 @@ function CarouselTool({ tema }: { tema: Tema }) {
               <option value="bps">BPS</option>
               <option value="dukcapil">Dukcapil (Kemendagri)</option>
               <option value="djpk">DJPK (Kemenkeu)</option>
-              <option value="peta">Tutupan lahan (ESA WorldCover)</option>
+              <option value="peta">Peta Wilayah (tutupan lahan & medan)</option>
             </select>
           </Field>
           <Field label="Indikator" hint={form.source === "bps" ? "variable_id BPS" : undefined}>
             {form.source === "bps" ? (
               <input className={input} value={form.metric} onChange={(e) => set({ metric: e.target.value.trim() })} placeholder="mis. 415" />
             ) : (
-              <select className={input} value={form.metric} onChange={(e) => set({ metric: e.target.value })}>
+              <select
+                className={input}
+                value={form.metric}
+                onChange={(e) => set({ metric: e.target.value, ...(form.source === "peta" ? { bg: bgFor("peta", form.bg, e.target.value) } : {}) })}
+              >
                 <option value="">Pilih indikator…</option>
                 {form.source === "peta"
-                  ? petaIndicators?.map((i) => (
-                      <option key={i.key} value={i.key}>
-                        {i.label} (% luas)
-                      </option>
+                  ? (["tutupan", "medan"] as const).map((g) => (
+                      <optgroup key={g} label={g === "tutupan" ? "Tutupan lahan (ESA WorldCover 2021)" : "Medan (Copernicus DEM)"}>
+                        {petaIndicators
+                          ?.filter((i) => i.group === g)
+                          .map((i) => (
+                            <option key={i.key} value={i.key}>
+                              {g === "tutupan" ? `${i.label} (% luas)` : `${i.label} (${i.unit})`}
+                            </option>
+                          ))}
+                      </optgroup>
                     ))
                   : form.source === "dukcapil"
                   ? dukIndicators?.groups.map((g) => (
@@ -496,7 +522,7 @@ function CarouselTool({ tema }: { tema: Tema }) {
               ))}
             </select>
           </Field>
-          <Field label="Periode" hint={form.source === "dukcapil" ? "kosong = snapshot terbaru" : form.source === "peta" ? "citra 2021" : "tahun"}>
+          <Field label="Periode" hint={form.source === "dukcapil" ? "kosong = snapshot terbaru" : form.source === "peta" ? "tetap (2021 / DEM)" : "tahun"}>
             <input className={input} disabled={form.source === "peta"} value={form.period} onChange={(e) => set({ period: e.target.value.trim() })} placeholder={form.source === "dukcapil" ? "YYYY-MM" : "mis. 2025"} />
           </Field>
           <Field label="Cakupan">

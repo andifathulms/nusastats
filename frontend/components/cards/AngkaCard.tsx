@@ -2,7 +2,7 @@
 
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { carouselApi, dukcapilApi, regionLabel, type CarouselMapValue, type CarouselPackResult } from "@/lib/api";
-import { loadPeta, loadPetaMosaic, paintLandcover, petaAsset, type Painted, type Peta, type PetaBounds } from "@/lib/peta";
+import { loadPeta, loadPetaMosaic, paintLayer, petaAsset, type Painted, type Peta, type PetaBounds } from "@/lib/peta";
 import { NO_DATA, classedScale, cropBox, framing, insets, kindFor, project, projector, scaleFor, type Feature, type Geo } from "./geo";
 import { InsetBoxes, composeMap, plainMap, type Composed } from "./insetMap";
 import { temaStyle, type Tema } from "./brand";
@@ -210,7 +210,7 @@ export function AngkaCard({ scope, query, debug, tema = "malam" }: { scope: stri
             kabs={kabs}
             // A land cover ranking's overview is the land cover itself (unless bg=none).
             // The overview's URL carries no bg: only an explicit bg=none turns the patches off.
-            patches={query.get("source") === "peta" && query.get("bg") !== "none"}
+            patches={query.get("source") === "peta" && query.get("bg") !== "none" ? ((query.get("metric") ?? "").startsWith("lc_") ? "landcover" : "terrain") : null}
             onReady={() => setOverviewDone(true)}
           />
         )
@@ -294,7 +294,7 @@ function OverviewBody({
   data, geo, scope, asc, kabs, patches, onReady,
 }: {
   data: CarouselPackResult; geo: Geo; scope: string; asc: boolean; kabs: Map<string, string> | null;
-  patches: boolean; onReady: () => void;
+  patches: "landcover" | "terrain" | null; onReady: () => void;
 }) {
   const { map, pack } = data;
   const byGeo = useMemo(() => new Map(map.values.map((v) => [v.geo, v])), [map.values]);
@@ -340,7 +340,7 @@ function OverviewBody({
           { key: "main", frame: main.frame!, vw: main.vw, vh: main.vh, px: 1600 },
           ...boxes.filter((b) => b.own.frame).map((b) => ({ key: b.kab, frame: b.own.frame!, vw: b.own.vw, vh: b.own.vh, px: 600 })),
         ];
-        return paintLandcover([...new Set(codes.filter(inScope))].sort(), targets);
+        return paintLayer(patches, [...new Set(codes.filter(inScope))].sort(), targets);
       })
       .then((p) => {
         if (!live) return;
@@ -390,7 +390,7 @@ function OverviewBody({
           <p className="mt-3 text-[32px] text-ink-gold">Geser untuk lihat peringkatnya →</p>
           {partial && <p className="mt-4 text-[22px] text-coal-muted">{partial}</p>}
           {patches && paint === null && paintMissing.length > 0 && (
-            <p className="mt-4 text-[22px] text-coal-muted">{`Peta tutupan lahan belum ada untuk ${paintMissing.length} kabupaten/kota; warna menurut nilai.`}</p>
+            <p className="mt-4 text-[22px] text-coal-muted">{`Peta ${patches === "landcover" ? "tutupan lahan" : "medan"} belum ada untuk ${paintMissing.length} kabupaten/kota; warna menurut nilai.`}</p>
           )}
           {!!dropped?.length && (
             <p className="mt-4 text-[22px] text-coal-muted">
@@ -405,7 +405,7 @@ function OverviewBody({
         <div ref={holder} className="relative min-h-0 min-w-0 flex-1 self-stretch">
         <svg viewBox={`0 0 ${vw.toFixed(0)} ${vh.toFixed(0)}`} preserveAspectRatio="xMidYMid meet" className="absolute inset-0 h-full w-full">
           <g transform={`translate(${ox} ${oy})`}>
-            {paint && <image href={paint.images.get("main")} x={0} y={0} width={main.vw} height={main.vh} preserveAspectRatio="none" style={{ imageRendering: "pixelated" }} />}
+            {paint && <image href={paint.images.get("main")} x={0} y={0} width={main.vw} height={main.vh} preserveAspectRatio="none" style={{ imageRendering: paint.layer === "landcover" ? "pixelated" : "auto" }} />}
             {main.paths.map((p) => (
               <path key={p.id} d={p.d} fill={fill(p.id)} stroke="var(--nm-bg)" strokeWidth={paint ? 0.8 : 0.6} strokeOpacity={paint ? 0.7 : 1} vectorEffect="non-scaling-stroke" />
             ))}
@@ -415,7 +415,7 @@ function OverviewBody({
             unit={unit}
             // Under the patches, islands keep a neutral outline: at box scale many are under a pixel.
             fill={paint ? () => "var(--nm-border-strong)" : fill}
-            over={paint ? (b) => paint.images.get(b.kab) && <image href={paint.images.get(b.kab)} x={0} y={0} width={b.own.vw} height={b.own.vh} preserveAspectRatio="none" style={{ imageRendering: "pixelated" }} /> : undefined}
+            over={paint ? (b) => paint.images.get(b.kab) && <image href={paint.images.get(b.kab)} x={0} y={0} width={b.own.vw} height={b.own.vh} preserveAspectRatio="none" style={{ imageRendering: paint.layer === "landcover" ? "pixelated" : "auto" }} /> : undefined}
           />
         </svg>
         </div>
@@ -470,7 +470,9 @@ function FocusBody({
   const layerSource = !peta
     ? ""
     : bg === "terrain"
-      ? "; peta: Copernicus DEM GLO-30 (© DLR e.V., © Airbus DS; Copernicus/EU/ESA)"
+      ? /Copernicus DEM/.test(pack.source)
+        ? "" // a terrain ranking: its source line already credits the DEM
+        : "; peta: Copernicus DEM GLO-30 (© DLR e.V., © Airbus DS; Copernicus/EU/ESA)"
       : /ESA WorldCover/.test(pack.source)
         ? "" // a land cover ranking: its source line already credits WorldCover
         : `; peta: ESA WorldCover ${peta.landcover?.year ?? ""} v200 (CC BY 4.0)`;
@@ -547,6 +549,21 @@ function FocusBody({
 
 /** The land cover classes over the whole scope, with their share of its area. */
 function PatchLegend({ paint }: { paint: Painted }) {
+  if (paint.layer === "terrain" && paint.elevation) {
+    // The tint's stops up to the highest pixel in the scope, as on the kabupaten terrain cards.
+    const { max, tint } = paint.elevation;
+    const topIdx = tint.findIndex(([m]) => m >= max);
+    const stops = tint.slice(0, topIdx === -1 ? tint.length : topIdx + 1);
+    const top = stops[stops.length - 1][0] || 1;
+    const gradient = stops.map(([m, c]) => `${c} ${((m / top) * 100).toFixed(2)}%`).join(", ");
+    return (
+      <div className="nm-legend flex items-center gap-4 font-mono text-[22px] text-coal-muted">
+        <span>0</span>
+        <div className="h-3 min-w-0 flex-1 rounded-full" style={{ background: `linear-gradient(90deg, ${gradient})` }} />
+        <span className="whitespace-nowrap">{`${top.toLocaleString("id-ID")} m`}</span>
+      </div>
+    );
+  }
   const shown = paint.classes.filter((c) => c.share_pct >= 1).slice(0, 6);
   return (
     <ul className="nm-legend flex flex-wrap gap-x-6 gap-y-2 text-[24px] text-coal-muted">

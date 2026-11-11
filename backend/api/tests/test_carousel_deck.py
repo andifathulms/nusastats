@@ -25,6 +25,8 @@ from .test_carousel import bps  # noqa: F401  (shared fixture)
         (52.0, "indeks", "52"),
         (26387, "Ribu Rupiah/Orang/Tahun", "Rp26,4 juta/orang/tahun"),
         (70.01, "0-100", "70,01"),
+        (1469.7, "m", "1.470 m"),
+        (21.52, "°", "21,5°"),
     ],
 )
 def test_fmt_value(value, unit, expected):

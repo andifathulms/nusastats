@@ -199,24 +199,28 @@ export async function loadPetaMosaic(kabs: string[]): Promise<Peta | null> {
 
 export type PaintTarget = { key: string; frame: { west: number; south: number; east: number; north: number }; vw: number; vh: number; px: number };
 export type Painted = {
+  layer: "landcover" | "terrain";
   images: Map<string, string>; // target key -> PNG data URL, sized vw x vh in its own viewBox
-  classes: (PetaLandcoverClass & { share_pct: number })[]; // summed over the kabupaten, largest first
+  classes: (PetaLandcoverClass & { share_pct: number })[]; // land cover: summed over the kabupaten, largest first
   area_km2: number;
-  missing: string[]; // kabupaten without a land cover image or stats
+  elevation: { max: number; tint: [number, string][] } | null; // terrain: highest pixel over the kabupaten, colour stops
+  missing: string[]; // kabupaten without the layer's image or stats
 };
 
-/** Several kabupaten's land cover images painted into one canvas per target frame (an
+/** Several kabupaten's layer images painted into one canvas per target frame (an
  * overview's mainland and each inset box), so a whole province or island reads as land
- * cover. Each tile is fetched, decoded, drawn nearest-neighbour (classes stay crisp) and
- * released before the next, a few at a time: Sulawesi's 81 tiles are 130 MP decoded.
- * The classes are each class's km² summed over the kabupaten's landcover.json. */
-export async function paintLandcover(kabs: string[], targets: PaintTarget[]): Promise<Painted> {
+ * cover or terrain. Each tile is fetched, decoded, drawn and released before the next, a
+ * few at a time: Sulawesi's 81 tiles are 130 MP decoded. Land cover is drawn
+ * nearest-neighbour (classes stay crisp), with each class's km² summed over the
+ * kabupaten's landcover.json; terrain is the elevation tint with the hillshade multiplied
+ * over it, as on the kabupaten cards, and the highest pixel from terrain.json. */
+export async function paintLayer(layer: "landcover" | "terrain", kabs: string[], targets: PaintTarget[]): Promise<Painted> {
   const canvases = targets.map((t) => {
     const c = document.createElement("canvas");
     c.width = Math.max(1, Math.round(t.px));
     c.height = Math.max(1, Math.round((t.px * t.vh) / t.vw));
     const ctx = c.getContext("2d")!;
-    ctx.imageSmoothingEnabled = false;
+    ctx.imageSmoothingEnabled = layer === "terrain";
     const cosMid = Math.cos((((t.frame.south + t.frame.north) / 2) * Math.PI) / 180);
     const s = (c.width / ((t.frame.east - t.frame.west) * cosMid || 1));
     const to = (lon: number, lat: number): [number, number] => [(lon - t.frame.west) * s * cosMid, (t.frame.north - lat) * s];
@@ -225,33 +229,56 @@ export async function paintLandcover(kabs: string[], targets: PaintTarget[]): Pr
   const missing: string[] = [];
   const byCode = new Map<number, PetaLandcoverClass>();
   let area = 0;
+  let elevation: Painted["elevation"] = null;
   const queue = [...kabs];
   const work = async () => {
     for (let kab = queue.shift(); kab; kab = queue.shift()) {
-      const [b, lc] = await Promise.all([optionalJson<PetaBounds>(petaAsset(kab, "bounds.json")), optionalJson<PetaLandcover>(petaAsset(kab, "landcover.json"))]);
-      if (!b?.layers.landcover || !lc) {
+      const b = await optionalJson<PetaBounds>(petaAsset(kab, "bounds.json"));
+      const files = layer === "landcover" ? [b?.layers.landcover] : [b?.layers.elevation, b?.layers.hillshade];
+      const stats =
+        layer === "landcover"
+          ? await optionalJson<PetaLandcover>(petaAsset(kab, "landcover.json"))
+          : await optionalJson<PetaTerrain>(petaAsset(kab, "terrain.json"));
+      if (!b || files.some((f) => !f) || !stats) {
         missing.push(kab);
         continue;
       }
-      area += lc.area_km2;
-      for (const c of lc.classes) byCode.set(c.code, { ...c, area_km2: (byCode.get(c.code)?.area_km2 ?? 0) + c.area_km2 });
+      area += stats.area_km2;
+      if (layer === "landcover")
+        for (const c of (stats as PetaLandcover).classes) byCode.set(c.code, { ...c, area_km2: (byCode.get(c.code)?.area_km2 ?? 0) + c.area_km2 });
+      else {
+        const t = stats as PetaTerrain;
+        elevation = { max: Math.max(elevation?.max ?? -Infinity, t.elevation_m.max), tint: t.metadata.tint };
+      }
       const hits = canvases.filter(({ t }) => b.east > t.frame.west && b.west < t.frame.east && b.north > t.frame.south && b.south < t.frame.north);
       if (!hits.length) continue;
-      const r = await fetch(petaAsset(kab, b.layers.landcover));
-      if (!r.ok) {
-        missing.push(kab);
-        continue;
+      // Elevation first, then its hillshade multiplied over it (transparent outside the
+      // kabupaten, so neighbours are untouched).
+      for (const [i, file] of files.entries()) {
+        const r = await fetch(petaAsset(kab, file!));
+        if (!r.ok) {
+          missing.push(kab);
+          break;
+        }
+        const bitmap = await createImageBitmap(await r.blob());
+        for (const { ctx, to } of hits) {
+          const [x0, y0] = to(b.west, b.north);
+          const [x1, y1] = to(b.east, b.south);
+          ctx.globalCompositeOperation = i === 1 ? "multiply" : "source-over";
+          ctx.drawImage(bitmap, x0, y0, x1 - x0, y1 - y0);
+        }
+        bitmap.close();
       }
-      const bitmap = await createImageBitmap(await r.blob());
-      for (const { ctx, to } of hits) {
-        const [x0, y0] = to(b.west, b.north);
-        const [x1, y1] = to(b.east, b.south);
-        ctx.drawImage(bitmap, x0, y0, x1 - x0, y1 - y0);
-      }
-      bitmap.close();
     }
   };
   await Promise.all([work(), work(), work(), work()]);
   const classes = [...byCode.values()].map((c) => ({ ...c, share_pct: (c.area_km2 / (area || 1)) * 100 })).sort((a, b) => b.area_km2 - a.area_km2);
-  return { images: new Map(canvases.map(({ t, c }) => [t.key, c.toDataURL("image/png")])), classes, area_km2: area, missing: missing.sort() };
+  return {
+    layer,
+    images: new Map(canvases.map(({ t, c }) => [t.key, c.toDataURL("image/png")])),
+    classes: layer === "landcover" ? classes : [],
+    area_km2: area,
+    elevation,
+    missing: [...new Set(missing)].sort(),
+  };
 }

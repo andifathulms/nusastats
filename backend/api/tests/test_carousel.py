@@ -354,3 +354,29 @@ def test_peta_province_is_area_weighted_from_its_kabupaten(db):
     assert result["pack"]["rows"] == [{"label": "Kalimantan Timur", "code": "64", "value": 17.5}]
     assert "digabung NusaStats" in result["pack"]["notes"]
     assert [i["code"] for i in result["provenance"]["rows"][0]["inputs"]] == ["6471", "6472"]
+
+
+@pytest.mark.django_db
+def test_peta_terrain_province_rules(db):
+    from peta.models import PetaIndicator, PetaRegion, PetaValue
+
+    _duk("64", "Kalimantan Timur", "Provinsi", level="province")
+    _duk("6471", "Balikpapan", "Kota")
+    _duk("6472", "Samarinda", "Kota")
+    for code, area, mean, top in (("6471", 100.0, 40.0, 120.0), ("6472", 300.0, 10.0, 300.0)):
+        PetaRegion.objects.create(code=code, level="regency", name=code, prov_code="64", parent_code="64", area_km2=area)
+    for key, label, unit in (("elevation_mean", "Rata-rata elevasi", "m"), ("elevation_max", "Titik tertinggi", "m"),
+                             ("elevation_median", "Median elevasi", "m")):
+        ind = PetaIndicator.objects.create(key=key, label_id=label, group="medan", unit=unit,
+                                           dataset="Copernicus DEM GLO-30", method="-")
+        for code, v in (("6471", {"elevation_mean": 40.0, "elevation_max": 120.0}.get(key, 5.0)),
+                        ("6472", {"elevation_mean": 10.0, "elevation_max": 300.0}.get(key, 5.0))):
+            PetaValue.objects.create(region=PetaRegion.objects.get(code=code), indicator=ind, value=v)
+
+    mean = build_pack("peta", "elevation_mean", "provinsi")
+    assert mean["pack"]["rows"][0]["value"] == 17.5  # area-weighted, not the plain mean 25
+    assert mean["map"]["kicker"] == "DATA • COPERNICUS DEM"
+    assert mean["map"]["values"][0]["display"] == "18 m"  # whole metres
+    assert build_pack("peta", "elevation_max", "provinsi")["pack"]["rows"][0]["value"] == 300.0  # the highest
+    with pytest.raises(PackError, match="tidak bisa digabung"):
+        build_pack("peta", "elevation_median", "provinsi")

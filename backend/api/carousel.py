@@ -141,7 +141,7 @@ def fmt_int(n):
     return f"{n:,}".replace(",", ".")
 
 
-_SOURCE_SHORT = {"bps": "BPS", "dukcapil": "DUKCAPIL", "djpk": "DJPK", "peta": "ESA WORLDCOVER"}
+_SOURCE_SHORT = {"bps": "BPS", "dukcapil": "DUKCAPIL", "djpk": "DJPK", "peta": "PETA"}  # peta packs set their own
 
 
 def short_metric(name):
@@ -187,6 +187,11 @@ def fmt_value(v, unit, fixed=None):
     frac = v != int(v) if fixed is None else fixed
     if ul in ("%", "persen"):
         return f"{fmt_num(v, fixed=True)}%"
+    if u == "m":
+        # Heights and relief from a 30 m DEM: whole metres (more decimals would be false precision).
+        return f"{fmt_num(v, 0)} m"
+    if u == "°":
+        return f"{fmt_num(v, 1, fixed=True)}°"
     if ul.split(" ")[0] in ("jiwa", "orang", "kk", "rumah", "unit"):
         return f"{fmt_num(v, 0)} {u}"
     if u == "Rp" or ul == "rupiah":
@@ -433,32 +438,86 @@ def _djpk(metric, level, period, opts):
     }
 
 
-# --- Peta Wilayah: land cover (ESA WorldCover) ------------------------------------
+# --- Peta Wilayah: land cover (ESA WorldCover) and terrain (Copernicus DEM) ------
 
-PETA_GROUPS = ("tutupan",)  # rankable Peta indicator groups: land cover shares
-_WORLDCOVER = "esa_worldcover_2021_v200"
+# Rankable Peta indicator groups and what each is read from.
+PETA = {
+    "tutupan": {"dataset": "esa_worldcover_2021_v200", "short": "ESA WORLDCOVER", "noun": "ESA WorldCover"},
+    "medan": {"dataset": "copernicus_dem_glo30", "short": "COPERNICUS DEM", "noun": "Copernicus DEM GLO-30"},
+}
+PETA_GROUPS = tuple(PETA)
+# How a province value is built from its kabupaten/kota. "area": area-weighted mean (shares
+# of area, and means over equal-area pixels); "max": the highest. Absent: not combinable
+# (a median or a percentile spread can't be rebuilt from the parts), so no provinsi ranking.
+_PETA_PROVINCE = {"elevation_max": "max", "elevation_median": None, "relief": None}
+# Caveats a slide must carry, per indicator.
+_PETA_NOTES = {
+    "lc_tree": "Tutupan pohon termasuk perkebunan (sawit, akasia): bukan luas hutan.",
+    "elevation_max": "Titik tertinggi = piksel DEM 30 m tertinggi (permukaan, termasuk tajuk pohon): "
+                     "bukan tinggi resmi puncak gunung.",
+    "lowland_lt_5": "Batas bawah: DEM mengukur permukaan (tajuk dan bangunan), jadi dataran rendah sebenarnya bisa lebih luas.",
+    "lowland_lt_10": "Batas bawah: DEM mengukur permukaan (tajuk dan bangunan), jadi dataran rendah sebenarnya bisa lebih luas.",
+    "relief_bergunung": "Kelas relief NusaStats (selisih tinggi dalam jendela 1 km), bukan klasifikasi resmi.",
+    "relief_datar": "Kelas relief NusaStats (selisih tinggi dalam jendela 1 km), bukan klasifikasi resmi.",
+}
+
+
+def _peta_indicator(metric):
+    ind = PetaIndicator.objects.filter(key=metric, group__in=PETA_GROUPS).first()
+    if ind is None:
+        keys = ", ".join(PetaIndicator.objects.filter(group__in=PETA_GROUPS).order_by("group", "sort")
+                         .values_list("key", flat=True))
+        raise PackError(f"Indikator peta '{metric}' tidak dikenal. Pilihan: {keys}.")
+    return ind
+
+
+def _peta_context(ind, regions, values):
+    """What a Peta pack says about its data: dataset record, period, notes, source line."""
+    spec = PETA[ind.group]
+    log = PetaLoadLog.objects.order_by("-loaded_at").first()
+    dataset = (log.datasets or {}).get(spec["dataset"], {}) if log else {}
+    if ind.group == "tutupan":
+        years = sorted({r.landcover_year for c, r in regions.items() if c in values and r.landcover_year})
+        if len(years) > 1:
+            raise PackError(f"Nilai tutupan lahan dari beberapa tahun ({', '.join(map(str, years))}); tidak bisa diurutkan.")
+        period = str(years[0]) if years else str(dataset.get("year", ""))
+        what = (f"Persentase luas wilayah per kelas tutupan lahan ESA WorldCover {period} (10 m), dihitung NusaStats "
+                f"di dalam batas BIG 1:10.000. Citra satelit {period}, bukan data administrasi.")
+    else:
+        # The DEM is one surface from TanDEM-X passes 2011-2015, not a yearly series.
+        period = "2011–2015"
+        what = ("Dihitung NusaStats dari Copernicus DEM GLO-30 (30 m, citra radar TanDEM-X 2011–2015) di dalam batas "
+                "BIG 1:10.000. DEM mengukur permukaan, termasuk tajuk pohon dan bangunan.")
+    notes = [what] + ([_PETA_NOTES[ind.key]] if ind.key in _PETA_NOTES else [])
+    unit_word = "% luas wilayah" if ind.unit == "%" else ind.unit
+    return {
+        "spec": spec, "log": log, "dataset": dataset, "period": period, "notes": notes,
+        "metric": f"{ind.label_id} ({unit_word})" if ind.group == "tutupan" else ind.label_id,
+        "attribution": dataset.get("attribution", spec["noun"]),
+        # "ESA WORLDCOVER 2021"; the DEM has no single year, so no year on its eyebrow.
+        "kicker": f"{spec['short']} {period}" if ind.group == "tutupan" else spec["short"],
+    }
+
+
+def _peta_log(log):
+    return ({"id": log.id, "path": log.path, "export_sha256": log.export_sha256, "loaded_at": _iso(log.loaded_at)}
+            if log else None)
 
 
 def _peta(metric, level, period, opts):
-    """A land cover share per kabupaten or kecamatan (peta app, data/peta_wilayah).
-    Kemendagri codes on both sides, so no crosswalk; labels from the latest
-    Dukcapil snapshot (same code system), else the BIG polygon's own name."""
-    ind = PetaIndicator.objects.filter(key=metric, group__in=PETA_GROUPS).first()
-    if ind is None:
-        keys = ", ".join(PetaIndicator.objects.filter(group__in=PETA_GROUPS).order_by("sort").values_list("key", flat=True))
-        raise PackError(f"Indikator tutupan lahan '{metric}' tidak dikenal. Pilihan: {keys}.")
+    """A land cover share or a terrain measure per kabupaten or kecamatan (peta app,
+    data/peta_wilayah); provinsi combines its kabupaten (_peta_provinces). Kemendagri codes
+    on both sides, so no crosswalk; labels from the latest Dukcapil snapshot (same code
+    system), else the BIG polygon's own name."""
+    ind = _peta_indicator(metric)
     if level == "provinsi":
         return _peta_provinces(ind, opts)
     plevel = "regency" if level == "kabupaten" else "district"
-    log = PetaLoadLog.objects.order_by("-loaded_at").first()
-    dataset = (log.datasets or {}).get(_WORLDCOVER, {}) if log else {}
     regions = {r.code: r for r in PetaRegion.objects.filter(level=plevel).prefetch_related("source_files")}
     values = dict(PetaValue.objects.filter(indicator=ind, year=0, region__level=plevel)
                   .values_list("region__code", "value"))
-    years = sorted({r.landcover_year for c, r in regions.items() if c in values and r.landcover_year})
-    if len(years) > 1:
-        raise PackError(f"Nilai tutupan lahan dari beberapa tahun ({', '.join(map(str, years))}); tidak bisa diurutkan.")
-    year = years[0] if years else None
+    ctx = _peta_context(ind, regions, values)
+    dataset_key = ctx["spec"]["dataset"]
 
     # Names (and the kecamatan's kabupaten) from Dukcapil: the same Kemendagri codes.
     periods = dukcapil_periods()
@@ -481,20 +540,16 @@ def _peta(metric, level, period, opts):
             if parent:
                 row.update(name=name, parent=parent)
         rows.append(row)
-        prov_refs.append({"code": code, "landcover_year": r.landcover_year, "computed": r.landcover_provenance,
+        prov_refs.append({"code": code,
+                          "computed": r.landcover_provenance if ind.group == "tutupan" else r.terrain_provenance,
                           "tiles": [{"key": f.key, "url": f.url, "sha256": f.sha256, "downloaded_at": f.downloaded_at}
-                                    for f in r.source_files.all() if f.dataset == _WORLDCOVER]})
+                                    for f in r.source_files.all() if f.dataset == dataset_key]})
 
     # Universe: every polygon the pipeline has (it computes all BIG polygons; one it
     # skipped has no row and shows up here as missing) plus every Dukcapil region
     # with a Kemendagri code at this level.
     expected = set(regions) | {c for c in (kab_label if plevel == "regency" else kec_name) if re.fullmatch(r"\d+", c)}
-    notes = [
-        f"Persentase luas wilayah per kelas tutupan lahan ESA WorldCover {year or ''} (10 m), dihitung NusaStats "
-        "di dalam batas BIG 1:10.000. Citra satelit 2021, bukan data administrasi.".replace("  ", " "),
-    ]
-    if metric == "lc_tree":
-        notes.append("Tutupan pohon termasuk perkebunan (sawit, akasia): bukan luas hutan.")
+    notes = list(ctx["notes"])
     if plevel == "district" and not opts.get("provs"):
         # Nationally only: these rows carry no province code, so no province scope holds them.
         twins = polygon_twins(duk.filter(level="district"))
@@ -502,37 +557,35 @@ def _peta(metric, level, period, opts):
         if no_code:
             notes.append(f"{fmt_int(len(no_code))} kecamatan di data Dukcapil tanpa kode Kemendagri (tanpa poligon) "
                          "tidak ikut diurutkan.")
-    attribution = dataset.get("attribution", "© ESA WorldCover project 2021")
     return {
         "rows": rows,
         "expected": [(c, c) for c in sorted(expected)],
-        "metric": f"{ind.label_id} (% luas wilayah)",
+        "metric": ctx["metric"],
         "unit": opts.get("unit") or ind.unit,
-        "period": str(year or ""),
-        "source": f"ESA WorldCover {year or ''} v200 — {ind.label_id} per {LEVEL_TITLE[level]}, "
-                  f"dihitung NusaStats dalam batas BIG 1:10.000. {attribution}".replace("  ", " "),
+        "period": ctx["period"],
+        "kicker": ctx["kicker"],
+        "source": f"{ctx['spec']['noun']} — {ind.label_id} per {LEVEL_TITLE[level]}, dihitung NusaStats dalam batas "
+                  f"BIG 1:10.000. {ctx['attribution']}",
         "notes": notes,
-        "provenance": {"source": "peta", "indicator": ind.key, "method": ind.method, "dataset": dataset,
-                       "load_log": ({"id": log.id, "path": log.path, "export_sha256": log.export_sha256,
-                                     "loaded_at": _iso(log.loaded_at)} if log else None),
-                       "rows": prov_refs},
+        "provenance": {"source": "peta", "indicator": ind.key, "method": ind.method, "dataset": ctx["dataset"],
+                       "load_log": _peta_log(ctx["log"]), "rows": prov_refs},
     }
 
 
 def _peta_provinces(ind, opts):
-    """A province's share, combined from its kabupaten/kota: sum(share x area) / sum(area),
-    i.e. the class's km² over the province's km². A province gets a value only when every
-    kabupaten/kota of it (Dukcapil's list, same Kemendagri codes) has one; otherwise it
-    has none and the pack reports it, never a partial sum."""
-    log = PetaLoadLog.objects.order_by("-loaded_at").first()
-    dataset = (log.datasets or {}).get(_WORLDCOVER, {}) if log else {}
+    """A province's value, combined from its kabupaten/kota: area-weighted (a share of area,
+    i.e. the class's km² over the province's km²; or a mean over equal-area pixels) or the
+    highest (titik tertinggi). A province gets a value only when every kabupaten/kota of it
+    (Dukcapil's list, same Kemendagri codes) has one; otherwise it has none and the pack
+    reports it, never a partial sum."""
+    how = _PETA_PROVINCE.get(ind.key, "area")
+    if how is None:
+        raise PackError(f"{ind.label_id} tidak bisa digabung dari kabupaten/kota (median dan rentang persentil "
+                        "tidak bisa dihitung ulang dari bagiannya). Pakai tingkat kabupaten atau kecamatan.")
     regions = {r.code: r for r in PetaRegion.objects.filter(level="regency")}
     values = dict(PetaValue.objects.filter(indicator=ind, year=0, region__level="regency")
                   .values_list("region__code", "value"))
-    years = sorted({r.landcover_year for c, r in regions.items() if c in values and r.landcover_year})
-    if len(years) > 1:
-        raise PackError(f"Nilai tutupan lahan dari beberapa tahun ({', '.join(map(str, years))}); tidak bisa digabung.")
-    year = years[0] if years else None
+    ctx = _peta_context(ind, regions, values)
 
     periods = dukcapil_periods()
     duk = DukcapilRegion.objects.filter(period=periods[0]) if periods else DukcapilRegion.objects.none()
@@ -543,6 +596,8 @@ def _peta_provinces(ind, opts):
             kabs.setdefault(code[:2], set()).add(code)
     universe = sorted(set(prov_names) | set(kabs))
 
+    method = ("max over its kabupaten/kota" if how == "max"
+              else "sum(value × area_km2) / sum(area_km2) over its kabupaten/kota")
     rows, prov_refs, incomplete = [], [], []
     for prov in universe:
         members = sorted(kabs.get(prov, ()))
@@ -551,37 +606,34 @@ def _peta_provinces(ind, opts):
             incomplete.append(prov)
             continue
         area = sum(regions[k].area_km2 for k in members)
-        value = sum(values[k] * regions[k].area_km2 for k in members) / area
-        if not 0 <= value <= 100 + 1e-9:
-            raise PackError(f"Gabungan tutupan lahan provinsi {prov} = {value:.4f}%, di luar 0–100: data diperiksa dulu.")
+        if how == "max":
+            value = max(values[k] for k in members)
+        else:
+            value = sum(values[k] * regions[k].area_km2 for k in members) / area
+            if ind.unit == "%" and not 0 <= value <= 100 + 1e-9:
+                raise PackError(f"Gabungan {ind.label_id} provinsi {prov} = {value:.4f}%, di luar 0–100: data diperiksa dulu.")
         rows.append({"code": prov, "label": prov_names.get(prov) or prov, "value": round(value, 4), "geo": prov})
-        prov_refs.append({"code": prov, "method": "sum(share_pct × area_km2) / sum(area_km2) over its kabupaten/kota",
-                          "area_km2": round(area, 2),
-                          "inputs": [{"code": k, "share_pct": values[k], "area_km2": regions[k].area_km2,
-                                      "computed": regions[k].landcover_provenance} for k in members]})
-    attribution = dataset.get("attribution", "© ESA WorldCover project 2021")
-    notes = [
-        f"Persentase luas wilayah per kelas tutupan lahan ESA WorldCover {year or ''} (10 m), dihitung NusaStats "
-        "di dalam batas BIG 1:10.000. Citra satelit 2021, bukan data administrasi.".replace("  ", " "),
-        "Angka provinsi digabung NusaStats dari kabupaten/kotanya: luas kelas dibagi luas provinsi "
-        "(dari persentase yang dibulatkan 0,01%, selisih di bawah 0,01 poin).",
-    ]
-    if ind.key == "lc_tree":
-        notes.append("Tutupan pohon termasuk perkebunan (sawit, akasia): bukan luas hutan.")
+        prov_refs.append({"code": prov, "method": method, "area_km2": round(area, 2),
+                          "inputs": [{"code": k, "value": values[k], "area_km2": regions[k].area_km2,
+                                      "computed": (regions[k].landcover_provenance if ind.group == "tutupan"
+                                                   else regions[k].terrain_provenance)} for k in members]})
+    notes = list(ctx["notes"])
+    notes.insert(1, "Angka provinsi = titik tertinggi di antara kabupaten/kotanya." if how == "max" else
+                 "Angka provinsi digabung NusaStats dari kabupaten/kotanya, ditimbang dengan luas wilayah"
+                 + (" (dari persentase yang dibulatkan 0,01%, selisih di bawah 0,01 poin)." if ind.unit == "%" else "."))
     return {
         "rows": rows,
         "expected": [(c, c) for c in universe],
-        "metric": f"{ind.label_id} (% luas wilayah)",
+        "metric": ctx["metric"],
         "unit": opts.get("unit") or ind.unit,
-        "period": str(year or ""),
-        "source": f"ESA WorldCover {year or ''} v200 — {ind.label_id} per Provinsi, digabung NusaStats dari "
-                  f"kabupaten/kota dalam batas BIG 1:10.000. {attribution}".replace("  ", " "),
+        "period": ctx["period"],
+        "kicker": ctx["kicker"],
+        "source": f"{ctx['spec']['noun']} — {ind.label_id} per Provinsi, digabung NusaStats dari kabupaten/kota "
+                  f"dalam batas BIG 1:10.000. {ctx['attribution']}",
         "notes": notes,
-        "provenance": {"source": "peta", "indicator": ind.key, "method": ind.method, "dataset": dataset,
-                       "aggregate": "provinsi from kabupaten/kota, area-weighted", "incomplete": incomplete,
-                       "load_log": ({"id": log.id, "path": log.path, "export_sha256": log.export_sha256,
-                                     "loaded_at": _iso(log.loaded_at)} if log else None),
-                       "rows": prov_refs},
+        "provenance": {"source": "peta", "indicator": ind.key, "method": ind.method, "dataset": ctx["dataset"],
+                       "aggregate": f"provinsi from kabupaten/kota: {method}", "incomplete": incomplete,
+                       "load_log": _peta_log(ctx["log"]), "rows": prov_refs},
     }
 
 
@@ -713,7 +765,7 @@ def build_pack(source, metric, level, period=None, *, prov=None, top=5, bottom=5
             "prov": prov or "",
             "prov_name": pname or "",
             "title": short_metric(label_metric or built["metric"]),
-            "kicker": kicker_for(source, built["period"]),
+            "kicker": (f"DATA • {built['kicker']}" if built.get("kicker") else kicker_for(source, built["period"])),
             "period_label": period_label(built["period"]),
             "n": n,
             "expected": total,
