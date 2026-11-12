@@ -315,12 +315,32 @@ function layout(
 ): NonNullable<ReturnType<typeof layoutOnce>> {
   const split = withBoxes && spec.boxNames ? kabInsets(spec.feats) : null;
   // Boxes that don't all fit: the map as before, framed on its mainland with the far islands named in a note.
-  return (split && layoutOnce(spec, geo, BOX, panels, blocks, stdInfo, split)) || layoutOnce(spec, geo, BOX, panels, blocks, stdInfo, null)!;
+  const once = (lift: number) =>
+    (split && layoutOnce(spec, geo, BOX, panels, blocks, stdInfo, split, lift)) || layoutOnce(spec, geo, BOX, panels, blocks, stdInfo, null, lift)!;
+  const base = once(0);
+  // Small units below the info block's top whose names had to go above it (the info sits on
+  // TikTok's bottom bar, so nothing fits under it): lift the info a row or two so the names sit
+  // under it, next to their units. Kept only when the leaders get clearly shorter and nothing
+  // else is lost (no more numbered names, the map about as large).
+  const info = base.infoRect;
+  const under = (x: typeof base) =>
+    x.infoRect ? x.leaders.filter((l) => l.anchor[1] > x.infoRect!.y && l.rect.y + l.rect.h <= x.infoRect!.y + 1).length : 0;
+  if (!info || !under(base)) return base;
+  const reach = (x: typeof base) => x.leaders.reduce((t, l) => t + Math.hypot(l.rect.x + l.rect.w / 2 - l.anchor[0], l.rect.y + l.rect.h / 2 - l.anchor[1]), 0);
+  const row = Math.ceil(spec.labelSize.leader * 1.3) + 12;
+  let best = base;
+  for (const k of [1, 2]) {
+    const x = once(row * k);
+    const ok = x.leaders.length >= base.leaders.length && x.numbered.length <= base.numbered.length && x.crowded <= base.crowded &&
+      x.fitValue >= base.fitValue * 0.9 && reach(x) < reach(best) * 0.85;
+    if (ok) best = x;
+  }
+  return best;
 }
 
 function layoutOnce(
   spec: Spec, geo: Geos, BOX: { w: number; h: number }, panels: number, blocks: Blocks | undefined, stdInfo: { w: number; h: number } | undefined,
-  split: ReturnType<typeof kabInsets>,
+  split: ReturnType<typeof kabInsets>, lift = 0,
 ) {
   const { kode, names } = spec;
   const all = spec.feats;
@@ -347,8 +367,8 @@ function layoutOnce(
     // Card coordinates: the title in the top-left, the info block in a bottom corner.
     const header: Rect = { x: PAD, y: ZONE.wordmarkTop - 20, ...blocks.header, h: blocks.header.h + (ZONE.bodyTop - ZONE.wordmarkTop + 20) };
     const infos: Rect[] = [
-      { x: PAD, y: ZONE.textBottom - blocks.info.h, ...blocks.info },
-      { x: Math.max(PAD, 920 - blocks.info.w), y: ZONE.textBottom - blocks.info.h, ...blocks.info },
+      { x: PAD, y: ZONE.textBottom - blocks.info.h - lift, ...blocks.info },
+      { x: Math.max(PAD, 920 - blocks.info.w), y: ZONE.textBottom - blocks.info.h - lift, ...blocks.info },
     ];
     const f = fitAround(sampleShape(outline, to, vw, vh), vw, vh, BOX, panels > 1 ? PANO_SHARE : 1, fullBands(panels), header, infos, panels > 1);
     ({ s, mx, my } = f);
@@ -357,7 +377,7 @@ function layoutOnce(
     infoRect = f.info;
   } else if (stdInfo) {
     // Box coordinates (from PAD, BOX_TOP): the info block sits above y 1500 in a bottom corner of slide 1.
-    const y = ZONE.textBottom - BOX_TOP - stdInfo.h;
+    const y = ZONE.textBottom - BOX_TOP - stdInfo.h - lift;
     const infos: Rect[] = [
       { x: PAD, y, ...stdInfo },
       { x: Math.max(PAD, 920 - stdInfo.w), y, ...stdInfo },
