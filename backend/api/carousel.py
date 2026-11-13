@@ -20,6 +20,8 @@ or periods in that year and none was chosen; refuse when two rows land on one
 Kemendagri region. Values are stored as-is; rounding is a rendering concern.
 """
 
+import hashlib
+import json
 import re
 import unicodedata
 from decimal import ROUND_HALF_UP, Decimal
@@ -35,6 +37,7 @@ from stats.models import DataPoint
 
 from .djpk_views import _metric_values as djpk_metric_values
 from .dukcapil_views import (
+    BIG_AREA,
     _metric_values as dukcapil_metric_values,
     _periods as dukcapil_periods,
     _RegencyIndex,
@@ -192,7 +195,7 @@ def fmt_value(v, unit, fixed=None):
         return f"{fmt_num(v, 0)} m"
     if u == "°":
         return f"{fmt_num(v, 1, fixed=True)}°"
-    if ul.split(" ")[0] in ("jiwa", "orang", "kk", "rumah", "unit"):
+    if ul.split(" ")[0] in ("jiwa", "orang", "kk", "rumah", "unit", "kecamatan", "desa"):
         return f"{fmt_num(v, 0)} {u}"
     if u == "Rp" or ul == "rupiah":
         for size, word in ((1e12, "triliun"), (1e9, "miliar"), (1e6, "juta")):
@@ -310,7 +313,99 @@ def _bps(metric, level, period, opts):
 
 # --- Dukcapil ----------------------------------------------------------------
 
+# Administrative counts: how many kecamatan and desa/kelurahan a region has, counted from
+# the Kemendagri codes on BIG's 1:10.000 desa map (the official count the wilayah cards
+# show; Dukcapil's own desa and kecamatan lists lag new splits: Kab. Sorong 13 vs 30).
+WILAYAH = {
+    "jumlah_kecamatan": {"label": "Jumlah kecamatan", "unit": "kecamatan", "levels": ("provinsi", "kabupaten"), "digits": 6},
+    "jumlah_desa": {"label": "Jumlah desa/kelurahan", "unit": "desa", "levels": ("provinsi", "kabupaten", "kecamatan"), "digits": 10},
+}
+
+
+def _wilayah(metric, level, period, opts):
+    spec = WILAYAH[metric]
+    if level not in spec["levels"]:
+        raise PackError(f"{spec['label']} hanya per {' / '.join(spec['levels'])}.")
+    periods = dukcapil_periods()
+    if not periods:
+        raise PackError("Belum ada snapshot Dukcapil (nama wilayah).")
+    names_period = periods[0]
+    dlevel = {"provinsi": "province", "kabupaten": "regency", "kecamatan": "district"}[level]
+    qs = DukcapilRegion.objects.filter(level=dlevel, period=names_period)
+    twins = polygon_twins(qs)
+    regions = {r["code"]: r for r in qs.values("code", "name", "status", "kab_code")
+               if r["code"] not in twins and r["code"].isdigit()}
+    width = len(next(iter(regions))) if regions else 0
+    kabs = set(DukcapilRegion.objects.filter(level="regency", period=names_period).values_list("code", flat=True))
+    with open(BIG_AREA, "rb") as f:
+        raw = f.read()
+    sha = hashlib.sha256(raw).hexdigest()  # the exact file counted, for the provenance
+    desa = [c for c in json.loads(raw) if re.fullmatch(r"\d{10}", c)]
+    # BIG desa under a kabupaten code Dukcapil doesn't have: Papua Barat Daya's old 92xx codes
+    # in BIG's pre-split Papua Barat archive, the same desa again under 96xx. Never counted.
+    stray = sorted({c[:4] for c in desa if c[:4] not in kabs})
+    stray_n = sum(1 for c in desa if c[:4] not in kabs)
+    units = {c[: spec["digits"]] for c in desa if c[:4] in kabs}
+    counts = {}
+    for u in units:
+        counts[u[:width]] = counts.get(u[:width], 0) + 1
+    # BIG kecamatan (desa) under a kecamatan code Dukcapil has no row for: counted in their
+    # kabupaten and province, but at kecamatan level they have no name to rank under.
+    unnamed = sorted(k for k in counts if k not in regions) if level == "kecamatan" else []
+
+    kab_label = {}
+    if dlevel == "district":
+        for r in DukcapilRegion.objects.filter(level="regency", period=names_period).values("code", "name", "status"):
+            kab_label[r["code"]] = f"{_DUKCAPIL_PREFIX.get(r['status'], '')} {r['name']}".strip()
+
+    def label(r):
+        if dlevel == "province":
+            return r["name"]
+        if dlevel == "regency":
+            return f"{_DUKCAPIL_PREFIX.get(r['status'], '')} {r['name']}".strip()
+        parent = kab_label.get(r["kab_code"])
+        return f"{r['name']}, {parent}" if parent else r["name"]
+
+    rows, refs = [], []
+    for code, r in regions.items():
+        if code not in counts:
+            continue  # no BIG desa under this code: absent, reported by build_pack
+        row = {"code": code, "label": label(r), "value": counts[code], "geo": code}
+        if dlevel == "district" and kab_label.get(r["kab_code"]):
+            row.update(name=r["name"], parent=kab_label[r["kab_code"]])
+        rows.append(row)
+        refs.append({"code": code, "count": counts[code], "method": f"distinct {spec['digits']}-digit codes under {code}"})
+
+    noun = "kecamatan" if metric == "jumlah_kecamatan" else "desa/kelurahan"
+    notes = [f"Dihitung NusaStats: jumlah kode {noun} Kemendagri pada peta batas desa BIG 1:10.000. "
+             "Daftar Dukcapil bisa lebih sedikit di daerah yang baru dimekarkan."]
+    if stray and (not opts.get("provs") or set(opts["provs"]) & {"92", "96"}):
+        notes.append(f"{fmt_int(stray_n)} desa BIG berkode lama Papua Barat ({', '.join(stray)}; arsip sebelum pemekaran "
+                     "Papua Barat Daya) tidak dihitung: desa yang sama ada lagi dengan kode 96.")
+    scoped = [u for u in unnamed if not opts.get("provs") or u[:2] in opts["provs"]]
+    if scoped:
+        notes.append(f"{fmt_int(len(scoped))} kecamatan di peta BIG belum ada di daftar Dukcapil, jadi tanpa nama dan "
+                     "tidak ikut diperingkat (desanya tetap dihitung di kabupaten/kotanya).")
+    return {
+        "rows": rows,
+        "expected": [(c, c) for c in regions],
+        "twins": twins,
+        "metric": spec["label"],
+        "unit": spec["unit"],
+        "period": "peta BIG",
+        "kicker": "BIG 1:10.000",
+        "source": f"BIG 1:10.000 (peta batas desa) — {spec['label']} per {LEVEL_TITLE[level]}, dihitung NusaStats; "
+                  f"nama wilayah: Ditjen Dukcapil Kemendagri",
+        "notes": notes,
+        "provenance": {"source": "big_boundaries", "file": "backend/dukcapil/data/big_area.json", "sha256": sha,
+                       "generated_by": "data/big_boundaries/compute_area.py", "names_period": names_period,
+                       "stray_kab_codes": stray, "unnamed_kecamatan": unnamed, "rows": refs},
+    }
+
+
 def _dukcapil(metric, level, period, opts):
+    if metric in WILAYAH:
+        return _wilayah(metric, level, period, opts)
     periods = dukcapil_periods()
     period = period or (periods[0] if periods else None)
     if period not in periods:

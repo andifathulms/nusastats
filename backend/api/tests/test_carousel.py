@@ -1,6 +1,7 @@
 """carousel-data/1 packs (api.carousel): one source, complete or refused,
 codes in the source's scheme, map codes through the crosswalks."""
 
+import hashlib
 import json
 
 import pytest
@@ -400,3 +401,45 @@ def test_peta_local_relief_ranks_area_weighted_with_its_caveat(db):
     assert "jendela 1×1 km" in kab["pack"]["notes"]  # what "relief lokal" means, on the slide
     # A mean over equal-area pixels combines area-weighted: (40 x 100 + 10 x 300) / 400.
     assert build_pack("peta", "local_relief_mean", "provinsi")["pack"]["rows"][0]["value"] == 17.5
+
+
+@pytest.fixture
+def big_map(tmp_path, monkeypatch):
+    """A BIG desa map: Balikpapan 2 kecamatan / 3 desa, Samarinda 1 / 1, a desa under a
+    kecamatan Dukcapil doesn't list (647203), and Papua Barat Daya's old 92xx duplicate."""
+    import json
+
+    import api.carousel as carousel
+
+    path = tmp_path / "big_area.json"
+    path.write_text(json.dumps({"6471010001": 1.0, "6471010002": 1.0, "6471020001": 1.0,
+                                "6472010001": 1.0, "6472030001": 1.0, "9201010001": 1.0}))
+    monkeypatch.setattr(carousel, "BIG_AREA", str(path))
+    return path
+
+
+@pytest.mark.django_db
+def test_kecamatan_and_desa_counts_come_from_the_big_codes(db, big_map):
+    _duk("64", "Kalimantan Timur", "Provinsi", level="province")
+    _duk("6471", "Balikpapan", "Kota")
+    _duk("6472", "Samarinda", "Kota")
+    for code, name in (("647101", "Balikpapan Selatan"), ("647102", "Balikpapan Kota"), ("647201", "Palaran")):
+        DukcapilRegion.objects.create(code=code, name=name, status="", level="district", period=PERIOD, prov_code="64",
+                                      kab_code=code[:4], attributes={}, fetched_at="2026-10-01T00:00:00Z")
+
+    kec = build_pack("dukcapil", "jumlah_kecamatan", "kabupaten")
+    # Samarinda: its BIG desa sit under 2 kecamatan codes (one not in Dukcapil's list yet).
+    assert kec["pack"]["rows"] == [{"label": "Kota Balikpapan", "code": "6471", "value": 2},
+                                   {"label": "Kota Samarinda", "code": "6472", "value": 2}]
+    assert kec["map"]["kicker"] == "DATA • BIG 1:10.000"
+    assert "92xx" not in kec["pack"]["notes"] and "9201" in kec["pack"]["notes"]  # the old code, reported
+    assert kec["provenance"]["sha256"] == hashlib.sha256(big_map.read_bytes()).hexdigest()
+
+    desa = build_pack("dukcapil", "jumlah_desa", "kecamatan")
+    assert [(r["code"], r["value"]) for r in desa["pack"]["rows"]] == [("647101", 2), ("647102", 1), ("647201", 1)]
+    assert desa["map"]["values"][0]["display"] == "2 desa"
+    assert "1 kecamatan di peta BIG belum ada di daftar Dukcapil" in desa["pack"]["notes"]
+    # 3 + 2 desa; the old 92xx duplicate never counts.
+    assert build_pack("dukcapil", "jumlah_desa", "provinsi")["pack"]["rows"][0]["value"] == 5
+    with pytest.raises(PackError, match="hanya per provinsi / kabupaten"):
+        build_pack("dukcapil", "jumlah_kecamatan", "kecamatan")

@@ -498,7 +498,7 @@ function FocusBody({
         <>
           <OffFrameNote items={fit.offFrame} />
           {peta && <LayerLegend peta={peta} bg={bg} />}
-          <div className="mt-6 text-[96px] font-extrabold leading-none tracking-[-0.02em] tabular-nums">{v.display}</div>
+          <BigValue display={v.display} />
           <div className="mt-3 text-[26px] text-coal-muted">
             {map.title}, {map.period_label}
           </div>
@@ -546,6 +546,24 @@ function FocusBody({
         </svg>
       }
     />
+  );
+}
+
+/** The focus card's value: a long one with a word unit ("51 kecamatan", "190.223 jiwa") keeps the
+ * number at full size and sets the unit smaller beside it, so it never runs past the column. */
+function BigValue({ display }: { display: string }) {
+  const m = display.length > 10 ? /^([^A-Za-z]+?)\s+([A-Za-z].*)$/.exec(display) : null;
+  return (
+    <div className="mt-6 text-[96px] font-extrabold leading-none tracking-[-0.02em] tabular-nums">
+      {m ? (
+        <>
+          {m[1]}
+          <span className="ml-3 text-[44px] font-bold tracking-normal">{m[2]}</span>
+        </>
+      ) : (
+        display
+      )}
+    </div>
   );
 }
 

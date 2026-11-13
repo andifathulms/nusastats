@@ -106,6 +106,18 @@ const PRESETS: { group: string; items: Preset[] }[] = [
     ],
   },
   {
+    // Counted from the Kemendagri codes on BIG's desa map (the count the wilayah cards show).
+    // Kecamatan per kecamatan makes no sense; "fewest desa" per kecamatan ties at 1 across
+    // dozens, so that one is kabupaten and provinsi only.
+    group: "Wilayah administrasi",
+    items: [
+      { label: "Kecamatan terbanyak", source: "dukcapil", metric: "jumlah_kecamatan", recipe: "top", levels: ["kabupaten", "provinsi"] },
+      { label: "Kecamatan paling sedikit", source: "dukcapil", metric: "jumlah_kecamatan", recipe: "terendah", levels: ["kabupaten", "provinsi"] },
+      { label: "Desa/kelurahan terbanyak", source: "dukcapil", metric: "jumlah_desa", recipe: "top" },
+      { label: "Desa/kelurahan paling sedikit", source: "dukcapil", metric: "jumlah_desa", recipe: "terendah", levels: ["kabupaten", "provinsi"] },
+    ],
+  },
+  {
     group: "Usia & keluarga",
     items: [
       { label: "Warga paling tua", source: "dukcapil", metric: "median_age", recipe: "top" },
@@ -505,15 +517,21 @@ function CarouselTool({ tema }: { tema: Tema }) {
                       </optgroup>
                     ))
                   : form.source === "dukcapil"
-                  ? dukIndicators?.groups.map((g) => (
-                      <optgroup key={g.group} label={g.group}>
-                        {g.indicators.map((i) => (
-                          <option key={i.field} value={i.field}>
-                            {i.label_id}
-                          </option>
-                        ))}
-                      </optgroup>
-                    ))
+                  ? [
+                      <optgroup key="wilayah" label="Wilayah administrasi (peta BIG)">
+                        <option value="jumlah_kecamatan">Jumlah kecamatan (kabupaten, provinsi)</option>
+                        <option value="jumlah_desa">Jumlah desa/kelurahan</option>
+                      </optgroup>,
+                      ...(dukIndicators?.groups.map((g) => (
+                        <optgroup key={g.group} label={g.group}>
+                          {g.indicators.map((i) => (
+                            <option key={i.field} value={i.field}>
+                              {i.label_id}
+                            </option>
+                          ))}
+                        </optgroup>
+                      )) ?? []),
+                    ]
                   : djpkAccounts?.groups.map((g) => (
                       <optgroup key={g.group} label={g.group}>
                         {g.accounts.map((a) => (
