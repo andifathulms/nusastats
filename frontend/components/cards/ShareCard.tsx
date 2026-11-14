@@ -472,13 +472,13 @@ export function OffFrameNote({ items }: { items: OffFrame[] }) {
   return <p className="mb-4 shrink-0 text-[24px] leading-snug text-coal-muted">Di luar bingkai: {shown.join(", ")}{more}.</p>;
 }
 
-/** The source line: 22 px in the band just under the text zone (y 1514), the
+/** The source line: 16 px in the band just under the text zone (y 1514), the
  * same spot on every card whatever the layout. It's attribution, repeated in the
  * caption, so it may sit where TikTok's caption starts. Fixed to the card's own
  * 1080×1920 viewport (the /card page is exactly the card). */
 export function Footer({ source }: { source: string }) {
   return (
-    <p className="fixed text-[22px] leading-snug text-coal-muted" style={{ left: PAD, top: ZONE.sourceTop, width: CONTENT_W }}>
+    <p className="fixed text-[16px] leading-snug text-coal-muted" style={{ left: PAD, top: ZONE.sourceTop, width: CONTENT_W }}>
       Sumber: {source}. Batas wilayah indikatif (BIG).
     </p>
   );

@@ -97,6 +97,7 @@ const PRESETS: { group: string; items: Preset[] }[] = [
     group: "Penduduk",
     items: [
       { label: "Penduduk terbanyak", source: "dukcapil", metric: "jumlah_penduduk", recipe: "top" },
+      { label: "Penduduk paling sedikit", source: "dukcapil", metric: "jumlah_penduduk", recipe: "terendah" },
       { label: "Paling padat", source: "dukcapil", metric: "pop_density_big", recipe: "top" },
       { label: "Paling lengang", source: "dukcapil", metric: "pop_density_big", recipe: "terendah" },
       { label: "Pria vs wanita", source: "dukcapil", metric: "sex_ratio", recipe: "gap" },

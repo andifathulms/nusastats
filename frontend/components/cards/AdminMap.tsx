@@ -566,11 +566,12 @@ function layoutOnce(
   return { BOX, fitValue, boxTop, boxLeft, headerRect, infoRect, panels, crowded, paths, edge, borderPaths, nearPaths, labels: placed.labels, numbered, leaders, tones, s, mx, my, callouts, neighbourNames, offFrame: fit.offFrame, islandBoxes };
 }
 
-/** The source line under the info block (20 px, leading-snug, mt-3), wrapped to `w` px: a long
- * source runs to four lines, more than a fixed allowance covers. */
+/** The source line under the info block (16 px, leading-snug, mt-3), wrapped to `w` px: a long
+ * source runs to several lines, more than a fixed allowance covers. Small on purpose: it is
+ * attribution (repeated in the caption), and every line it saves goes to the map. */
 function sourceH(source: string, w: number, panorama: boolean): number {
   const text = `Sumber: ${source}${panorama ? ". Peta 1 dari 2, geser untuk lanjutannya" : ""}. Batas wilayah indikatif (BIG).`;
-  return 12 + Math.max(3, Math.ceil(textWidth(text, 20) / w)) * 27.5;
+  return 12 + Math.max(2, Math.ceil(textWidth(text, 16) / w)) * 22;
 }
 
 /** Tinggi penuh header: kicker, the name over two lines if needed, the province. */
@@ -766,7 +767,7 @@ function AdminMap({
           </div>
           <div className="absolute flex flex-col justify-end" style={{ left: m.infoRect.x, top: m.infoRect.y, width: m.infoRect.w, height: m.infoRect.h }}>
             {fullNotes}
-            <p className="mt-3 text-[20px] leading-snug text-coal-muted">
+            <p className="mt-3 text-[16px] leading-snug text-coal-muted">
               Sumber: {m.panels > 1 ? `${source}. Peta ${Math.min(panel, m.panels)} dari ${m.panels}, geser untuk lanjutannya` : source}. Batas wilayah indikatif (BIG).
             </p>
           </div>
@@ -781,7 +782,7 @@ function AdminMap({
             <div className="absolute flex flex-col justify-end"
               style={{ left: m.boxLeft + m.infoRect.x, top: BOX_TOP + m.infoRect.y, width: m.infoRect.w, height: m.infoRect.h }}>
               {notes}
-              <p className="mt-3 text-[20px] leading-snug text-coal-muted">
+              <p className="mt-3 text-[16px] leading-snug text-coal-muted">
                 Sumber: {m.panels > 1 ? `${source}. Peta ${Math.min(panel, m.panels)} dari ${m.panels}, geser untuk lanjutannya` : source}. Batas wilayah indikatif (BIG).
               </p>
             </div>
@@ -791,7 +792,7 @@ function AdminMap({
       {/* Footer is position: fixed, so it sits on whichever slide this card shows (Tinggi penuh: in the info block). */}
       {/* Later slides of a panorama: the source line where Footer goes, with a halo over the map. */}
       {m.infoRect && panel > 1 && (
-        <p className="fixed text-[20px] leading-snug text-coal-muted"
+        <p className="fixed text-[16px] leading-snug text-coal-muted"
           style={{ left: PAD, top: ZONE.sourceTop, width: 856, textShadow: "0 0 6px var(--nm-bg), 0 0 3px var(--nm-bg)" }}>
           Sumber: {source}. Peta {Math.min(panel, m.panels)} dari {m.panels}. Batas wilayah indikatif (BIG).
         </p>

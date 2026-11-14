@@ -160,7 +160,7 @@ that weighs it by population (lowland → rendah, nightlights → cahaya).
 Layout (`components/cards/layout.tsx`): text stays in x 64–920, y 160–1500, clear of TikTok's
 top bar, icon column and caption; the map may run to x 1016. Each card puts the facts below the
 map (wide kabupaten) or beside it on the left (tall ones, e.g. Barru), whichever gives the bigger
-map, and the 22 px source line sits at y 1514. `?debug=1` on any /card URL draws the zones and a
+map, and the 16 px source line sits at y 1514 (on wilayah cards it closes the facts block, kept small so the map gets the room). `?debug=1` on any /card URL draws the zones and a
 mock of TikTok's carousel UI on top.
 
 **Tema kartu** (next to the mode tabs on `/carousel`, remembered in the browser) picks the

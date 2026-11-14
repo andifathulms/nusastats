@@ -20,7 +20,7 @@ export const CONTENT_W = W - PAD - SAFE.right; // 856, the text column
  *
  *   text  x 64..920,  y 160..1500
  *   map   x 64..1016, y ..1500
- *   source line (22 px, also in the caption) at y 1514
+ *   source line (16 px, also in the caption) at y 1514
  *
  * (Letting the map run below 1500 was tried: it collides with the source line.)
  */
