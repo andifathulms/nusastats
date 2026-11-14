@@ -146,6 +146,24 @@ def test_dukcapil_pack_labels_and_notes(db):
 
 
 @pytest.mark.django_db
+def test_land_area_pack_credits_big_and_drops_the_population_caveat(db):
+    DukcapilIndicator.objects.create(field="luas_big", label_id="Luas Wilayah (BIG)", group="Kependudukan", unit="km²")
+    for code, name, km2 in (("3101", "Kepulauan Seribu", 10.7713), ("1273", "Sibolga", 11.5234),
+                            ("9301", "Merauke", 45204.2)):
+        DukcapilRegion.objects.filter(pk=_duk(code, name, "Kota" if code == "1273" else "Kabupaten").pk) \
+            .update(luas_big=km2)
+
+    result = build_pack("dukcapil", "luas_big", "kabupaten", top=0, bottom=2)
+    pack = result["pack"]
+
+    assert [r["code"] for r in pack["rows"]] == ["1273", "3101"]
+    assert "bukan hasil sensus" not in pack["notes"]
+    assert "BIG 1:10.000" in pack["notes"]
+    assert pack["source"].startswith("BIG 1:10.000")
+    assert result["map"]["kicker"] == "DATA • BIG 1:10.000"
+
+
+@pytest.mark.django_db
 def test_djpk_two_rows_on_one_kemendagri_region_is_refused(db):
     for djpk_code, name in (("2601", "Kab. Yahukimo"), ("3701", "Kab. Yahukimo")):
         region = ApbdRegion.objects.create(djpk_prov=djpk_code[:2], djpk_pemda=djpk_code[2:], djpk_code=djpk_code,

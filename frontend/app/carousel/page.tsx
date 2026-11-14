@@ -102,6 +102,7 @@ const PRESETS: { group: string; items: Preset[] }[] = [
       { label: "Pria vs wanita", source: "dukcapil", metric: "sex_ratio", recipe: "gap" },
       { label: "Keluarga terbesar", source: "dukcapil", metric: "avg_household", recipe: "top" },
       { label: "Wilayah terluas", source: "dukcapil", metric: "luas_big", recipe: "top" },
+      { label: "Wilayah terkecil", source: "dukcapil", metric: "luas_big", recipe: "terendah" },
       { label: "Paling banyak pindah", source: "dukcapil", metric: "net_migration_rate", recipe: "top" },
     ],
   },

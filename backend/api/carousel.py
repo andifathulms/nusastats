@@ -455,16 +455,23 @@ def _dukcapil(metric, level, period, opts):
     name = spec["label_id"] if spec else ind.label_id
     unit = opts.get("unit") or (spec["unit"] if spec else ind.unit)
     accessed = _bulan_tahun(period)
-    uses_big = bool(spec) and "luas_big" in spec["requires"]
-    notes = ["Penduduk terdaftar (administrasi kependudukan), bukan hasil sensus. "
-             f"Tanggal rujukan data Dukcapil tidak tercantum di sumber; snapshot diakses {accessed}."]
+    area_only = metric == "luas_big"  # land area alone: no population in it
+    uses_big = area_only or (bool(spec) and "luas_big" in spec["requires"])
+    notes = []
+    if not area_only:
+        notes.append("Penduduk terdaftar (administrasi kependudukan), bukan hasil sensus. "
+                     f"Tanggal rujukan data Dukcapil tidak tercantum di sumber; snapshot diakses {accessed}.")
     if spec:
         notes.append(f"Dihitung NusaStats dari kolom Dukcapil: {', '.join(spec['requires'])}.")
     if uses_big:
         notes.append("Luas wilayah dari peta batas desa BIG 1:10.000 (dijumlahkan NusaStats).")
-    source = f"Ditjen Dukcapil Kemendagri — {name} per {LEVEL_TITLE[level]}, diakses {accessed}"
-    if uses_big:
-        source += "; luas: BIG 1:10.000"
+    if area_only:
+        source = (f"BIG 1:10.000 (peta batas desa) — {name} per {LEVEL_TITLE[level]}, dijumlahkan NusaStats; "
+                  f"nama wilayah: Ditjen Dukcapil Kemendagri, diakses {accessed}")
+    else:
+        source = f"Ditjen Dukcapil Kemendagri — {name} per {LEVEL_TITLE[level]}, diakses {accessed}"
+        if uses_big:
+            source += "; luas: BIG 1:10.000"
     return {
         "rows": rows,
         "expected": [(c, c) for c in regions],
@@ -474,6 +481,7 @@ def _dukcapil(metric, level, period, opts):
         "period": period,
         "source": source,
         "notes": notes,
+        **({"kicker": "BIG 1:10.000"} if area_only else {}),
         "provenance": {"source": "dukcapil", "field": metric, "derived": bool(spec),
                        "requires": list(spec["requires"]) if spec else [metric], "period": period,
                        "rows": prov_refs},
